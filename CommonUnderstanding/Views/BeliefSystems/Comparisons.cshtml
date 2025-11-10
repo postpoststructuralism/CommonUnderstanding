@@ -1,0 +1,83 @@
+@model IEnumerable<CommonUnderstanding.Models.BeliefComparison>
+
+@{
+    ViewData["Title"] = "All Comparisons";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="bi bi-list-check"></i> All Belief System Comparisons
+            </h1>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <h4 class="alert-heading">No Comparisons Yet</h4>
+            <p>You haven't compared any belief systems yet.</p>
+            <hr>
+            <a asp-action="Compare" class="btn btn-primary">
+                <i class="bi bi-diagram-3"></i> Create Your First Comparison
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <a asp-action="Compare" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> New Comparison
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            @foreach (var comparison in Model.OrderByDescending(c => c.AnalyzedAt))
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <span class="badge bg-primary">@comparison.BeliefSystem1Name</span>
+                                <i class="bi bi-arrow-left-right mx-1"></i>
+                                <span class="badge bg-success">@comparison.BeliefSystem2Name</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">
+                                @{
+                                    var preview = comparison.SynthesisSummary.Length > 200 
+                                        ? comparison.SynthesisSummary.Substring(0, 200) + "..." 
+                                        : comparison.SynthesisSummary;
+                                }
+                                @preview
+                            </p>
+                            <p class="text-muted small">
+                                <i class="bi bi-calendar"></i> @comparison.AnalyzedAt.ToString("MMM dd, yyyy 'at' HH:mm")
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a asp-action="ComparisonResult" asp-route-id="@comparison.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View Full Analysis
+                            </a>
+                            <a asp-action="DialogueSuggestions" asp-route-id="@comparison.Id" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-chat-dots"></i> Dialogue Tips
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .badge {
+        font-weight: 500;
+        padding: 0.4em 0.8em;
+        font-size: 0.9rem;
+    }
+</style>

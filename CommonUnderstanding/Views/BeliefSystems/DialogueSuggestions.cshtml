@@ -1,0 +1,77 @@
+@{
+    ViewData["Title"] = "Dialogue Suggestions";
+    var suggestions = ViewBag.Suggestions as string ?? string.Empty;
+    var comparison = ViewBag.Comparison as CommonUnderstanding.Models.BeliefComparison ?? new CommonUnderstanding.Models.BeliefComparison();
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Belief Systems</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Comparisons">Comparisons</a></li>
+                    <li class="breadcrumb-item"><a asp-action="ComparisonResult" asp-route-id="@comparison.Id">Analysis</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Dialogue Suggestions</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-6">
+                    <i class="bi bi-chat-dots"></i> Building Bridges
+                </h1>
+                <h2 class="h4 text-muted">
+                    Dialogue Suggestions for 
+                    <span class="text-primary">@comparison.BeliefSystem1Name</span> 
+                    and 
+                    <span class="text-success">@comparison.BeliefSystem2Name</span>
+                </h2>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Practical Suggestions for Dialogue
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="suggestions-content">
+                        @foreach (var paragraph in suggestions.Split("\n\n"))
+                        {
+                            <p>@paragraph</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <h5 class="alert-heading"><i class="bi bi-heart"></i> Remember</h5>
+                <p class="mb-0">
+                    The goal of dialogue is not to "win" or convert others, but to build mutual understanding 
+                    and discover shared humanity. Focus on what unites us while respecting honest differences.
+                </p>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <a asp-action="ComparisonResult" asp-route-id="@comparison.Id" class="btn btn-secondary w-100">
+                        <i class="bi bi-arrow-left"></i> Back to Analysis
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a asp-action="Index" class="btn btn-primary w-100">
+                        <i class="bi bi-house"></i> Belief Systems Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .suggestions-content {
+        white-space: pre-wrap;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+</style>

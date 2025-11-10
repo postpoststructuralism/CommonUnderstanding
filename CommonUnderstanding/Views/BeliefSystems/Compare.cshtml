@@ -1,0 +1,117 @@
+@{
+    ViewData["Title"] = "Compare Belief Systems";
+    var beliefSystems = ViewBag.BeliefSystems as List<CommonUnderstanding.Models.BeliefSystem>;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h1 class="mb-4">
+                <i class="bi bi-diagram-3"></i> Compare Belief Systems
+            </h1>
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            @if (beliefSystems == null || !beliefSystems.Any())
+            {
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">Not Enough Belief Systems</h4>
+                    <p>You need at least two belief systems to perform a comparison.</p>
+                    <hr>
+                    <a asp-action="Create" class="btn btn-primary">Add Belief System</a>
+                </div>
+            }
+            else if (beliefSystems.Count < 2)
+            {
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">Need One More</h4>
+                    <p>You have @beliefSystems.Count belief system. Add at least one more to compare.</p>
+                    <hr>
+                    <a asp-action="Create" class="btn btn-primary">Add Another Belief System</a>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <p class="lead mb-4">
+                            Select two belief systems to analyze their common ground, differences, and opportunities for mutual understanding.
+                        </p>
+
+                        <form asp-action="Compare" method="post">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="beliefSystem1Id" class="form-label">First Belief System</label>
+                                    <select name="beliefSystem1Id" id="beliefSystem1Id" class="form-select" required>
+                                        <option value="">-- Select --</option>
+                                        @foreach (var bs in beliefSystems)
+                                        {
+                                            <option value="@bs.Id">@bs.Name</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="beliefSystem2Id" class="form-label">Second Belief System</label>
+                                    <select name="beliefSystem2Id" id="beliefSystem2Id" class="form-select" required>
+                                        <option value="">-- Select --</option>
+                                        @foreach (var bs in beliefSystems)
+                                        {
+                                            <option value="@bs.Id">@bs.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i> Analyze & Compare
+                                </button>
+                                <a asp-action="Index" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Belief Systems
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <h5 class="alert-heading"><i class="bi bi-info-circle"></i> What to Expect</h5>
+                    <p class="mb-0">
+                        The AI will analyze both belief systems to identify:
+                    </p>
+                    <ul class="mt-2 mb-0">
+                        <li><strong>Common Ground:</strong> Shared values, principles, and goals</li>
+                        <li><strong>Divergences:</strong> Key differences and potential bridges</li>
+                        <li><strong>Non-Zero-Sum Opportunities:</strong> Ways both can benefit from collaboration</li>
+                        <li><strong>Synthesis:</strong> What fundamentally unites these perspectives</li>
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Prevent selecting the same belief system twice
+        document.getElementById('beliefSystem1Id').addEventListener('change', updateOptions);
+        document.getElementById('beliefSystem2Id').addEventListener('change', updateOptions);
+
+        function updateOptions() {
+            const select1 = document.getElementById('beliefSystem1Id');
+            const select2 = document.getElementById('beliefSystem2Id');
+            
+            if (select1.value && select2.value && select1.value === select2.value) {
+                alert('Please select two different belief systems to compare.');
+                select2.value = '';
+            }
+        }
+    </script>
+}

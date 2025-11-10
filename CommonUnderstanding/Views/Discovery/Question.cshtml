@@ -1,0 +1,262 @@
+@model CommonUnderstanding.Models.UserInteraction
+
+@{
+    ViewData["Title"] = "Discovery Question";
+    var profile = ViewBag.Profile as CommonUnderstanding.Models.UserProfile;
+    var progressPercent = (int)ViewBag.ProgressPercent;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Progress Bar -->
+            <div class="card mb-3">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">
+                            <i class="bi bi-person-circle"></i> <strong>@profile.Name</strong>
+                        </span>
+                        <span class="small text-muted">
+                            Question @(profile.InteractionCount + 1) • Stage: @profile.Stage
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: @progressPercent%;" 
+                             aria-valuenow="@progressPercent" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-1 text-end">
+                        Model Confidence: @((profile.CurrentBeliefSnapshot?.OverallConfidence ?? 0).ToString("P0"))
+                    </div>
+                </div>
+            </div>
+
+            @if (TempData["ShowProfilePrompt"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <h5 class="alert-heading"><i class="bi bi-trophy"></i> Milestone Reached!</h5>
+                    <p class="mb-0">
+                        You've completed @profile.InteractionCount questions. 
+                        <a asp-action="Profile" class="alert-link">View your evolving profile</a> to see what we've learned so far!
+                    </p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <!-- Question Card -->
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        @(Model.Type switch
+                        {
+                            CommonUnderstanding.Models.InteractionType.MoralDilemma => "🤔 Moral Dilemma",
+                            CommonUnderstanding.Models.InteractionType.ScaleQuestion => "📊 Scale Question",
+                            CommonUnderstanding.Models.InteractionType.ValueRanking => "🎯 Value Ranking",
+                            CommonUnderstanding.Models.InteractionType.EmotionalPrompt => "❤️ Scenario",
+                            _ => "💭 Question"
+                        })
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrEmpty(Model.Content.Context))
+                    {
+                        <div class="alert alert-light border scenario-context mb-4">
+                            <div class="scenario-text">
+                                @foreach (var paragraph in Model.Content.Context.Split("\n\n"))
+                                {
+                                    <p>@paragraph</p>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <h5 class="question-text mb-4">
+                        @Model.Content.Question
+                    </h5>
+
+                    <form asp-action="SubmitResponse" method="post" id="responseForm">
+                        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
+                        {
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">@Model.Content.MinLabel</span>
+                                    <span class="text-muted">@Model.Content.MaxLabel</span>
+                                </div>
+                                <input type="range" class="form-range" 
+                                       name="numericValue" id="scaleValue" 
+                                       min="@Model.Content.MinValue" max="@Model.Content.MaxValue" 
+                                       value="@((Model.Content.MinValue + Model.Content.MaxValue) / 2)" 
+                                       oninput="updateScaleValue(this.value)" />
+                                <div class="text-center mt-2">
+                                    <h3><span id="scaleDisplay" class="badge bg-primary">5</span></h3>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="response" class="form-label">
+                                    Please explain your reasoning (optional but helpful):
+                                </label>
+                                <textarea class="form-control" name="response" id="response" 
+                                          rows="3" placeholder="Why did you choose this rating?"></textarea>
+                            </div>
+                        }
+                        else if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Ranking)
+                        {
+                            <div class="mb-3">
+                                <p class="text-muted">Drag to reorder from most to least important:</p>
+                                <div id="rankingList" class="list-group">
+                                    @foreach (var option in Model.Content.Options)
+                                    {
+                                        <div class="list-group-item" draggable="true">
+                                            <i class="bi bi-grip-vertical"></i> @option
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <input type="hidden" name="response" id="rankingResponse" />
+                            <div class="mb-3">
+                                <label for="responseText" class="form-label">
+                                    Why did you rank them this way?
+                                </label>
+                                <textarea class="form-control" name="responseText" id="responseText" 
+                                          rows="3" placeholder="Explain your reasoning..."></textarea>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label for="response" class="form-label">Your Response:</label>
+                                <textarea class="form-control" name="response" id="response" 
+                                          rows="5" required autofocus
+                                          placeholder="Share your thoughts honestly and openly..."></textarea>
+                                <div class="form-text">
+                                    Take your time. There are no right or wrong answers.
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a asp-action="Profile" class="btn btn-outline-secondary">
+                                <i class="bi bi-person"></i> View Profile
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Continue <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-lock"></i> Your responses are analyzed privately and securely
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .scenario-context {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .scenario-text {
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+
+    .question-text {
+        font-size: 1.3rem;
+        font-weight: 500;
+        color: #2c3e50;
+        line-height: 1.6;
+    }
+
+    .list-group-item {
+        cursor: move;
+        user-select: none;
+    }
+
+    .list-group-item.dragging {
+        opacity: 0.5;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function updateScaleValue(value) {
+            document.getElementById('scaleDisplay').textContent = value;
+        }
+
+        // Initialize scale display
+        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
+        {
+            <text>
+            const initialValue = (@Model.Content.MinValue + @Model.Content.MaxValue) / 2;
+            updateScaleValue(initialValue);
+            </text>
+        }
+
+        // Ranking drag and drop
+        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Ranking)
+        {
+            <text>
+            const list = document.getElementById('rankingList');
+            let draggedItem = null;
+
+            list.querySelectorAll('.list-group-item').forEach(item => {
+                item.addEventListener('dragstart', function() {
+                    draggedItem = this;
+                    this.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    updateRankingValue();
+                });
+
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(list, e.clientY);
+                    if (afterElement == null) {
+                        list.appendChild(draggedItem);
+                    } else {
+                        list.insertBefore(draggedItem, afterElement);
+                    }
+                });
+            });
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.list-group-item:not(.dragging)')];
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function updateRankingValue() {
+                const items = [...list.querySelectorAll('.list-group-item')];
+                const ranking = items.map(item => item.textContent.trim().replace('☰ ', ''));
+                document.getElementById('rankingResponse').value = ranking.join(' > ');
+            }
+
+            // Set initial value
+            updateRankingValue();
+            </text>
+        }
+    </script>
+}

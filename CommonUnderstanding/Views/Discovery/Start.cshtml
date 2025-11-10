@@ -1,0 +1,109 @@
+@{
+    ViewData["Title"] = "Begin Your Journey";
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="text-center mb-5">
+                <h1 class="display-4">
+                    <i class="bi bi-compass"></i> Discover Your Worldview
+                </h1>
+                <p class="lead text-muted">
+                    Let's explore your beliefs, values, and what matters most to you
+                </p>
+            </div>
+
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h3 class="mb-4">How This Works</h3>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-chat-dots fs-1 text-primary"></i>
+                            </div>
+                            <h5>Conversational Discovery</h5>
+                            <p class="small text-muted">
+                                We'll ask thoughtful questions about your views and values
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-graph-up fs-1 text-success"></i>
+                            </div>
+                            <h5>Statistical Analysis</h5>
+                            <p class="small text-muted">
+                                AI analyzes your responses using Bayesian inference
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-lightbulb fs-1 text-warning"></i>
+                            </div>
+                            <h5>Evolving Understanding</h5>
+                            <p class="small text-muted">
+                                Watch our model of your worldview refine over time
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading"><i class="bi bi-info-circle"></i> What to Expect</h5>
+                        <ul class="mb-0">
+                            <li>Answer <strong>5-10 questions</strong> for initial insights</li>
+                            <li>Questions include scenarios, moral dilemmas, and value rankings</li>
+                            <li>No right or wrong answers - just honest reflection</li>
+                            <li>The system learns and adapts to your responses</li>
+                            <li>You can pause and return anytime</li>
+                        </ul>
+                    </div>
+
+                    <form asp-action="Start" method="post" class="mt-4">
+                        <div class="mb-4">
+                            <label for="userName" class="form-label">What should we call you?</label>
+                            <input type="text" class="form-control form-control-lg" 
+                                   id="userName" name="userName" 
+                                   placeholder="Enter your name" 
+                                   required autofocus />
+                            <div class="form-text">
+                                This helps personalize your experience. Your data stays private.
+                            </div>
+                        </div>
+
+                        <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-arrow-right-circle"></i> Begin Discovery
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4 text-muted small">
+                        <i class="bi bi-shield-check"></i> Privacy-focused • No judgment • Continual learning
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a asp-controller="BeliefSystems" asp-action="Index" class="btn btn-link">
+                    <i class="bi bi-arrow-left"></i> Back to Belief Systems
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .feature-icon {
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

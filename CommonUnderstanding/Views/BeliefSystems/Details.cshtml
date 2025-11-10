@@ -1,0 +1,65 @@
+@model CommonUnderstanding.Models.BeliefSystem
+
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Belief Systems</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="bi bi-brightness-high"></i> @Model.Name
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Description & Analysis</h5>
+                    <div class="belief-description">
+                        @foreach (var paragraph in Model.Description.Split("\n\n"))
+                        {
+                            <p>@paragraph</p>
+                        }
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="text-muted">
+                                <i class="bi bi-calendar"></i> <strong>Created:</strong> @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' HH:mm")
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-muted">
+                                <i class="bi bi-key"></i> <strong>ID:</strong> @Model.Id.Substring(0, 8)...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                    <a asp-action="Compare" class="btn btn-success">
+                        <i class="bi bi-diagram-3"></i> Compare with Other Belief Systems
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .belief-description {
+        white-space: pre-wrap;
+        line-height: 1.8;
+    }
+</style>

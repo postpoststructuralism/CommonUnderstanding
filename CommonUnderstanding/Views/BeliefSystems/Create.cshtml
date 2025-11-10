@@ -1,0 +1,64 @@
+@model CommonUnderstanding.Models.BeliefSystem
+
+@{
+    ViewData["Title"] = "Add Belief System";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h1 class="mb-4">
+                <i class="bi bi-plus-circle"></i> Add New Belief System
+            </h1>
+            
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label">Name</label>
+                            <input asp-for="Name" class="form-control" placeholder="e.g., Buddhism, Stoicism, Humanism" required />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <div class="form-text">The name of the belief system, philosophy, or worldview.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="8" 
+                                      placeholder="Describe the core beliefs, values, and principles of this belief system..." required></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                            <div class="form-text">
+                                Provide a comprehensive description. The AI will analyze this to extract core beliefs, values, and principles.
+                                Include key tenets, ethical frameworks, and fundamental assumptions.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Analyze & Create
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <h5 class="alert-heading"><i class="bi bi-lightbulb"></i> Tips for Better Analysis</h5>
+                <ul class="mb-0">
+                    <li>Be specific and detailed in your description</li>
+                    <li>Include core values, ethical principles, and fundamental beliefs</li>
+                    <li>Mention key texts, figures, or traditions if applicable</li>
+                    <li>Describe both theoretical and practical aspects</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

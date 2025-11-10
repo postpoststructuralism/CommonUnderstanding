@@ -1,0 +1,285 @@
+@model CommonUnderstanding.Models.UserProfile
+
+@{
+    ViewData["Title"] = $"{Model.Name}'s Worldview Profile";
+    var snapshot = Model.CurrentBeliefSnapshot;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Question">Discovery</a></li>
+                    <li class="breadcrumb-item active">Your Profile</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-5">
+                    <i class="bi bi-person-badge"></i> @Model.Name's Worldview
+                </h1>
+                <p class="lead text-muted">
+                    Based on @Model.InteractionCount interactions • @Model.Stage stage
+                </p>
+            </div>
+
+            @if (snapshot == null)
+            {
+                <div class="alert alert-info">
+                    <h4>Not enough data yet</h4>
+                    <p>Answer a few more questions to build your profile!</p>
+                    <a asp-action="Question" class="btn btn-primary">Continue Discovery</a>
+                </div>
+            }
+            else
+            {
+                <!-- Overall Confidence -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Model Confidence</h5>
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-success progress-bar-striped" role="progressbar" 
+                                 style="width: @((snapshot.OverallConfidence * 100).ToString("F0"))%;">
+                                @snapshot.OverallConfidence.ToString("P0")
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-2">
+                            How confident we are in our understanding of your worldview
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Narrative Summary -->
+                @if (!string.IsNullOrEmpty(snapshot.NarrativeSummary))
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-book"></i> Your Worldview Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="lead">@snapshot.NarrativeSummary</p>
+                        </div>
+                    </div>
+                }
+
+                <!-- Core Values -->
+                @if (snapshot.Values.Any())
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-heart"></i> Your Core Values</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                @foreach (var value in snapshot.Values.Take(10))
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong>@value.Name</strong>
+                                            <span class="badge bg-info">
+                                                @value.Confidence.ToString("P0") confidence
+                                            </span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar" style="width: @((value.ImportanceScore * 10).ToString("F0"))%;">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">
+                                            Importance: @value.ImportanceScore.ToString("F1")/10
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Moral Foundations -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Moral Foundations Profile</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">
+                            Based on Jonathan Haidt's Moral Foundations Theory
+                        </p>
+                        @{
+                            var foundations = new Dictionary<string, (string Name, string Description, Foundation Data)>
+                            {
+                                ["Care"] = ("Care/Harm", "Compassion, kindness, nurturing", snapshot.MoralFoundations.Care),
+                                ["Fairness"] = ("Fairness/Cheating", "Justice, rights, equality", snapshot.MoralFoundations.Fairness),
+                                ["Loyalty"] = ("Loyalty/Betrayal", "Group solidarity, patriotism", snapshot.MoralFoundations.Loyalty),
+                                ["Authority"] = ("Authority/Subversion", "Respect for hierarchy, tradition", snapshot.MoralFoundations.Authority),
+                                ["Sanctity"] = ("Sanctity/Degradation", "Purity, sacredness", snapshot.MoralFoundations.Sanctity),
+                                ["Liberty"] = ("Liberty/Oppression", "Freedom, autonomy", snapshot.MoralFoundations.Liberty)
+                            };
+                        }
+                        @foreach (var kvp in foundations)
+                        {
+                            var (name, desc, data) = kvp.Value;
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span><strong>@name</strong> <small class="text-muted">• @desc</small></span>
+                                    <span class="badge bg-secondary">@data.Score.ToString("F1")/10</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar @(data.Score > 7 ? "bg-success" : data.Score > 4 ? "bg-info" : "bg-secondary")" 
+                                         style="width: @((data.Score * 10).ToString("F0"))%;">
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    Confidence: @data.Confidence.ToString("P0") ± @data.StandardError.ToString("F1")
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Belief Dimensions -->
+                @if (snapshot.Dimensions.Any())
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-sliders"></i> Belief Dimensions</h5>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var dimension in snapshot.Dimensions.OrderByDescending(d => d.Confidence).Take(15))
+                            {
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            <strong>@dimension.Name</strong>
+                                            <span class="badge bg-light text-dark">@dimension.Category</span>
+                                        </span>
+                                        <span class="text-muted small">
+                                            n=@dimension.SampleSize • @dimension.Confidence.ToString("P0") confidence
+                                        </span>
+                                    </div>
+                                    @if (dimension.Position.HasValue)
+                                    {
+                                        var position = dimension.Position.Value;
+                                        var positionPercent = ((position + 1) / 2.0 * 100);
+                                        <div class="position-indicator">
+                                            <div class="position-scale">
+                                                <div class="position-marker" style="left: @positionPercent.ToString("F1")%;">
+                                                    <div class="position-dot"></div>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between small text-muted mt-1">
+                                                <span>Low</span>
+                                                <span>Moderate</span>
+                                                <span>High</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Statistics -->
+                @if (snapshot.Statistics != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-graph-up"></i> Model Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 text-center mb-3">
+                                    <h3 class="text-primary">@snapshot.Statistics.TotalEvidence</h3>
+                                    <small class="text-muted">Data Points</small>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <h3 class="text-success">@snapshot.Statistics.Consistency.ToString("P0")</h3>
+                                    <small class="text-muted">Consistency</small>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <h3 class="text-info">@snapshot.Statistics.SignalToNoise.ToString("F2")</h3>
+                                    <small class="text-muted">Signal/Noise</small>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <h3 class="text-warning">@snapshot.Statistics.Entropy.ToString("F2")</h3>
+                                    <small class="text-muted">Entropy</small>
+                                </div>
+                            </div>
+
+                            @if (snapshot.Statistics.UncertainAreas.Any())
+                            {
+                                <hr />
+                                <h6>Areas Needing More Data:</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var area in snapshot.Statistics.UncertainAreas)
+                                    {
+                                        <span class="badge bg-warning text-dark">@area</span>
+                                    }
+                                </div>
+                            }
+
+                            @if (snapshot.Statistics.DetectedContradictions.Any())
+                            {
+                                <hr />
+                                <h6>Potential Contradictions:</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var contradiction in snapshot.Statistics.DetectedContradictions)
+                                    {
+                                        <span class="badge bg-danger">@contradiction</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Actions -->
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-2">
+                        <a asp-action="Question" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-right-circle"></i> Continue Discovery
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a asp-action="Evolution" class="btn btn-info w-100">
+                            <i class="bi bi-clock-history"></i> View Evolution
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a asp-action="History" class="btn btn-secondary w-100">
+                            <i class="bi bi-list"></i> View Responses
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .position-indicator {
+        margin: 10px 0;
+    }
+
+    .position-scale {
+        position: relative;
+        height: 30px;
+        background: linear-gradient(to right, #e74c3c, #f39c12, #2ecc71);
+        border-radius: 15px;
+    }
+
+    .position-marker {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .position-dot {
+        width: 20px;
+        height: 20px;
+        background: white;
+        border: 3px solid #2c3e50;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+</style>

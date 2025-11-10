@@ -1,0 +1,84 @@
+@model CommonUnderstanding.Models.BeliefComparison
+
+@{
+    ViewData["Title"] = $"Comparison: {Model.BeliefSystem1Name} vs {Model.BeliefSystem2Name}";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Belief Systems</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Comparisons">Comparisons</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Analysis</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-5">
+                    <span class="badge bg-primary">@Model.BeliefSystem1Name</span>
+                    <i class="bi bi-arrow-left-right mx-2"></i>
+                    <span class="badge bg-success">@Model.BeliefSystem2Name</span>
+                </h1>
+                <p class="text-muted">
+                    <i class="bi bi-calendar"></i> Analyzed on @Model.AnalyzedAt.ToString("MMMM dd, yyyy 'at' HH:mm")
+                </p>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h3 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Comprehensive Analysis
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="analysis-content">
+                        @foreach (var paragraph in Model.SynthesisSummary.Split("\n\n"))
+                        {
+                            <p>@paragraph</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <a asp-action="DialogueSuggestions" asp-route-id="@Model.Id" class="btn btn-success btn-lg w-100">
+                        <i class="bi bi-chat-dots"></i> Generate Dialogue Suggestions
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <a asp-action="Comparisons" class="btn btn-secondary w-100">
+                        <i class="bi bi-list-check"></i> View All Comparisons
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a asp-action="Compare" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> New Comparison
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .analysis-content {
+        white-space: pre-wrap;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+    
+    .display-5 {
+        font-size: 2rem;
+    }
+    
+    .badge {
+        font-weight: 500;
+        padding: 0.5em 1em;
+    }
+</style>
