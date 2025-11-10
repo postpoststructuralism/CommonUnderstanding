@@ -1,133 +1,312 @@
 # Common Understanding
 
-An ASP.NET MVC application powered by Semantic Kernel and Ollama that maps belief systems onto one another, identifying areas of overlap and divergence to establish non-zero-sum games and emphasize what binds us together.
+> *"Most people don't know themselves well enough to describe their beliefs. Let's discover them together."*
 
-## Overview
+An ASP.NET MVC application powered by Semantic Kernel and Ollama that **infers belief systems through adaptive conversation**, using Bayesian statistics and AI to build mental models of individuals, then maps these onto one another to find what binds us together.
 
-Common Understanding uses AI-powered analysis to:
-- Analyze belief systems, philosophies, and worldviews
-- Compare different belief systems to find common ground
-- Identify areas of divergence with potential bridges
-- Discover non-zero-sum opportunities for collaboration
-- Generate practical suggestions for constructive dialogue
+## 🎯 What Makes This Different
 
-## Prerequisites
+Instead of asking people to describe their worldview (which they struggle with), Common Understanding:
+
+1. **Engages in thoughtful dialogue** - Moral dilemmas, scenarios, value rankings
+2. **Analyzes responses statistically** - Bayesian inference, not just pattern matching  
+3. **Builds evolving models** - Versioned snapshots with confidence intervals
+4. **Discovers common ground** - Compares inferred belief systems to find overlap
+
+## ✨ Core Features
+
+### 1. **Interactive Belief Discovery** 🧠
+- Adaptive questioning powered by AI
+- Moral dilemmas and emotional scenarios
+- Statistical analysis of each response
+- Real-time confidence tracking
+
+### 2. **Rigorous Statistical Analysis** 📊
+- Bayesian inference engine
+- Confidence intervals on all estimates
+- Entropy, consistency, and signal-to-noise metrics
+- Contradiction detection
+
+### 3. **Moral Foundations Profiling** ❤️
+- Based on Jonathan Haidt's research
+- 6 dimensions: Care, Fairness, Loyalty, Authority, Sanctity, Liberty
+- Scored 0-10 with standard errors
+
+### 4. **Belief System Comparison** 🤝
+- Compare discovered profiles
+- Identify overlaps and divergences
+- Find non-zero-sum opportunities
+- Generate dialogue suggestions
+
+### 5. **Evolution Tracking** 📈
+- Versioned belief snapshots over time
+- Historical analysis
+- Change detection
+- Belief stability metrics
+
+## 🚀 Quick Start
+
+### Prerequisites
 
 1. **.NET 9.0 SDK** - [Download here](https://dotnet.microsoft.com/download/dotnet/9.0)
 2. **Ollama** - [Download here](https://ollama.ai/)
-3. A compatible Ollama model (e.g., llama3.2)
+3. A compatible Ollama model (e.g., llama3.2, llama3.1, mistral)
 
-## Setup Instructions
+### Setup in 3 Steps
 
-### 1. Install and Run Ollama
-
-First, install Ollama from [ollama.ai](https://ollama.ai/). Then download a model:
-
+**1. Install and start Ollama**
 ```bash
+# Download a model
 ollama pull llama3.2
-```
 
-Make sure Ollama is running:
-```bash
+# Start Ollama (keep this running)
 ollama serve
 ```
 
-By default, Ollama runs on `http://localhost:11434`. If you use a different endpoint, update `appsettings.json`.
-
-### 2. Configure the Application
-
-The application is pre-configured to connect to Ollama. You can modify settings in `appsettings.json`:
-
-```json
-{
-  "Ollama": {
-    "Endpoint": "http://localhost:11434",
-    "ModelName": "llama3.2"
-  }
-}
-```
-
-Available models you might want to try:
-- `llama3.2` - Fast and efficient (default)
-- `llama3.1` - More powerful, slower
-- `mistral` - Good alternative
-- `phi3` - Lightweight option
-
-### 3. Run the Application
-
-Navigate to the project directory and run:
-
+**2. Run the application**
 ```bash
 cd CommonUnderstanding
 dotnet run
 ```
 
-The application will start on `https://localhost:5001` (or the port shown in your terminal).
-
-## Features
-
-### 1. Create Belief Systems
-Add belief systems by providing a name and description. The AI will analyze the content to extract:
-- Core beliefs and tenets
-- Fundamental values
-- Guiding principles
-
-### 2. Compare Belief Systems
-Select two belief systems to compare. The AI will generate a comprehensive analysis including:
-- **Areas of Overlap** - Shared values, principles, and goals
-- **Areas of Divergence** - Key differences and potential bridges
-- **Non-Zero-Sum Opportunities** - Ways both can benefit from collaboration
-- **Synthesis Summary** - What fundamentally unites these perspectives
-
-### 3. Dialogue Suggestions
-Generate practical suggestions for constructive dialogue between adherents of different belief systems, including:
-- Conversation starters emphasizing common ground
-- Questions promoting mutual understanding
-- Collaborative projects and activities
-- Frameworks for discussing differences respectfully
-
-## Project Structure
-
+**3. Open your browser**
 ```
-CommonUnderstanding/
-├── Controllers/
-│   └── BeliefSystemsController.cs    # Main MVC controller
-├── Models/
-│   ├── BeliefSystem.cs                # Belief system domain model
-│   └── BeliefComparison.cs            # Comparison results model
-├── Services/
-│   ├── SemanticKernelService.cs       # Semantic Kernel configuration
-│   └── BeliefAnalysisService.cs       # AI-powered analysis service
-├── Views/
-│   ├── BeliefSystems/
-│   │   ├── Index.cshtml               # List all belief systems
-│   │   ├── Create.cshtml              # Add new belief system
-│   │   ├── Details.cshtml             # View belief system details
-│   │   ├── Compare.cshtml             # Select systems to compare
-│   │   ├── ComparisonResult.cshtml    # View comparison analysis
-│   │   ├── Comparisons.cshtml         # List all comparisons
-│   │   └── DialogueSuggestions.cshtml # Dialogue tips
-│   └── Shared/
-│       └── _Layout.cshtml             # Main layout
-├── appsettings.json                   # Configuration
-└── Program.cs                         # Application startup
+https://localhost:5001
 ```
 
-## Technology Stack
+## 🎮 Your First Discovery Session
 
-- **ASP.NET Core 9.0 MVC** - Web framework
-- **Microsoft Semantic Kernel** - AI orchestration framework
-- **Ollama** - Local LLM runtime
-- **Bootstrap 5** - UI framework
-- **Bootstrap Icons** - Icon library
+### Step 1: Begin Your Journey
+Click "Begin Discovery" and enter your name. The system will introduce itself and explain the process.
 
-## Examples of Belief Systems to Analyze
+### Step 2: Answer Thoughtfully
+You'll receive various types of questions:
+- **Open-ended**: "What principles guide your decisions?"
+- **Moral dilemmas**: "A friend asks you to lie for them..."
+- **Scale questions**: "Rate 1-10: Individual freedom vs. collective good"
+- **Value rankings**: "Order these by importance: Justice, Mercy, Truth..."
 
-- **Philosophies**: Buddhism, Stoicism, Existentialism, Pragmatism
-- **Religious Traditions**: Christianity, Islam, Judaism, Hinduism
-- **Modern Worldviews**: Secular Humanism, Scientific Materialism, Deep Ecology
-- **Political Philosophies**: Liberalism, Conservatism, Libertarianism, Socialism
-- **Ethical Frameworks**: Utilitarianism, Virtue Ethics, Deontology
+### Step 3: Watch Your Profile Build
+After 5-10 questions, view your profile to see:
+- **Core values** (ranked by confidence × importance)
+- **Moral foundations** (Care, Fairness, Loyalty, Authority, Sanctity, Liberty)
+- **Belief dimensions** with confidence intervals
+- **Statistical metrics** (entropy, consistency, signal-to-noise)
+
+### Step 4: Explore & Compare
+- Continue answering to refine your profile
+- View how your beliefs have evolved over time
+- Compare with other discovered profiles
+- Find common ground and differences
+
+## 📚 Two Modes of Operation
+
+### Mode 1: Discovery (New! ⭐)
+**For individuals** - Infer your own belief system
+
+```
+Start → Adaptive Questions → Statistical Analysis → Evolving Profile
+```
+
+- Answer 5-60+ questions
+- AI analyzes each response
+- Bayesian updates to your mental model
+- Track confidence and evolution
+
+### Mode 2: Comparison (Original)
+**For known belief systems** - Compare established worldviews
+
+```
+Create Belief Systems → Compare → Find Common Ground
+```
+
+- Manually describe belief systems (Buddhism, Stoicism, etc.)
+- AI analyzes and compares them
+- Discover overlaps and non-zero-sum opportunities
+
+## 🏗️ Technical Architecture
+
+### The Discovery Pipeline
+
+```
+User Response → Response Analysis → Bayesian Inference → Model Update → Next Question
+     ↓               ↓                     ↓                   ↓              ↓
+  Raw Text    Extract Signals      Update Priors        New Snapshot    Adaptive
+               AI Analysis         Confidence ↑         Versioned       Target Gaps
+               Emotions            Uncertainty ↓        Timestamped     Find Contradictions
+```
+
+### Key Components
+
+**1. Discovery Question Engine**
+- Generates adaptive questions based on current model state
+- Question types: Open-ended, moral dilemmas, scales, rankings, scenarios
+- Targets uncertain areas and contradictions
+- Stage-aware (Initial → Foundation → Exploration → Refinement)
+
+**2. Response Analysis Engine**
+- AI-powered extraction of belief signals
+- Moral foundations scoring (Haidt's framework)
+- Emotional marker detection (intensity, certainty, conflict)
+- Reasoning pattern identification (consequentialist, deontological, etc.)
+
+**3. Bayesian Inference Engine** ⭐ **Statistical Core**
+- Gaussian priors and posteriors
+- Precision-weighted Bayesian updates
+- Confidence = f(sample_size, variance)
+- Entropy, consistency, signal-to-noise calculations
+
+**4. Belief Discovery Orchestrator**
+- Coordinates the entire flow
+- Manages discovery stages
+- Selects question strategies adaptively
+- Tracks evolution over time
+
+### Data Models
+
+**UserProfile**
+```csharp
+{
+  Name: "Alice",
+  Stage: DiscoveryStage.Exploration,
+  InteractionCount: 15,
+  CurrentBeliefSnapshot: { ... },
+  HistoricalSnapshots: [ ... ],
+  Interactions: [ ... ]
+}
+```
+
+**BeliefSnapshot** (Versioned Mental Model)
+```csharp
+{
+  Timestamp: "2025-11-10T14:30:00Z",
+  OverallConfidence: 0.73,
+  Dimensions: [
+    { Name: "Care/Harm", Position: 0.8, Confidence: 0.85, Uncertainty: 0.15 }
+  ],
+  Values: [
+    { Name: "Compassion", ImportanceScore: 8.5, Confidence: 0.78 }
+  ],
+  MoralFoundations: { Care: 8.2, Fairness: 7.1, ... },
+  Statistics: { Entropy: 1.2, Consistency: 0.82, ... }
+}
+```
+
+### Statistical Rigor
+
+**Bayesian Update Formula**
+```
+Posterior = (PriorPrecision × Prior + Evidence × Likelihood) / TotalPrecision
+Confidence = (1 - e^(-n/10)) × e^(-variance)
+```
+
+**Quality Metrics**
+- **Entropy**: Information content / uncertainty
+- **Consistency**: Temporal stability of responses  
+- **Signal-to-Noise**: Confidence / Uncertainty ratio
+- **Contradiction Detection**: Opposing high-confidence beliefs
+
+## 🎓 Theoretical Foundations
+
+This system builds on established research:
+
+### Psychology
+- **Moral Foundations Theory** (Jonathan Haidt) - 6 moral dimensions
+- **Value Theory** (Schwartz) - Universal human values
+- **Personality Psychology** - Big Five correlations with beliefs
+
+### Statistics & Math
+- **Bayesian Epistemology** - Rational belief updating under uncertainty
+- **Information Theory** - Shannon entropy, mutual information
+- **Psychometrics** - Reliable measurement of psychological constructs
+
+### AI & Machine Learning
+- **Active Learning** - Optimal question selection to reduce uncertainty
+- **Probabilistic Models** - Gaussian processes for belief distributions
+- **Natural Language Processing** - Semantic analysis of responses
+
+## 💡 Example Discovery Session
+
+### Question 1 (Initial, Open-ended)
+**System**: "What principles guide your decisions in difficult situations?"
+
+**User**: "I try to be honest and fair, but also consider people's feelings..."
+
+**Analysis**:
+- Values detected: Honesty (0.7 confidence), Fairness (0.7), Compassion (0.6)
+- Moral foundations: Care ↑, Fairness ↑
+- Reasoning: Mixed deontological/virtue ethics
+
+**Model Update**: Initial snapshot created, confidence: 0.15
+
+---
+
+### Question 5 (Foundation, Moral Dilemma)
+**System**: "A close friend asks you to lie to protect them from consequences of their mistake..."
+
+**User**: "I'd try to find a way to help without lying directly. Maybe help them face it..."
+
+**Analysis**:
+- Conflict resolution: Honesty + Loyalty tension
+- Moral foundations: Care (8.0), Fairness (7.5), Loyalty (6.0)
+- Reasoning: Consequentialist with deontological constraints
+
+**Model Update**: Confidence: 0.42, identified honesty > loyalty hierarchy
+
+---
+
+### Question 15 (Exploration, Scale)
+**System**: "Rate 1-10: Individual freedom vs. Collective good"
+
+**User**: [Rating: 6] "Both matter, but freedom enables people to contribute better..."
+
+**Analysis**:
+- Political dimension: Moderate-libertarian (0.4 position)
+- Liberty foundation ↑
+- Instrumental reasoning detected
+
+**Model Update**: Confidence: 0.68, political dimension added
+
+---
+
+### Question 30 (Refinement)
+**System**: "Earlier you valued honesty highly. In this scenario [describes complex situation], your response suggested flexibility. Help us understand..."
+
+**Analysis**:
+- Context-sensitivity detected
+- Honesty is principle, not absolute rule
+- Refines understanding of value application
+
+**Model Update**: Confidence: 0.81, reduced uncertainty in ethical framework
+
+## 🔬 Statistical Insights
+
+### How Confidence Grows
+
+```
+Interactions  Confidence  Entropy  Dimensions
+    0           0.10       2.5         0
+    5           0.35       2.1         8
+   10           0.55       1.7        15
+   20           0.72       1.3        22
+   50           0.87       0.9        35
+  100           0.93       0.6        45
+```
+
+### Quality Indicators
+
+**Good Model** ✅
+- Confidence > 0.7
+- Consistency > 0.75
+- Signal-to-Noise > 1.5
+- Few contradictions
+- User recognizes themselves
+
+**Needs More Data** ⚠️
+- Confidence < 0.5
+- High entropy (> 2.0)
+- Many uncertain areas
+- Low signal-to-noise (< 1.0)
 
 ## Current Limitations
 
