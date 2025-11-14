@@ -7,17 +7,16 @@ namespace CommonUnderstanding.Controllers;
 public class DiscoveryController : Controller
 {
     private readonly BeliefDiscoveryOrchestrator _orchestrator;
+    private readonly UserProfileStore _profileStore;
     private readonly ILogger<DiscoveryController> _logger;
-    
-    // In-memory storage for demo - replace with database
-    private static readonly Dictionary<string, UserProfile> _profiles = new();
-    private static readonly Dictionary<string, UserInteraction> _pendingInteractions = new();
 
     public DiscoveryController(
         BeliefDiscoveryOrchestrator orchestrator,
+        UserProfileStore profileStore,
         ILogger<DiscoveryController> logger)
     {
         _orchestrator = orchestrator;
+        _profileStore = profileStore;
         _logger = logger;
     }
 
@@ -45,11 +44,11 @@ public class DiscoveryController : Controller
             Stage = DiscoveryStage.Initial
         };
 
-        _profiles[profile.Id] = profile;
+        _profileStore.AddProfile(profile);
 
         // Generate first question - exceptions will bubble up naturally
         var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
-        _pendingInteractions[profile.Id] = firstQuestion;
+        _profileStore.SetPendingInteraction(profile.Id, firstQuestion);
 
         // Store profile ID in session/cookie for tracking
         HttpContext.Response.Cookies.Append("ProfileId", profile.Id, new CookieOptions
@@ -79,14 +78,14 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Start));
         }
         
-        if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
         {
             HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
-        var profile = _profiles[profileId];
-        var question = _pendingInteractions.GetValueOrDefault(profileId);
+        var profile = _profileStore.GetProfile(profileId);
+        var question = _profileStore.GetPendingInteraction(profileId);
 
         if (question == null)
         {
@@ -94,7 +93,7 @@ public class DiscoveryController : Controller
         }
 
         ViewBag.Profile = profile;
-        ViewBag.ProgressPercent = CalculateProgress(profile);
+        ViewBag.ProgressPercent = CalculateProgress(profile!);
         
         return View(question);
     }
@@ -102,7 +101,7 @@ public class DiscoveryController : Controller
     // POST: Discovery/Question
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SubmitResponse(string response, double? numericValue)
+    public async Task<IActionResult> SubmitResponse(string? response, string? selectedOption, string? responseText, double? numericValue)
     {
         string? profileId = null;
         
@@ -117,16 +116,32 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Start));
         }
         
-        if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
         {
             HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
-        var profile = _profiles[profileId];
-        var interaction = _pendingInteractions.GetValueOrDefault(profileId);
+        var profile = _profileStore.GetProfile(profileId);
+        var interaction = _profileStore.GetPendingInteraction(profileId);
 
-        if (interaction == null || string.IsNullOrWhiteSpace(response))
+        if (profile == null || interaction == null)
+        {
+            TempData["Error"] = "Session expired. Please start over.";
+            return RedirectToAction(nameof(Start));
+        }
+
+        // Determine the actual response based on question format
+        string actualResponse = response ?? selectedOption ?? "";
+        
+        // For scale questions, use the numeric value as the response
+        if (interaction.Content.Format == InteractionFormat.Scale && numericValue.HasValue)
+        {
+            actualResponse = numericValue.Value.ToString();
+        }
+        
+        // Validate we have some kind of response
+        if (string.IsNullOrWhiteSpace(actualResponse))
         {
             TempData["Error"] = "Please provide a response";
             return RedirectToAction(nameof(Question));
@@ -134,11 +149,20 @@ public class DiscoveryController : Controller
 
         var responseStartTime = DateTime.UtcNow;
 
-        // Fill in the response
+        // Fill in the response - combine selected option with any additional text
+        var fullResponseText = actualResponse;
+        if (!string.IsNullOrWhiteSpace(responseText))
+        {
+            fullResponseText += "\n\nAdditional context: " + responseText;
+        }
+
         interaction.Response = new UserResponse
         {
-            RawText = response,
-            NumericValue = numericValue
+            RawText = fullResponseText,
+            NumericValue = numericValue,
+            SelectedOptions = !string.IsNullOrWhiteSpace(selectedOption) 
+                ? new List<string> { selectedOption } 
+                : null
         };
         interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
 
@@ -150,7 +174,7 @@ public class DiscoveryController : Controller
             profile, interaction);
 
         // Store next question
-        _pendingInteractions[profileId] = nextQuestion;
+        _profileStore.SetPendingInteraction(profileId, nextQuestion);
 
         // Check if we should show profile
         if (profile.InteractionCount >= 5 && profile.InteractionCount % 10 == 0)
@@ -177,13 +201,13 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Start));
         }
         
-        if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
         {
             HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
-        var profile = _profiles[profileId];
+        var profile = _profileStore.GetProfile(profileId);
         return View(profile);
     }
 
@@ -203,13 +227,13 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Start));
         }
         
-        if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
         {
             HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
-        var profile = _profiles[profileId];
+        var profile = _profileStore.GetProfile(profileId);
         return View(profile);
     }
 
@@ -229,17 +253,17 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Start));
         }
         
-        if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
         {
             HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
-        var profile = _profiles[profileId];
+        var profile = _profileStore.GetProfile(profileId);
         
         // Show how the model has evolved over time
         var snapshots = new List<BeliefSnapshot>();
-        if (profile.CurrentBeliefSnapshot != null)
+        if (profile!.CurrentBeliefSnapshot != null)
         {
             snapshots.AddRange(profile.HistoricalSnapshots);
             snapshots.Add(profile.CurrentBeliefSnapshot);
@@ -252,7 +276,7 @@ public class DiscoveryController : Controller
     // GET: Discovery/Compare
     public IActionResult Compare()
     {
-        ViewBag.Profiles = _profiles.Values.Where(p => p.InteractionCount >= 10).ToList();
+        ViewBag.Profiles = _profileStore.GetAllProfiles().Where(p => p.InteractionCount >= 10).ToList();
         return View();
     }
 
@@ -267,8 +291,8 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Compare));
         }
 
-        var profile1 = _profiles.GetValueOrDefault(profile1Id);
-        var profile2 = _profiles.GetValueOrDefault(profile2Id);
+        var profile1 = _profileStore.GetProfile(profile1Id);
+        var profile2 = _profileStore.GetProfile(profile2Id);
 
         if (profile1 == null || profile2 == null)
         {
@@ -285,7 +309,7 @@ public class DiscoveryController : Controller
     // GET: Discovery/AllProfiles
     public IActionResult AllProfiles()
     {
-        var profiles = _profiles.Values
+        var profiles = _profileStore.GetAllProfiles()
             .OrderByDescending(p => p.InteractionCount)
             .ToList();
         

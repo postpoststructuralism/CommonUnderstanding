@@ -13,23 +13,22 @@ public class DiscoveryHub : Hub
     private readonly DiscoveryQuestionEngine _questionEngine;
     private readonly ResponseAnalysisEngine _analysisEngine;
     private readonly BayesianInferenceEngine _inferenceEngine;
+    private readonly UserProfileStore _profileStore;
     private readonly ILogger<DiscoveryHub> _logger;
-    
-    // In-memory storage - same as controller (should be shared via service)
-    private static readonly Dictionary<string, UserProfile> _profiles = new();
-    private static readonly Dictionary<string, UserInteraction> _pendingInteractions = new();
 
     public DiscoveryHub(
         BeliefDiscoveryOrchestrator orchestrator,
         DiscoveryQuestionEngine questionEngine,
         ResponseAnalysisEngine analysisEngine,
         BayesianInferenceEngine inferenceEngine,
+        UserProfileStore profileStore,
         ILogger<DiscoveryHub> logger)
     {
         _orchestrator = orchestrator;
         _questionEngine = questionEngine;
         _analysisEngine = analysisEngine;
         _inferenceEngine = inferenceEngine;
+        _profileStore = profileStore;
         _logger = logger;
     }
 
@@ -42,19 +41,18 @@ public class DiscoveryHub : Hub
         {
             await Clients.Caller.SendAsync("StatusUpdate", "Generating question...", 0);
 
-            if (!_profiles.ContainsKey(profileId))
+            var profile = _profileStore.GetProfile(profileId);
+            if (profile == null)
             {
                 await Clients.Caller.SendAsync("Error", "Profile not found");
                 return;
             }
-
-            var profile = _profiles[profileId];
             
             // TODO: Stream tokens as they're generated
             // For now, generate and send in chunks
             var question = await _questionEngine.GenerateNextQuestionAsync(profile);
             
-            _pendingInteractions[profileId] = question;
+            _profileStore.SetPendingInteraction(profileId, question);
 
             await Clients.Caller.SendAsync("StatusUpdate", "Question ready", 100);
             await Clients.Caller.SendAsync("QuestionGenerated", question);
@@ -69,46 +67,74 @@ public class DiscoveryHub : Hub
     /// <summary>
     /// Process user response with streaming status updates
     /// </summary>
-    public async Task ProcessResponseStreaming(string profileId, string response, double? numericValue)
+    public async Task ProcessResponseStreaming(string profileId, string? selectedOption, string? responseText, string? response, double? numericValue)
     {
         try
         {
-            if (!_profiles.ContainsKey(profileId))
+            var profile = _profileStore.GetProfile(profileId);
+            if (profile == null)
             {
                 await Clients.Caller.SendAsync("Error", "Profile not found");
                 return;
             }
 
-            var profile = _profiles[profileId];
-            var interaction = _pendingInteractions.GetValueOrDefault(profileId);
-
+            var interaction = _profileStore.GetPendingInteraction(profileId);
             if (interaction == null)
             {
                 await Clients.Caller.SendAsync("Error", "No pending interaction");
                 return;
             }
 
+            // Determine the actual response based on question format
+            string actualResponse = response ?? selectedOption ?? "";
+            
+            // For scale questions, use the numeric value as the response
+            if (interaction.Content.Format == InteractionFormat.Scale && numericValue.HasValue)
+            {
+                actualResponse = numericValue.Value.ToString();
+            }
+            
+            // Validate we have some kind of response
+            if (string.IsNullOrWhiteSpace(actualResponse))
+            {
+                await Clients.Caller.SendAsync("Error", "Please provide a response");
+                return;
+            }
+
+            // Combine selected option with any additional text
+            var fullResponseText = actualResponse;
+            if (!string.IsNullOrWhiteSpace(responseText))
+            {
+                fullResponseText += "\n\nAdditional context: " + responseText;
+            }
+
             // Fill in response
             interaction.Response = new UserResponse
             {
-                RawText = response,
-                NumericValue = numericValue
+                RawText = fullResponseText,
+                NumericValue = numericValue,
+                SelectedOptions = !string.IsNullOrWhiteSpace(selectedOption) 
+                    ? new List<string> { selectedOption } 
+                    : null
             };
             interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
             profile.Interactions.Add(interaction);
 
             // Stage 1: Analyze response
-            await Clients.Caller.SendAsync("StatusUpdate", "Analyzing your response...", 20);
+            await Clients.Caller.SendAsync("StatusUpdate", "🔍 Analyzing your response...", 15);
+            await Task.Delay(300); // Small delay for UX
             var analysis = await _analysisEngine.AnalyzeResponseAsync(interaction, profile);
             interaction.Analysis = analysis;
 
             // Stage 2: Emotional analysis
-            await Clients.Caller.SendAsync("StatusUpdate", "Understanding emotional content...", 40);
-            var emotionalMarkers = await _analysisEngine.AnalyzeEmotionalContentAsync(response);
+            await Clients.Caller.SendAsync("StatusUpdate", "💭 Understanding emotional content...", 35);
+            await Task.Delay(300);
+            var emotionalMarkers = await _analysisEngine.AnalyzeEmotionalContentAsync(fullResponseText);
             interaction.Response.Emotion = emotionalMarkers;
 
             // Stage 3: Bayesian update
-            await Clients.Caller.SendAsync("StatusUpdate", "Updating belief model...", 60);
+            await Clients.Caller.SendAsync("StatusUpdate", "🧮 Updating belief model with Bayesian inference...", 55);
+            await Task.Delay(300);
             var updatedSnapshot = _inferenceEngine.UpdateModel(profile, interaction, analysis);
             
             if (profile.CurrentBeliefSnapshot != null)
@@ -120,12 +146,13 @@ public class DiscoveryHub : Hub
             profile.Stage = DetermineStage(profile);
 
             // Stage 4: Generate next question
-            await Clients.Caller.SendAsync("StatusUpdate", "Generating next question...", 80);
+            await Clients.Caller.SendAsync("StatusUpdate", "💡 Generating your next question...", 80);
+            await Task.Delay(300);
             var nextQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
-            _pendingInteractions[profileId] = nextQuestion;
+            _profileStore.SetPendingInteraction(profileId, nextQuestion);
 
             // Complete
-            await Clients.Caller.SendAsync("StatusUpdate", "Complete!", 100);
+            await Clients.Caller.SendAsync("StatusUpdate", "✨ Complete!", 100);
             await Clients.Caller.SendAsync("ProcessingComplete", new
             {
                 UpdatedConfidence = updatedSnapshot.OverallConfidence,
@@ -156,11 +183,11 @@ public class DiscoveryHub : Hub
                 Stage = DiscoveryStage.Initial
             };
 
-            _profiles[profile.Id] = profile;
+            _profileStore.AddProfile(profile);
 
             await Clients.Caller.SendAsync("StatusUpdate", "Generating first question...", 50);
             var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
-            _pendingInteractions[profile.Id] = firstQuestion;
+            _profileStore.SetPendingInteraction(profile.Id, firstQuestion);
 
             await Clients.Caller.SendAsync("StatusUpdate", "Ready to begin!", 100);
             await Clients.Caller.SendAsync("DiscoveryStarted", new

@@ -44,6 +44,28 @@
                 </div>
             }
 
+            <!-- AI Processing Status Card -->
+            <div id="aiStatusCard" class="card border-primary mb-3 d-none">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <div class="spinner-border text-primary me-3 flex-shrink-0" role="status" style="width: 2rem; height: 2rem;">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-2">
+                                <i class="bi bi-cpu"></i> AI is analyzing your response...
+                            </h6>
+                            <div id="aiStatusText" class="mb-2">Starting analysis...</div>
+                            <div class="progress" style="height: 6px;">
+                                <div id="aiStatusProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="aiInsights" class="mt-3 small text-muted"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             @if (TempData["Error"] != null)
             {
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -98,7 +120,6 @@
                                         </label>
                                     }
                                 </div>
-                                <input type="hidden" name="response" id="multipleChoiceResponse" />
                             </div>
                             <div class="mb-3">
                                 <details class="text-muted">
@@ -121,13 +142,12 @@
                                        name="numericValue" id="scaleValue" 
                                        min="@Model.Content.MinValue" max="@Model.Content.MaxValue" 
                                        value="@((Model.Content.MinValue + Model.Content.MaxValue) / 2)" 
-                                       oninput="updateScaleValue(this.value)" />
+                                       oninput="updateScaleValue(this.value)" required />
                                 <div class="text-center mt-2">
                                     <h3><span id="scaleDisplay" class="badge bg-primary">5</span></h3>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <input type="hidden" name="response" id="scaleResponse" />
                                 <details class="text-muted">
                                     <summary style="cursor: pointer;" class="small">
                                         <i class="bi bi-plus-circle"></i> Want to explain? (optional)
@@ -150,7 +170,7 @@
                                     }
                                 </div>
                             </div>
-                            <input type="hidden" name="response" id="rankingResponse" />
+                            <input type="hidden" name="response" id="rankingResponse" required />
                             <div class="mb-3">
                                 <details class="text-muted">
                                     <summary style="cursor: pointer;" class="small">
@@ -246,32 +266,123 @@
 
 @section Scripts {
     <script>
-        // Show loading state on form submit
-        document.getElementById('responseForm').addEventListener('submit', function(e) {
-            @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.MultipleChoice)
-            {
-                <text>
-                // Copy selected option to hidden response field
-                const selectedOption = document.querySelector('input[name="selectedOption"]:checked');
-                if (selectedOption) {
-                    document.getElementById('multipleChoiceResponse').value = selectedOption.value;
-                }
-                </text>
+        let connection = null;
+        const aiMessages = [
+            "Detecting emotional undertones...",
+            "Mapping values to belief dimensions...",
+            "Identifying reasoning patterns...",
+            "Comparing with previous responses...",
+            "Calculating confidence intervals...",
+            "Updating probabilistic model...",
+            "Synthesizing new insights..."
+        ];
+        
+        // Initialize SignalR connection
+        async function initializeSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/discoveryHub")
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            connection.on("StatusUpdate", (message, progress) => {
+                showAIStatus(message, progress);
+            });
+
+            connection.on("ProcessingComplete", (data) => {
+                console.log("Processing complete:", data);
+                showAIStatus("✓ Analysis complete! Loading next question...", 100);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            });
+
+            connection.on("Error", (message) => {
+                hideAIStatus();
+                alert("Error: " + message);
+                document.getElementById('submitBtn').disabled = false;
+            });
+
+            try {
+                await connection.start();
+                console.log("SignalR connected successfully");
+            } catch (err) {
+                console.error("SignalR connection failed:", err);
+                console.log("Falling back to regular form submission");
             }
+        }
+
+        function showAIStatus(message, progress) {
+            const statusCard = document.getElementById('aiStatusCard');
+            const statusText = document.getElementById('aiStatusText');
+            const statusProgress = document.getElementById('aiStatusProgress');
+            const insights = document.getElementById('aiInsights');
             
-            @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
-            {
-                <text>
-                // Copy scale value to hidden response field
-                const scaleValue = document.getElementById('scaleValue').value;
-                document.getElementById('scaleResponse').value = scaleValue;
-                </text>
+            statusCard.classList.remove('d-none');
+            statusText.textContent = message;
+            statusProgress.style.width = progress + '%';
+            
+            // Add random insight message based on progress
+            if (progress > 10 && progress < 90 && Math.random() > 0.7) {
+                const randomMsg = aiMessages[Math.floor(Math.random() * aiMessages.length)];
+                insights.innerHTML = '<i class="bi bi-lightbulb"></i> ' + randomMsg;
             }
+        }
+
+        function hideAIStatus() {
+            const statusCard = document.getElementById('aiStatusCard');
+            statusCard.classList.add('d-none');
+        }
+
+        // Show loading state on form submit
+        document.getElementById('responseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            document.getElementById('submitText').classList.add('d-none');
-            document.getElementById('loadingText').classList.remove('d-none');
+            
+            // Get form values
+            const selectedOption = document.querySelector('input[name="selectedOption"]:checked')?.value;
+            const response = document.getElementById('response')?.value || 
+                           document.getElementById('rankingResponse')?.value || 
+                           selectedOption || '';
+            const responseText = document.getElementById('responseText')?.value || '';
+            const numericValue = document.getElementById('scaleValue')?.value;
+            
+            // Use SignalR if available, otherwise fall back to regular form submission
+            if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                try {
+                    showAIStatus("🚀 Sending your response to AI...", 5);
+                    
+                    // Get profile ID from cookie
+                    const profileId = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('ProfileId='))
+                        ?.split('=')[1];
+                    
+                    if (!profileId) {
+                        throw new Error("Profile ID not found");
+                    }
+                    
+                    await connection.invoke("ProcessResponseStreaming", 
+                        profileId, 
+                        selectedOption || null,
+                        responseText || null,
+                        response || null,
+                        numericValue ? parseFloat(numericValue) : null
+                    );
+                } catch (err) {
+                    console.error("SignalR submission failed:", err);
+                    hideAIStatus();
+                    alert("Streaming failed. Submitting normally...");
+                    this.submit();
+                }
+            } else {
+                // Fallback to regular form submission
+                document.getElementById('submitText').classList.add('d-none');
+                document.getElementById('loadingText').classList.remove('d-none');
+                this.submit();
+            }
         });
 
         function updateScaleValue(value) {
@@ -339,5 +450,10 @@
             updateRankingValue();
             </text>
         }
+        
+        // Initialize SignalR on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSignalR();
+        });
     </script>
 }

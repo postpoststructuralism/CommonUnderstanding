@@ -8,6 +8,9 @@ builder.Services.AddControllersWithViews();
 // Add SignalR for real-time streaming
 builder.Services.AddSignalR();
 
+// Register SHARED profile store (singleton - used by both Controller and Hub)
+builder.Services.AddSingleton<UserProfileStore>();
+
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
 builder.Services.AddScoped<BeliefAnalysisService>();
