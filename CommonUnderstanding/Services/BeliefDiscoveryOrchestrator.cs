@@ -97,11 +97,12 @@ public class BeliefDiscoveryOrchestrator
 
         return questionType switch
         {
-            QuestionStrategy.MoralDilemma => await GenerateMoralDilemmaQuestion(profile, snapshot),
-            QuestionStrategy.EmotionalProbe => await GenerateEmotionalQuestion(profile, snapshot),
+            QuestionStrategy.MultipleChoice => _questionEngine.GenerateMultipleChoiceQuestion(profile, snapshot),
             QuestionStrategy.ScaleQuestion => GenerateScaleQuestion(profile, snapshot),
             QuestionStrategy.ValueRanking => _questionEngine.GenerateValueRankingQuestion(profile),
-            QuestionStrategy.FollowUp => await GenerateFollowUpQuestion(profile, snapshot),
+            QuestionStrategy.MoralDilemma => _questionEngine.GenerateMoralDilemmaMultipleChoice(profile, snapshot),
+            QuestionStrategy.EmotionalProbe => _questionEngine.GenerateScenarioMultipleChoice(profile, snapshot),
+            QuestionStrategy.FollowUp => _questionEngine.GenerateMultipleChoiceQuestion(profile, snapshot),
             _ => await _questionEngine.GenerateNextQuestionAsync(profile)
         };
     }
@@ -115,29 +116,37 @@ public class BeliefDiscoveryOrchestrator
         var uncertainAreas = snapshot.Statistics.UncertainAreas;
         var contradictions = snapshot.Statistics.DetectedContradictions;
 
-        // First 3 interactions: open-ended foundation building
-        if (interactionCount < 3)
-            return QuestionStrategy.OpenEnded;
+        // First 5 interactions: multiple choice foundation building (less intimidating)
+        if (interactionCount < 5)
+            return QuestionStrategy.MultipleChoice;
 
-        // Every 5th interaction: value ranking for calibration
-        if (interactionCount % 5 == 0)
+        // Every 7th interaction: value ranking for calibration
+        if (interactionCount % 7 == 0)
             return QuestionStrategy.ValueRanking;
 
-        // If contradictions detected: follow-up to clarify
-        if (contradictions.Any())
-            return QuestionStrategy.FollowUp;
+        // Every 5th interaction: scale question (easy to answer)
+        if (interactionCount % 5 == 0)
+            return QuestionStrategy.ScaleQuestion;
 
-        // If high uncertainty in certain areas: targeted probing
+        // If contradictions detected: multiple choice to clarify
+        if (contradictions.Any())
+            return QuestionStrategy.MultipleChoice;
+
+        // If high uncertainty in certain areas: use structured questions
         if (uncertainAreas.Any())
         {
-            // Alternate between dilemmas and emotional probes
-            return interactionCount % 2 == 0 
-                ? QuestionStrategy.MoralDilemma 
-                : QuestionStrategy.ScaleQuestion;
+            // Cycle through easy question types
+            var cycle = interactionCount % 3;
+            return cycle switch
+            {
+                0 => QuestionStrategy.MultipleChoice,
+                1 => QuestionStrategy.ScaleQuestion,
+                _ => QuestionStrategy.ValueRanking
+            };
         }
 
-        // Default: moral dilemma for depth
-        return QuestionStrategy.MoralDilemma;
+        // Default: multiple choice (less intimidating than open-ended)
+        return QuestionStrategy.MultipleChoice;
     }
 
     private async Task<UserInteraction> GenerateMoralDilemmaQuestion(
@@ -224,7 +233,7 @@ public class BeliefDiscoveryOrchestrator
 /// </summary>
 internal enum QuestionStrategy
 {
-    OpenEnded,
+    MultipleChoice,
     MoralDilemma,
     EmotionalProbe,
     ScaleQuestion,

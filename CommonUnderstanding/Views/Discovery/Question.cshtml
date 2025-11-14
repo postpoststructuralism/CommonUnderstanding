@@ -84,7 +84,33 @@
                     </h5>
 
                     <form asp-action="SubmitResponse" method="post" id="responseForm">
-                        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
+                        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.MultipleChoice)
+                        {
+                            <div class="mb-4">
+                                <div class="list-group">
+                                    @for (int i = 0; i < Model.Content.Options.Count; i++)
+                                    {
+                                        var option = Model.Content.Options[i];
+                                        <label class="list-group-item list-group-item-action choice-option">
+                                            <input type="radio" name="selectedOption" value="@option" 
+                                                   id="option@i" class="form-check-input me-2" required>
+                                            @option
+                                        </label>
+                                    }
+                                </div>
+                                <input type="hidden" name="response" id="multipleChoiceResponse" />
+                            </div>
+                            <div class="mb-3">
+                                <details class="text-muted">
+                                    <summary style="cursor: pointer;" class="small">
+                                        <i class="bi bi-plus-circle"></i> Want to add more context? (completely optional)
+                                    </summary>
+                                    <textarea class="form-control mt-2" name="responseText" id="responseText" 
+                                              rows="2" placeholder="Any additional thoughts..."></textarea>
+                                </details>
+                            </div>
+                        }
+                        else if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
                         {
                             <div class="mb-4">
                                 <div class="d-flex justify-content-between mb-2">
@@ -101,11 +127,14 @@
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="response" class="form-label">
-                                    Please explain your reasoning (optional but helpful):
-                                </label>
-                                <textarea class="form-control" name="response" id="response" 
-                                          rows="3" placeholder="Why did you choose this rating?"></textarea>
+                                <input type="hidden" name="response" id="scaleResponse" />
+                                <details class="text-muted">
+                                    <summary style="cursor: pointer;" class="small">
+                                        <i class="bi bi-plus-circle"></i> Want to explain? (optional)
+                                    </summary>
+                                    <textarea class="form-control mt-2" name="responseText" id="responseText" 
+                                              rows="2" placeholder="Why did you choose this rating?"></textarea>
+                                </details>
                             </div>
                         }
                         else if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Ranking)
@@ -123,11 +152,13 @@
                             </div>
                             <input type="hidden" name="response" id="rankingResponse" />
                             <div class="mb-3">
-                                <label for="responseText" class="form-label">
-                                    Why did you rank them this way?
-                                </label>
-                                <textarea class="form-control" name="responseText" id="responseText" 
-                                          rows="3" placeholder="Explain your reasoning..."></textarea>
+                                <details class="text-muted">
+                                    <summary style="cursor: pointer;" class="small">
+                                        <i class="bi bi-plus-circle"></i> Want to explain your ranking? (optional)
+                                    </summary>
+                                    <textarea class="form-control mt-2" name="responseText" id="responseText" 
+                                              rows="2" placeholder="Why did you rank them this way?"></textarea>
+                                </details>
                             </div>
                         }
                         else
@@ -185,6 +216,24 @@
         line-height: 1.6;
     }
 
+    .choice-option {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        margin-bottom: 0.5rem;
+    }
+
+    .choice-option:hover {
+        background-color: #f8f9fa;
+        border-color: #0d6efd;
+    }
+
+    .choice-option:has(input:checked) {
+        background-color: #e7f1ff;
+        border-color: #0d6efd;
+        font-weight: 500;
+    }
+
     .list-group-item {
         cursor: move;
         user-select: none;
@@ -198,7 +247,27 @@
 @section Scripts {
     <script>
         // Show loading state on form submit
-        document.getElementById('responseForm').addEventListener('submit', function() {
+        document.getElementById('responseForm').addEventListener('submit', function(e) {
+            @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.MultipleChoice)
+            {
+                <text>
+                // Copy selected option to hidden response field
+                const selectedOption = document.querySelector('input[name="selectedOption"]:checked');
+                if (selectedOption) {
+                    document.getElementById('multipleChoiceResponse').value = selectedOption.value;
+                }
+                </text>
+            }
+            
+            @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
+            {
+                <text>
+                // Copy scale value to hidden response field
+                const scaleValue = document.getElementById('scaleValue').value;
+                document.getElementById('scaleResponse').value = scaleValue;
+                </text>
+            }
+            
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             document.getElementById('submitText').classList.add('d-none');
