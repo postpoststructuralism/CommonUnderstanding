@@ -5,6 +5,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Add SignalR for real-time streaming
+builder.Services.AddSignalR();
+
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
 builder.Services.AddScoped<BeliefAnalysisService>();
@@ -30,8 +33,12 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+}
+else
+{
+    // In development, show detailed error pages
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
@@ -47,5 +54,7 @@ app.MapControllerRoute(
     pattern: "{controller=Discovery}/{action=Start}/{id?}")
     .WithStaticAssets();
 
+// Map SignalR hub
+app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");
 
 app.Run();

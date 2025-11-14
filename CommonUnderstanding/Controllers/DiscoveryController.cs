@@ -38,46 +38,50 @@ public class DiscoveryController : Controller
             return View();
         }
 
-        try
+        // Create new user profile
+        var profile = new UserProfile
         {
-            // Create new user profile
-            var profile = new UserProfile
-            {
-                Name = userName,
-                Stage = DiscoveryStage.Initial
-            };
+            Name = userName,
+            Stage = DiscoveryStage.Initial
+        };
 
-            _profiles[profile.Id] = profile;
+        _profiles[profile.Id] = profile;
 
-            // Generate first question
-            var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
-            _pendingInteractions[profile.Id] = firstQuestion;
+        // Generate first question - exceptions will bubble up naturally
+        var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
+        _pendingInteractions[profile.Id] = firstQuestion;
 
-            // Store profile ID in session/cookie for tracking
-            HttpContext.Response.Cookies.Append("ProfileId", profile.Id, new CookieOptions
-            {
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict
-            });
-
-            return RedirectToAction(nameof(Question));
-        }
-        catch (Exception ex)
+        // Store profile ID in session/cookie for tracking
+        HttpContext.Response.Cookies.Append("ProfileId", profile.Id, new CookieOptions
         {
-            _logger.LogError(ex, "Error starting discovery for {UserName}", userName);
-            ModelState.AddModelError("", "Error starting discovery. Make sure Ollama is running.");
-            return View();
-        }
+            Expires = DateTimeOffset.UtcNow.AddDays(30),
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict
+        });
+
+        return RedirectToAction(nameof(Question));
     }
 
     // GET: Discovery/Question
     public IActionResult Question()
     {
-        var profileId = HttpContext.Request.Cookies["ProfileId"];
+        string? profileId = null;
+        
+        try
+        {
+            profileId = HttpContext.Request.Cookies["ProfileId"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            return RedirectToAction(nameof(Start));
+        }
+        
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
+            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
@@ -100,9 +104,22 @@ public class DiscoveryController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SubmitResponse(string response, double? numericValue)
     {
-        var profileId = HttpContext.Request.Cookies["ProfileId"];
+        string? profileId = null;
+        
+        try
+        {
+            profileId = HttpContext.Request.Cookies["ProfileId"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            return RedirectToAction(nameof(Start));
+        }
+        
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
+            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
@@ -115,50 +132,54 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Question));
         }
 
-        try
+        var responseStartTime = DateTime.UtcNow;
+
+        // Fill in the response
+        interaction.Response = new UserResponse
         {
-            var responseStartTime = DateTime.UtcNow;
+            RawText = response,
+            NumericValue = numericValue
+        };
+        interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
 
-            // Fill in the response
-            interaction.Response = new UserResponse
-            {
-                RawText = response,
-                NumericValue = numericValue
-            };
-            interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
+        // Add to profile's interactions
+        profile.Interactions.Add(interaction);
 
-            // Add to profile's interactions
-            profile.Interactions.Add(interaction);
+        // Process response and get next question - exceptions will bubble up naturally
+        var (updatedModel, nextQuestion) = await _orchestrator.ProcessResponseAndContinueAsync(
+            profile, interaction);
 
-            // Process response and get next question
-            var (updatedModel, nextQuestion) = await _orchestrator.ProcessResponseAndContinueAsync(
-                profile, interaction);
+        // Store next question
+        _pendingInteractions[profileId] = nextQuestion;
 
-            // Store next question
-            _pendingInteractions[profileId] = nextQuestion;
-
-            // Check if we should show profile
-            if (profile.InteractionCount >= 5 && profile.InteractionCount % 10 == 0)
-            {
-                TempData["ShowProfilePrompt"] = true;
-            }
-
-            return RedirectToAction(nameof(Question));
-        }
-        catch (Exception ex)
+        // Check if we should show profile
+        if (profile.InteractionCount >= 5 && profile.InteractionCount % 10 == 0)
         {
-            _logger.LogError(ex, "Error processing response for user {ProfileId}", profileId);
-            TempData["Error"] = "Error processing your response. Make sure Ollama is running.";
-            return RedirectToAction(nameof(Question));
+            TempData["ShowProfilePrompt"] = true;
         }
+
+        return RedirectToAction(nameof(Question));
     }
 
     // GET: Discovery/Profile
     public IActionResult Profile()
     {
-        var profileId = HttpContext.Request.Cookies["ProfileId"];
+        string? profileId = null;
+        
+        try
+        {
+            profileId = HttpContext.Request.Cookies["ProfileId"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            return RedirectToAction(nameof(Start));
+        }
+        
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
+            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
@@ -169,9 +190,22 @@ public class DiscoveryController : Controller
     // GET: Discovery/History
     public IActionResult History()
     {
-        var profileId = HttpContext.Request.Cookies["ProfileId"];
+        string? profileId = null;
+        
+        try
+        {
+            profileId = HttpContext.Request.Cookies["ProfileId"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            return RedirectToAction(nameof(Start));
+        }
+        
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
+            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 
@@ -182,9 +216,22 @@ public class DiscoveryController : Controller
     // GET: Discovery/Evolution
     public IActionResult Evolution()
     {
-        var profileId = HttpContext.Request.Cookies["ProfileId"];
+        string? profileId = null;
+        
+        try
+        {
+            profileId = HttpContext.Request.Cookies["ProfileId"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            return RedirectToAction(nameof(Start));
+        }
+        
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
+            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
         }
 

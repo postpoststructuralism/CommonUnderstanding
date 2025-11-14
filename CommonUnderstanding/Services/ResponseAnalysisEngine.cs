@@ -28,27 +28,20 @@ public class ResponseAnalysisEngine
         UserProfile profile)
     {
         var kernel = _kernelService.GetKernel();
-
         var prompt = BuildAnalysisPrompt(interaction, profile);
 
-        try
-        {
-            var result = await kernel.InvokePromptAsync(prompt);
-            var analysisText = result.ToString();
+        _logger.LogInformation("Analyzing response for user {UserId}", profile.Id);
+        var startTime = DateTime.UtcNow;
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        var analysisText = result.ToString();
+        
+        var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        _logger.LogInformation("AI analysis completed in {Duration}ms for user {UserId}", 
+            duration, profile.Id);
 
-            _logger.LogInformation("Analyzed response for user {UserId}, interaction {InteractionId}",
-                profile.Id, interaction.Id);
-
-            // Parse the AI's analysis into structured data
-            var analysis = ParseAnalysisResponse(analysisText);
-            
-            return analysis;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error analyzing response");
-            throw;
-        }
+        var analysis = ParseAnalysisResponse(analysisText);
+        return analysis;
     }
 
     /// <summary>
@@ -58,30 +51,12 @@ public class ResponseAnalysisEngine
     {
         var kernel = _kernelService.GetKernel();
 
-        var prompt = $$$"""
-        Analyze the emotional content of this response:
-        
-        "{{{responseText}}}"
-        
-        Assess:
-        1. Emotional intensity (0-1 scale)
-        2. Certainty/conviction (0-1 scale)
-        3. Primary emotions present (anger, joy, fear, disgust, sadness, compassion, etc.)
-        4. Signs of internal conflict or ambivalence (0-1 scale)
-        
-        Provide scores and brief reasoning.
-        """;
+        var prompt = $"What emotions are present in this text? '{responseText}' List them.";
 
-        try
-        {
-            var result = await kernel.InvokePromptAsync(prompt);
-            return ParseEmotionalAnalysis(result.ToString());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error analyzing emotional content");
-            return new EmotionalMarkers { Intensity = 0.5, Certainty = 0.5 };
-        }
+        _logger.LogInformation("Analyzing emotional content");
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        return ParseEmotionalAnalysis(result.ToString());
     }
 
     /// <summary>
@@ -112,72 +87,22 @@ public class ResponseAnalysisEngine
         Format: FOUNDATION: score (evidence)
         """;
 
-        try
-        {
-            var result = await kernel.InvokePromptAsync(prompt);
-            return ParseMoralFoundations(result.ToString());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error analyzing moral foundations");
-            return new Dictionary<string, double>();
-        }
+        _logger.LogInformation("Analyzing moral foundations");
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        return ParseMoralFoundations(result.ToString());
     }
 
     #region Private Helpers
 
     private string BuildAnalysisPrompt(UserInteraction interaction, UserProfile profile)
     {
-        var currentModel = profile.CurrentBeliefSnapshot?.NarrativeSummary ?? "No prior model";
-        
+        // SIMPLIFIED for smaller models
         return $$$"""
-        You are a psychological analyst examining responses to understand someone's belief system.
+        Question: {{{interaction.Content.Question}}}
+        Response: {{{interaction.Response.RawText}}}
         
-        QUESTION ASKED:
-        {{{interaction.Content.Question}}}
-        
-        {{{(string.IsNullOrEmpty(interaction.Content.Context) ? "" : $"CONTEXT:\n{interaction.Content.Context}\n")}}}\
-        
-        USER'S RESPONSE:
-        {{{interaction.Response.RawText}}}
-        
-        {{{(interaction.Response.NumericValue.HasValue ? $"NUMERIC RATING: {interaction.Response.NumericValue}\n" : "")}}}\
-        
-        CURRENT UNDERSTANDING OF THIS PERSON:
-        {{{currentModel}}}
-        
-        ANALYZE THIS RESPONSE:
-        
-        1. BELIEF DIMENSION UPDATES
-           For each relevant belief dimension, indicate:
-           - Dimension name and category (Political, Religious, Ethical, Metaphysical, etc.)
-           - Estimated position on this dimension (if applicable)
-           - How much this evidence increases/decreases confidence
-           - Weight of this evidence (0-1)
-           - Reasoning
-        
-        2. IMPLIED VALUES
-           What values does this response reveal or reinforce?
-        
-        3. REASONING PATTERNS
-           What modes of reasoning are evident?
-           (Consequentialist, deontological, virtue ethics, emotional, pragmatic, etc.)
-        
-        4. MORAL FOUNDATIONS
-           Which moral foundations (Care, Fairness, Loyalty, Authority, Sanctity, Liberty)
-           are activated and to what degree?
-        
-        5. CONFIDENCE ASSESSMENT
-           How confident are you in this analysis? (0-1)
-        
-        6. FOLLOW-UP SUGGESTIONS
-           What areas should we probe next to refine our understanding?
-        
-        7. NARRATIVE SUMMARY
-           Brief paragraph integrating this response into our evolving understanding
-           of this person's worldview.
-        
-        Be specific, evidence-based, and probabilistic. Acknowledge uncertainty.
+        Briefly describe what values and beliefs this response reveals.
         """;
     }
 

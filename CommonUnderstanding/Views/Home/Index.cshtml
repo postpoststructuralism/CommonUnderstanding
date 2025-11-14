@@ -1,8 +1,68 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Common Understanding";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2 text-center">
+            <h1 class="display-3 mb-4">
+                <i class="bi bi-peace text-primary"></i><br />
+                Common Understanding
+            </h1>
+            <p class="lead mb-5">
+                An AI-powered journey to discover your belief system and find common ground with others
+            </p>
+
+            <div class="row mb-5">
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 shadow">
+                        <div class="card-body">
+                            <h3><i class="bi bi-compass text-primary"></i> Discover Yourself</h3>
+                            <p class="text-muted">
+                                Start an interactive conversation to map your values, beliefs, and worldview using AI and Bayesian inference
+                            </p>
+                            <a asp-controller="Discovery" asp-action="Start" class="btn btn-primary btn-lg">
+                                Begin Journey <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 shadow">
+                        <div class="card-body">
+                            <h3><i class="bi bi-diagram-3 text-success"></i> Compare Beliefs</h3>
+                            <p class="text-muted">
+                                Explore how different belief systems overlap and diverge to find areas of common ground
+                            </p>
+                            <a asp-controller="BeliefSystems" asp-action="Compare" class="btn btn-outline-success btn-lg">
+                                Explore <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border">
+                <h5 class="mb-3"><i class="bi bi-lightbulb"></i> How It Works</h5>
+                <div class="row text-start">
+                    <div class="col-md-4 mb-2">
+                        <strong>1. Interactive Discovery</strong><br />
+                        <small class="text-muted">AI asks adaptive questions tailored to your responses</small>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <strong>2. Statistical Modeling</strong><br />
+                        <small class="text-muted">Bayesian inference builds a probabilistic model of your beliefs</small>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <strong>3. Find Common Ground</strong><br />
+                        <small class="text-muted">Compare profiles to identify areas of overlap and opportunity</small>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-muted mt-5">
+                <i class="bi bi-shield-check"></i> Privacy-focused • Locally processed • Open source
+            </p>
+        </div>
+    </div>
 </div>

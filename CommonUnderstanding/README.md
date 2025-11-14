@@ -308,46 +308,165 @@ Interactions  Confidence  Entropy  Dimensions
 - Many uncertain areas
 - Low signal-to-noise (< 1.0)
 
-## Current Limitations
+## ⚙️ Configuration
 
-- **In-Memory Storage**: Data is stored in memory and will be lost when the app restarts. For production, implement database persistence.
-- **Basic Parsing**: AI responses are currently stored as raw text. Future versions should parse structured data.
-- **Single User**: No authentication or multi-user support yet.
-- **No Export**: Results cannot be exported or shared externally yet.
+### appsettings.json
+```json
+{
+  "Ollama": {
+    "Endpoint": "http://localhost:11434",
+    "ModelName": "llama3.2"
+  }
+}
+```
 
-## Future Enhancements
+### Recommended Models
 
-- [ ] Database persistence (Entity Framework Core)
-- [ ] Structured data extraction from AI responses
-- [ ] User authentication and personal libraries
-- [ ] Export comparisons as PDF or markdown
-- [ ] Visual mapping of belief systems
-- [ ] Community sharing and collaboration features
-- [ ] Multi-way comparisons (more than 2 systems)
-- [ ] Historical tracking of how beliefs evolve
+| Model | Speed | Quality | Memory | Best For |
+|-------|-------|---------|--------|----------|
+| `llama3.2` | ⚡⚡⚡ | ⭐⭐⭐ | 4GB | Default - balanced |
+| `llama3.1` | ⚡⚡ | ⭐⭐⭐⭐ | 8GB | Better analysis |
+| `mistral` | ⚡⚡⚡ | ⭐⭐⭐ | 4GB | Alternative |
+| `phi3` | ⚡⚡⚡⚡ | ⭐⭐ | 2GB | Low-resource |
 
-## Philosophy
+## 🐛 Troubleshooting
 
-This application is built on the premise that:
-- Most conflicts arise from misunderstanding rather than fundamental incompatibility
-- Finding common ground doesn't require abandoning differences
-- Non-zero-sum solutions often exist when we look beyond binary thinking
-- What binds us together is often stronger than what divides us
-- Respectful dialogue is the path to mutual understanding
+### "Error analyzing response. Make sure Ollama is running."
 
-## Contributing
+**Solutions**:
+1. Check Ollama is running: `curl http://localhost:11434`
+2. Restart Ollama: `ollama serve`
+3. Check model is installed: `ollama list`
+4. Pull model if missing: `ollama pull llama3.2`
 
-This is a demonstration project. Feel free to fork and extend it with:
-- Better data models and persistence
-- More sophisticated AI prompts and agents
+### Application is slow
+
+**Solutions**:
+1. Use a faster model (phi3, llama3.2)
+2. Ensure adequate RAM (8GB+ recommended)
+3. Close other applications
+4. Check CPU usage - Ollama is CPU-intensive
+
+### Build errors
+
+**Solutions**:
+1. Ensure .NET 9.0 SDK is installed: `dotnet --version`
+2. Restore packages: `dotnet restore`
+3. Clean and rebuild: `dotnet clean && dotnet build`
+
+## 🚧 Current Limitations & Future Plans
+
+### Current Limitations
+
+**Data Storage** 📦
+- ❌ In-memory only (data lost on restart)
+- ✅ **Planned**: Entity Framework + SQL Server
+
+**Authentication** 🔐
+- ❌ No user accounts
+- ✅ **Planned**: ASP.NET Identity integration
+
+**AI Parsing** 🤖
+- ❌ Regex-based response parsing
+- ✅ **Planned**: Structured JSON output from Ollama
+
+**Export** 💾
+- ❌ No data export
+- ✅ **Planned**: PDF reports, CSV export
+
+### Roadmap
+
+**Phase 1: Stability** (Current)
+- [x] Core discovery system
+- [x] Bayesian inference
+- [x] Adaptive questioning
+- [ ] Comprehensive testing
+- [ ] Error handling improvements
+
+**Phase 2: Persistence**
+- [ ] Database integration (EF Core + SQL Server)
+- [ ] User authentication
+- [ ] Data migration tools
+- [ ] Backup/restore
+
+**Phase 3: Advanced Analytics**
+- [ ] Bayesian networks (belief dependencies)
+- [ ] Hierarchical models
+- [ ] Change-point detection
+- [ ] Predictive modeling
+
+**Phase 4: Social Features**
+- [ ] Profile comparison tools
+- [ ] Compatibility scoring
+- [ ] Bridge-building recommendations
+- [ ] Community clusters
+
+**Phase 5: Enhanced Discovery**
+- [ ] Visual/image-based scenarios
+- [ ] Implicit Association Tests (IAT)
+- [ ] Multi-party dilemmas
+- [ ] Voice/video integration
+
+## 🤝 Contributing
+
+This is an open demonstration project. Contributions welcome!
+
+**Areas for contribution**:
+- Database persistence layer
+- Better AI response parsing
+- UI/UX improvements
+- Additional question types
 - Visualization features
-- Additional analysis dimensions
-- Export and sharing capabilities
+- Statistical analysis enhancements
+- Testing and documentation
 
-## License
+## 📖 Further Reading
+
+**Essential Documentation**:
+- [DISCOVERY_SYSTEM.md](DISCOVERY_SYSTEM.md) - Deep technical dive into the discovery system
+- [QUICKSTART.md](QUICKSTART.md) - 5-minute getting started guide
+
+**Theoretical Background**:
+- [Moral Foundations Theory](https://moralfoundations.org/) - Jonathan Haidt
+- [Bayesian Epistemology](https://plato.stanford.edu/entries/epistemology-bayesian/)
+- [Schwartz Value Theory](https://www.yourmorals.org/)
+
+## 📊 Technology Stack
+
+- **ASP.NET Core 9.0 MVC** - Web framework
+- **Microsoft Semantic Kernel 1.67.1** - AI orchestration
+- **Ollama** - Local LLM runtime
+- **Bootstrap 5** - UI framework
+- **Bootstrap Icons** - Icon library
+- **C# 13** - Programming language
+
+## 📜 License
 
 This project is provided as-is for educational and demonstration purposes.
 
+## 🙏 Acknowledgments
+
+Built on the shoulders of giants:
+- **Jonathan Haidt** - Moral Foundations Theory
+- **Microsoft** - Semantic Kernel framework
+- **Ollama Team** - Local LLM runtime
+- **Shalom Schwartz** - Universal Values Theory
+- **Thomas Bayes** - Probability theory
+
 ---
 
-**Remember**: The goal is not to prove one belief system "right" or "wrong," but to build bridges of understanding and identify opportunities for collaboration and mutual flourishing.
+## 🎯 Philosophy
+
+**The Core Insight**: Most people cannot accurately articulate their own belief systems. They haven't done the introspective work, lack the vocabulary, or hold contradictory beliefs without realizing it.
+
+**The Solution**: Don't ask. **Discover** through thoughtful conversation, rigorous analysis, and statistical inference.
+
+**The Goal**: Build bridges of understanding between different worldviews by finding the common humanity beneath surface disagreements.
+
+**The Method**: Mathematical rigor + Psychological insight + AI assistance + Epistemic humility
+
+---
+
+**Remember**: This system doesn't judge beliefs as right or wrong. It seeks to understand them with precision, empathy, and statistical confidence. The goal is **common understanding**, not agreement.
+
+🌍 *Finding what binds us together through the mathematics of belief.*

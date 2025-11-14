@@ -33,21 +33,14 @@ public class DiscoveryQuestionEngine
 
         var prompt = BuildQuestionPrompt(stage, uncertainAreas, previousQuestions, profile);
 
-        try
-        {
-            var result = await kernel.InvokePromptAsync(prompt);
-            var questionData = result.ToString();
+        _logger.LogInformation("Generating question for user {UserId} at stage {Stage}", profile.Id, stage);
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        var questionData = result.ToString();
 
-            _logger.LogInformation("Generated question for user {UserId} at stage {Stage}", 
-                profile.Id, stage);
+        _logger.LogInformation("Successfully generated question for user {UserId}", profile.Id);
 
-            return ParseQuestionResponse(questionData, profile.Id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating question for user {UserId}", profile.Id);
-            throw;
-        }
+        return ParseQuestionResponse(questionData, profile.Id);
     }
 
     /// <summary>
@@ -80,24 +73,18 @@ public class DiscoveryQuestionEngine
         FOLLOW_UP: [A follow-up question asking them to explain their reasoning]
         """;
 
-        try
-        {
-            var result = await kernel.InvokePromptAsync(prompt);
-            var dilemmaText = result.ToString();
+        _logger.LogInformation("Generating moral dilemma for dimensions: {Dimensions}", string.Join(", ", targetDimensions));
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        var dilemmaText = result.ToString();
 
-            return new UserInteraction
-            {
-                UserId = profile.Id,
-                Type = InteractionType.MoralDilemma,
-                Content = ParseDilemmaContent(dilemmaText),
-                TargetedDimensions = targetDimensions
-            };
-        }
-        catch (Exception ex)
+        return new UserInteraction
         {
-            _logger.LogError(ex, "Error generating moral dilemma");
-            throw;
-        }
+            UserId = profile.Id,
+            Type = InteractionType.MoralDilemma,
+            Content = ParseDilemmaContent(dilemmaText),
+            TargetedDimensions = targetDimensions
+        };
     }
 
     /// <summary>
@@ -121,26 +108,20 @@ public class DiscoveryQuestionEngine
         Keep it under 100 words. End with a question asking what they would do or how they feel about it.
         """;
 
-        try
+        _logger.LogInformation("Generating emotional scenario targeting: {Emotion}", targetEmotion);
+        
+        var result = await kernel.InvokePromptAsync(prompt);
+        
+        return new UserInteraction
         {
-            var result = await kernel.InvokePromptAsync(prompt);
-            
-            return new UserInteraction
+            UserId = profile.Id,
+            Type = InteractionType.EmotionalPrompt,
+            Content = new InteractionContent
             {
-                UserId = profile.Id,
-                Type = InteractionType.EmotionalPrompt,
-                Content = new InteractionContent
-                {
-                    Question = result.ToString(),
-                    Format = InteractionFormat.OpenText
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating emotional scenario");
-            throw;
-        }
+                Question = result.ToString(),
+                Format = InteractionFormat.OpenText
+            }
+        };
     }
 
     /// <summary>
@@ -231,67 +212,17 @@ public class DiscoveryQuestionEngine
         List<string> previousQuestions,
         UserProfile profile)
     {
-        var basePrompt = $$$"""
-        You are a skilled interviewer discovering someone's belief system and worldview.
-        
-        Current stage: {{{stage}}}
-        Interactions completed: {{{profile.InteractionCount}}}
-        
-        """;
-
-        basePrompt += stage switch
+        // SIMPLIFIED for smaller models - just ask for a single thoughtful question
+        var basePrompt = stage switch
         {
-            DiscoveryStage.Initial => """
-                This is an early interaction. Ask foundational questions about:
-                - What they value most in life
-                - Their general worldview orientation
-                - Basic moral intuitions
-                Keep it approachable and non-threatening.
-                """,
-            
-            DiscoveryStage.Foundation => """
-                Build on initial understanding. Explore:
-                - Sources of meaning and purpose
-                - Views on human nature
-                - Role of community vs. individual
-                - Basic ethical frameworks
-                """,
-            
-            DiscoveryStage.Exploration => $$$"""
-                Dig deeper into uncertain areas: {{{string.Join(", ", uncertainAreas)}}}
-                Use scenarios and hypotheticals to reveal nuanced beliefs.
-                """,
-            
-            DiscoveryStage.Refinement => """
-                Test edge cases and contradictions. Present challenging scenarios
-                that reveal boundaries and exceptions to previously stated beliefs.
-                """,
-            
-            _ => """
-                Maintain and update the model. Focus on areas showing inconsistency
-                or recent changes in thinking.
-                """
+            DiscoveryStage.Initial => "Ask a thoughtful question about what someone values most in life.",
+            DiscoveryStage.Foundation => "Ask a question about someone's views on human nature and society.",
+            DiscoveryStage.Exploration => "Ask a moral dilemma question with no clear right answer.",
+            DiscoveryStage.Refinement => "Ask a challenging question about ethics and values.",
+            _ => "Ask an open-ended question about beliefs and worldview."
         };
 
-        if (previousQuestions.Any())
-        {
-            basePrompt += $$$"""
-                
-                
-                Previous questions asked (don't repeat):
-                {{{string.Join("\n", previousQuestions.TakeLast(5))}}}
-                """;
-        }
-
-        basePrompt += """
-            
-            
-            Generate ONE question that will provide maximum insight.
-            Make it thought-provoking but accessible.
-            Format: Just provide the question text.
-            """;
-
-        return basePrompt;
+        return basePrompt + " Keep it under 50 words.";
     }
 
     private UserInteraction ParseQuestionResponse(string questionData, string userId)

@@ -4,6 +4,7 @@
     ViewData["Title"] = "Discovery Question";
     var profile = ViewBag.Profile as CommonUnderstanding.Models.UserProfile;
     var progressPercent = (int)ViewBag.ProgressPercent;
+    var profileId = Context.Request.Cookies["ProfileId"];
 }
 
 <div class="container mt-4">
@@ -14,10 +15,10 @@
                 <div class="card-body py-2">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="small">
-                            <i class="bi bi-person-circle"></i> <strong>@profile.Name</strong>
+                            <i class="bi bi-person-circle"></i> <strong>@profile?.Name</strong>
                         </span>
                         <span class="small text-muted">
-                            Question @(profile.InteractionCount + 1) • Stage: @profile.Stage
+                            Question @(profile?.InteractionCount + 1 ?? 1) • Stage: @profile?.Stage
                         </span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -27,7 +28,25 @@
                         </div>
                     </div>
                     <div class="small text-muted mt-1 text-end">
-                        Model Confidence: @((profile.CurrentBeliefSnapshot?.OverallConfidence ?? 0).ToString("P0"))
+                        Model Confidence: @((profile?.CurrentBeliefSnapshot?.OverallConfidence ?? 0).ToString("P0"))
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Status -->
+            <div id="statusCard" class="card mb-3 d-none">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div id="statusText" class="fw-bold">Processing...</div>
+                            <div class="progress mt-2" style="height: 4px;">
+                                <div id="statusProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -37,7 +56,7 @@
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     <h5 class="alert-heading"><i class="bi bi-trophy"></i> Milestone Reached!</h5>
                     <p class="mb-0">
-                        You've completed @profile.InteractionCount questions. 
+                        You've completed @profile?.InteractionCount questions. 
                         <a asp-action="Profile" class="alert-link">View your evolving profile</a> to see what we've learned so far!
                     </p>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -83,7 +102,7 @@
                         @Model.Content.Question
                     </h5>
 
-                    <form asp-action="SubmitResponse" method="post" id="responseForm">
+                    <form id="responseForm">
                         @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
                         {
                             <div class="mb-4">
@@ -113,7 +132,7 @@
                             <div class="mb-3">
                                 <p class="text-muted">Drag to reorder from most to least important:</p>
                                 <div id="rankingList" class="list-group">
-                                    @foreach (var option in Model.Content.Options)
+                                    @foreach (var option in Model.Content.Options ?? new List<string>())
                                     {
                                         <div class="list-group-item" draggable="true">
                                             <i class="bi bi-grip-vertical"></i> @option
@@ -148,11 +167,7 @@
                                 <i class="bi bi-person"></i> View Profile
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                                <span id="submitText">Continue <i class="bi bi-arrow-right"></i></span>
-                                <span id="loadingText" class="d-none">
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    AI is analyzing your response...
-                                </span>
+                                Continue <i class="bi bi-arrow-right"></i>
                             </button>
                         </div>
                     </form>
@@ -197,12 +212,87 @@
 
 @section Scripts {
     <script>
-        // Show loading state on form submit
-        document.getElementById('responseForm').addEventListener('submit', function() {
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            document.getElementById('submitText').classList.add('d-none');
-            document.getElementById('loadingText').classList.remove('d-none');
+        const profileId = '@profileId';
+        let connection = null;
+
+        // Initialize SignalR connection
+        async function initializeSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/discoveryHub")
+                .withAutomaticReconnect()
+                .build();
+
+            // Handle status updates
+            connection.on("StatusUpdate", (message, progress) => {
+                showStatus(message, progress);
+            });
+
+            // Handle processing complete
+            connection.on("ProcessingComplete", (data) => {
+                console.log("Processing complete:", data);
+                hideStatus();
+                // Reload page to show next question
+                window.location.reload();
+            });
+
+            // Handle errors
+            connection.on("Error", (message) => {
+                hideStatus();
+                alert("Error: " + message);
+            });
+
+            try {
+                await connection.start();
+                console.log("SignalR connected");
+            } catch (err) {
+                console.error("SignalR connection error:", err);
+            }
+        }
+
+        function showStatus(message, progress) {
+            const statusCard = document.getElementById('statusCard');
+            const statusText = document.getElementById('statusText');
+            const statusProgress = document.getElementById('statusProgress');
+            
+            statusCard.classList.remove('d-none');
+            statusText.textContent = message;
+            statusProgress.style.width = progress + '%';
+        }
+
+        function hideStatus() {
+            const statusCard = document.getElementById('statusCard');
+            statusCard.classList.add('d-none');
+        }
+
+        // Handle form submission
+        document.getElementById('responseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const response = document.getElementById('response')?.value || document.getElementById('rankingResponse')?.value;
+            const numericValue = document.getElementById('scaleValue')?.value;
+
+            if (!response && !numericValue) {
+                alert('Please provide a response');
+                return;
+            }
+
+            // Disable form
+            document.getElementById('submitBtn').disabled = true;
+            
+            // Submit via SignalR
+            try {
+                await connection.invoke("ProcessResponseStreaming", profileId, response, numericValue ? parseFloat(numericValue) : null);
+            } catch (err) {
+                console.error("Error submitting response:", err);
+                alert("Failed to submit response. Please try again.");
+                document.getElementById('submitBtn').disabled = false;
+                hideStatus();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSignalR();
         });
 
         function updateScaleValue(value) {
