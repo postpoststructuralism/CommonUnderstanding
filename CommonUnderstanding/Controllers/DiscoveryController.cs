@@ -8,15 +8,24 @@ public class DiscoveryController : Controller
 {
     private readonly BeliefDiscoveryOrchestrator _orchestrator;
     private readonly UserProfileStore _profileStore;
+    private readonly BeliefSystemKnowledgeBase _knowledgeBase;
+    private readonly ResponseProcessingQueue _responseQueue;
+    private readonly QuestionPrefetchService _prefetchService;
     private readonly ILogger<DiscoveryController> _logger;
 
     public DiscoveryController(
         BeliefDiscoveryOrchestrator orchestrator,
         UserProfileStore profileStore,
+        BeliefSystemKnowledgeBase knowledgeBase,
+        ResponseProcessingQueue responseQueue,
+        QuestionPrefetchService prefetchService,
         ILogger<DiscoveryController> logger)
     {
         _orchestrator = orchestrator;
         _profileStore = profileStore;
+        _knowledgeBase = knowledgeBase;
+        _responseQueue = responseQueue;
+        _prefetchService = prefetchService;
         _logger = logger;
     }
 
@@ -147,8 +156,6 @@ public class DiscoveryController : Controller
             return RedirectToAction(nameof(Question));
         }
 
-        var responseStartTime = DateTime.UtcNow;
-
         // Fill in the response - combine selected option with any additional text
         var fullResponseText = actualResponse;
         if (!string.IsNullOrWhiteSpace(responseText))
@@ -169,9 +176,31 @@ public class DiscoveryController : Controller
         // Add to profile's interactions
         profile.Interactions.Add(interaction);
 
-        // Process response and get next question - exceptions will bubble up naturally
-        var (updatedModel, nextQuestion) = await _orchestrator.ProcessResponseAndContinueAsync(
-            profile, interaction);
+        // QUEUE the response for background processing instead of blocking
+        _responseQueue.QueueResponse(profileId, interaction);
+        _logger.LogInformation("Response queued for user {ProfileId}, queue depth: {Depth}", 
+            profileId, _responseQueue.GetQueueDepth());
+
+        // IMMEDIATELY get next question from prefetch queue or generate one
+        UserInteraction nextQuestion;
+        if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
+        {
+            // Mark question as asked
+            var hash = ComputeQuestionHash(prefetchedQuestion);
+            profile.AskedQuestionHashes.Add(hash);
+            nextQuestion = prefetchedQuestion;
+            _logger.LogInformation("Using prefetched question for user {ProfileId}, {Count} remaining", 
+                profileId, profile.PrefetchedQuestions.Count);
+        }
+        else
+        {
+            // No prefetched questions available, generate one now (fallback)
+            _logger.LogWarning("No prefetched questions available for user {ProfileId}, generating synchronously", profileId);
+            nextQuestion = await _orchestrator.StartDiscoveryAsync(profile);
+        }
+
+        // Trigger background prefetch to keep queue full
+        _prefetchService.RequestPrefetch(profileId);
 
         // Store next question
         _profileStore.SetPendingInteraction(profileId, nextQuestion);
@@ -183,6 +212,23 @@ public class DiscoveryController : Controller
         }
 
         return RedirectToAction(nameof(Question));
+    }
+
+    /// <summary>
+    /// Compute hash for question to detect duplicates
+    /// </summary>
+    private string ComputeQuestionHash(UserInteraction interaction)
+    {
+        var content = interaction.Content.Question ?? "";
+        if (interaction.Content.Options?.Any() == true)
+        {
+            content += "|" + string.Join("|", interaction.Content.Options);
+        }
+        if (!string.IsNullOrEmpty(interaction.Content.Context))
+        {
+            content += "|" + interaction.Content.Context;
+        }
+        return content.GetHashCode().ToString();
     }
 
     // GET: Discovery/Profile
@@ -208,6 +254,15 @@ public class DiscoveryController : Controller
         }
 
         var profile = _profileStore.GetProfile(profileId);
+        
+        // Calculate user's position in belief universe if they have enough data
+        if (profile != null && profile.CurrentBeliefSnapshot != null && profile.InteractionCount >= 5)
+        {
+            var universePosition = _knowledgeBase.CalculateUniversePosition(profile.CurrentBeliefSnapshot);
+            ViewBag.UniversePosition = universePosition;
+            ViewBag.AllSystems = _knowledgeBase.AllSystems.ToList();
+        }
+        
         return View(profile);
     }
 

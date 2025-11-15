@@ -56,3 +56,17 @@ public class NonZeroSumOpportunity
     public List<string> ActionableSteps { get; set; } = new();
     public int PotentialImpactScore { get; set; } // 1-10 scale
 }
+
+/// <summary>
+/// Represents a comparison between two canonical belief systems
+/// </summary>
+public class BeliefSystemComparison
+{
+    public string System1 { get; set; } = string.Empty;
+    public string System2 { get; set; } = string.Empty;
+    public double OverallSimilarity { get; set; } // 0-1 scale
+    public List<string> SharedValues { get; set; } = new();
+    public List<string> DifferingValues { get; set; } = new();
+    public List<string> PotentialSynergies { get; set; } = new();
+    public List<string> HistoricalInteractions { get; set; } = new();
+}

@@ -1,0 +1,115 @@
+@model Dictionary<string, List<CommonUnderstanding.Models.CanonicalBeliefSystem>>
+
+@{
+    ViewData["Title"] = "Browse by Category";
+}
+
+<div class="container mt-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4">
+            <i class="bi bi-grid-3x3-gap"></i> Browse by Category
+        </h1>
+        <p class="lead text-muted">Explore belief systems organized by type</p>
+    </div>
+
+    <nav class="mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Browse
+        </a>
+    </nav>
+
+    @foreach (var categoryGroup in Model.OrderBy(kvp => kvp.Key))
+    {
+        var category = categoryGroup.Key;
+        var systems = categoryGroup.Value;
+        var categoryIcon = GetCategoryIcon(category);
+        var categoryColor = GetCategoryColor(category);
+
+        <div class="card mb-4 shadow">
+            <div class="card-header @categoryColor text-white py-3">
+                <h3 class="mb-0">
+                    <i class="bi bi-@categoryIcon"></i> @category
+                    <span class="badge bg-light text-dark float-end">@systems.Count</span>
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach (var system in systems.OrderBy(s => s.Name))
+                    {
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 border-start border-4 @categoryColor.Replace("bg-", "border-")">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a asp-action="System" asp-route-name="@Uri.EscapeDataString(system.Name)" 
+                                           class="text-decoration-none text-dark">
+                                            @system.Name
+                                        </a>
+                                    </h5>
+                                    <p class="card-text small text-muted mb-2">
+                                        <i class="bi bi-geo-alt"></i> @system.Culture<br />
+                                        <i class="bi bi-calendar"></i> @system.Era
+                                    </p>
+                                    <p class="card-text small">
+                                        @(system.Description.Length > 120 
+                                            ? system.Description.Substring(0, 120) + "..." 
+                                            : system.Description)
+                                    </p>
+                                    @if (system.CorePrinciples.Any())
+                                    {
+                                        <div class="mb-2">
+                                            <span class="badge bg-secondary">
+                                                @system.CorePrinciples.Count principles
+                                            </span>
+                                        </div>
+                                    }
+                                    <a asp-action="System" asp-route-name="@Uri.EscapeDataString(system.Name)" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        Learn More <i class="bi bi-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            "Religion" => "stars",
+            "Philosophy" => "lightbulb",
+            "Political" => "building",
+            "Worldview" => "globe",
+            _ => "bookmark"
+        };
+    }
+
+    string GetCategoryColor(string category)
+    {
+        return category switch
+        {
+            "Religion" => "bg-purple",
+            "Philosophy" => "bg-indigo",
+            "Political" => "bg-blue",
+            "Worldview" => "bg-teal",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<style>
+    .bg-purple { background-color: #7c3aed !important; }
+    .bg-indigo { background-color: #4f46e5 !important; }
+    .bg-blue { background-color: #0ea5e9 !important; }
+    .bg-teal { background-color: #14b8a6 !important; }
+    
+    .border-purple { border-color: #7c3aed !important; }
+    .border-indigo { border-color: #4f46e5 !important; }
+    .border-blue { border-color: #0ea5e9 !important; }
+    .border-teal { border-color: #14b8a6 !important; }
+</style>

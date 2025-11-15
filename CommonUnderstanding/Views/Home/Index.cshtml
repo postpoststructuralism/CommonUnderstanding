@@ -14,12 +14,15 @@
             </p>
 
             <div class="row mb-5">
-                <div class="col-md-6 mb-3">
-                    <div class="card h-100 shadow">
-                        <div class="card-body">
-                            <h3><i class="bi bi-compass text-primary"></i> Discover Yourself</h3>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow hover-card">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-compass display-4 text-primary"></i>
+                            </div>
+                            <h3>Discover Yourself</h3>
                             <p class="text-muted">
-                                Start an interactive conversation to map your values, beliefs, and worldview using AI and Bayesian inference
+                                Interactive AI conversation to map your unique values and worldview
                             </p>
                             <a asp-controller="Discovery" asp-action="Start" class="btn btn-primary btn-lg">
                                 Begin Journey <i class="bi bi-arrow-right"></i>
@@ -27,15 +30,34 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <div class="card h-100 shadow">
-                        <div class="card-body">
-                            <h3><i class="bi bi-diagram-3 text-success"></i> Compare Beliefs</h3>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow hover-card">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-globe display-4 text-success"></i>
+                            </div>
+                            <h3>Explore Beliefs</h3>
                             <p class="text-muted">
-                                Explore how different belief systems overlap and diverge to find areas of common ground
+                                Browse canonical belief systems from across cultures and history
                             </p>
-                            <a asp-controller="BeliefSystems" asp-action="Compare" class="btn btn-outline-success btn-lg">
-                                Explore <i class="bi bi-arrow-right"></i>
+                            <a asp-controller="Explore" asp-action="Index" class="btn btn-success btn-lg">
+                                Explore Canon <i class="bi bi-book"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow hover-card">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-arrows-angle-expand display-4 text-warning"></i>
+                            </div>
+                            <h3>Compare Systems</h3>
+                            <p class="text-muted">
+                                Analyze similarities and differences between worldviews
+                            </p>
+                            <a asp-controller="Explore" asp-action="Compare" class="btn btn-warning btn-lg">
+                                Compare <i class="bi bi-arrow-left-right"></i>
                             </a>
                         </div>
                     </div>
@@ -43,7 +65,20 @@
             </div>
 
             <div class="alert alert-light border">
-                <h5 class="mb-3"><i class="bi bi-lightbulb"></i> How It Works</h5>
+                <h5 class="mb-3"><i class="bi bi-lightbulb"></i> Why Build on Existing Knowledge?</h5>
+                <p class="text-muted mb-2">
+                    <strong>Don't reinvent the wheel.</strong> Humanity has spent millennia developing rich belief systems, 
+                    philosophies, and worldviews. Our knowledge base includes creation myths, core principles, and historical 
+                    context from religions, philosophies, and political systems worldwide.
+                </p>
+                <p class="text-muted mb-0">
+                    <strong>Find your place.</strong> Instead of starting from scratch, discover how your personal beliefs 
+                    align with established traditions. You might find unexpected resonance with systems you've never explored.
+                </p>
+            </div>
+
+            <div class="alert alert-info border mt-3">
+                <h5 class="mb-3"><i class="bi bi-diagram-3"></i> How It Works</h5>
                 <div class="row text-start">
                     <div class="col-md-4 mb-2">
                         <strong>1. Interactive Discovery</strong><br />
@@ -55,7 +90,7 @@
                     </div>
                     <div class="col-md-4 mb-2">
                         <strong>3. Find Common Ground</strong><br />
-                        <small class="text-muted">Compare profiles to identify areas of overlap and opportunity</small>
+                        <small class="text-muted">Compare your profile with canonical systems and other users</small>
                     </div>
                 </div>
             </div>
@@ -66,3 +101,14 @@
         </div>
     </div>
 </div>
+
+<style>
+    .hover-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    }
+</style>

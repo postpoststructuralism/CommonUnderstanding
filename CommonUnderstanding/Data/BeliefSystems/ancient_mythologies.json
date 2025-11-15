@@ -1,0 +1,209 @@
+[
+  {
+    "Name": "Norse Paganism",
+    "Category": "Religion",
+    "Culture": "Germanic/Scandinavian",
+    "Era": "Viking Age (8th-11th century)",
+    "Description": "Pre-Christian polytheistic religion of the Norse people, emphasizing honor, fate, and the cosmic struggle between order and chaos.",
+    "Sources": [
+      "Poetic Edda",
+      "Prose Edda (Snorri Sturluson)",
+      "Sagas of Icelanders"
+    ],
+    "CreationMyth": "In the beginning was Ginnungagap, the void between fire (Muspelheim) and ice (Niflheim). When fire and ice met, the giant Ymir was born from the melting ice. The first god, Búri, emerged from ice licked by the cow Auðumbla. Búri's grandsons—Odin, Vili, and Vé—slew Ymir and created the world from his body: his flesh became earth, his blood the seas, his bones the mountains, his hair the trees, and his skull the sky. From two tree trunks they created the first humans, Ask and Embla, giving them breath, consciousness, and form. The gods built Asgard in the sky, connected to Midgard (the human world) by the rainbow bridge Bifröst.",
+    "CorePrinciples": [
+      "Honor and reputation (frith) paramount",
+      "Fate (wyrd) is inescapable, even for gods",
+      "Courage in face of inevitable doom (Ragnarök)",
+      "Reciprocity and gift-giving build relationships",
+      "Strength and martial prowess valued",
+      "Connection to ancestors and land",
+      "Nine worlds connected by Yggdrasil, the World Tree"
+    ],
+    "NotableFigures": [
+      "Odin (All-Father, god of wisdom and war)",
+      "Thor (god of thunder and protection)",
+      "Freyja (goddess of love, fertility, war)",
+      "Loki (trickster god)",
+      "Snorri Sturluson (medieval compiler of myths)"
+    ],
+    "Regions": [
+      "Scandinavia",
+      "Iceland",
+      "Germanic territories"
+    ]
+  },
+  {
+    "Name": "Ancient Greek Religion",
+    "Category": "Religion",
+    "Culture": "Hellenic",
+    "Era": "8th century BCE - 4th century CE",
+    "Description": "Polytheistic religion of ancient Greece centered on the Olympian gods, emphasizing ritual, sacrifice, and human excellence.",
+    "Sources": [
+      "Theogony (Hesiod)",
+      "Iliad and Odyssey (Homer)",
+      "Homeric Hymns"
+    ],
+    "CreationMyth": "In the beginning was Chaos, the void. From Chaos emerged Gaia (Earth), Tartarus (the underworld), and Eros (love). Gaia gave birth to Ouranos (Sky), and together they produced the Titans. The Titan Kronos overthrew Ouranos, then swallowed his own children to prevent being overthrown. Zeus, hidden by his mother Rhea, escaped and led the Olympian gods in a ten-year war (Titanomachy) against the Titans. Zeus and his siblings—Poseidon, Hades, Hera, Demeter, and Hestia—defeated the Titans and established rule from Mount Olympus. Prometheus shaped humans from clay, and Athena breathed life into them. Zeus punished Prometheus for giving fire to humans by chaining him to a rock.",
+    "CorePrinciples": [
+      "Hubris (excessive pride) leads to nemesis (downfall)",
+      "Honor the gods through ritual and sacrifice",
+      "Arete: excellence and virtue in all endeavors",
+      "Fate (moira) governs all, even gods",
+      "Hospitality (xenia) is sacred",
+      "Know thyself (Delphic maxim)",
+      "Nothing in excess (Delphic maxim)"
+    ],
+    "NotableFigures": [
+      "Zeus (king of gods)",
+      "Athena (goddess of wisdom)",
+      "Apollo (god of prophecy, music, healing)",
+      "Dionysus (god of wine and ecstasy)",
+      "Pythia (Oracle of Delphi)"
+    ],
+    "Regions": [
+      "Greece",
+      "Asia Minor",
+      "Southern Italy",
+      "Throughout Mediterranean via colonization"
+    ]
+  },
+  {
+    "Name": "Ancient Egyptian Religion",
+    "Category": "Religion",
+    "Culture": "Egyptian",
+    "Era": "3100 BCE - 4th century CE",
+    "Description": "Complex polytheistic religion emphasizing the afterlife, cosmic order (ma'at), and the divine pharaoh.",
+    "Sources": [
+      "Pyramid Texts",
+      "Coffin Texts",
+      "Book of the Dead (Book of Coming Forth by Day)",
+      "Temple inscriptions"
+    ],
+    "CreationMyth": "In the beginning was Nun, the primordial waters of chaos. From Nun emerged the benben, the primordial mound, upon which the creator god Atum appeared. Atum was alone and complete in himself. Through his own power, he created Shu (air) and Tefnut (moisture), who in turn gave birth to Geb (earth) and Nut (sky). From Geb and Nut came Osiris, Isis, Set, and Nephthys. Atum/Ra became the sun god, traveling across the sky by day in his solar barque and through the underworld (Duat) by night, battling the chaos serpent Apophis to ensure the sun would rise again. Humans were created from the tears of Ra.",
+    "CorePrinciples": [
+      "Ma'at: cosmic order, truth, justice, and balance",
+      "Afterlife more important than earthly life",
+      "Pharaoh is divine intermediary between gods and humans",
+      "Heart weighed against feather of Ma'at in judgment",
+      "Preservation of body (mummification) for afterlife",
+      "Ka (life force), ba (personality), akh (spirit) survive death",
+      "Cyclical time: death and rebirth like daily sun"
+    ],
+    "NotableFigures": [
+      "Ra (sun god)",
+      "Osiris (god of afterlife and resurrection)",
+      "Isis (goddess of magic and motherhood)",
+      "Thoth (god of wisdom and writing)",
+      "Anubis (god of mummification)"
+    ],
+    "Regions": [
+      "Egypt",
+      "Nubia"
+    ]
+  },
+  {
+    "Name": "Mesopotamian Religion (Sumerian/Babylonian)",
+    "Category": "Religion",
+    "Culture": "Mesopotamian",
+    "Era": "4000 BCE - 1st century CE",
+    "Description": "Polytheistic religion of ancient Mesopotamia emphasizing service to capricious gods and acceptance of human limitations.",
+    "Sources": [
+      "Enuma Elish (Babylonian creation epic)",
+      "Epic of Gilgamesh",
+      "Atrahasis Epic",
+      "Cylinder seals and cuneiform tablets"
+    ],
+    "CreationMyth": "In the beginning, only Apsu (fresh water) and Tiamat (salt water) existed, their waters mingling. From their union came the first gods, whose noise disturbed Apsu. He planned to destroy them, but the god Ea killed Apsu first. Tiamat, enraged, created monsters and chose Kingu as her champion. The young god Marduk agreed to fight Tiamat if the other gods made him supreme king. He defeated Tiamat, split her body in half to create heaven and earth, and used Kingu's blood to create humans. Humans were created as servants to the gods, to feed them through sacrifice and relieve them of labor. The gods built the city of Babylon and the great ziggurat Etemenanki as Marduk's dwelling place.",
+    "CorePrinciples": [
+      "Humans created to serve the gods",
+      "Gods are powerful but capricious and petty",
+      "Fate is controlled by divine council, not individual will",
+      "Death is final; underworld is gloomy shadow existence",
+      "Cities and temples are centers of divine presence",
+      "Kings rule by divine mandate",
+      "Accept human mortality and limitations"
+    ],
+    "NotableFigures": [
+      "Marduk (supreme god of Babylon)",
+      "Inanna/Ishtar (goddess of love and war)",
+      "Enlil (god of wind and storms)",
+      "Enki/Ea (god of wisdom and water)",
+      "Gilgamesh (legendary king and hero)"
+    ],
+    "Regions": [
+      "Sumer",
+      "Akkad",
+      "Babylon",
+      "Assyria"
+    ]
+  },
+  {
+    "Name": "Aztec Religion",
+    "Category": "Religion",
+    "Culture": "Mesoamerican",
+    "Era": "14th-16th century CE",
+    "Description": "Complex polytheistic religion emphasizing cosmic cycles, human sacrifice to maintain universal order, and the dual nature of existence.",
+    "Sources": [
+      "Codex Borgia",
+      "Florentine Codex",
+      "Historia de las Indias de Nueva España (Diego Durán)"
+    ],
+    "CreationMyth": "The world has been created and destroyed four times before the current era (the Fifth Sun). In the beginning, the dual god Ometeotl divided into male and female aspects, creating the four Tezcatlipocas and Quetzalcoatl. These gods created the earth from the body of the earth monster Cipactli. Four previous worlds (suns) were each destroyed by jaguars, wind, fire, and flood. The current Fifth Sun was created at Teotihuacan when the gods sacrificed themselves, and the humble god Nanahuatzin threw himself into a fire to become the sun. But the sun wouldn't move until the other gods sacrificed their blood. Quetzalcoatl descended to the underworld (Mictlan) and retrieved the bones of previous humans, sprinkling them with his own blood to create humanity. Humans must maintain the sun through blood sacrifice.",
+    "CorePrinciples": [
+      "Blood sacrifice necessary to maintain cosmic order",
+      "Duality: life/death, order/chaos in constant balance",
+      "Current world (Fifth Sun) will inevitably end",
+      "Humans created to nourish gods with blood",
+      "Warfare to capture sacrificial victims (Flower Wars)",
+      "Calendrical precision: 260-day ritual and 365-day solar",
+      "Warrior's death or childbirth death grants paradise"
+    ],
+    "NotableFigures": [
+      "Huitzilopochtli (god of sun and war)",
+      "Quetzalcoatl (feathered serpent, god of wind and learning)",
+      "Tlaloc (god of rain)",
+      "Coatlicue (earth goddess)",
+      "Moctezuma II (last Aztec emperor)"
+    ],
+    "Regions": [
+      "Central Mexico",
+      "Tenochtitlan"
+    ]
+  },
+  {
+    "Name": "Yoruba Religion",
+    "Category": "Religion",
+    "Culture": "West African",
+    "Era": "Ancient - Present",
+    "Description": "Traditional religion of the Yoruba people emphasizing a supreme creator, intermediary orishas, and ancestor veneration.",
+    "Sources": [
+      "Odu Ifá (divination texts)",
+      "Oral traditions",
+      "Diaspora traditions (Santería, Candomblé, Vodou)"
+    ],
+    "CreationMyth": "In the beginning, there was only Olodumare, the supreme creator, and the primordial waters below the sky. Olodumare sent the orisha Obatala down with a chain, a snail shell with sand, and a chicken to create land. But Obatala drank palm wine and fell asleep, so Olodumare sent Oduduwa instead to spread the sand and let the chicken scratch it to create the first land at Ile-Ife, the sacred city. Obatala later molded humans from clay, but when he drank palm wine while working, he created people with disabilities; afterward, he became their protector. Olodumare breathed life into the clay forms. The orishas are divine forces of nature and human experience, intermediaries between Olodumare and humanity. Each person has a destiny (ori) chosen before birth.",
+    "CorePrinciples": [
+      "Olodumare is supreme, distant creator",
+      "Orishas as intermediaries: forces of nature and archetypes",
+      "Ancestor veneration maintains family lineage",
+      "Divination (Ifá) reveals destiny and guidance",
+      "Ashe: spiritual power/life force in all things",
+      "Each person has ori (destiny/inner head)",
+      "Balance between opposing forces"
+    ],
+    "NotableFigures": [
+      "Olodumare (supreme god)",
+      "Obatala (creator of humans)",
+      "Orunmila (orisha of wisdom and divination)",
+      "Eshu/Elegba (trickster, messenger, guardian of crossroads)",
+      "Oshun (orisha of love, beauty, rivers)"
+    ],
+    "Regions": [
+      "Nigeria",
+      "Benin",
+      "Togo",
+      "Diaspora: Caribbean, Brazil, Americas"
+    ]
+  }
+]

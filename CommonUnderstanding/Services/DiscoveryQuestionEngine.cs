@@ -389,8 +389,36 @@ public class DiscoveryQuestionEngine
             )
         };
 
-        var random = new Random();
-        var selectedQuestion = questions[random.Next(questions.Count)];
+        // Filter out questions targeting already-explored dimensions
+        var unexploredQuestions = questions
+            .Where(q => !q.Dimensions.All(d => profile.ExploredDimensions.Contains(d)))
+            .ToList();
+
+        // If all dimensions explored, use full list
+        if (!unexploredQuestions.Any())
+        {
+            unexploredQuestions = questions;
+        }
+
+        // Prioritize questions targeting uncertain areas
+        var uncertainAreas = snapshot.Statistics.UncertainAreas;
+        var prioritizedQuestions = unexploredQuestions
+            .Where(q => q.Dimensions.Any(d => uncertainAreas.Contains(d)))
+            .ToList();
+
+        var selectedQuestion = prioritizedQuestions.Any()
+            ? prioritizedQuestions[new Random().Next(prioritizedQuestions.Count)]
+            : unexploredQuestions[new Random().Next(unexploredQuestions.Count)];
+
+        // Mark dimensions as explored if confidence is high enough
+        foreach (var dim in selectedQuestion.Dimensions)
+        {
+            var existingDim = snapshot.Dimensions.FirstOrDefault(d => d.Name == dim);
+            if (existingDim?.Confidence > 0.7)
+            {
+                profile.ExploredDimensions.Add(dim);
+            }
+        }
 
         return new UserInteraction
         {
@@ -477,11 +505,80 @@ public class DiscoveryQuestionEngine
                     "Only accept refugees if it benefits the country"
                 },
                 new List<string> { "compassion", "democracy", "group-loyalty" }
+            ),
+            (
+                "You discover a way to cheat on your taxes that's unlikely to be detected. It would save you thousands.",
+                "What do you do?",
+                new List<string>
+                {
+                    "Never - I pay what I owe even if I disagree with how it's spent",
+                    "Depends on what the government is doing with tax money",
+                    "I'd take the deduction - the system is broken anyway",
+                    "Everyone does it, so it's effectively expected",
+                    "I'd feel too guilty to do it"
+                },
+                new List<string> { "rule-following", "civic-duty", "self-interest" }
+            ),
+            (
+                "A pharmaceutical company develops a life-saving drug but prices it so high that most who need it can't afford it.",
+                "How do you view this?",
+                new List<string>
+                {
+                    "They have a right to charge what the market will bear",
+                    "Morally wrong - profit shouldn't override human life",
+                    "Government should regulate pricing of essential medicines",
+                    "Acceptable as long as some charity access is provided",
+                    "The company should recoup costs but not maximize profit"
+                },
+                new List<string> { "capitalism", "healthcare", "compassion" }
+            ),
+            (
+                "Your teenage child wants to drop out of school to pursue an unlikely career in the arts. They're passionate but you doubt it will work.",
+                "What do you do?",
+                new List<string>
+                {
+                    "Support their passion - happiness matters more than security",
+                    "Insist they finish school first as a backup plan",
+                    "Absolutely forbid it - they're too young to decide",
+                    "Encourage them but explain the risks honestly",
+                    "Let them try but require a realistic timeline/plan"
+                },
+                new List<string> { "parenting", "pragmatism", "autonomy" }
+            ),
+            (
+                "A stranger online is being harassed and asks for your help. Getting involved might expose you to backlash.",
+                "What do you do?",
+                new List<string>
+                {
+                    "Help immediately - it's the right thing to do",
+                    "Help anonymously to avoid personal risk",
+                    "Stay out of it - not my problem",
+                    "Report the harassment to the platform",
+                    "Offer support privately but don't get publicly involved"
+                },
+                new List<string> { "courage", "solidarity", "risk-tolerance" }
             )
         };
 
-        var random = new Random();
-        var selectedDilemma = dilemmas[random.Next(dilemmas.Count)];
+        // Filter based on unexplored dimensions
+        var unexploredDilemmas = dilemmas
+            .Where(d => !d.Dimensions.All(dim => profile.ExploredDimensions.Contains(dim)))
+            .ToList();
+
+        if (!unexploredDilemmas.Any())
+        {
+            unexploredDilemmas = dilemmas;
+        }
+
+        // Prioritize uncertain areas
+        var uncertainAreas = snapshot.Statistics.UncertainAreas;
+        var prioritizedDilemmas = unexploredDilemmas
+            .Where(d => d.Dimensions.Any(dim => uncertainAreas.Contains(dim)))
+            .ToList();
+
+        var selectedDilemma = prioritizedDilemmas.Any()
+            ? prioritizedDilemmas[new Random().Next(prioritizedDilemmas.Count)]
+            : unexploredDilemmas[new Random().Next(unexploredDilemmas.Count)];
 
         return new UserInteraction
         {
@@ -543,11 +640,93 @@ public class DiscoveryQuestionEngine
                     "Let it go - it's not worth the confrontation"
                 },
                 new List<string> { "fairness", "conflict-avoidance", "assertiveness" }
+            ),
+            (
+                "You're at a restaurant and realize after leaving that they undercharged you significantly.",
+                "What do you do?",
+                new List<string>
+                {
+                    "Go back and pay the difference",
+                    "Consider it their mistake and let it go",
+                    "Feel guilty but convince myself it's not my responsibility",
+                    "Only go back if it's convenient",
+                    "Tip extra next time to balance it out"
+                },
+                new List<string> { "honesty", "responsibility", "convenience" }
+            ),
+            (
+                "Your neighbor's music is too loud late at night. This is the third time this week.",
+                "How do you handle it?",
+                new List<string>
+                {
+                    "Knock on their door and politely ask them to turn it down",
+                    "Call the police/building management",
+                    "Suffer in silence to avoid confrontation",
+                    "Make noise back to send a message",
+                    "Leave a polite note on their door"
+                },
+                new List<string> { "conflict-resolution", "assertiveness", "community" }
+            ),
+            (
+                "You see a parent yelling harshly at their young child in public. The child is crying.",
+                "What's your reaction?",
+                new List<string>
+                {
+                    "Intervene - no child should be treated that way",
+                    "Feel uncomfortable but mind my own business",
+                    "Judge the parent negatively but don't act",
+                    "Feel empathy for the parent - they might be struggling",
+                    "Try to distract/comfort the child somehow"
+                },
+                new List<string> { "intervention", "judgment", "compassion" }
+            ),
+            (
+                "A friend asks to borrow money. You can afford it but they have a history of not paying back loans.",
+                "What do you say?",
+                new List<string>
+                {
+                    "Lend it anyway - they're my friend",
+                    "Politely decline with an excuse",
+                    "Give it as a gift with no expectation of return",
+                    "Agree but only if they sign something or set clear terms",
+                    "Honestly explain why I'm uncomfortable lending to them"
+                },
+                new List<string> { "friendship", "boundaries", "honesty" }
+            ),
+            (
+                "You witness someone shoplifting food from a grocery store. They look desperate.",
+                "What do you do?",
+                new List<string>
+                {
+                    "Report it - stealing is wrong regardless",
+                    "Pretend I didn't see it",
+                    "Offer to buy the food for them instead",
+                    "Feel conflicted but ultimately do nothing",
+                    "Alert them that I saw, giving them a chance to stop"
+                },
+                new List<string> { "justice", "compassion", "rule-following" }
             )
         };
 
-        var random = new Random();
-        var selectedScenario = scenarios[random.Next(scenarios.Count)];
+        // Smart selection based on unexplored dimensions
+        var unexploredScenarios = scenarios
+            .Where(s => !s.Dimensions.All(dim => profile.ExploredDimensions.Contains(dim)))
+            .ToList();
+
+        if (!unexploredScenarios.Any())
+        {
+            unexploredScenarios = scenarios;
+        }
+
+        // Prioritize uncertain areas
+        var uncertainAreas = snapshot.Statistics.UncertainAreas;
+        var prioritizedScenarios = unexploredScenarios
+            .Where(s => s.Dimensions.Any(dim => uncertainAreas.Contains(dim)))
+            .ToList();
+
+        var selectedScenario = prioritizedScenarios.Any()
+            ? prioritizedScenarios[new Random().Next(prioritizedScenarios.Count)]
+            : unexploredScenarios[new Random().Next(unexploredScenarios.Count)];
 
         return new UserInteraction
         {

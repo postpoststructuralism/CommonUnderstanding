@@ -1,0 +1,199 @@
+[
+  {
+    "Name": "Liberalism (Classical)",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "17th-19th century - Present",
+    "Description": "Political philosophy emphasizing individual liberty, limited government, free markets, and rule of law.",
+    "Sources": [
+      "Two Treatises of Government (John Locke)",
+      "On Liberty (John Stuart Mill)",
+      "The Wealth of Nations (Adam Smith)",
+      "The Road to Serfdom (F.A. Hayek)"
+    ],
+    "CorePrinciples": [
+      "Individual rights and freedoms as paramount",
+      "Limited government constrained by constitution",
+      "Free market capitalism",
+      "Rule of law and equality before the law",
+      "Private property rights",
+      "Spontaneous order over central planning",
+      "Tolerance and pluralism"
+    ],
+    "NotableFigures": [
+      "John Locke",
+      "Adam Smith",
+      "John Stuart Mill",
+      "F.A. Hayek",
+      "Milton Friedman"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Western Europe"
+    ]
+  },
+  {
+    "Name": "Socialism (Democratic)",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Political and economic system advocating for social ownership of means of production and democratic control of the economy.",
+    "Sources": [
+      "The Communist Manifesto (Marx & Engels)",
+      "Capital (Karl Marx)",
+      "Evolutionary Socialism (Eduard Bernstein)",
+      "The Conquest of Bread (Peter Kropotkin)"
+    ],
+    "CorePrinciples": [
+      "Social ownership of means of production",
+      "Economic equality and redistribution",
+      "Workers' rights and collective bargaining",
+      "Universal healthcare, education, and social services",
+      "Democratic participation in economic decisions",
+      "Critique of capitalism and exploitation",
+      "Solidarity and collective welfare over individual profit"
+    ],
+    "NotableFigures": [
+      "Karl Marx",
+      "Eduard Bernstein",
+      "Rosa Luxemburg",
+      "Bernie Sanders",
+      "Jeremy Corbyn"
+    ],
+    "Regions": [
+      "Scandinavia",
+      "Western Europe",
+      "Latin America"
+    ]
+  },
+  {
+    "Name": "Anarchism",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Political philosophy advocating for abolition of all hierarchical authority and the state, replaced by voluntary cooperation.",
+    "Sources": [
+      "What is Property? (Pierre-Joseph Proudhon)",
+      "The Conquest of Bread (Peter Kropotkin)",
+      "Mutual Aid (Peter Kropotkin)",
+      "On Anarchism (Noam Chomsky)"
+    ],
+    "CorePrinciples": [
+      "Abolition of the state and all coercive hierarchies",
+      "Voluntary association and mutual aid",
+      "Direct democracy and consensus decision-making",
+      "Workers' self-management",
+      "Decentralization and federalism",
+      "Individual autonomy within community",
+      "Critique of all forms of domination"
+    ],
+    "NotableFigures": [
+      "Pierre-Joseph Proudhon",
+      "Mikhail Bakunin",
+      "Peter Kropotkin",
+      "Emma Goldman",
+      "Noam Chomsky"
+    ],
+    "Regions": [
+      "Spain (historical)",
+      "Modern activist movements worldwide"
+    ]
+  },
+  {
+    "Name": "Conservatism (Traditional)",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "18th century - Present",
+    "Description": "Political philosophy emphasizing preservation of traditional institutions, gradual change, and skepticism of radical reform.",
+    "Sources": [
+      "Reflections on the Revolution in France (Edmund Burke)",
+      "The Conservative Mind (Russell Kirk)",
+      "Ideas Have Consequences (Richard Weaver)"
+    ],
+    "CorePrinciples": [
+      "Tradition and continuity with the past",
+      "Gradual, organic change over revolution",
+      "Preservation of established institutions",
+      "Skepticism of human reason to reshape society",
+      "Importance of religion and moral order",
+      "Private property and free enterprise",
+      "Strong national defense",
+      "Respect for authority and hierarchy"
+    ],
+    "NotableFigures": [
+      "Edmund Burke",
+      "Russell Kirk",
+      "Roger Scruton",
+      "William F. Buckley Jr."
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Continental Europe"
+    ]
+  },
+  {
+    "Name": "Libertarianism",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "20th century - Present",
+    "Description": "Political philosophy emphasizing maximum individual freedom and minimal government intervention in both personal and economic spheres.",
+    "Sources": [
+      "Anarchy, State, and Utopia (Robert Nozick)",
+      "The Ethics of Liberty (Murray Rothbard)",
+      "Free to Choose (Milton Friedman)"
+    ],
+    "CorePrinciples": [
+      "Non-aggression principle",
+      "Maximum individual liberty in all spheres",
+      "Minimal or no government intervention",
+      "Free market absolutism",
+      "Property rights as fundamental",
+      "Voluntary exchange over coercion",
+      "Self-ownership",
+      "Opposition to taxation as theft"
+    ],
+    "NotableFigures": [
+      "Murray Rothbard",
+      "Robert Nozick",
+      "Ayn Rand",
+      "Ron Paul"
+    ],
+    "Regions": [
+      "United States",
+      "Parts of Western Europe"
+    ]
+  },
+  {
+    "Name": "Communitarianism",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "Late 20th century - Present",
+    "Description": "Political philosophy emphasizing community values, social responsibility, and the common good over individual rights.",
+    "Sources": [
+      "After Virtue (Alasdair MacIntyre)",
+      "The Spirit of Community (Amitai Etzioni)",
+      "Liberalism and the Limits of Justice (Michael Sandel)"
+    ],
+    "CorePrinciples": [
+      "Community and social bonds as primary",
+      "Common good over individual autonomy",
+      "Responsibilities alongside rights",
+      "Civic virtue and participation",
+      "Shared values and traditions",
+      "Critique of excessive individualism",
+      "Balance between individual and community"
+    ],
+    "NotableFigures": [
+      "Alasdair MacIntyre",
+      "Michael Sandel",
+      "Amitai Etzioni",
+      "Charles Taylor"
+    ],
+    "Regions": [
+      "United States",
+      "Europe"
+    ]
+  }
+]

@@ -1,0 +1,189 @@
+[
+  {
+    "Name": "Scientific Naturalism",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "17th century - Present",
+    "Description": "Worldview holding that natural laws govern all phenomena, the universe is self-contained, and scientific method is the primary path to knowledge.",
+    "Sources": [
+      "The Origin of Species (Charles Darwin)",
+      "The Selfish Gene (Richard Dawkins)",
+      "Cosmos (Carl Sagan)",
+      "The Demon-Haunted World (Carl Sagan)"
+    ],
+    "CreationMyth": "Approximately 13.8 billion years ago, the universe began in the Big Bang, an expansion from an infinitely dense singularity. Fundamental forces separated, particles formed, and after 380,000 years, atoms emerged. Gravity pulled matter into stars and galaxies. Heavy elements were forged in stellar cores and scattered by supernovae. 4.6 billion years ago, our solar system condensed from a molecular cloud. Earth formed through accretion and was bombarded by asteroids and comets that brought water. Around 3.8 billion years ago, self-replicating molecules emerged in Earth's primordial oceans. Through natural selection over billions of years, life evolved from single cells to complex multicellular organisms. Homo sapiens emerged in Africa around 300,000 years ago, developing culture, language, and eventually science to understand the cosmos.",
+    "CorePrinciples": [
+      "Universe operates by natural laws, no supernatural intervention",
+      "Scientific method: observation, hypothesis, testing, revision",
+      "Evolution by natural selection explains life's diversity",
+      "Materialism: only physical matter and energy exist",
+      "Skepticism and evidence-based reasoning",
+      "Universe is indifferent to human concerns",
+      "Knowledge is provisional and subject to revision"
+    ],
+    "NotableFigures": [
+      "Charles Darwin",
+      "Carl Sagan",
+      "Richard Dawkins",
+      "Stephen Hawking",
+      "Neil deGrasse Tyson"
+    ],
+    "Regions": [
+      "Global scientific community"
+    ]
+  },
+  {
+    "Name": "Transhumanism",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Intellectual movement advocating for using technology to enhance human physical and cognitive capabilities beyond current biological limitations.",
+    "Sources": [
+      "The Singularity is Near (Ray Kurzweil)",
+      "Superintelligence (Nick Bostrom)",
+      "Engines of Creation (K. Eric Drexler)"
+    ],
+    "CorePrinciples": [
+      "Technology can and should enhance human capabilities",
+      "Death and suffering are problems to be solved, not accepted",
+      "Morphological freedom: right to modify one's body/mind",
+      "Technological singularity may radically transform existence",
+      "Intelligence explosion through AI possible",
+      "Life extension and immortality as goals",
+      "Rational scientific approach to human enhancement"
+    ],
+    "NotableFigures": [
+      "Ray Kurzweil",
+      "Nick Bostrom",
+      "Aubrey de Grey",
+      "Max More"
+    ],
+    "Regions": [
+      "Silicon Valley",
+      "Global tech hubs"
+    ]
+  },
+  {
+    "Name": "Deep Ecology",
+    "Category": "Worldview",
+    "Culture": "Western/Global Environmental",
+    "Era": "Late 20th century - Present",
+    "Description": "Environmental philosophy emphasizing intrinsic value of all living beings and fundamental restructuring of human relationship with nature.",
+    "Sources": [
+      "Deep Ecology (Arne Næss)",
+      "The Web of Life (Fritjof Capra)",
+      "Sand County Almanac (Aldo Leopold)"
+    ],
+    "CorePrinciples": [
+      "All life has intrinsic value independent of utility to humans",
+      "Ecological diversity and richness have value in themselves",
+      "Humans have no right to reduce biodiversity except to meet vital needs",
+      "Current human interference with nature is excessive",
+      "Fundamental change in economic, technological, and ideological structures needed",
+      "Self-realization through identification with all life",
+      "Ecocentric rather than anthropocentric worldview"
+    ],
+    "NotableFigures": [
+      "Arne Næss",
+      "Joanna Macy",
+      "Gary Snyder",
+      "Aldo Leopold"
+    ],
+    "Regions": [
+      "Norway",
+      "Global environmental movements"
+    ]
+  },
+  {
+    "Name": "Effective Altruism",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Early 21st century - Present",
+    "Description": "Philosophical and social movement using evidence and reason to determine the most effective ways to benefit others and acting on that basis.",
+    "Sources": [
+      "The Life You Can Save (Peter Singer)",
+      "Doing Good Better (William MacAskill)",
+      "The Precipice (Toby Ord)"
+    ],
+    "CorePrinciples": [
+      "Use evidence and reason to find the most effective ways to help others",
+      "Prioritize interventions by cost-effectiveness and scale",
+      "Equal moral consideration for all sentient beings",
+      "Earning to give: maximize income to donate effectively",
+      "Longtermism: consider impacts on future generations",
+      "Existential risk reduction as priority",
+      "Quantitative analysis of charitable impact"
+    ],
+    "NotableFigures": [
+      "Peter Singer",
+      "William MacAskill",
+      "Toby Ord",
+      "Nick Beckstead"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Global network"
+    ]
+  },
+  {
+    "Name": "Stoic Naturalism (Modern)",
+    "Category": "Worldview",
+    "Culture": "Western Revival",
+    "Era": "Late 20th century - Present",
+    "Description": "Contemporary revival of Stoic philosophy integrated with scientific naturalism, emphasizing virtue, acceptance of nature, and rational living.",
+    "Sources": [
+      "Meditations (Marcus Aurelius) - ancient source",
+      "A Guide to the Good Life (William Irvine)",
+      "How to Be a Stoic (Massimo Pigliucci)"
+    ],
+    "CorePrinciples": [
+      "Focus on what's in your control, accept what isn't",
+      "Live according to nature and reason",
+      "Four cardinal virtues: wisdom, courage, justice, temperance",
+      "Negative visualization: contemplate loss to appreciate what you have",
+      "Dichotomy of control: distinguish internal from external",
+      "Amor fati: love of fate, embrace what happens",
+      "Cosmopolitanism: all humans are part of single community"
+    ],
+    "NotableFigures": [
+      "Massimo Pigliucci",
+      "William Irvine",
+      "Donald Robertson",
+      "Ryan Holiday"
+    ],
+    "Regions": [
+      "Global online communities"
+    ]
+  },
+  {
+    "Name": "Integral Theory",
+    "Category": "Worldview",
+    "Culture": "Western Synthesis",
+    "Era": "Late 20th century - Present",
+    "Description": "Comprehensive framework attempting to integrate insights from multiple disciplines and worldviews using developmental and systems perspectives.",
+    "Sources": [
+      "Sex, Ecology, Spirituality (Ken Wilber)",
+      "A Theory of Everything (Ken Wilber)",
+      "Integral Spirituality (Ken Wilber)"
+    ],
+    "CorePrinciples": [
+      "AQAL framework: All Quadrants, All Levels, All Lines, All States, All Types",
+      "Developmental stages of consciousness",
+      "Integration of pre-modern, modern, and postmodern insights",
+      "Four quadrants: interior/exterior, individual/collective",
+      "Holarchy: nested hierarchies of increasing wholeness",
+      "Include and transcend: higher stages integrate lower ones",
+      "Multiple intelligences and developmental lines"
+    ],
+    "NotableFigures": [
+      "Ken Wilber",
+      "Don Beck",
+      "Susanne Cook-Greuter"
+    ],
+    "Regions": [
+      "United States",
+      "Global integral community"
+    ]
+  }
+]

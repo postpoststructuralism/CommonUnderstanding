@@ -1,0 +1,204 @@
+@model List<CommonUnderstanding.Models.CanonicalBeliefSystem>
+
+@{
+    ViewData["Title"] = "Explore Belief Systems";
+    var categories = ViewBag.Categories as List<string>;
+    var cultures = ViewBag.Cultures as List<string>;
+    var selectedCategory = ViewBag.SelectedCategory as string;
+    var selectedCulture = ViewBag.SelectedCulture as string;
+    var searchTerm = ViewBag.SearchTerm as string;
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center mb-4">
+                <h1 class="display-4">
+                    <i class="bi bi-compass"></i> Explore Belief Systems
+                </h1>
+                <p class="lead text-muted">
+                    Discover worldviews, philosophies, and belief systems from across cultures and time
+                </p>
+            </div>
+
+            <!-- Quick Navigation -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-2">
+                    <a asp-action="Categories" class="btn btn-outline-primary w-100 py-3">
+                        <i class="bi bi-grid-3x3-gap"></i><br />
+                        <strong>By Category</strong><br />
+                        <small>Religion, Philosophy, Political</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a asp-action="Map" class="btn btn-outline-success w-100 py-3">
+                        <i class="bi bi-globe"></i><br />
+                        <strong>World Map</strong><br />
+                        <small>Geographic origins</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a asp-action="Timeline" class="btn btn-outline-info w-100 py-3">
+                        <i class="bi bi-clock-history"></i><br />
+                        <strong>Timeline</strong><br />
+                        <small>Historical evolution</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a asp-action="Compare" class="btn btn-outline-warning w-100 py-3">
+                        <i class="bi bi-arrows-angle-expand"></i><br />
+                        <strong>Compare</strong><br />
+                        <small>Side-by-side analysis</small>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form asp-action="Index" method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" name="search" 
+                                   value="@searchTerm" placeholder="Search by name, description, or principles..." />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category">
+                                <option value="">All Categories</option>
+                                @foreach (var cat in categories!)
+                                {
+                                    <option value="@cat" selected="@(cat == selectedCategory)">@cat</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Culture</label>
+                            <select class="form-select" name="culture">
+                                <option value="">All Cultures</option>
+                                @foreach (var cult in cultures!)
+                                {
+                                    <option value="@cult" selected="@(cult == selectedCulture)">@cult</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results Summary -->
+            <div class="mb-3">
+                <h5>
+                    @Model.Count belief system@(Model.Count != 1 ? "s" : "") found
+                    @if (!string.IsNullOrEmpty(selectedCategory))
+                    {
+                        <span class="badge bg-primary">@selectedCategory</span>
+                    }
+                    @if (!string.IsNullOrEmpty(selectedCulture))
+                    {
+                        <span class="badge bg-success">@selectedCulture</span>
+                    }
+                    @if (!string.IsNullOrEmpty(searchTerm))
+                    {
+                        <span class="badge bg-info">Search: @searchTerm</span>
+                    }
+                </h5>
+            </div>
+
+            <!-- Belief Systems Grid -->
+            <div class="row">
+                @foreach (var system in Model)
+                {
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white @GetCategoryColor(system.Category)">
+                                <h5 class="card-title mb-0">@system.Name</h5>
+                                <small>@system.Culture • @system.Era</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">@system.Category</span>
+                                    @if (system.Regions.Any())
+                                    {
+                                        <span class="badge bg-info">@system.Regions.First()</span>
+                                    }
+                                </div>
+                                <p class="card-text text-muted small">
+                                    @(system.Description.Length > 150 
+                                        ? system.Description.Substring(0, 150) + "..." 
+                                        : system.Description)
+                                </p>
+                                @if (system.CorePrinciples.Any())
+                                {
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                            @foreach (var principle in system.CorePrinciples.Take(2))
+                                            {
+                                                <li>@principle</li>
+                                            }
+                                            @if (system.CorePrinciples.Count > 2)
+                                            {
+                                                <li class="text-muted">+@(system.CorePrinciples.Count - 2) more...</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a asp-action="System" asp-route-name="@Uri.EscapeDataString(system.Name)" 
+                                   class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info text-center">
+                    <h4>No belief systems found</h4>
+                    <p>Try adjusting your filters or search terms.</p>
+                    <a asp-action="Index" class="btn btn-primary">Clear Filters</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetCategoryColor(string category)
+    {
+        return category switch
+        {
+            "Religion" => "bg-purple",
+            "Philosophy" => "bg-indigo",
+            "Political" => "bg-blue",
+            "Worldview" => "bg-teal",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<style>
+    .hover-lift {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+    }
+
+    .bg-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-indigo { background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); }
+    .bg-blue { background: linear-gradient(135deg, #2dce89 0%, #2dcecc 100%); }
+    .bg-teal { background: linear-gradient(135deg, #11cdef 0%, #1171ef 100%); }
+</style>

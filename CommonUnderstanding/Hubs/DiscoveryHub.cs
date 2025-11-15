@@ -11,24 +11,24 @@ public class DiscoveryHub : Hub
 {
     private readonly BeliefDiscoveryOrchestrator _orchestrator;
     private readonly DiscoveryQuestionEngine _questionEngine;
-    private readonly ResponseAnalysisEngine _analysisEngine;
-    private readonly BayesianInferenceEngine _inferenceEngine;
+    private readonly ResponseProcessingQueue _responseQueue;
     private readonly UserProfileStore _profileStore;
+    private readonly QuestionPrefetchService _prefetchService;
     private readonly ILogger<DiscoveryHub> _logger;
 
     public DiscoveryHub(
         BeliefDiscoveryOrchestrator orchestrator,
         DiscoveryQuestionEngine questionEngine,
-        ResponseAnalysisEngine analysisEngine,
-        BayesianInferenceEngine inferenceEngine,
+        ResponseProcessingQueue responseQueue,
         UserProfileStore profileStore,
+        QuestionPrefetchService prefetchService,
         ILogger<DiscoveryHub> logger)
     {
         _orchestrator = orchestrator;
         _questionEngine = questionEngine;
-        _analysisEngine = analysisEngine;
-        _inferenceEngine = inferenceEngine;
+        _responseQueue = responseQueue;
         _profileStore = profileStore;
+        _prefetchService = prefetchService;
         _logger = logger;
     }
 
@@ -66,6 +66,7 @@ public class DiscoveryHub : Hub
 
     /// <summary>
     /// Process user response with streaming status updates
+    /// NOW: Queue response immediately and return next question, show progress as background processes
     /// </summary>
     public async Task ProcessResponseStreaming(string profileId, string? selectedOption, string? responseText, string? response, double? numericValue)
     {
@@ -120,45 +121,47 @@ public class DiscoveryHub : Hub
             interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
             profile.Interactions.Add(interaction);
 
-            // Stage 1: Analyze response
-            await Clients.Caller.SendAsync("StatusUpdate", "🔍 Analyzing your response...", 15);
-            await Task.Delay(300); // Small delay for UX
-            var analysis = await _analysisEngine.AnalyzeResponseAsync(interaction, profile);
-            interaction.Analysis = analysis;
-
-            // Stage 2: Emotional analysis
-            await Clients.Caller.SendAsync("StatusUpdate", "💭 Understanding emotional content...", 35);
-            await Task.Delay(300);
-            var emotionalMarkers = await _analysisEngine.AnalyzeEmotionalContentAsync(fullResponseText);
-            interaction.Response.Emotion = emotionalMarkers;
-
-            // Stage 3: Bayesian update
-            await Clients.Caller.SendAsync("StatusUpdate", "🧮 Updating belief model with Bayesian inference...", 55);
-            await Task.Delay(300);
-            var updatedSnapshot = _inferenceEngine.UpdateModel(profile, interaction, analysis);
+            // IMMEDIATELY queue for background processing
+            await Clients.Caller.SendAsync("StatusUpdate", "✓ Response recorded", 20);
+            _responseQueue.QueueResponse(profileId, interaction);
             
-            if (profile.CurrentBeliefSnapshot != null)
+            var pendingCount = _responseQueue.GetPendingCountForUser(profileId);
+            await Clients.Caller.SendAsync("StatusUpdate", 
+                $"⚡ Queued for analysis ({pendingCount} pending)", 40);
+
+            // IMMEDIATELY get next question from prefetch queue
+            UserInteraction? nextQuestion = null;
+            if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
             {
-                profile.HistoricalSnapshots.Add(profile.CurrentBeliefSnapshot);
+                var hash = ComputeQuestionHash(prefetchedQuestion);
+                profile.AskedQuestionHashes.Add(hash);
+                nextQuestion = prefetchedQuestion;
+                await Clients.Caller.SendAsync("StatusUpdate", 
+                    $"💡 Next question ready ({profile.PrefetchedQuestions.Count} queued)", 80);
             }
-            profile.CurrentBeliefSnapshot = updatedSnapshot;
-            profile.LastInteractionAt = DateTime.UtcNow;
-            profile.Stage = DetermineStage(profile);
+            else
+            {
+                // Fallback: generate question now if prefetch is empty
+                await Clients.Caller.SendAsync("StatusUpdate", "⏳ Generating question...", 60);
+                nextQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
+                var hash = ComputeQuestionHash(nextQuestion);
+                profile.AskedQuestionHashes.Add(hash);
+            }
 
-            // Stage 4: Generate next question
-            await Clients.Caller.SendAsync("StatusUpdate", "💡 Generating your next question...", 80);
-            await Task.Delay(300);
-            var nextQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
             _profileStore.SetPendingInteraction(profileId, nextQuestion);
+            
+            // Trigger prefetch to keep queue full
+            _prefetchService.RequestPrefetch(profileId);
 
-            // Complete
-            await Clients.Caller.SendAsync("StatusUpdate", "✨ Complete!", 100);
+            // Complete - don't wait for AI processing
+            await Clients.Caller.SendAsync("StatusUpdate", "✨ Ready!", 100);
             await Clients.Caller.SendAsync("ProcessingComplete", new
             {
-                UpdatedConfidence = updatedSnapshot.OverallConfidence,
                 NextQuestion = nextQuestion,
                 InteractionCount = profile.InteractionCount,
-                Stage = profile.Stage.ToString()
+                Stage = profile.Stage.ToString(),
+                PendingAnalysis = pendingCount,
+                PrefetchedQuestions = profile.PrefetchedQuestions.Count
             });
         }
         catch (Exception ex)
@@ -166,6 +169,23 @@ public class DiscoveryHub : Hub
             _logger.LogError(ex, "Error processing response for profile {ProfileId}", profileId);
             await Clients.Caller.SendAsync("Error", $"Processing failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Compute hash for question to detect duplicates
+    /// </summary>
+    private string ComputeQuestionHash(UserInteraction interaction)
+    {
+        var content = interaction.Content.Question ?? "";
+        if (interaction.Content.Options?.Any() == true)
+        {
+            content += "|" + string.Join("|", interaction.Content.Options);
+        }
+        if (!string.IsNullOrEmpty(interaction.Content.Context))
+        {
+            content += "|" + interaction.Content.Context;
+        }
+        return content.GetHashCode().ToString();
     }
 
     /// <summary>
@@ -201,18 +221,5 @@ public class DiscoveryHub : Hub
             _logger.LogError(ex, "Error starting discovery for {UserName}", userName);
             await Clients.Caller.SendAsync("Error", $"Failed to start: {ex.Message}");
         }
-    }
-
-    private DiscoveryStage DetermineStage(UserProfile profile)
-    {
-        var count = profile.InteractionCount;
-        return count switch
-        {
-            < 5 => DiscoveryStage.Initial,
-            < 15 => DiscoveryStage.Foundation,
-            < 30 => DiscoveryStage.Exploration,
-            < 60 => DiscoveryStage.Refinement,
-            _ => DiscoveryStage.Continuous
-        };
     }
 }

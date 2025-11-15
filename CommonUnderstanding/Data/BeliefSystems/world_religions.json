@@ -1,0 +1,329 @@
+[
+  {
+    "Name": "Buddhism (Theravada)",
+    "Category": "Religion",
+    "Culture": "Indian/Southeast Asian",
+    "Era": "6th century BCE - Present",
+    "Description": "The oldest surviving branch of Buddhism, emphasizing individual enlightenment through the Four Noble Truths and the Eightfold Path.",
+    "Sources": [
+      "Pali Canon (Tipitaka)",
+      "Dhammapada"
+    ],
+    "CreationMyth": "Buddhist cosmology describes cycles of creation and destruction (kalpas) rather than a single creation event. The universe arises from collective karma.",
+    "CorePrinciples": [
+      "Four Noble Truths: Life involves suffering, suffering arises from craving, suffering can cease, the path to cessation is the Eightfold Path",
+      "Anatta (no-self): There is no permanent, unchanging self",
+      "Anicca (impermanence): All conditioned things are impermanent",
+      "Karma: Actions have consequences across lifetimes",
+      "Nirvana: Liberation from the cycle of rebirth"
+    ],
+    "NotableFigures": [
+      "Siddhartha Gautama (The Buddha)",
+      "Buddhaghosa",
+      "Mahasi Sayadaw"
+    ],
+    "Regions": [
+      "Sri Lanka",
+      "Thailand",
+      "Myanmar",
+      "Cambodia",
+      "Laos"
+    ]
+  },
+  {
+    "Name": "Christianity (Catholic)",
+    "Category": "Religion",
+    "Culture": "Western/Global",
+    "Era": "1st century CE - Present",
+    "Description": "The largest Christian denomination, emphasizing apostolic succession, sacraments, and the authority of the Pope.",
+    "Sources": [
+      "Bible (Old and New Testament)",
+      "Catechism of the Catholic Church",
+      "Papal Encyclicals"
+    ],
+    "CreationMyth": "God created the universe in six days and rested on the seventh. Humans were created in God's image, fell from grace through original sin, and await redemption.",
+    "CorePrinciples": [
+      "Trinity: One God in three persons (Father, Son, Holy Spirit)",
+      "Salvation through Jesus Christ's death and resurrection",
+      "Seven Sacraments as means of grace",
+      "Papal infallibility in matters of faith and morals",
+      "Natural law and moral theology",
+      "Social justice and preferential option for the poor"
+    ],
+    "NotableFigures": [
+      "Jesus Christ",
+      "Saint Peter",
+      "Saint Augustine",
+      "Thomas Aquinas",
+      "Pope Francis"
+    ],
+    "Regions": [
+      "Latin America",
+      "Southern Europe",
+      "Philippines",
+      "Sub-Saharan Africa"
+    ]
+  },
+  {
+    "Name": "Islam (Sunni)",
+    "Category": "Religion",
+    "Culture": "Middle Eastern/Global",
+    "Era": "7th century CE - Present",
+    "Description": "The largest denomination of Islam, following the Sunnah (practices) of Muhammad and the first four caliphs.",
+    "Sources": [
+      "Quran",
+      "Hadith collections (Sahih al-Bukhari, Sahih Muslim)",
+      "Four schools of jurisprudence (Hanafi, Maliki, Shafi'i, Hanbali)"
+    ],
+    "CreationMyth": "Allah created the heavens and earth in six days. Adam was created from clay, and all humans descend from Adam and Eve.",
+    "CorePrinciples": [
+      "Tawhid: Absolute monotheism - Allah is one and indivisible",
+      "Five Pillars: Shahada (faith), Salat (prayer), Zakat (charity), Sawm (fasting), Hajj (pilgrimage)",
+      "Prophets: Muhammad is the final prophet in a line including Abraham, Moses, and Jesus",
+      "Quran is the literal word of God",
+      "Sharia: Divine law governing all aspects of life",
+      "Ummah: Universal Muslim community"
+    ],
+    "NotableFigures": [
+      "Prophet Muhammad",
+      "Abu Bakr",
+      "Umar ibn al-Khattab",
+      "Al-Ghazali",
+      "Ibn Khaldun"
+    ],
+    "Regions": [
+      "Middle East",
+      "North Africa",
+      "South Asia",
+      "Southeast Asia"
+    ]
+  },
+  {
+    "Name": "Hinduism (Advaita Vedanta)",
+    "Category": "Religion",
+    "Culture": "Indian",
+    "Era": "8th century CE - Present (philosophy); roots in 1500 BCE (Vedas)",
+    "Description": "Non-dualistic school of Hindu philosophy teaching that Brahman (ultimate reality) and Atman (individual soul) are identical.",
+    "Sources": [
+      "Upanishads",
+      "Brahma Sutras",
+      "Bhagavad Gita",
+      "Works of Adi Shankara"
+    ],
+    "CreationMyth": "Creation is cyclical, emerging from Brahman through Maya (cosmic illusion). The universe undergoes endless cycles of creation and dissolution.",
+    "CorePrinciples": [
+      "Brahman: Ultimate, unchanging reality",
+      "Maya: The illusory nature of the material world",
+      "Atman = Brahman: Individual consciousness is identical to universal consciousness",
+      "Moksha: Liberation through realization of one's true nature",
+      "Karma and reincarnation",
+      "Jnana Yoga: Path of knowledge and self-inquiry"
+    ],
+    "NotableFigures": [
+      "Adi Shankara",
+      "Ramana Maharshi",
+      "Swami Vivekananda"
+    ],
+    "Regions": [
+      "India",
+      "Nepal"
+    ]
+  },
+  {
+    "Name": "Taoism",
+    "Category": "Religion",
+    "Culture": "Chinese",
+    "Era": "4th century BCE - Present",
+    "Description": "Chinese philosophical and religious tradition emphasizing living in harmony with the Tao (the Way).",
+    "Sources": [
+      "Tao Te Ching (Laozi)",
+      "Zhuangzi",
+      "I Ching"
+    ],
+    "CreationMyth": "The Tao is the source of all existence. From the Tao came the One, from the One came Yin and Yang, from these came all things.",
+    "CorePrinciples": [
+      "Tao: The fundamental nature of the universe",
+      "Wu wei: Non-action or effortless action in harmony with natural flow",
+      "Yin and Yang: Complementary opposites in dynamic balance",
+      "Simplicity and naturalness",
+      "Non-attachment to outcomes",
+      "Three Treasures: compassion, frugality, humility"
+    ],
+    "NotableFigures": [
+      "Laozi",
+      "Zhuangzi",
+      "Zhang Daoling"
+    ],
+    "Regions": [
+      "China",
+      "Taiwan",
+      "Singapore"
+    ]
+  },
+  {
+    "Name": "Judaism (Orthodox)",
+    "Category": "Religion",
+    "Culture": "Jewish/Middle Eastern",
+    "Era": "Ancient (2000 BCE) - Present",
+    "Description": "Traditional form of Judaism adhering strictly to Torah law and rabbinic interpretations.",
+    "Sources": [
+      "Torah (Written Law)",
+      "Talmud (Oral Law)",
+      "Mishnah",
+      "Shulchan Aruch"
+    ],
+    "CreationMyth": "God created the world in six days. Humans are created in God's image and given dominion over the earth. Jews are God's chosen people with whom He made a covenant.",
+    "CorePrinciples": [
+      "Monotheism: One God, creator of the universe",
+      "Torah as divine revelation",
+      "613 Mitzvot (commandments)",
+      "Covenant between God and the Jewish people",
+      "Messiah will come to redeem Israel",
+      "Importance of study, prayer, and observance",
+      "Tikkun Olam: Repairing the world"
+    ],
+    "NotableFigures": [
+      "Moses",
+      "Rabbi Akiva",
+      "Maimonides (Rambam)",
+      "The Baal Shem Tov"
+    ],
+    "Regions": [
+      "Israel",
+      "United States",
+      "Europe"
+    ]
+  },
+  {
+    "Name": "Confucianism",
+    "Category": "Philosophy",
+    "Culture": "Chinese",
+    "Era": "6th century BCE - Present",
+    "Description": "Chinese ethical and philosophical system emphasizing moral cultivation, social harmony, and proper conduct.",
+    "Sources": [
+      "Analects",
+      "Mencius",
+      "Doctrine of the Mean",
+      "Great Learning"
+    ],
+    "CorePrinciples": [
+      "Ren (仁): Humaneness, benevolence",
+      "Li (禮): Ritual propriety, proper conduct",
+      "Filial piety: Respect for parents and ancestors",
+      "Five Relationships: ruler-subject, father-son, husband-wife, elder-younger, friend-friend",
+      "Junzi: The ideal of the cultivated person",
+      "Education and self-cultivation",
+      "Meritocracy in governance"
+    ],
+    "NotableFigures": [
+      "Confucius (Kong Fuzi)",
+      "Mencius",
+      "Xunzi",
+      "Zhu Xi"
+    ],
+    "Regions": [
+      "China",
+      "Korea",
+      "Japan",
+      "Vietnam"
+    ]
+  },
+  {
+    "Name": "Stoicism",
+    "Category": "Philosophy",
+    "Culture": "Greco-Roman",
+    "Era": "3rd century BCE - Present",
+    "Description": "Ancient Greek philosophy teaching that virtue, reason, and living in accordance with nature lead to eudaimonia (flourishing).",
+    "Sources": [
+      "Meditations (Marcus Aurelius)",
+      "Letters from a Stoic (Seneca)",
+      "Discourses (Epictetus)",
+      "Enchiridion"
+    ],
+    "CorePrinciples": [
+      "Dichotomy of control: Focus only on what you can control",
+      "Virtue is the sole good; vice is the sole evil",
+      "Living according to nature and reason",
+      "Apatheia: Freedom from destructive emotions",
+      "Amor fati: Love of one's fate",
+      "Cosmopolitanism: All humans are part of one universal community",
+      "Memento mori: Remember death"
+    ],
+    "NotableFigures": [
+      "Zeno of Citium",
+      "Epictetus",
+      "Seneca",
+      "Marcus Aurelius"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Roman Empire",
+      "Modern global revival"
+    ]
+  },
+  {
+    "Name": "Secular Humanism",
+    "Category": "Philosophy",
+    "Culture": "Western",
+    "Era": "20th century - Present",
+    "Description": "Non-religious philosophy affirming human dignity, reason, ethics, and justice without supernatural beliefs.",
+    "Sources": [
+      "Humanist Manifesto I, II, III",
+      "Works of Bertrand Russell",
+      "The God Delusion (Richard Dawkins)",
+      "Enlightenment Now (Steven Pinker)"
+    ],
+    "CorePrinciples": [
+      "No supernatural or divine authority",
+      "Human reason and science as tools for understanding",
+      "Ethical values derived from human experience and empathy",
+      "Individual autonomy and freedom of thought",
+      "Democratic values and human rights",
+      "Social responsibility and altruism",
+      "Critical thinking and skepticism"
+    ],
+    "NotableFigures": [
+      "Bertrand Russell",
+      "Carl Sagan",
+      "Richard Dawkins",
+      "Steven Pinker",
+      "Paul Kurtz"
+    ],
+    "Regions": [
+      "Western Europe",
+      "North America",
+      "Australia"
+    ]
+  },
+  {
+    "Name": "Indigenous Australian Dreamtime",
+    "Category": "Mythological",
+    "Culture": "Australian Aboriginal",
+    "Era": "Ancient (40,000+ years) - Present",
+    "Description": "Aboriginal Australian spiritual framework where ancestral beings created the land and established law and culture.",
+    "Sources": [
+      "Oral traditions",
+      "Song lines",
+      "Rock art",
+      "Ceremony"
+    ],
+    "CreationMyth": "During the Dreamtime, ancestral spirits rose from the earth and sky, creating the land, animals, plants, and people. These beings established the laws and customs before transforming into features of the landscape.",
+    "CorePrinciples": [
+      "All life is interconnected",
+      "Land is sacred and holds ancestral presence",
+      "Custodianship rather than ownership of land",
+      "Circular time: past, present, and future coexist",
+      "Knowledge transmitted through story, song, and ceremony",
+      "Kinship systems define social responsibilities",
+      "Balance and harmony with nature"
+    ],
+    "NotableFigures": [
+      "Rainbow Serpent",
+      "Wandjina spirits",
+      "Various tribal ancestors"
+    ],
+    "Regions": [
+      "Australia"
+    ]
+  }
+]

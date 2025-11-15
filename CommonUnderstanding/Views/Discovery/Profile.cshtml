@@ -34,6 +34,75 @@
             }
             else
             {
+                <!-- Universe Position Card (if available) -->
+                @if (ViewBag.UniversePosition != null)
+                {
+                    var position = (CommonUnderstanding.Models.BeliefUniversePosition)ViewBag.UniversePosition;
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-globe"></i> Your Position in the Belief Universe</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="lead">@position.PositionNarrative</p>
+                            
+                            @if (position.NearestSystems?.Any() == true)
+                            {
+                                <hr />
+                                <h6 class="mb-3">Belief Systems Being Analyzed:</h6>
+                                @foreach (var match in position.NearestSystems.Take(5))
+                                {
+                                    var system = ViewBag.AllSystems != null ? 
+                                        ((List<CommonUnderstanding.Models.CanonicalBeliefSystem>)ViewBag.AllSystems)
+                                        .FirstOrDefault(s => s.Id == match.SystemId) : null;
+                                    
+                                    @if (system != null)
+                                    {
+                                        <div class="mb-3 p-3 border rounded">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 class="mb-1">@system.Name</h6>
+                                                    <small class="text-muted">
+                                                        @system.Culture • @system.Era
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-muted">Analyzing...</small>
+                                                </div>
+                                            </div>
+                                            <p class="small mb-0">@system.Description</p>
+                                        </div>
+                                    }
+                                }
+                                <div class="alert alert-info mt-3">
+                                    <small>
+                                        <i class="bi bi-info-circle"></i> Continue answering questions to calculate precise matches with these and other belief systems from around the world.
+                                    </small>
+                                </div>
+                            }
+                            
+                            @if (position.UniverseCoordinates?.Any() == true)
+                            {
+                                <hr />
+                                <h6 class="mb-3">Your Dimensional Profile:</h6>
+                                <div class="row">
+                                    @foreach (var coord in position.UniverseCoordinates.Take(8))
+                                    {
+                                        <div class="col-md-6 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="small">@coord.Key</span>
+                                                <span class="badge bg-secondary">@coord.Value.ToString("F2")</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar" style="width: @(((coord.Value + 1) / 2 * 100).ToString("F0"))%;"></div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <!-- Overall Confidence -->
                 <div class="card mb-4">
                     <div class="card-body">

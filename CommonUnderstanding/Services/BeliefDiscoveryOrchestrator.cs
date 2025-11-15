@@ -10,17 +10,20 @@ public class BeliefDiscoveryOrchestrator
     private readonly DiscoveryQuestionEngine _questionEngine;
     private readonly ResponseAnalysisEngine _analysisEngine;
     private readonly BayesianInferenceEngine _inferenceEngine;
+    private readonly QuestionPrefetchService _prefetchService;
     private readonly ILogger<BeliefDiscoveryOrchestrator> _logger;
 
     public BeliefDiscoveryOrchestrator(
         DiscoveryQuestionEngine questionEngine,
         ResponseAnalysisEngine analysisEngine,
         BayesianInferenceEngine inferenceEngine,
+        QuestionPrefetchService prefetchService,
         ILogger<BeliefDiscoveryOrchestrator> logger)
     {
         _questionEngine = questionEngine;
         _analysisEngine = analysisEngine;
         _inferenceEngine = inferenceEngine;
+        _prefetchService = prefetchService;
         _logger = logger;
     }
 
@@ -62,6 +65,9 @@ public class BeliefDiscoveryOrchestrator
         _logger.LogInformation("Generating next question for user {UserId}", profile.Id);
         var nextQuestion = await GenerateAdaptiveQuestionAsync(profile);
 
+        // 7. Trigger background prefetch of additional questions
+        _prefetchService.RequestPrefetch(profile.Id);
+
         var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
         _logger.LogInformation("Completed processing cycle for user {UserId} in {Time}ms. " +
                              "Confidence: {Confidence:F3}",
@@ -88,14 +94,24 @@ public class BeliefDiscoveryOrchestrator
     /// </summary>
     private async Task<UserInteraction> GenerateAdaptiveQuestionAsync(UserProfile profile)
     {
+        // First, check if we have prefetched questions available
+        if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
+        {
+            var hash = ComputeQuestionHash(prefetchedQuestion);
+            profile.AskedQuestionHashes.Add(hash);
+            _logger.LogInformation("Using prefetched question for user {UserId}", profile.Id);
+            return prefetchedQuestion;
+        }
+
+        // No prefetched questions, generate one now
         var snapshot = profile.CurrentBeliefSnapshot;
         if (snapshot == null)
-            return await _questionEngine.GenerateNextQuestionAsync(profile);
+            return await GenerateUniqueQuestionAsync(profile);
 
         // Decide what type of question to ask next
         var questionType = DetermineNextQuestionType(profile, snapshot);
 
-        return questionType switch
+        var question = questionType switch
         {
             QuestionStrategy.MultipleChoice => _questionEngine.GenerateMultipleChoiceQuestion(profile, snapshot),
             QuestionStrategy.ScaleQuestion => GenerateScaleQuestion(profile, snapshot),
@@ -103,8 +119,63 @@ public class BeliefDiscoveryOrchestrator
             QuestionStrategy.MoralDilemma => _questionEngine.GenerateMoralDilemmaMultipleChoice(profile, snapshot),
             QuestionStrategy.EmotionalProbe => _questionEngine.GenerateScenarioMultipleChoice(profile, snapshot),
             QuestionStrategy.FollowUp => _questionEngine.GenerateMultipleChoiceQuestion(profile, snapshot),
-            _ => await _questionEngine.GenerateNextQuestionAsync(profile)
+            _ => await GenerateUniqueQuestionAsync(profile)
         };
+
+        // Mark question as asked
+        var questionHash = ComputeQuestionHash(question);
+        profile.AskedQuestionHashes.Add(questionHash);
+
+        return question;
+    }
+
+    /// <summary>
+    /// Generate a unique question that hasn't been asked before
+    /// </summary>
+    private async Task<UserInteraction> GenerateUniqueQuestionAsync(UserProfile profile)
+    {
+        const int maxAttempts = 10;
+        
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var question = await _questionEngine.GenerateNextQuestionAsync(profile);
+            var questionHash = ComputeQuestionHash(question);
+            
+            if (!profile.AskedQuestionHashes.Contains(questionHash))
+            {
+                profile.AskedQuestionHashes.Add(questionHash);
+                return question;
+            }
+            
+            _logger.LogWarning("Generated duplicate question for user {UserId}, attempt {Attempt}", 
+                profile.Id, attempt + 1);
+        }
+
+        // If we still get duplicates after max attempts, allow it but log warning
+        _logger.LogError("Could not generate unique question for user {UserId} after {Attempts} attempts - allowing duplicate", 
+            profile.Id, maxAttempts);
+        
+        var fallbackQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
+        var fallbackHash = ComputeQuestionHash(fallbackQuestion);
+        profile.AskedQuestionHashes.Add(fallbackHash);
+        return fallbackQuestion;
+    }
+
+    /// <summary>
+    /// Compute hash for question to detect duplicates
+    /// </summary>
+    private string ComputeQuestionHash(UserInteraction interaction)
+    {
+        var content = interaction.Content.Question ?? "";
+        if (interaction.Content.Options?.Any() == true)
+        {
+            content += "|" + string.Join("|", interaction.Content.Options);
+        }
+        if (!string.IsNullOrEmpty(interaction.Content.Context))
+        {
+            content += "|" + interaction.Content.Context;
+        }
+        return content.GetHashCode().ToString();
     }
 
     /// <summary>

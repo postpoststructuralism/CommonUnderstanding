@@ -1,0 +1,251 @@
+[
+  {
+    "Name": "Existentialism",
+    "Category": "Philosophy",
+    "Culture": "Western European",
+    "Era": "19th-20th century",
+    "Description": "Philosophy emphasizing individual existence, freedom, choice, and the search for meaning in an absurd universe.",
+    "Sources": [
+      "Being and Nothingness (Jean-Paul Sartre)",
+      "The Myth of Sisyphus (Albert Camus)",
+      "Either/Or (Søren Kierkegaard)",
+      "Man's Search for Meaning (Viktor Frankl)"
+    ],
+    "CorePrinciples": [
+      "Existence precedes essence",
+      "Radical freedom and responsibility",
+      "Authenticity: living according to one's own values",
+      "Angst and the confrontation with nothingness",
+      "Absurdity of existence",
+      "Individual must create own meaning",
+      "Bad faith: self-deception about one's freedom"
+    ],
+    "NotableFigures": [
+      "Søren Kierkegaard",
+      "Friedrich Nietzsche",
+      "Jean-Paul Sartre",
+      "Albert Camus",
+      "Simone de Beauvoir"
+    ],
+    "Regions": [
+      "France",
+      "Germany",
+      "Global influence"
+    ]
+  },
+  {
+    "Name": "Pragmatism",
+    "Category": "Philosophy",
+    "Culture": "American",
+    "Era": "Late 19th century - Present",
+    "Description": "Philosophy that evaluates theories and beliefs by their practical consequences and usefulness.",
+    "Sources": [
+      "Pragmatism (William James)",
+      "How to Make Our Ideas Clear (Charles Sanders Peirce)",
+      "Democracy and Education (John Dewey)"
+    ],
+    "CorePrinciples": [
+      "Truth is what works in practice",
+      "Meaning comes from practical consequences",
+      "Anti-foundationalism: no absolute truths",
+      "Experimental method in philosophy",
+      "Context-dependent knowledge",
+      "Fallibilism: all beliefs are provisional",
+      "Problem-solving orientation"
+    ],
+    "NotableFigures": [
+      "Charles Sanders Peirce",
+      "William James",
+      "John Dewey",
+      "Richard Rorty"
+    ],
+    "Regions": [
+      "United States"
+    ]
+  },
+  {
+    "Name": "Utilitarianism",
+    "Category": "Philosophy",
+    "Culture": "British",
+    "Era": "18th-19th century - Present",
+    "Description": "Ethical theory that the right action is that which maximizes overall happiness or well-being.",
+    "Sources": [
+      "An Introduction to the Principles of Morals and Legislation (Jeremy Bentham)",
+      "Utilitarianism (John Stuart Mill)",
+      "Reasons and Persons (Derek Parfit)"
+    ],
+    "CorePrinciples": [
+      "Greatest happiness principle: maximize utility",
+      "Consequentialism: outcomes determine morality",
+      "Impartial consideration of all affected parties",
+      "Hedonism: pleasure is good, pain is bad",
+      "Calculation of costs and benefits",
+      "Individual rights may be overridden for greater good",
+      "Progressive social reform"
+    ],
+    "NotableFigures": [
+      "Jeremy Bentham",
+      "John Stuart Mill",
+      "Henry Sidgwick",
+      "Peter Singer"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "Global academic influence"
+    ]
+  },
+  {
+    "Name": "Kantian Ethics (Deontology)",
+    "Category": "Philosophy",
+    "Culture": "German/Western",
+    "Era": "18th century - Present",
+    "Description": "Ethical theory emphasizing duty, universal moral laws, and treating persons as ends in themselves.",
+    "Sources": [
+      "Groundwork of the Metaphysics of Morals (Immanuel Kant)",
+      "Critique of Practical Reason (Immanuel Kant)",
+      "Justice as Fairness (John Rawls)"
+    ],
+    "CorePrinciples": [
+      "Categorical Imperative: act only on maxims you could will to be universal laws",
+      "Persons are ends in themselves, never mere means",
+      "Duty and moral law over consequences",
+      "Autonomy and rational agency",
+      "Good will is the only unconditional good",
+      "Universal human dignity",
+      "Moral duties are absolute, not conditional"
+    ],
+    "NotableFigures": [
+      "Immanuel Kant",
+      "Christine Korsgaard",
+      "John Rawls"
+    ],
+    "Regions": [
+      "Germany",
+      "Global academic influence"
+    ]
+  },
+  {
+    "Name": "Virtue Ethics (Aristotelian)",
+    "Category": "Philosophy",
+    "Culture": "Ancient Greek/Western",
+    "Era": "4th century BCE - Present",
+    "Description": "Ethical theory focused on character, virtues, and human flourishing rather than rules or consequences.",
+    "Sources": [
+      "Nicomachean Ethics (Aristotle)",
+      "After Virtue (Alasdair MacIntyre)",
+      "On Virtue Ethics (Rosalind Hursthouse)"
+    ],
+    "CorePrinciples": [
+      "Eudaimonia: human flourishing as the highest good",
+      "Virtues as character excellences",
+      "Golden mean: virtue lies between extremes",
+      "Practical wisdom (phronesis) guides action",
+      "Character developed through habituation",
+      "Teleological: humans have natural purpose",
+      "Community and relationships essential for ethics"
+    ],
+    "NotableFigures": [
+      "Aristotle",
+      "Thomas Aquinas",
+      "Alasdair MacIntyre",
+      "Philippa Foot"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Medieval Europe",
+      "Modern global revival"
+    ]
+  },
+  {
+    "Name": "Rationalism (Cartesian)",
+    "Category": "Philosophy",
+    "Culture": "Western European",
+    "Era": "17th century - Present",
+    "Description": "Epistemological position that reason and innate ideas are the primary sources of knowledge.",
+    "Sources": [
+      "Meditations on First Philosophy (René Descartes)",
+      "Ethics (Baruch Spinoza)",
+      "Monadology (Gottfried Leibniz)"
+    ],
+    "CorePrinciples": [
+      "Reason as primary source of knowledge",
+      "A priori knowledge independent of experience",
+      "Innate ideas exist in the mind",
+      "Mathematical and logical certainty as model",
+      "Mind-body dualism",
+      "Systematic doubt to reach certainty",
+      "Deductive reasoning from first principles"
+    ],
+    "NotableFigures": [
+      "René Descartes",
+      "Baruch Spinoza",
+      "Gottfried Leibniz"
+    ],
+    "Regions": [
+      "France",
+      "Netherlands",
+      "Germany"
+    ]
+  },
+  {
+    "Name": "Empiricism",
+    "Category": "Philosophy",
+    "Culture": "British",
+    "Era": "17th-18th century - Present",
+    "Description": "Epistemological position that all knowledge comes from sensory experience.",
+    "Sources": [
+      "An Essay Concerning Human Understanding (John Locke)",
+      "A Treatise of Human Nature (David Hume)",
+      "The Principles of Human Knowledge (George Berkeley)"
+    ],
+    "CorePrinciples": [
+      "All knowledge derives from experience",
+      "Mind is a 'blank slate' (tabula rasa) at birth",
+      "No innate ideas",
+      "Observation and experiment as sources of knowledge",
+      "Skepticism about knowledge beyond experience",
+      "Inductive reasoning from particulars to generals",
+      "Focus on sensory perception"
+    ],
+    "NotableFigures": [
+      "John Locke",
+      "George Berkeley",
+      "David Hume",
+      "John Stuart Mill"
+    ],
+    "Regions": [
+      "United Kingdom"
+    ]
+  },
+  {
+    "Name": "Phenomenology",
+    "Category": "Philosophy",
+    "Culture": "German/European",
+    "Era": "20th century - Present",
+    "Description": "Philosophical movement studying consciousness and the structures of experience from the first-person point of view.",
+    "Sources": [
+      "Logical Investigations (Edmund Husserl)",
+      "Being and Time (Martin Heidegger)",
+      "Phenomenology of Perception (Maurice Merleau-Ponty)"
+    ],
+    "CorePrinciples": [
+      "Study of lived experience and consciousness",
+      "Intentionality: consciousness is always 'of' something",
+      "Bracketing (epoché): suspending assumptions about reality",
+      "Essence is found through phenomenological reduction",
+      "Being-in-the-world",
+      "Embodied consciousness",
+      "'To the things themselves' - return to direct experience"
+    ],
+    "NotableFigures": [
+      "Edmund Husserl",
+      "Martin Heidegger",
+      "Maurice Merleau-Ponty",
+      "Jean-Paul Sartre"
+    ],
+    "Regions": [
+      "Germany",
+      "France"
+    ]
+  }
+]

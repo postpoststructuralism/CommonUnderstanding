@@ -11,6 +11,9 @@ builder.Services.AddSignalR();
 // Register SHARED profile store (singleton - used by both Controller and Hub)
 builder.Services.AddSingleton<UserProfileStore>();
 
+// Register Belief System Knowledge Base (singleton - loaded once at startup)
+builder.Services.AddSingleton<BeliefSystemKnowledgeBase>();
+
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
 builder.Services.AddScoped<BeliefAnalysisService>();
@@ -20,6 +23,16 @@ builder.Services.AddScoped<DiscoveryQuestionEngine>();
 builder.Services.AddScoped<ResponseAnalysisEngine>();
 builder.Services.AddScoped<BayesianInferenceEngine>();
 builder.Services.AddScoped<BeliefDiscoveryOrchestrator>();
+
+// Register question prefetch background service as singleton
+builder.Services.AddSingleton<QuestionPrefetchService>();
+// Register the singleton instance as the hosted service
+builder.Services.AddHostedService(sp => sp.GetRequiredService<QuestionPrefetchService>());
+
+// Register response processing queue background service as singleton
+builder.Services.AddSingleton<ResponseProcessingQueue>();
+// Register the singleton instance as the hosted service
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ResponseProcessingQueue>());
 
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();

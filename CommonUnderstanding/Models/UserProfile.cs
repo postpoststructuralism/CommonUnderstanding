@@ -34,6 +34,21 @@ public class UserProfile
     /// Number of interactions completed
     /// </summary>
     public int InteractionCount => Interactions.Count;
+    
+    /// <summary>
+    /// Track which questions have been asked to prevent repetition
+    /// </summary>
+    public HashSet<string> AskedQuestionHashes { get; set; } = new();
+    
+    /// <summary>
+    /// Pre-fetched questions ready to be served
+    /// </summary>
+    public Queue<UserInteraction> PrefetchedQuestions { get; set; } = new();
+    
+    /// <summary>
+    /// Dimensions that have been explored sufficiently
+    /// </summary>
+    public HashSet<string> ExploredDimensions { get; set; } = new();
 }
 
 /// <summary>
