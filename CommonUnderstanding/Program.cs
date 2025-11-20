@@ -5,6 +5,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Add HttpContextAccessor for views that need Request access
+builder.Services.AddHttpContextAccessor();
+
+// Add HttpClient for AI status monitoring
+builder.Services.AddHttpClient();
+
 // Add SignalR for real-time streaming
 builder.Services.AddSignalR();
 
@@ -13,6 +19,9 @@ builder.Services.AddSingleton<UserProfileStore>();
 
 // Register Belief System Knowledge Base (singleton - loaded once at startup)
 builder.Services.AddSingleton<BeliefSystemKnowledgeBase>();
+
+// Register runtime AI config (overrides for endpoint, model, agent)
+builder.Services.AddSingleton<RuntimeAiConfigService>();
 
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
@@ -58,17 +67,15 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
 app.UseAuthorization();
 
-app.MapStaticAssets();
-
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");

@@ -26,8 +26,8 @@
                             <option value="">-- Select a belief system --</option>
                             @foreach (var system in allSystems!)
                             {
-                                var isSelected1 = request?.Query["system1"].ToString() == Uri.EscapeDataString(system.Name);
-                                <option value="@Uri.EscapeDataString(system.Name)" selected="@isSelected1">
+                                var isSelected1 = request?.Query["system1"].ToString() == system.Slug;
+                                    <option value="@system.Slug" selected="@isSelected1">
                                     @system.Name (@system.Category)
                                 </option>
                             }
@@ -44,8 +44,8 @@
                             <option value="">-- Select a belief system --</option>
                             @foreach (var system in allSystems!)
                             {
-                                var isSelected2 = request?.Query["system2"].ToString() == Uri.EscapeDataString(system.Name);
-                                <option value="@Uri.EscapeDataString(system.Name)" selected="@isSelected2">
+                                var isSelected2 = request?.Query["system2"].ToString() == system.Slug;
+                                <option value="@system.Slug" selected="@isSelected2">
                                     @system.Name (@system.Category)
                                 </option>
                             }
@@ -58,8 +58,8 @@
 
     @if (Model != null)
     {
-        var system1 = allSystems!.FirstOrDefault(s => s.Name == Model.System1);
-        var system2 = allSystems!.FirstOrDefault(s => s.Name == Model.System2);
+        var system1 = allSystems!.FirstOrDefault(s => s.Slug == Model.System1) ?? allSystems!.FirstOrDefault(s => s.Name == Model.System1);
+        var system2 = allSystems!.FirstOrDefault(s => s.Slug == Model.System2) ?? allSystems!.FirstOrDefault(s => s.Name == Model.System2);
 
         <!-- Comparison Results -->
         <div class="row mb-4">
@@ -116,7 +116,7 @@
                                 </ul>
                             }
                         }
-                        <a asp-action="System" asp-route-name="@Uri.EscapeDataString(Model.System1)" 
+                                          <a asp-action="System" asp-route-slug="@system1?.Slug" 
                            class="btn btn-sm btn-outline-info mt-2">
                             <i class="bi bi-book"></i> Full Details
                         </a>
@@ -151,7 +151,7 @@
                                 </ul>
                             }
                         }
-                        <a asp-action="System" asp-route-name="@Uri.EscapeDataString(Model.System2)" 
+                                                                <a asp-action="System" asp-route-slug="@system2?.Slug" 
                            class="btn btn-sm btn-outline-success mt-2">
                             <i class="bi bi-book"></i> Full Details
                         </a>

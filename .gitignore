@@ -85,3 +85,5 @@ Thumbs.db
 # Local development settings
 appsettings.Development.json
 launchSettings.json
+/app-logs
+/app-logs-latest

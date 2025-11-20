@@ -12,22 +12,37 @@ public class SemanticKernelService
     private readonly IConfiguration _configuration;
     private readonly ILogger<SemanticKernelService> _logger;
     private Kernel? _kernel;
+    private string? _currentEndpoint;
+    private string? _currentModel;
+    private readonly RuntimeAiConfigService _runtimeConfig;
 
     public SemanticKernelService(
         IConfiguration configuration,
-        ILogger<SemanticKernelService> logger)
+        ILogger<SemanticKernelService> logger,
+        RuntimeAiConfigService runtimeConfig)
     {
         _configuration = configuration;
         _logger = logger;
+        _runtimeConfig = runtimeConfig;
     }
 
     public Kernel GetKernel()
     {
+        // Rebuild kernel if runtime configuration has changed
+        var runtimeEndpoint = _runtimeConfig.Endpoint ?? _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+        var runtimeModel = _runtimeConfig.Model ?? _configuration["Ollama:ModelName"] ?? "llama3.2:1b";
+
+        if (_kernel != null && (_currentEndpoint != runtimeEndpoint || _currentModel != runtimeModel))
+        {
+            _logger.LogInformation("Runtime AI configuration changed. Rebuilding kernel.");
+            _kernel = null;
+        }
+
         if (_kernel != null)
             return _kernel;
 
-        var ollamaEndpoint = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
-        var ollamaModel = _configuration["Ollama:ModelName"] ?? "llama3.2:1b";
+        var ollamaEndpoint = _runtimeConfig.Endpoint ?? _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+        var ollamaModel = _runtimeConfig.Model ?? _configuration["Ollama:ModelName"] ?? "llama3.2:1b";
 
         _logger.LogInformation("Initializing Semantic Kernel with Ollama at {Endpoint} using model {Model}", 
             ollamaEndpoint, ollamaModel);
@@ -39,6 +54,10 @@ public class SemanticKernelService
             builder.AddOllamaChatCompletion(
                 modelId: ollamaModel,
                 endpoint: new Uri(ollamaEndpoint));
+
+            // cache the current values
+            _currentEndpoint = ollamaEndpoint;
+            _currentModel = ollamaModel;
 
             _kernel = builder.Build();
             

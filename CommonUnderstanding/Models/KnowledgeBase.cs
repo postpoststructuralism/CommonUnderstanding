@@ -8,6 +8,8 @@ namespace CommonUnderstanding.Models;
 public class CanonicalBeliefSystem
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
+    // URL-friendly slug derived from the Name
+    public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty; // Religion, Philosophy, Political, Scientific
     public string Culture { get; set; } = string.Empty;

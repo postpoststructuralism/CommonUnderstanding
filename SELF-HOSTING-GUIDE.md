@@ -22,6 +22,26 @@ This guide will help you host CommonUnderstanding on your own hardware with mini
 
 **If you just want to get started NOW on your current Windows PC:**
 
+> **📘 For detailed Ollama installation help**, see [OLLAMA_SETUP.md](OLLAMA_SETUP.md)
+
+### Prerequisites
+
+1. **Install Ollama** (if not already installed):
+   - Download from [https://ollama.com/download/windows](https://ollama.com/download/windows)
+   - Run the installer
+   - Ollama will start automatically in the background
+   
+2. **Download a model**:
+   ```powershell
+   ollama pull llama3.2:3b
+   ```
+
+3. **Verify Ollama is running**:
+   ```powershell
+   Invoke-WebRequest http://localhost:11434
+   # Should return: "Ollama is running"
+   ```
+
 ### Option A: Run Manually (Test First)
 
 1. **Open PowerShell as Administrator**
@@ -205,6 +225,8 @@ This guide will help you host CommonUnderstanding on your own hardware with mini
 
 ### Step 2: Install Required Software (GUI Method)
 
+> **📘 For detailed Ollama installation**, see [OLLAMA_SETUP.md](OLLAMA_SETUP.md)
+
 **Using Ubuntu Software Center (GUI):**
 
 1. **Open Ubuntu Software** (click grid icon, search "Software")
@@ -221,16 +243,28 @@ This guide will help you host CommonUnderstanding on your own hardware with mini
    sudo apt install -y dotnet-sdk-9.0
    ```
 
-4. **Install Ollama:**
+4. **Install Ollama** (runs as local service):
    ```bash
    curl -fsSL https://ollama.com/install.sh | sh
-   ollama pull llama3.2:1b
+   ```
+   
+   Ollama automatically installs as a systemd service and starts running. Verify:
+   ```bash
+   sudo systemctl status ollama
+   curl http://localhost:11434  # Should return: "Ollama is running"
    ```
 
-5. **Install Git:**
+5. **Download an AI model**:
+   ```bash
+   ollama pull llama3.2:3b
+   ```
+
+6. **Install Git**:
    ```bash
    sudo apt install -y git
    ```
+
+**Important**: The application will connect to Ollama at `http://localhost:11434`. No additional configuration needed!
 
 ### Step 3: Deploy Your App (GUI + Minimal Terminal)
 

@@ -1,0 +1,144 @@
+@model IEnumerable<CommonUnderstanding.Models.CanonicalBeliefSystem>
+
+@{
+    ViewData["Title"] = "Belief Systems Map";
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-globe-americas"></i> Geographic Origins
+            </h1>
+            <p class="lead text-muted mb-4">
+                Explore where belief systems originated and spread across the world.
+            </p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Coming Soon:</strong> Interactive map visualization showing the geographic origins 
+                and historical spread of belief systems. For now, browse systems by region below.
+            </div>
+        </div>
+    </div>
+
+    <!-- Region-based listing -->
+    @{
+        var byRegion = Model.GroupBy(s => {
+            if (s.Regions.Any(r => r.Contains("East Asia") || r.Contains("China") || r.Contains("Japan") || r.Contains("Korea")))
+                return "East Asia";
+            if (s.Regions.Any(r => r.Contains("South Asia") || r.Contains("India")))
+                return "South Asia";
+            if (s.Regions.Any(r => r.Contains("Middle East") || r.Contains("Arabia") || r.Contains("Persia")))
+                return "Middle East";
+            if (s.Regions.Any(r => r.Contains("Europe") || r.Contains("Greece") || r.Contains("Rome")))
+                return "Europe";
+            if (s.Regions.Any(r => r.Contains("Americas") || r.Contains("Mesoamerica")))
+                return "Americas";
+            if (s.Regions.Any(r => r.Contains("Africa")))
+                return "Africa";
+            if (s.Regions.Any(r => r.Contains("Global") || r.Contains("Worldwide")))
+                return "Global";
+            return "Other";
+        }).OrderBy(g => g.Key);
+    }
+
+    @foreach (var region in byRegion)
+    {
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="border-bottom pb-2 mb-3">
+                    <i class="bi bi-geo-alt-fill text-primary"></i> @region.Key
+                </h2>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    @foreach (var system in region.OrderBy(s => s.Name))
+                    {
+                        var categoryColor = system.Category switch
+                        {
+                            "Religion" => "purple",
+                            "Philosophy" => "indigo",
+                            "Political System" => "blue",
+                            "Modern Worldview" => "teal",
+                            _ => "secondary"
+                        };
+
+                        <div class="col">
+                            <div class="card h-100 border-@categoryColor" style="border-width: 2px;">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a href="@Url.Action("System", new { name = system.Name })" 
+                                           class="text-decoration-none text-dark">
+                                            @system.Name
+                                        </a>
+                                    </h5>
+                                    <p class="card-text">
+                                        <span class="badge bg-@categoryColor mb-2">@system.Category</span><br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> @system.Era<br>
+                                            @if (system.Regions.Any())
+                                            {
+                                                <i class="bi bi-pin-map"></i> @string.Join(", ", system.Regions.Take(2))
+                                            }
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="@Url.Action("System", new { name = system.Name })" 
+                                       class="btn btn-sm btn-outline-@categoryColor">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to All Systems
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-purple { border-color: #6f42c1 !important; }
+    .border-indigo { border-color: #6610f2 !important; }
+    .border-blue { border-color: #0d6efd !important; }
+    .border-teal { border-color: #20c997 !important; }
+    
+    .btn-outline-purple { 
+        color: #6f42c1; 
+        border-color: #6f42c1; 
+    }
+    .btn-outline-purple:hover { 
+        background-color: #6f42c1; 
+        color: white; 
+    }
+    
+    .btn-outline-indigo { 
+        color: #6610f2; 
+        border-color: #6610f2; 
+    }
+    .btn-outline-indigo:hover { 
+        background-color: #6610f2; 
+        color: white; 
+    }
+    
+    .btn-outline-teal { 
+        color: #20c997; 
+        border-color: #20c997; 
+    }
+    .btn-outline-teal:hover { 
+        background-color: #20c997; 
+        color: white; 
+    }
+</style>

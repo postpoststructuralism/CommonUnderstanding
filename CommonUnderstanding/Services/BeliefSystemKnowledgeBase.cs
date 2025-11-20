@@ -43,6 +43,12 @@ public class BeliefSystemKnowledgeBase
 
                 if (systems != null)
                 {
+                    // Compute slug for each system so we can route using a stable URL-friendly value
+                    foreach (var s in systems)
+                    {
+                        s.Slug = GenerateSlug(s.Name);
+                    }
+
                     _allSystems.AddRange(systems);
                     _logger.LogInformation("Loaded {Count} belief systems from {File}", systems.Count, Path.GetFileName(file));
                 }
@@ -56,9 +62,27 @@ public class BeliefSystemKnowledgeBase
         _logger.LogInformation("Total belief systems loaded: {Count}", _allSystems.Count);
     }
 
+    private static string GenerateSlug(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        // normalize and remove diacritics
+        var normalized = value.Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray();
+        var cleaned = new string(chars).Normalize(System.Text.NormalizationForm.FormC);
+        // remove invalid chars, replace spaces with hyphens, lowercase
+        var slug = System.Text.RegularExpressions.Regex.Replace(cleaned, "[^a-zA-Z0-9\\s-]", "").Trim();
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, "\\s+", "-").ToLowerInvariant();
+        return slug;
+    }
+
     public CanonicalBeliefSystem? GetByName(string name)
     {
         return _allSystems.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public CanonicalBeliefSystem? GetBySlug(string slug)
+    {
+        return _allSystems.FirstOrDefault(s => s.Slug.Equals(slug, StringComparison.OrdinalIgnoreCase));
     }
 
     public List<CanonicalBeliefSystem> GetByCategory(string category)

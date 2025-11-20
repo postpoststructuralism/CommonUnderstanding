@@ -209,6 +209,11 @@ public class DiscoveryHub : Hub
             var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
             _profileStore.SetPendingInteraction(profile.Id, firstQuestion);
 
+            await Clients.Caller.SendAsync("StatusUpdate", "Preparing questions...", 75);
+            
+            // Give prefetch service a moment to start generating questions
+            await Task.Delay(100);
+            
             await Clients.Caller.SendAsync("StatusUpdate", "Ready to begin!", 100);
             await Clients.Caller.SendAsync("DiscoveryStarted", new
             {

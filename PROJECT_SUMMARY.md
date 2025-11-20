@@ -11,9 +11,19 @@ Most people struggle to articulate their own beliefs accurately. Rather than ask
 ### Stack
 - **ASP.NET Core 9.0 MVC** - Web framework
 - **Microsoft Semantic Kernel** - AI orchestration
-- **Ollama (qwen2.5:3b)** - Local LLM for privacy-preserving AI analysis
+- **Ollama** - Local LLM runtime (runs at `localhost:11434` on each instance)
+  - Development: `llama3.2:1b` or `llama3.2:3b`
+  - Production: `llama3.2:3b` or `llama3.1:8b`
 - **Bayesian Inference Engine** - Statistical modeling of beliefs
 - **Moral Foundations Theory** - Psychological framework (Jonathan Haidt)
+
+### Deployment Architecture
+- **Local/Development**: Ollama runs locally on developer machine
+- **Self-Hosted**: Ollama runs as systemd service on same server as app
+- **Azure**: Ollama runs on dedicated Azure VM, App Service connects via private endpoint
+- **All instances use local Ollama** - No remote Ollama servers, ensuring privacy and low latency
+
+> **📘 See [OLLAMA_SETUP.md](OLLAMA_SETUP.md)** for comprehensive Ollama installation and configuration
 
 ### Core Components
 

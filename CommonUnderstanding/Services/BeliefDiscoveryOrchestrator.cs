@@ -85,6 +85,12 @@ public class BeliefDiscoveryOrchestrator
 
         // Initialize with a welcoming, foundational question
         var initialQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
+        var hash = ComputeQuestionHash(initialQuestion);
+        profile.AskedQuestionHashes.Add(hash);
+        
+        // Immediately trigger prefetch to queue up questions for rapid-fire answering
+        _logger.LogInformation("Triggering initial question prefetch for user {UserId}", profile.Id);
+        _prefetchService.RequestPrefetch(profile.Id);
         
         return initialQuestion;
     }

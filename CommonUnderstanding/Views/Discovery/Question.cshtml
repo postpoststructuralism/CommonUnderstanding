@@ -336,59 +336,15 @@
         }
 
         // Show loading state on form submit
-        document.getElementById('responseForm').addEventListener('submit', async function(e) {
+        document.getElementById('responseForm').addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
+            document.getElementById('submitText')?.classList.add('d-none');
+            document.getElementById('loadingText')?.classList.remove('d-none');
             
-            // Get form values
-            const selectedOption = document.querySelector('input[name="selectedOption"]:checked')?.value;
-            const response = document.getElementById('response')?.value || 
-                           document.getElementById('rankingResponse')?.value || 
-                           selectedOption || '';
-            const responseText = document.getElementById('responseText')?.value || '';
-            const numericValue = document.getElementById('scaleValue')?.value;
-            
-            // Try SignalR if available, otherwise fall back to regular form submission
-            if (connection && connection.state === signalR.HubConnectionState.Connected) {
-                e.preventDefault(); // Only prevent default if we're using SignalR
-                
-                try {
-                    showAIStatus("🚀 Sending your response to AI...", 5);
-                    
-                    // Get profile ID from cookie
-                    const profileId = document.cookie
-                        .split('; ')
-                        .find(row => row.startsWith('ProfileId='))
-                        ?.split('=')[1];
-                    
-                    if (!profileId) {
-                        throw new Error("Profile ID not found");
-                    }
-                    
-                    await connection.invoke("ProcessResponseStreaming", 
-                        profileId, 
-                        selectedOption || null,
-                        responseText || null,
-                        response || null,
-                        numericValue ? parseFloat(numericValue) : null
-                    );
-                } catch (err) {
-                    console.error("SignalR submission failed:", err);
-                    hideAIStatus();
-                    submitBtn.disabled = false;
-                    // Re-enable and submit via normal form post
-                    console.log("Falling back to normal form submission");
-                    // Remove this listener and submit again
-                    e.target.removeEventListener('submit', arguments.callee);
-                    e.target.submit();
-                }
-            } else {
-                // Use regular form submission
-                console.log("SignalR not connected, using normal form submission");
-                document.getElementById('submitText')?.classList.add('d-none');
-                document.getElementById('loadingText')?.classList.remove('d-none');
-                // Let the form submit naturally (don't prevent default)
-            }
+            // Always use regular form submission for now (SignalR/Ollama not configured on Azure)
+            console.log("Submitting via normal form post");
+            // Let the form submit naturally (don't prevent default)
         });
 
         function updateScaleValue(value) {

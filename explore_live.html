@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Explore Belief Systems - Common Understanding</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/site.css?v=j6fhJSuuyLpOSLuPJU0TsDV0iNjor5S3rDnvxJrt4bg" />
+    <link rel="stylesheet" href="/CommonUnderstanding.styles.css?v=EhfFJ6NdQ5NDUgGEZwnmFzn3msr939amWdmfgyn4lq4" />
+</head>
+<body>
+    <header b-6y63ftr83w>
+        <nav b-6y63ftr83w class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
+            <div b-6y63ftr83w class="container-fluid">
+                <a class="navbar-brand" href="/">
+                    <i b-6y63ftr83w class="bi bi-peace"></i> Common Understanding
+                </a>
+                <button b-6y63ftr83w class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span b-6y63ftr83w class="navbar-toggler-icon"></span>
+                </button>
+                <div b-6y63ftr83w class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul b-6y63ftr83w class="navbar-nav flex-grow-1">
+                        <li b-6y63ftr83w class="nav-item">
+                            <a class="nav-link text-white" href="/">
+                                <i b-6y63ftr83w class="bi bi-house"></i> Home
+                            </a>
+                        </li>
+                        <li b-6y63ftr83w class="nav-item">
+                            <a class="nav-link text-white" href="/Explore">
+                                <i b-6y63ftr83w class="bi bi-globe"></i> Explore Canon
+                            </a>
+                        </li>
+                        <li b-6y63ftr83w class="nav-item">
+                            <a class="nav-link text-white" href="/Discovery/Start">
+                                <i b-6y63ftr83w class="bi bi-compass"></i> Find Your Place
+                            </a>
+                        </li>
+                        <li b-6y63ftr83w class="nav-item">
+                            <a class="nav-link text-white" href="/Explore/Compare">
+                                <i b-6y63ftr83w class="bi bi-arrows-angle-expand"></i> Compare
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <!-- AI Control Panel -->
+    
+<style>
+    .control-panel {
+        position: fixed;
+        top: 60px;
+        right: 20px;
+        width: 400px;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+
+    .control-panel.collapsed {
+        width: 60px;
+        height: 60px;
+    }
+
+    .control-panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .control-panel.collapsed .control-panel-header {
+        border-radius: 6px;
+        padding: 18px;
+    }
+
+    .control-panel-body {
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .control-panel.collapsed .control-panel-body {
+        display: none;
+    }
+
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+
+    .status-green {
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+
+    .status-yellow {
+        background: #f59e0b;
+        box-shadow: 0 0 8px #f59e0b;
+    }
+
+    .status-red {
+        background: #ef4444;
+        box-shadow: 0 0 8px #ef4444;
+    }
+
+    .status-gray {
+        background: #6b7280;
+        box-shadow: 0 0 8px #6b7280;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin: 8px 0;
+        background: #f9fafb;
+        border-radius: 6px;
+        border-left: 4px solid transparent;
+    }
+
+    .status-row.ready {
+        border-left-color: #10b981;
+    }
+
+    .status-row.warning {
+        border-left-color: #f59e0b;
+    }
+
+    .status-row.error {
+        border-left-color: #ef4444;
+    }
+
+    .status-row.unknown {
+        border-left-color: #6b7280;
+    }
+
+    .status-label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 14px;
+    }
+
+    .status-value {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .btn-control {
+        width: 100%;
+        margin: 8px 0;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary-control {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-primary-control:hover {
+        background: #2563eb;
+    }
+
+    .btn-secondary-control {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .btn-secondary-control:hover {
+        background: #d1d5db;
+    }
+
+    .model-selector {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        margin: 8px 0;
+    }
+
+    .section-title {
+        font-weight: 700;
+        color: #111827;
+        margin: 20px 0 10px 0;
+        font-size: 16px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 8px;
+    }
+
+    .refresh-button {
+        background: transparent;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .refresh-button:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .toggle-button {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 13px;
+        color: #1e40af;
+    }
+
+    .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 13px;
+        color: #991b1b;
+    }
+
+    .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .metric-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .metric-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+</style>
+
+<div class="control-panel" id="aiControlPanel">
+    <div class="control-panel-header" onclick="togglePanel()">
+        <div>
+            <span class="status-indicator status-gray" id="mainStatusIndicator"></span>
+            <strong>AI Control Panel</strong>
+        </div>
+        <div>
+            <button class="refresh-button" onclick="refreshStatus(); event.stopPropagation();" title="Refresh Status">
+                ↻
+            </button>
+            <button class="toggle-button" id="toggleBtn">−</button>
+        </div>
+    </div>
+
+    <div class="control-panel-body">
+        <!-- Overall System Status -->
+        <div class="status-row" id="systemStatus">
+            <div>
+                <div class="status-label">System Status</div>
+                <div class="status-value" id="systemStatusText">Checking...</div>
+            </div>
+            <span class="status-indicator status-gray" id="systemStatusIndicator"></span>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="section-title">🔌 Connection</div>
+        
+        <div class="status-row" id="ollamaStatus">
+            <div>
+                <div class="status-label">Ollama Server</div>
+                <div class="status-value" id="ollamaEndpoint">...</div>
+            </div>
+            <span class="status-indicator status-gray" id="ollamaIndicator"></span>
+        </div>
+
+        <!-- Model Status -->
+        <div class="section-title">🤖 AI Model</div>
+        
+        <div class="status-row" id="modelStatus">
+            <div>
+                <div class="status-label">Current Model</div>
+                <div class="status-value" id="currentModel">...</div>
+            </div>
+            <span class="status-indicator status-gray" id="modelIndicator"></span>
+        </div>
+
+        <!-- Available Models -->
+        <div id="availableModelsSection" style="display: none;">
+            <label for="modelSelector" style="font-size: 13px; color: #6b7280; margin-top: 10px; display: block;">
+                Available Models:
+            </label>
+            <select class="model-selector" id="modelSelector">
+                <option value="">Loading...</option>
+            </select>
+            <button class="btn-control btn-secondary-control" onclick="switchModel()">
+                Switch Model
+            </button>
+        </div>
+
+        <!-- Agent Switch -->
+        <div class="section-title">🔀 Agent / Backend</div>
+        <div class="mb-2">
+            <label class="small">Agent</label>
+            <select class="model-selector" id="agentSelector">
+                <option value="ollama">Ollama (Local / Container)</option>
+                <option value="azureopenai">Azure OpenAI</option>
+                <option value="none">None / Disabled</option>
+            </select>
+            <button class="btn-control btn-secondary-control mt-2" onclick="switchAgent()">
+                Switch Agent
+            </button>
+        </div>
+
+        <!-- Metrics -->
+        <div class="section-title">📊 Performance</div>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="responseTime">--</div>
+                <div class="metric-label">Response Time (ms)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="uptime">--</div>
+                <div class="metric-label">Uptime</div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section-title">⚙️ Actions</div>
+        
+        <button class="btn-control btn-primary-control" onclick="testConnection()">
+            🔄 Test Connection
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="viewLogs()">
+            📋 View Logs
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="openConfiguration()">
+            ⚙️ Configuration
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="showDownloadInstructions()">
+            ⬇️ Download Model (instructions)
+        </button>
+
+        <!-- Info/Error Messages -->
+        <div id="messageBox" style="display: none;"></div>
+
+        <!-- Last Updated -->
+        <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #9ca3af;">
+            Last updated: <span id="lastUpdated">Never</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    let panelCollapsed = false;
+    let autoRefreshInterval = null;
+
+    // Toggle panel collapse
+    function togglePanel() {
+        panelCollapsed = !panelCollapsed;
+        const panel = document.getElementById('aiControlPanel');
+        const toggleBtn = document.getElementById('toggleBtn');
+        
+        if (panelCollapsed) {
+            panel.classList.add('collapsed');
+            toggleBtn.textContent = '+';
+        } else {
+            panel.classList.remove('collapsed');
+            toggleBtn.textContent = '−';
+        }
+    }
+
+    // Refresh status
+    async function refreshStatus() {
+        const startTime = performance.now();
+        
+        try {
+            const response = await fetch('/api/AIStatus/status');
+            const data = await response.json();
+            const endTime = performance.now();
+            const responseTime = Math.round(endTime - startTime);
+
+            updateUI(data, responseTime);
+        } catch (error) {
+            showError('Failed to fetch AI status: ' + error.message);
+        }
+    }
+
+    // Update UI with status data
+    function updateUI(data, responseTime) {
+        // Update timestamp
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+        document.getElementById('responseTime').textContent = responseTime;
+
+        // Update endpoint
+        document.getElementById('ollamaEndpoint').textContent = data.endpoint;
+
+        // Update Ollama connection status
+        const ollamaConnected = data.ollamaConnected;
+        updateStatusRow('ollamaStatus', 'ollamaIndicator', ollamaConnected, 
+            ollamaConnected ? 'Connected' : 'Disconnected');
+
+        // Update model status
+        const modelAvailable = data.modelAvailable;
+        document.getElementById('currentModel').textContent = data.modelName;
+        updateStatusRow('modelStatus', 'modelIndicator', modelAvailable,
+            modelAvailable ? 'Available' : 'Not Found');
+
+        // Update system status
+        let systemStatusText = '';
+        let systemReady = false;
+        
+        switch(data.systemStatus) {
+            case 'ready':
+                systemStatusText = '✓ Ready';
+                systemReady = true;
+                break;
+            case 'model-missing':
+                systemStatusText = '⚠ Model Not Available';
+                break;
+            case 'ollama-offline':
+                systemStatusText = '✗ Ollama Offline';
+                break;
+            default:
+                systemStatusText = '? Unknown';
+        }
+
+        document.getElementById('systemStatusText').textContent = systemStatusText;
+        updateStatusRow('systemStatus', 'systemStatusIndicator', systemReady, systemStatusText);
+        updateStatusRow('systemStatus', 'mainStatusIndicator', systemReady, systemStatusText);
+
+        // Update available models
+        if (data.availableModels && data.availableModels.length > 0) {
+            document.getElementById('availableModelsSection').style.display = 'block';
+            const selector = document.getElementById('modelSelector');
+            selector.innerHTML = data.availableModels.map(model => 
+                `<option value="${model}" ${model === data.modelName ? 'selected' : ''}>${model}</option>`
+            ).join('');
+        }
+
+        // Show info or error message
+        if (data.error) {
+            showError(data.error);
+        } else if (!ollamaConnected) {
+            showInfo('Ollama is not connected. Please ensure Ollama is running and accessible at: ' + data.endpoint);
+        } else if (!modelAvailable) {
+            showInfo('The configured model "' + data.modelName + '" is not available. Please download it or select a different model.');
+        } else {
+            hideMessage();
+        }
+    }
+
+    // Update status row
+    function updateStatusRow(rowId, indicatorId, isSuccess, statusText) {
+        const row = document.getElementById(rowId);
+        const indicator = document.getElementById(indicatorId);
+        
+        row.className = 'status-row ' + (isSuccess ? 'ready' : 'error');
+        indicator.className = 'status-indicator ' + (isSuccess ? 'status-green' : 'status-red');
+    }
+
+    // Show error message
+    function showError(message) {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.className = 'error-box';
+        messageBox.textContent = message;
+        messageBox.style.display = 'block';
+    }
+
+    // Show info message
+    function showInfo(message) {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.className = 'info-box';
+        messageBox.textContent = message;
+        messageBox.style.display = 'block';
+    }
+
+    // Hide message
+    function hideMessage() {
+        document.getElementById('messageBox').style.display = 'none';
+    }
+
+    // Test connection
+    async function testConnection() {
+        showInfo('Testing connection...');
+        await refreshStatus();
+    }
+
+    // Switch model
+    async function switchModel() {
+        const selectedModel = document.getElementById('modelSelector').value;
+        if (!selectedModel) { showInfo('Please select a model'); return; }
+        showInfo('Sending model switch request...');
+        try {
+            const response = await fetch('/api/AIStatus/switch-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelName: selectedModel })
+            });
+            const json = await response.json();
+            if (json.success || json.Success) {
+                showInfo('Model switch requested: ' + selectedModel);
+                await refreshStatus();
+            } else {
+                showError('Failed to request model switch: ' + (json.message || json.Message || 'Unknown error'));
+            }
+        } catch (err) {
+            showError('Error switching model: ' + err.message);
+        }
+    }
+
+    async function switchAgent() {
+        const selectedAgent = document.getElementById('agentSelector').value;
+        if (!selectedAgent) { showInfo('Please select an agent'); return; }
+        showInfo('Switching agent to ' + selectedAgent + '...');
+        try {
+            const response = await fetch('/api/AIStatus/switch-agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent: selectedAgent })
+            });
+            const json = await response.json();
+            if (json.success || json.Success) {
+                showInfo(json.message || 'Agent switched');
+                await refreshStatus();
+            } else {
+                showError(json.message || 'Failed to switch agent');
+            }
+        } catch (err) {
+            showError('Error switching agent: ' + err.message);
+        }
+    }
+
+    // View logs
+    function viewLogs() {
+        showInfo('Log viewing functionality coming soon. Check Azure Portal for now.');
+    }
+
+    // Open configuration
+    function openConfiguration() {
+        showInfo('To configure: Update appsettings.json or use Azure App Settings in the Azure Portal.');
+    }
+
+    function showDownloadInstructions() {
+        const model = document.getElementById('currentModel')?.textContent || 'llama3.2:3b';
+        const instructions = `Run on host with Ollama installed:\n\nollama pull ${model}\nollama serve\n`;
+        showInfo(instructions);
+        navigator.clipboard?.writeText(instructions).catch(() => {});
+    }
+
+    // Start auto-refresh on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshStatus();
+        
+        // Auto-refresh every 10 seconds
+        autoRefreshInterval = setInterval(refreshStatus, 10000);
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+</script>
+
+
+    <div b-6y63ftr83w class="container">
+        <main b-6y63ftr83w role="main" class="pb-3">
+            
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center mb-4">
+                <h1 class="display-4">
+                    <i class="bi bi-compass"></i> Explore Belief Systems
+                </h1>
+                <p class="lead text-muted">
+                    Discover worldviews, philosophies, and belief systems from across cultures and time
+                </p>
+            </div>
+
+            <!-- Quick Navigation -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-2">
+                    <a class="btn btn-outline-primary w-100 py-3" href="/Explore/Categories">
+                        <i class="bi bi-grid-3x3-gap"></i><br />
+                        <strong>By Category</strong><br />
+                        <small>Religion, Philosophy, Political</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a class="btn btn-outline-success w-100 py-3" href="/Explore/Map">
+                        <i class="bi bi-globe"></i><br />
+                        <strong>World Map</strong><br />
+                        <small>Geographic origins</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a class="btn btn-outline-info w-100 py-3" href="/Explore/Timeline">
+                        <i class="bi bi-clock-history"></i><br />
+                        <strong>Timeline</strong><br />
+                        <small>Historical evolution</small>
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a class="btn btn-outline-warning w-100 py-3" href="/Explore/Compare">
+                        <i class="bi bi-arrows-angle-expand"></i><br />
+                        <strong>Compare</strong><br />
+                        <small>Side-by-side analysis</small>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3" action="/Explore">
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" name="search" placeholder="Search by name, description, or principles..." />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category">
+                                <option value="">All Categories</option>
+                                    <option value="Mythological">Mythological</option>
+                                    <option value="Philosophy">Philosophy</option>
+                                    <option value="Political">Political</option>
+                                    <option value="Religion">Religion</option>
+                                    <option value="Worldview">Worldview</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Culture</label>
+                            <select class="form-select" name="culture">
+                                <option value="">All Cultures</option>
+                                    <option value="American">American</option>
+                                    <option value="Ancient Greek">Ancient Greek</option>
+                                    <option value="Australian Aboriginal">Australian Aboriginal</option>
+                                    <option value="British">British</option>
+                                    <option value="Chinese">Chinese</option>
+                                    <option value="Egyptian">Egyptian</option>
+                                    <option value="European">European</option>
+                                    <option value="German">German</option>
+                                    <option value="Germanic">Germanic</option>
+                                    <option value="Global">Global</option>
+                                    <option value="Global Environmental">Global Environmental</option>
+                                    <option value="Greco-Roman">Greco-Roman</option>
+                                    <option value="Hellenic">Hellenic</option>
+                                    <option value="Indian">Indian</option>
+                                    <option value="Jewish">Jewish</option>
+                                    <option value="Mesoamerican">Mesoamerican</option>
+                                    <option value="Mesopotamian">Mesopotamian</option>
+                                    <option value="Middle Eastern">Middle Eastern</option>
+                                    <option value="Scandinavian">Scandinavian</option>
+                                    <option value="Southeast Asian">Southeast Asian</option>
+                                    <option value="West African">West African</option>
+                                    <option value="Western">Western</option>
+                                    <option value="Western European">Western European</option>
+                                    <option value="Western Revival">Western Revival</option>
+                                    <option value="Western Synthesis">Western Synthesis</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results Summary -->
+            <div class="mb-3">
+                <h5>
+                    36 belief systems found
+                </h5>
+            </div>
+
+            <!-- Belief Systems Grid -->
+            <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Norse Paganism</h5>
+                                <small>Germanic/Scandinavian • Viking Age (8th-11th century)</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Scandinavia</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Pre-Christian polytheistic religion of the Norse people, emphasizing honor, fate, and the cosmic struggle between order and chaos.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Honor and reputation (frith) paramount</li>
+                                                <li>Fate (wyrd) is inescapable, even for gods</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/norse-paganism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Ancient Greek Religion</h5>
+                                <small>Hellenic • 8th century BCE - 4th century CE</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Greece</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Polytheistic religion of ancient Greece centered on the Olympian gods, emphasizing ritual, sacrifice, and human excellence.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Hubris (excessive pride) leads to nemesis (downfall)</li>
+                                                <li>Honor the gods through ritual and sacrifice</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/ancient-greek-religion">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Ancient Egyptian Religion</h5>
+                                <small>Egyptian • 3100 BCE - 4th century CE</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Egypt</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Complex polytheistic religion emphasizing the afterlife, cosmic order (ma&#x27;at), and the divine pharaoh.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Ma&#x27;at: cosmic order, truth, justice, and balance</li>
+                                                <li>Afterlife more important than earthly life</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/ancient-egyptian-religion">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Mesopotamian Religion (Sumerian/Babylonian)</h5>
+                                <small>Mesopotamian • 4000 BCE - 1st century CE</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Sumer</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Polytheistic religion of ancient Mesopotamia emphasizing service to capricious gods and acceptance of human limitations.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Humans created to serve the gods</li>
+                                                <li>Gods are powerful but capricious and petty</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/mesopotamian-religion-sumerianbabylonian">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Aztec Religion</h5>
+                                <small>Mesoamerican • 14th-16th century CE</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Central Mexico</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Complex polytheistic religion emphasizing cosmic cycles, human sacrifice to maintain universal order, and the dual nature of existence.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Blood sacrifice necessary to maintain cosmic order</li>
+                                                <li>Duality: life/death, order/chaos in constant balance</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/aztec-religion">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Yoruba Religion</h5>
+                                <small>West African • Ancient - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Nigeria</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Traditional religion of the Yoruba people emphasizing a supreme creator, intermediary orishas, and ancestor veneration.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Olodumare is supreme, distant creator</li>
+                                                <li>Orishas as intermediaries: forces of nature and archetypes</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/yoruba-religion">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Scientific Naturalism</h5>
+                                <small>Western/Global • 17th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">Global scientific community</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Worldview holding that natural laws govern all phenomena, the universe is self-contained, and scientific method is the primary path to knowledge.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Universe operates by natural laws, no supernatural intervention</li>
+                                                <li>Scientific method: observation, hypothesis, testing, revision</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/scientific-naturalism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Transhumanism</h5>
+                                <small>Western/Global • Late 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">Silicon Valley</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Intellectual movement advocating for using technology to enhance human physical and cognitive capabilities beyond current biological limitations.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Technology can and should enhance human capabilities</li>
+                                                <li>Death and suffering are problems to be solved, not accepted</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/transhumanism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Deep Ecology</h5>
+                                <small>Western/Global Environmental • Late 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">Norway</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Environmental philosophy emphasizing intrinsic value of all living beings and fundamental restructuring of human relationship with nature.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>All life has intrinsic value independent of utility to humans</li>
+                                                <li>Ecological diversity and richness have value in themselves</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/deep-ecology">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Effective Altruism</h5>
+                                <small>Western/Global • Early 21st century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">United Kingdom</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Philosophical and social movement using evidence and reason to determine the most effective ways to benefit others and acting on that basis.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Use evidence and reason to find the most effective ways to help others</li>
+                                                <li>Prioritize interventions by cost-effectiveness and scale</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/effective-altruism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Stoic Naturalism (Modern)</h5>
+                                <small>Western Revival • Late 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">Global online communities</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Contemporary revival of Stoic philosophy integrated with scientific naturalism, emphasizing virtue, acceptance of nature, and rational living.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Focus on what&#x27;s in your control, accept what isn&#x27;t</li>
+                                                <li>Live according to nature and reason</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/stoic-naturalism-modern">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-teal">
+                                <h5 class="card-title mb-0">Integral Theory</h5>
+                                <small>Western Synthesis • Late 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Worldview</span>
+                                        <span class="badge bg-info">United States</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Comprehensive framework attempting to integrate insights from multiple disciplines and worldviews using developmental and systems perspectives.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>AQAL framework: All Quadrants, All Levels, All Lines, All States, All Types</li>
+                                                <li>Developmental stages of consciousness</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/integral-theory">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Existentialism</h5>
+                                <small>Western European • 19th-20th century</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">France</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Philosophy emphasizing individual existence, freedom, choice, and the search for meaning in an absurd universe.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Existence precedes essence</li>
+                                                <li>Radical freedom and responsibility</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/existentialism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Pragmatism</h5>
+                                <small>American • Late 19th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">United States</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Philosophy that evaluates theories and beliefs by their practical consequences and usefulness.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Truth is what works in practice</li>
+                                                <li>Meaning comes from practical consequences</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/pragmatism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Utilitarianism</h5>
+                                <small>British • 18th-19th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">United Kingdom</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Ethical theory that the right action is that which maximizes overall happiness or well-being.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Greatest happiness principle: maximize utility</li>
+                                                <li>Consequentialism: outcomes determine morality</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/utilitarianism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Kantian Ethics (Deontology)</h5>
+                                <small>German/Western • 18th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">Germany</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Ethical theory emphasizing duty, universal moral laws, and treating persons as ends in themselves.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Categorical Imperative: act only on maxims you could will to be universal laws</li>
+                                                <li>Persons are ends in themselves, never mere means</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/kantian-ethics-deontology">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Virtue Ethics (Aristotelian)</h5>
+                                <small>Ancient Greek/Western • 4th century BCE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">Ancient Greece</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Ethical theory focused on character, virtues, and human flourishing rather than rules or consequences.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Eudaimonia: human flourishing as the highest good</li>
+                                                <li>Virtues as character excellences</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/virtue-ethics-aristotelian">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Rationalism (Cartesian)</h5>
+                                <small>Western European • 17th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">France</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Epistemological position that reason and innate ideas are the primary sources of knowledge.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Reason as primary source of knowledge</li>
+                                                <li>A priori knowledge independent of experience</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/rationalism-cartesian">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Empiricism</h5>
+                                <small>British • 17th-18th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">United Kingdom</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Epistemological position that all knowledge comes from sensory experience.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>All knowledge derives from experience</li>
+                                                <li>Mind is a &#x27;blank slate&#x27; (tabula rasa) at birth</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/empiricism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Phenomenology</h5>
+                                <small>German/European • 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">Germany</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Philosophical movement studying consciousness and the structures of experience from the first-person point of view.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Study of lived experience and consciousness</li>
+                                                <li>Intentionality: consciousness is always &#x27;of&#x27; something</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/phenomenology">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Liberalism (Classical)</h5>
+                                <small>Western • 17th-19th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">United Kingdom</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political philosophy emphasizing individual liberty, limited government, free markets, and rule of law.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Individual rights and freedoms as paramount</li>
+                                                <li>Limited government constrained by constitution</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/liberalism-classical">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Socialism (Democratic)</h5>
+                                <small>Western/Global • 19th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">Scandinavia</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political and economic system advocating for social ownership of means of production and democratic control of the economy.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Social ownership of means of production</li>
+                                                <li>Economic equality and redistribution</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/socialism-democratic">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Anarchism</h5>
+                                <small>Western/Global • 19th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">Spain (historical)</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political philosophy advocating for abolition of all hierarchical authority and the state, replaced by voluntary cooperation.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Abolition of the state and all coercive hierarchies</li>
+                                                <li>Voluntary association and mutual aid</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/anarchism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Conservatism (Traditional)</h5>
+                                <small>Western • 18th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">United Kingdom</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political philosophy emphasizing preservation of traditional institutions, gradual change, and skepticism of radical reform.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Tradition and continuity with the past</li>
+                                                <li>Gradual, organic change over revolution</li>
+                                                <li class="text-muted">+6 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/conservatism-traditional">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Libertarianism</h5>
+                                <small>Western • 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">United States</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political philosophy emphasizing maximum individual freedom and minimal government intervention in both personal and economic spheres.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Non-aggression principle</li>
+                                                <li>Maximum individual liberty in all spheres</li>
+                                                <li class="text-muted">+6 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/libertarianism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-blue">
+                                <h5 class="card-title mb-0">Communitarianism</h5>
+                                <small>Western • Late 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Political</span>
+                                        <span class="badge bg-info">United States</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Political philosophy emphasizing community values, social responsibility, and the common good over individual rights.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Community and social bonds as primary</li>
+                                                <li>Common good over individual autonomy</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/communitarianism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Buddhism (Theravada)</h5>
+                                <small>Indian/Southeast Asian • 6th century BCE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Sri Lanka</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    The oldest surviving branch of Buddhism, emphasizing individual enlightenment through the Four Noble Truths and the Eightfold Path.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Four Noble Truths: Life involves suffering, suffering arises from craving, suffering can cease, the path to cessation is the Eightfold Path</li>
+                                                <li>Anatta (no-self): There is no permanent, unchanging self</li>
+                                                <li class="text-muted">+3 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/buddhism-theravada">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Christianity (Catholic)</h5>
+                                <small>Western/Global • 1st century CE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Latin America</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    The largest Christian denomination, emphasizing apostolic succession, sacraments, and the authority of the Pope.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Trinity: One God in three persons (Father, Son, Holy Spirit)</li>
+                                                <li>Salvation through Jesus Christ&#x27;s death and resurrection</li>
+                                                <li class="text-muted">+4 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/christianity-catholic">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Islam (Sunni)</h5>
+                                <small>Middle Eastern/Global • 7th century CE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Middle East</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    The largest denomination of Islam, following the Sunnah (practices) of Muhammad and the first four caliphs.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Tawhid: Absolute monotheism - Allah is one and indivisible</li>
+                                                <li>Five Pillars: Shahada (faith), Salat (prayer), Zakat (charity), Sawm (fasting), Hajj (pilgrimage)</li>
+                                                <li class="text-muted">+4 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/islam-sunni">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Hinduism (Advaita Vedanta)</h5>
+                                <small>Indian • 8th century CE - Present (philosophy); roots in 1500 BCE (Vedas)</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">India</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Non-dualistic school of Hindu philosophy teaching that Brahman (ultimate reality) and Atman (individual soul) are identical.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Brahman: Ultimate, unchanging reality</li>
+                                                <li>Maya: The illusory nature of the material world</li>
+                                                <li class="text-muted">+4 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/hinduism-advaita-vedanta">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Taoism</h5>
+                                <small>Chinese • 4th century BCE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">China</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Chinese philosophical and religious tradition emphasizing living in harmony with the Tao (the Way).
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Tao: The fundamental nature of the universe</li>
+                                                <li>Wu wei: Non-action or effortless action in harmony with natural flow</li>
+                                                <li class="text-muted">+4 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/taoism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-purple">
+                                <h5 class="card-title mb-0">Judaism (Orthodox)</h5>
+                                <small>Jewish/Middle Eastern • Ancient (2000 BCE) - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Religion</span>
+                                        <span class="badge bg-info">Israel</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Traditional form of Judaism adhering strictly to Torah law and rabbinic interpretations.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Monotheism: One God, creator of the universe</li>
+                                                <li>Torah as divine revelation</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/judaism-orthodox">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Confucianism</h5>
+                                <small>Chinese • 6th century BCE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">China</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Chinese ethical and philosophical system emphasizing moral cultivation, social harmony, and proper conduct.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Ren (&#x4EC1;): Humaneness, benevolence</li>
+                                                <li>Li (&#x79AE;): Ritual propriety, proper conduct</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/confucianism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Stoicism</h5>
+                                <small>Greco-Roman • 3rd century BCE - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">Ancient Greece</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Ancient Greek philosophy teaching that virtue, reason, and living in accordance with nature lead to eudaimonia (flourishing).
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>Dichotomy of control: Focus only on what you can control</li>
+                                                <li>Virtue is the sole good; vice is the sole evil</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/stoicism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-indigo">
+                                <h5 class="card-title mb-0">Secular Humanism</h5>
+                                <small>Western • 20th century - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Philosophy</span>
+                                        <span class="badge bg-info">Western Europe</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Non-religious philosophy affirming human dignity, reason, ethics, and justice without supernatural beliefs.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>No supernatural or divine authority</li>
+                                                <li>Human reason and science as tools for understanding</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/secular-humanism">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm hover-lift">
+                            <div class="card-header bg-gradient text-white bg-secondary">
+                                <h5 class="card-title mb-0">Indigenous Australian Dreamtime</h5>
+                                <small>Australian Aboriginal • Ancient (40,000&#x2B; years) - Present</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">Mythological</span>
+                                        <span class="badge bg-info">Australia</span>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    Aboriginal Australian spiritual framework where ancestral beings created the land and established law and culture.
+                                </p>
+                                    <div class="mb-2">
+                                        <strong class="small">Core Principles:</strong>
+                                        <ul class="small mb-0 ps-3">
+                                                <li>All life is interconnected</li>
+                                                <li>Land is sacred and holds ancestral presence</li>
+                                                <li class="text-muted">+5 more...</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a class="btn btn-sm btn-outline-primary w-100" href="/Explore/System/indigenous-australian-dreamtime">
+                                    <i class="bi bi-book"></i> Learn More
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .hover-lift {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+    }
+
+    .bg-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-indigo { background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); }
+    .bg-blue { background: linear-gradient(135deg, #2dce89 0%, #2dcecc 100%); }
+    .bg-teal { background: linear-gradient(135deg, #11cdef 0%, #1171ef 100%); }
+</style>
+
+        </main>
+    </div>
+
+    <footer b-6y63ftr83w class="border-top footer text-muted mt-5">
+        <div b-6y63ftr83w class="container text-center py-3">
+            <p b-6y63ftr83w class="mb-1">
+                <i b-6y63ftr83w class="bi bi-heart-fill text-danger"></i> 
+                <strong b-6y63ftr83w>Common Understanding</strong> - Finding what binds us together
+            </p>
+            <p b-6y63ftr83w class="small mb-0">
+                Powered by Semantic Kernel & Ollama | &copy; 2025
+            </p>
+        </div>
+    </footer>
+    <script src="/lib/jquery/dist/jquery.min.js"></script>
+    <script src="/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <script src="/js/site.js?v=hRQyftXiu1lLX2P9Ly9xa4gHJgLeR1uGN5qegUobtGo"></script>
+    
+</body>
+</html>

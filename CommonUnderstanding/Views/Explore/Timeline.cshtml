@@ -1,0 +1,162 @@
+@model IEnumerable<CommonUnderstanding.Models.CanonicalBeliefSystem>
+
+@{
+    ViewData["Title"] = "Belief Systems Timeline";
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-clock-history"></i> Historical Timeline
+            </h1>
+            <p class="lead text-muted mb-4">
+                Explore how belief systems emerged and evolved throughout human history.
+            </p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Coming Soon:</strong> Interactive timeline visualization with historical context. 
+                For now, browse systems organized by era below.
+            </div>
+        </div>
+    </div>
+
+    <!-- Era-based listing -->
+    @{
+        var eraOrder = new Dictionary<string, int>
+        {
+            { "Ancient", 1 },
+            { "Classical", 2 },
+            { "Medieval", 3 },
+            { "Early Modern", 4 },
+            { "Modern", 5 },
+            { "Contemporary", 6 }
+        };
+
+        var byEra = Model.GroupBy(s => {
+            var era = s.Era ?? "Unknown";
+            // Extract primary era from ranges like "Ancient (2000-1500 BCE)"
+            if (era.Contains("(")) era = era.Substring(0, era.IndexOf("(")).Trim();
+            return era;
+        }).OrderBy(g => eraOrder.TryGetValue(g.Key, out var order) ? order : 99);
+    }
+
+    @foreach (var era in byEra)
+    {
+        var eraIcon = era.Key switch
+        {
+            "Ancient" => "bi-globe2",
+            "Classical" => "bi-bank",
+            "Medieval" => "bi-mortarboard",
+            "Early Modern" => "bi-lightbulb",
+            "Modern" => "bi-gear",
+            "Contemporary" => "bi-rocket",
+            _ => "bi-clock"
+        };
+
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="border-bottom pb-2 mb-3">
+                    <i class="@eraIcon text-primary"></i> @era.Key Era
+                </h2>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    @foreach (var system in era.OrderBy(s => s.Name))
+                    {
+                        var categoryColor = system.Category switch
+                        {
+                            "Religion" => "purple",
+                            "Philosophy" => "indigo",
+                            "Political System" => "blue",
+                            "Modern Worldview" => "teal",
+                            _ => "secondary"
+                        };
+
+                        <div class="col">
+                            <div class="card h-100 border-@categoryColor" style="border-width: 2px;">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a href="@Url.Action("System", new { name = system.Name })" 
+                                           class="text-decoration-none text-dark">
+                                            @system.Name
+                                        </a>
+                                    </h5>
+                                    <p class="card-text">
+                                        <span class="badge bg-@categoryColor mb-2">@system.Category</span><br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> @system.Era<br>
+                                            @if (system.Culture != null)
+                                            {
+                                                <i class="bi bi-globe"></i> @system.Culture
+                                            }
+                                        </small>
+                                    </p>
+                                    @if (!string.IsNullOrEmpty(system.CreationMyth))
+                                    {
+                                        <p class="card-text">
+                                            <small class="text-muted fst-italic">
+                                                @(system.CreationMyth.Length > 100 ? system.CreationMyth.Substring(0, 100) + "..." : system.CreationMyth)
+                                            </small>
+                                        </p>
+                                    }
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="@Url.Action("System", new { name = system.Name })" 
+                                       class="btn btn-sm btn-outline-@categoryColor">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to All Systems
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-purple { border-color: #6f42c1 !important; }
+    .border-indigo { border-color: #6610f2 !important; }
+    .border-blue { border-color: #0d6efd !important; }
+    .border-teal { border-color: #20c997 !important; }
+    
+    .btn-outline-purple { 
+        color: #6f42c1; 
+        border-color: #6f42c1; 
+    }
+    .btn-outline-purple:hover { 
+        background-color: #6f42c1; 
+        color: white; 
+    }
+    
+    .btn-outline-indigo { 
+        color: #6610f2; 
+        border-color: #6610f2; 
+    }
+    .btn-outline-indigo:hover { 
+        background-color: #6610f2; 
+        color: white; 
+    }
+    
+    .btn-outline-teal { 
+        color: #20c997; 
+        border-color: #20c997; 
+    }
+    .btn-outline-teal:hover { 
+        background-color: #20c997; 
+        color: white; 
+    }
+</style>

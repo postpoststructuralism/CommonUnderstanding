@@ -40,7 +40,7 @@
                             <div class="card h-100 border-start border-4 @categoryColor.Replace("bg-", "border-")">
                                 <div class="card-body">
                                     <h5 class="card-title">
-                                        <a asp-action="System" asp-route-name="@Uri.EscapeDataString(system.Name)" 
+                                        <a asp-action="System" asp-route-slug="@system.Slug" 
                                            class="text-decoration-none text-dark">
                                             @system.Name
                                         </a>
@@ -62,7 +62,7 @@
                                             </span>
                                         </div>
                                     }
-                                    <a asp-action="System" asp-route-name="@Uri.EscapeDataString(system.Name)" 
+                                                                        <a asp-action="System" asp-route-slug="@system.Slug" 
                                        class="btn btn-sm btn-outline-primary">
                                         Learn More <i class="bi bi-arrow-right"></i>
                                     </a>

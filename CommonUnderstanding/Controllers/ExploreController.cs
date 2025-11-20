@@ -63,11 +63,16 @@ public class ExploreController : Controller
         return View(allSystems);
     }
 
-    // GET: Explore/System/{name}
-    [Route("Explore/System/{name}")]
-    public IActionResult System(string name)
+    // GET: Explore/System/{slug}
+    [Route("Explore/System/{slug}")]
+    public IActionResult System(string slug)
     {
-        var system = _knowledgeBase.GetByName(Uri.UnescapeDataString(name));
+        var system = _knowledgeBase.GetBySlug(Uri.UnescapeDataString(slug));
+        // Fallback for legacy URLs: if not found by slug, try by name
+        if (system == null)
+        {
+            system = _knowledgeBase.GetByName(Uri.UnescapeDataString(slug));
+        }
         
         if (system == null)
         {
@@ -88,6 +93,15 @@ public class ExploreController : Controller
         return View(system);
     }
 
+    // Legacy route: support name-based URLs and redirect to slug-based canonical route
+    [Route("Explore/SystemByName/{name}")]
+    public IActionResult SystemByName(string name)
+    {
+        var system = _knowledgeBase.GetByName(Uri.UnescapeDataString(name));
+        if (system == null) return NotFound();
+        return RedirectToActionPermanent(nameof(System), new { slug = system.Slug });
+    }
+
     // GET: Explore/Compare
     public IActionResult Compare(string? system1 = null, string? system2 = null)
     {
@@ -100,10 +114,16 @@ public class ExploreController : Controller
             return View((BeliefSystemComparison?)null);
         }
 
-        var comparison = _knowledgeBase.CompareBeliefSystems(
-            Uri.UnescapeDataString(system1), 
-            Uri.UnescapeDataString(system2)
-        );
+        // Try to resolve by slug first, then by name
+        var s1 = _knowledgeBase.GetBySlug(Uri.UnescapeDataString(system1)) ?? _knowledgeBase.GetByName(Uri.UnescapeDataString(system1));
+        var s2 = _knowledgeBase.GetBySlug(Uri.UnescapeDataString(system2)) ?? _knowledgeBase.GetByName(Uri.UnescapeDataString(system2));
+
+        if (s1 == null || s2 == null)
+        {
+            return View((BeliefSystemComparison?)null);
+        }
+
+        var comparison = _knowledgeBase.CompareBeliefSystems(s1.Name, s2.Name);
 
         return View(comparison);
     }

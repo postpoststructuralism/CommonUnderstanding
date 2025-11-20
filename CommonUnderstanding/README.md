@@ -49,19 +49,29 @@ Instead of asking people to describe their worldview (which they struggle with),
 ### Prerequisites
 
 1. **.NET 9.0 SDK** - [Download here](https://dotnet.microsoft.com/download/dotnet/9.0)
-2. **Ollama** - [Download here](https://ollama.ai/)
+2. **Ollama** - [Download here](https://ollama.ai/) - Runs **locally** on your machine
 3. A compatible Ollama model (e.g., llama3.2, llama3.1, mistral)
+
+> **📘 Detailed Ollama setup guide**: See [OLLAMA_SETUP.md](../OLLAMA_SETUP.md) for comprehensive installation and configuration instructions.
+
+**Important**: Ollama must be installed and running **locally** at `http://localhost:11434`. Each machine running the application needs its own Ollama instance.
 
 ### Setup in 3 Steps
 
 **1. Install and start Ollama**
 ```bash
 # Download a model
-ollama pull llama3.2
+ollama pull llama3.2:3b
 
-# Start Ollama (keep this running)
-ollama serve
+# Verify Ollama is running (should be automatic on Windows/macOS)
+# Linux/macOS:
+curl http://localhost:11434
+
+# Windows:
+Invoke-WebRequest http://localhost:11434
 ```
+
+> **Note**: Ollama runs as a background service after installation. See [OLLAMA_SETUP.md](../OLLAMA_SETUP.md) if you have issues.
 
 **2. Run the application**
 ```bash
@@ -334,10 +344,17 @@ Interactions  Confidence  Entropy  Dimensions
 ### "Error analyzing response. Make sure Ollama is running."
 
 **Solutions**:
-1. Check Ollama is running: `curl http://localhost:11434`
-2. Restart Ollama: `ollama serve`
+1. Check Ollama is running:
+   - **Linux/macOS**: `curl http://localhost:11434`
+   - **Windows**: `Invoke-WebRequest http://localhost:11434`
+   - Should return: "Ollama is running"
+2. Restart Ollama:
+   - **Linux**: `sudo systemctl restart ollama`
+   - **Windows/macOS**: Launch Ollama from Start Menu/Applications
 3. Check model is installed: `ollama list`
-4. Pull model if missing: `ollama pull llama3.2`
+4. Pull model if missing: `ollama pull llama3.2:3b`
+
+> **📘 Detailed troubleshooting**: See [OLLAMA_SETUP.md](../OLLAMA_SETUP.md#health-check--troubleshooting)
 
 ### Application is slow
 
@@ -420,11 +437,15 @@ This is an open demonstration project. Contributions welcome!
 - Statistical analysis enhancements
 - Testing and documentation
 
-## 📖 Further Reading
+## 📚 Further Reading
 
 **Essential Documentation**:
+- [OLLAMA_CHECKLIST.md](../OLLAMA_CHECKLIST.md) - Quick verification checklist before running
+- [OLLAMA_SETUP.md](../OLLAMA_SETUP.md) - Comprehensive Ollama installation and configuration
 - [DISCOVERY_SYSTEM.md](DISCOVERY_SYSTEM.md) - Deep technical dive into the discovery system
 - [QUICKSTART.md](QUICKSTART.md) - 5-minute getting started guide
+- [SELF-HOSTING-GUIDE.md](../SELF-HOSTING-GUIDE.md) - Deploy on your own hardware
+- [AZURE_DEPLOYMENT.md](../AZURE_DEPLOYMENT.md) - Deploy to Azure (includes Azure VM Ollama setup)
 
 **Theoretical Background**:
 - [Moral Foundations Theory](https://moralfoundations.org/) - Jonathan Haidt

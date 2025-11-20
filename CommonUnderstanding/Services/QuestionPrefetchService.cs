@@ -69,12 +69,21 @@ public class QuestionPrefetchService : BackgroundService
         try
         {
             var profile = _profileStore.GetProfile(userId);
-            if (profile == null || profile.PrefetchedQuestions.Count >= 10)
+            if (profile == null)
             {
-                return; // Already has enough questions queued (increased from 3 to 10)
+                _logger.LogWarning("Profile {UserId} not found for prefetch", userId);
+                return;
+            }
+            
+            if (profile.PrefetchedQuestions.Count >= 10)
+            {
+                _logger.LogDebug("User {UserId} already has {Count} prefetched questions, skipping", 
+                    userId, profile.PrefetchedQuestions.Count);
+                return; // Already has enough questions queued
             }
 
-            _logger.LogInformation("Pre-fetching questions for user {UserId}", userId);
+            _logger.LogInformation("Pre-fetching questions for user {UserId}, current queue: {Current}", 
+                userId, profile.PrefetchedQuestions.Count);
 
             // Generate up to 10 questions ahead for rapid-fire answering
             var questionsToGenerate = 10 - profile.PrefetchedQuestions.Count;

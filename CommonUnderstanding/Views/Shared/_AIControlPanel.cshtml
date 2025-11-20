@@ -1,0 +1,566 @@
+@{
+    ViewData["Title"] = "AI Control Panel";
+}
+
+<style>
+    .control-panel {
+        position: fixed;
+        top: 60px;
+        right: 20px;
+        width: 400px;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+
+    .control-panel.collapsed {
+        width: 60px;
+        height: 60px;
+    }
+
+    .control-panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .control-panel.collapsed .control-panel-header {
+        border-radius: 6px;
+        padding: 18px;
+    }
+
+    .control-panel-body {
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .control-panel.collapsed .control-panel-body {
+        display: none;
+    }
+
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+
+    .status-green {
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+
+    .status-yellow {
+        background: #f59e0b;
+        box-shadow: 0 0 8px #f59e0b;
+    }
+
+    .status-red {
+        background: #ef4444;
+        box-shadow: 0 0 8px #ef4444;
+    }
+
+    .status-gray {
+        background: #6b7280;
+        box-shadow: 0 0 8px #6b7280;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin: 8px 0;
+        background: #f9fafb;
+        border-radius: 6px;
+        border-left: 4px solid transparent;
+    }
+
+    .status-row.ready {
+        border-left-color: #10b981;
+    }
+
+    .status-row.warning {
+        border-left-color: #f59e0b;
+    }
+
+    .status-row.error {
+        border-left-color: #ef4444;
+    }
+
+    .status-row.unknown {
+        border-left-color: #6b7280;
+    }
+
+    .status-label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 14px;
+    }
+
+    .status-value {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .btn-control {
+        width: 100%;
+        margin: 8px 0;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary-control {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-primary-control:hover {
+        background: #2563eb;
+    }
+
+    .btn-secondary-control {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .btn-secondary-control:hover {
+        background: #d1d5db;
+    }
+
+    .model-selector {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        margin: 8px 0;
+    }
+
+    .section-title {
+        font-weight: 700;
+        color: #111827;
+        margin: 20px 0 10px 0;
+        font-size: 16px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 8px;
+    }
+
+    .refresh-button {
+        background: transparent;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .refresh-button:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .toggle-button {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 13px;
+        color: #1e40af;
+    }
+
+    .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 13px;
+        color: #991b1b;
+    }
+
+    .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .metric-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .metric-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+</style>
+
+<div class="control-panel" id="aiControlPanel">
+    <div class="control-panel-header" onclick="togglePanel()">
+        <div>
+            <span class="status-indicator status-gray" id="mainStatusIndicator"></span>
+            <strong>AI Control Panel</strong>
+        </div>
+        <div>
+            <button class="refresh-button" onclick="refreshStatus(); event.stopPropagation();" title="Refresh Status">
+                ↻
+            </button>
+            <button class="toggle-button" id="toggleBtn">−</button>
+        </div>
+    </div>
+
+    <div class="control-panel-body">
+        <!-- Overall System Status -->
+        <div class="status-row" id="systemStatus">
+            <div>
+                <div class="status-label">System Status</div>
+                <div class="status-value" id="systemStatusText">Checking...</div>
+            </div>
+            <span class="status-indicator status-gray" id="systemStatusIndicator"></span>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="section-title">🔌 Connection</div>
+        
+        <div class="status-row" id="ollamaStatus">
+            <div>
+                <div class="status-label">Ollama Server</div>
+                <div class="status-value" id="ollamaEndpoint">...</div>
+            </div>
+            <span class="status-indicator status-gray" id="ollamaIndicator"></span>
+        </div>
+
+        <!-- Model Status -->
+        <div class="section-title">🤖 AI Model</div>
+        
+        <div class="status-row" id="modelStatus">
+            <div>
+                <div class="status-label">Current Model</div>
+                <div class="status-value" id="currentModel">...</div>
+            </div>
+            <span class="status-indicator status-gray" id="modelIndicator"></span>
+        </div>
+
+        <!-- Available Models -->
+        <div id="availableModelsSection" style="display: none;">
+            <label for="modelSelector" style="font-size: 13px; color: #6b7280; margin-top: 10px; display: block;">
+                Available Models:
+            </label>
+            <select class="model-selector" id="modelSelector">
+                <option value="">Loading...</option>
+            </select>
+            <button class="btn-control btn-secondary-control" onclick="switchModel()">
+                Switch Model
+            </button>
+        </div>
+
+        <!-- Agent Switch -->
+        <div class="section-title">🔀 Agent / Backend</div>
+        <div class="mb-2">
+            <label class="small">Agent</label>
+            <select class="model-selector" id="agentSelector">
+                <option value="ollama">Ollama (Local / Container)</option>
+                <option value="azureopenai">Azure OpenAI</option>
+                <option value="none">None / Disabled</option>
+            </select>
+            <button class="btn-control btn-secondary-control mt-2" onclick="switchAgent()">
+                Switch Agent
+            </button>
+        </div>
+
+        <!-- Metrics -->
+        <div class="section-title">📊 Performance</div>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="responseTime">--</div>
+                <div class="metric-label">Response Time (ms)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="uptime">--</div>
+                <div class="metric-label">Uptime</div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section-title">⚙️ Actions</div>
+        
+        <button class="btn-control btn-primary-control" onclick="testConnection()">
+            🔄 Test Connection
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="viewLogs()">
+            📋 View Logs
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="openConfiguration()">
+            ⚙️ Configuration
+        </button>
+
+        <button class="btn-control btn-secondary-control" onclick="showDownloadInstructions()">
+            ⬇️ Download Model (instructions)
+        </button>
+
+        <!-- Info/Error Messages -->
+        <div id="messageBox" style="display: none;"></div>
+
+        <!-- Last Updated -->
+        <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #9ca3af;">
+            Last updated: <span id="lastUpdated">Never</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    let panelCollapsed = false;
+    let autoRefreshInterval = null;
+
+    // Toggle panel collapse
+    function togglePanel() {
+        panelCollapsed = !panelCollapsed;
+        const panel = document.getElementById('aiControlPanel');
+        const toggleBtn = document.getElementById('toggleBtn');
+        
+        if (panelCollapsed) {
+            panel.classList.add('collapsed');
+            toggleBtn.textContent = '+';
+        } else {
+            panel.classList.remove('collapsed');
+            toggleBtn.textContent = '−';
+        }
+    }
+
+    // Refresh status
+    async function refreshStatus() {
+        const startTime = performance.now();
+        
+        try {
+            const response = await fetch('/api/AIStatus/status');
+            const data = await response.json();
+            const endTime = performance.now();
+            const responseTime = Math.round(endTime - startTime);
+
+            updateUI(data, responseTime);
+        } catch (error) {
+            showError('Failed to fetch AI status: ' + error.message);
+        }
+    }
+
+    // Update UI with status data
+    function updateUI(data, responseTime) {
+        // Update timestamp
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+        document.getElementById('responseTime').textContent = responseTime;
+
+        // Update endpoint
+        document.getElementById('ollamaEndpoint').textContent = data.endpoint;
+
+        // Update Ollama connection status
+        const ollamaConnected = data.ollamaConnected;
+        updateStatusRow('ollamaStatus', 'ollamaIndicator', ollamaConnected, 
+            ollamaConnected ? 'Connected' : 'Disconnected');
+
+        // Update model status
+        const modelAvailable = data.modelAvailable;
+        document.getElementById('currentModel').textContent = data.modelName;
+        updateStatusRow('modelStatus', 'modelIndicator', modelAvailable,
+            modelAvailable ? 'Available' : 'Not Found');
+
+        // Update system status
+        let systemStatusText = '';
+        let systemReady = false;
+        
+        switch(data.systemStatus) {
+            case 'ready':
+                systemStatusText = '✓ Ready';
+                systemReady = true;
+                break;
+            case 'model-missing':
+                systemStatusText = '⚠ Model Not Available';
+                break;
+            case 'ollama-offline':
+                systemStatusText = '✗ Ollama Offline';
+                break;
+            default:
+                systemStatusText = '? Unknown';
+        }
+
+        document.getElementById('systemStatusText').textContent = systemStatusText;
+        updateStatusRow('systemStatus', 'systemStatusIndicator', systemReady, systemStatusText);
+        updateStatusRow('systemStatus', 'mainStatusIndicator', systemReady, systemStatusText);
+
+        // Update available models
+        if (data.availableModels && data.availableModels.length > 0) {
+            document.getElementById('availableModelsSection').style.display = 'block';
+            const selector = document.getElementById('modelSelector');
+            selector.innerHTML = data.availableModels.map(model => 
+                `<option value="${model}" ${model === data.modelName ? 'selected' : ''}>${model}</option>`
+            ).join('');
+        }
+
+        // Show info or error message
+        if (data.error) {
+            showError(data.error);
+        } else if (!ollamaConnected) {
+            showInfo('Ollama is not connected. Please ensure Ollama is running and accessible at: ' + data.endpoint);
+        } else if (!modelAvailable) {
+            showInfo('The configured model "' + data.modelName + '" is not available. Please download it or select a different model.');
+        } else {
+            hideMessage();
+        }
+    }
+
+    // Update status row
+    function updateStatusRow(rowId, indicatorId, isSuccess, statusText) {
+        const row = document.getElementById(rowId);
+        const indicator = document.getElementById(indicatorId);
+        
+        row.className = 'status-row ' + (isSuccess ? 'ready' : 'error');
+        indicator.className = 'status-indicator ' + (isSuccess ? 'status-green' : 'status-red');
+    }
+
+    // Show error message
+    function showError(message) {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.className = 'error-box';
+        messageBox.textContent = message;
+        messageBox.style.display = 'block';
+    }
+
+    // Show info message
+    function showInfo(message) {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.className = 'info-box';
+        messageBox.textContent = message;
+        messageBox.style.display = 'block';
+    }
+
+    // Hide message
+    function hideMessage() {
+        document.getElementById('messageBox').style.display = 'none';
+    }
+
+    // Test connection
+    async function testConnection() {
+        showInfo('Testing connection...');
+        await refreshStatus();
+    }
+
+    // Switch model
+    async function switchModel() {
+        const selectedModel = document.getElementById('modelSelector').value;
+        if (!selectedModel) { showInfo('Please select a model'); return; }
+        showInfo('Sending model switch request...');
+        try {
+            const response = await fetch('/api/AIStatus/switch-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelName: selectedModel })
+            });
+            const json = await response.json();
+            if (json.success || json.Success) {
+                showInfo('Model switch requested: ' + selectedModel);
+                await refreshStatus();
+            } else {
+                showError('Failed to request model switch: ' + (json.message || json.Message || 'Unknown error'));
+            }
+        } catch (err) {
+            showError('Error switching model: ' + err.message);
+        }
+    }
+
+    async function switchAgent() {
+        const selectedAgent = document.getElementById('agentSelector').value;
+        if (!selectedAgent) { showInfo('Please select an agent'); return; }
+        showInfo('Switching agent to ' + selectedAgent + '...');
+        try {
+            const response = await fetch('/api/AIStatus/switch-agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent: selectedAgent })
+            });
+            const json = await response.json();
+            if (json.success || json.Success) {
+                showInfo(json.message || 'Agent switched');
+                await refreshStatus();
+            } else {
+                showError(json.message || 'Failed to switch agent');
+            }
+        } catch (err) {
+            showError('Error switching agent: ' + err.message);
+        }
+    }
+
+    // View logs
+    function viewLogs() {
+        showInfo('Log viewing functionality coming soon. Check Azure Portal for now.');
+    }
+
+    // Open configuration
+    function openConfiguration() {
+        showInfo('To configure: Update appsettings.json or use Azure App Settings in the Azure Portal.');
+    }
+
+    function showDownloadInstructions() {
+        const model = document.getElementById('currentModel')?.textContent || 'llama3.2:3b';
+        const instructions = `Run on host with Ollama installed:\n\nollama pull ${model}\nollama serve\n`;
+        showInfo(instructions);
+        navigator.clipboard?.writeText(instructions).catch(() => {});
+    }
+
+    // Start auto-refresh on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshStatus();
+        
+        // Auto-refresh every 10 seconds
+        autoRefreshInterval = setInterval(refreshStatus, 10000);
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+</script>
