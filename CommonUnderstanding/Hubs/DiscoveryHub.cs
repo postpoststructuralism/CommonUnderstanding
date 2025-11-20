@@ -95,11 +95,10 @@ public class DiscoveryHub : Hub
                 actualResponse = numericValue.Value.ToString();
             }
             
-            // Validate we have some kind of response
-            if (string.IsNullOrWhiteSpace(actualResponse))
+            // Allow skipped responses (users keeping engagement while background processing happens)
+            if (string.IsNullOrWhiteSpace(actualResponse) || actualResponse == "skipped")
             {
-                await Clients.Caller.SendAsync("Error", "Please provide a response");
-                return;
+                actualResponse = "[SKIPPED - User chose to continue without answering]";
             }
 
             // Combine selected option with any additional text
@@ -128,6 +127,18 @@ public class DiscoveryHub : Hub
             var pendingCount = _responseQueue.GetPendingCountForUser(profileId);
             await Clients.Caller.SendAsync("StatusUpdate", 
                 $"⚡ Queued for analysis ({pendingCount} pending)", 40);
+            
+            // Notify activity monitor
+            var responsePreview = fullResponseText.Length > 50 
+                ? fullResponseText.Substring(0, 47) + "..." 
+                : fullResponseText;
+            await Clients.Caller.SendAsync("ActivityQueued", new
+            {
+                Id = interaction.Id,
+                Title = "Response Queued",
+                Description = $"Analyzing: \"{responsePreview}\"",
+                Status = "queued"
+            });
 
             // IMMEDIATELY get next question from prefetch queue
             UserInteraction? nextQuestion = null;
@@ -205,15 +216,10 @@ public class DiscoveryHub : Hub
 
             _profileStore.AddProfile(profile);
 
-            await Clients.Caller.SendAsync("StatusUpdate", "Generating first question...", 50);
+            await Clients.Caller.SendAsync("StatusUpdate", "Generating first question...", 30);
             var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
             _profileStore.SetPendingInteraction(profile.Id, firstQuestion);
 
-            await Clients.Caller.SendAsync("StatusUpdate", "Preparing questions...", 75);
-            
-            // Give prefetch service a moment to start generating questions
-            await Task.Delay(100);
-            
             await Clients.Caller.SendAsync("StatusUpdate", "Ready to begin!", 100);
             await Clients.Caller.SendAsync("DiscoveryStarted", new
             {

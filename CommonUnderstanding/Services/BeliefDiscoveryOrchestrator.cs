@@ -83,16 +83,97 @@ public class BeliefDiscoveryOrchestrator
     {
         _logger.LogInformation("Starting discovery journey for user {UserId}", profile.Id);
 
-        // Initialize with a welcoming, foundational question
-        var initialQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
-        var hash = ComputeQuestionHash(initialQuestion);
-        profile.AskedQuestionHashes.Add(hash);
+        // IMMEDIATELY generate 10 questions + 10 jokes - don't wait for background service
+        _logger.LogInformation("Pre-generating 20 interactions (10 questions + 10 jokes) for user {UserId}", profile.Id);
         
-        // Immediately trigger prefetch to queue up questions for rapid-fire answering
-        _logger.LogInformation("Triggering initial question prefetch for user {UserId}", profile.Id);
-        _prefetchService.RequestPrefetch(profile.Id);
+        var questions = new List<UserInteraction>();
+        var jokes = new List<UserInteraction>();
         
-        return initialQuestion;
+        // Generate 10 questions
+        for (int i = 0; i < 10; i++)
+        {
+            var question = await _questionEngine.GenerateNextQuestionAsync(profile);
+            var hash = ComputeQuestionHash(question);
+            if (!profile.AskedQuestionHashes.Contains(hash))
+            {
+                questions.Add(question);
+                profile.AskedQuestionHashes.Add(hash);
+            }
+        }
+        
+        // Generate 10 jokes
+        for (int i = 0; i < 10; i++)
+        {
+            var joke = GenerateJoke(profile, i);
+            jokes.Add(joke);
+        }
+        
+        // Interleave them: Q, Q, J, Q, Q, J, Q, Q, J...
+        // Pattern: 2 questions, then 1 joke, repeat
+        var interleaved = new List<UserInteraction>();
+        int qIndex = 1; // Start at 1 since we'll return the first question separately
+        int jIndex = 0;
+        
+        while (qIndex < questions.Count || jIndex < jokes.Count)
+        {
+            // Add 2 questions
+            for (int i = 0; i < 2 && qIndex < questions.Count; i++)
+            {
+                interleaved.Add(questions[qIndex++]);
+            }
+            
+            // Add 1 joke
+            if (jIndex < jokes.Count)
+            {
+                interleaved.Add(jokes[jIndex++]);
+            }
+        }
+        
+        // Queue them all up
+        foreach (var item in interleaved)
+        {
+            profile.PrefetchedQuestions.Enqueue(item);
+        }
+        
+        _logger.LogInformation("Queued {Count} interactions for user {UserId} (Questions first, then alternating)", interleaved.Count, profile.Id);
+        
+        // Return the FIRST question (never a joke)
+        return questions[0];
+    }
+    
+    /// <summary>
+    /// Generate a corny joke with thumbs up/down voting
+    /// </summary>
+    private UserInteraction GenerateJoke(UserProfile profile, int index)
+    {
+        var jokes = new[]
+        {
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "What do you call a fake noodle? An impasta!",
+            "Why did the scarecrow win an award? He was outstanding in his field!",
+            "What do you call a bear with no teeth? A gummy bear!",
+            "Why don't eggs tell jokes? They'd crack each other up!",
+            "What did the ocean say to the beach? Nothing, it just waved!",
+            "Why did the bicycle fall over? It was two tired!",
+            "What do you call cheese that isn't yours? Nacho cheese!",
+            "Why couldn't the leopard play hide and seek? Because he was always spotted!",
+            "What did one wall say to the other wall? I'll meet you at the corner!",
+            "Why did the math book look so sad? Because it had too many problems!",
+            "What do you call a dinosaur with an extensive vocabulary? A thesaurus!"
+        };
+        
+        return new UserInteraction
+        {
+            UserId = profile.Id,
+            Type = InteractionType.Joke,
+            Content = new InteractionContent
+            {
+                Question = jokes[index % jokes.Length],
+                Format = InteractionFormat.ThumbsVote,
+                Options = new List<string> { "👍", "👎" }
+            },
+            TargetedDimensions = new List<string> { "humor", "engagement" }
+        };
     }
 
     /// <summary>

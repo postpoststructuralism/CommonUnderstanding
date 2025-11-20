@@ -1,0 +1,399 @@
+@{
+    ViewData["Title"] = "Activity Monitor";
+}
+
+<style>
+    .activity-monitor {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 400px;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 999;
+        max-height: 400px;
+        overflow: hidden;
+    }
+
+    .activity-monitor-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        padding: 12px 15px;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .activity-monitor-body {
+        padding: 15px;
+        max-height: 320px;
+        overflow-y: auto;
+        background: #f9fafb;
+    }
+
+    .activity-monitor.minimized {
+        width: auto;
+        max-height: none;
+    }
+
+    .activity-monitor.minimized .activity-monitor-body {
+        display: none;
+    }
+
+    .activity-item {
+        background: white;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-left: 4px solid #06b6d4;
+        animation: slideIn 0.3s ease;
+    }
+
+    .activity-item.processing {
+        border-left-color: #3b82f6;
+    }
+
+    .activity-item.completed {
+        border-left-color: #10b981;
+        opacity: 0.7;
+    }
+
+    .activity-item.queued {
+        border-left-color: #f59e0b;
+    }
+
+    .activity-item.error {
+        border-left-color: #ef4444;
+        opacity: 0.8;
+    }
+
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .activity-title {
+        font-weight: 600;
+        color: #111827;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .activity-description {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 8px;
+    }
+
+    .activity-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    .activity-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-dot.processing {
+        background: #3b82f6;
+        animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.completed {
+        background: #10b981;
+    }
+
+    .status-dot.queued {
+        background: #f59e0b;
+    }
+
+    .status-dot.error {
+        background: #ef4444;
+    }
+
+    .activity-progress {
+        width: 100%;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+
+    .activity-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%);
+        transition: width 0.3s ease;
+        border-radius: 2px;
+    }
+
+    .activity-progress-bar.indeterminate {
+        width: 30%;
+        animation: indeterminate 1.5s infinite;
+    }
+
+    @@keyframes indeterminate {
+        0% { margin-left: 0%; }
+        50% { margin-left: 70%; }
+        100% { margin-left: 0%; }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 30px 20px;
+        color: #9ca3af;
+        font-size: 13px;
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+
+    .activity-count {
+        background: rgba(255,255,255,0.2);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+<div class="activity-monitor minimized" id="activityMonitor">
+    <div class="activity-monitor-header" onclick="toggleActivityMonitor()">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="bi bi-cpu"></i>
+            <span>Background Processing</span>
+            <span class="activity-count" id="activityCount">0</span>
+        </div>
+        <button class="toggle-button" id="activityToggleBtn" style="background: transparent; border: none; color: white; font-size: 18px; cursor: pointer;">
+            +
+        </button>
+    </div>
+
+    <div class="activity-monitor-body" id="activityMonitorBody">
+        <div class="empty-state" id="emptyState">
+            <i class="bi bi-inbox"></i>
+            <div>No background tasks running</div>
+            <div style="font-size: 11px; margin-top: 8px;">
+                Analysis happens here while you continue answering questions
+            </div>
+        </div>
+        <div id="activityList"></div>
+    </div>
+</div>
+
+<script>
+    let activityMinimized = true;
+    let activities = [];
+    let activityCounter = 0;
+
+    // Toggle activity monitor
+    function toggleActivityMonitor() {
+        activityMinimized = !activityMinimized;
+        const monitor = document.getElementById('activityMonitor');
+        const toggleBtn = document.getElementById('activityToggleBtn');
+        
+        if (activityMinimized) {
+            monitor.classList.add('minimized');
+            toggleBtn.textContent = '+';
+        } else {
+            monitor.classList.remove('minimized');
+            toggleBtn.textContent = '−';
+        }
+    }
+
+    // Add activity
+    function addActivity(title, description, status = 'queued') {
+        const id = ++activityCounter;
+        const activity = {
+            id,
+            title,
+            description,
+            status,
+            startTime: Date.now(),
+            progress: 0
+        };
+        
+        activities.unshift(activity);
+        if (activities.length > 10) activities.pop(); // Keep only last 10
+        
+        renderActivities();
+        return id;
+    }
+
+    // Update activity
+    function updateActivity(id, updates) {
+        const activity = activities.find(a => a.id === id);
+        if (activity) {
+            Object.assign(activity, updates);
+            renderActivities();
+        }
+    }
+
+    // Remove activity
+    function removeActivity(id) {
+        activities = activities.filter(a => a.id !== id);
+        renderActivities();
+    }
+
+    // Render activities
+    function renderActivities() {
+        const list = document.getElementById('activityList');
+        const emptyState = document.getElementById('emptyState');
+        const count = document.getElementById('activityCount');
+        
+        const activeCount = activities.filter(a => a.status !== 'completed').length;
+        count.textContent = activeCount;
+        
+        if (activities.length === 0) {
+            emptyState.style.display = 'block';
+            list.innerHTML = '';
+            return;
+        }
+        
+        emptyState.style.display = 'none';
+        
+        list.innerHTML = activities.map(activity => {
+            const elapsed = Math.round((Date.now() - activity.startTime) / 1000);
+            const timeText = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+            
+            return `
+                <div class="activity-item ${activity.status}">
+                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-description">${activity.description}</div>
+                    <div class="activity-meta">
+                        <span class="activity-status">
+                            <span class="status-dot ${activity.status}"></span>
+                            ${activity.status === 'processing' ? 'Processing' : 
+                              activity.status === 'completed' ? 'Completed' : 
+                              activity.status === 'error' ? 'Failed' : 'Queued'}
+                        </span>
+                        <span>${timeText}</span>
+                    </div>
+                    ${activity.status === 'processing' ? `
+                        <div class="activity-progress">
+                            <div class="activity-progress-bar ${activity.progress > 0 ? '' : 'indeterminate'}" 
+                                 style="width: ${activity.progress || 0}%"></div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Simulate activity for demo (remove in production)
+    function simulateActivity() {
+        const titles = [
+            'Analyzing Response',
+            'Updating Belief Model',
+            'Computing Moral Foundations',
+            'Detecting Emotional Markers',
+            'Identifying Contradictions',
+            'Generating Next Question'
+        ];
+        
+        const descriptions = [
+            'Processing user response with AI',
+            'Bayesian inference on belief dimensions',
+            'Scoring Care, Fairness, Loyalty, Authority, Sanctity, Liberty',
+            'Analyzing sentiment and certainty',
+            'Checking for conflicting beliefs',
+            'Selecting adaptive question based on model gaps'
+        ];
+        
+        const idx = Math.floor(Math.random() * titles.length);
+        const id = addActivity(titles[idx], descriptions[idx], 'queued');
+        
+        setTimeout(() => {
+            updateActivity(id, { status: 'processing', progress: 0 });
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(progressInterval);
+                    updateActivity(id, { status: 'completed', progress: 100 });
+                    
+                    // Remove after 5 seconds
+                    setTimeout(() => removeActivity(id), 5000);
+                } else {
+                    updateActivity(id, { progress });
+                }
+            }, 300);
+        }, 500);
+    }
+
+    // Hook into response processing via SignalR
+    if (typeof window.discoveryConnection !== 'undefined') {
+        // Listen for ActivityUpdated events from server
+        window.discoveryConnection.on('ActivityUpdated', function(activity) {
+            console.log('Activity update received:', activity);
+            
+            const existingActivity = activities.find(a => a.id === activity.Id);
+            
+            if (existingActivity) {
+                // Update existing activity
+                existingActivity.title = activity.Title;
+                existingActivity.description = activity.Description;
+                existingActivity.status = activity.Status;
+                existingActivity.progress = activity.Progress;
+                
+                // Auto-remove completed/error after 5 seconds
+                if (activity.Status === 'completed' || activity.Status === 'error') {
+                    setTimeout(() => {
+                        activities = activities.filter(a => a.id !== activity.Id);
+                        renderActivities();
+                    }, 5000);
+                }
+            } else {
+                // Add new activity
+                activities.unshift({
+                    id: activity.Id,
+                    title: activity.Title,
+                    description: activity.Description,
+                    status: activity.Status,
+                    progress: activity.Progress || 0,
+                    startTime: Date.now()
+                });
+                
+                if (activities.length > 10) activities.pop();
+            }
+            
+            renderActivities();
+        });
+    }
+
+    // Auto-update timestamps
+    setInterval(renderActivities, 1000);
+    
+    // Initial render
+    document.addEventListener('DOMContentLoaded', renderActivities);
+</script>

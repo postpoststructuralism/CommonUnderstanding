@@ -237,11 +237,11 @@
     }
 </style>
 
-<div class="control-panel" id="aiControlPanel">
+<div class="control-panel collapsed" id="aiControlPanel">
     <div class="control-panel-header" onclick="togglePanel()">
         <div>
             <span class="status-indicator status-gray" id="mainStatusIndicator"></span>
-            <strong>AI Control Panel</strong>
+            <strong id="panelTitle">AI</strong>
         </div>
         <div>
             <button class="refresh-button" onclick="refreshStatus(); event.stopPropagation();" title="Refresh Status">
@@ -353,7 +353,7 @@
 </div>
 
 <script>
-    let panelCollapsed = false;
+    let panelCollapsed = true; // Start collapsed
     let autoRefreshInterval = null;
 
     // Toggle panel collapse
@@ -361,13 +361,16 @@
         panelCollapsed = !panelCollapsed;
         const panel = document.getElementById('aiControlPanel');
         const toggleBtn = document.getElementById('toggleBtn');
+        const panelTitle = document.getElementById('panelTitle');
         
         if (panelCollapsed) {
             panel.classList.add('collapsed');
             toggleBtn.textContent = '+';
+            panelTitle.textContent = 'AI';
         } else {
             panel.classList.remove('collapsed');
             toggleBtn.textContent = '−';
+            panelTitle.textContent = 'AI Control Panel';
         }
     }
 

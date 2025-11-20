@@ -1,6 +1,8 @@
 using CommonUnderstanding.Models;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.SignalR;
+using CommonUnderstanding.Hubs;
 
 namespace CommonUnderstanding.Services;
 
@@ -24,6 +26,7 @@ public class ResponseProcessingQueue : BackgroundService
     private readonly UserProfileStore _profileStore;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ResponseProcessingQueue> _logger;
+    private readonly IHubContext<DiscoveryHub> _hubContext;
     private readonly ConcurrentQueue<QueuedResponse> _responseQueue = new();
     private readonly ConcurrentDictionary<string, List<QueuedResponse>> _batchBuffer = new();
     private DateTime _lastBatchProcess = DateTime.UtcNow;
@@ -36,11 +39,13 @@ public class ResponseProcessingQueue : BackgroundService
     public ResponseProcessingQueue(
         UserProfileStore profileStore,
         IServiceScopeFactory scopeFactory,
-        ILogger<ResponseProcessingQueue> logger)
+        ILogger<ResponseProcessingQueue> logger,
+        IHubContext<DiscoveryHub> hubContext)
     {
         _profileStore = profileStore;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -191,17 +196,42 @@ public class ResponseProcessingQueue : BackgroundService
             var analysisEngine = scope.ServiceProvider.GetRequiredService<ResponseAnalysisEngine>();
             var inferenceEngine = scope.ServiceProvider.GetRequiredService<BayesianInferenceEngine>();
 
+            // Notify: Starting processing
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id, 
+                "Analyzing Response", 
+                "AI is analyzing your response with semantic understanding", 
+                "processing", 0);
+
             // Analyze response
+            _logger.LogInformation("Analyzing response {InteractionId} for user {ProfileId}", 
+                queuedResponse.Interaction.Id, queuedResponse.ProfileId);
             var analysis = await analysisEngine.AnalyzeResponseAsync(queuedResponse.Interaction, profile);
             queuedResponse.Interaction.Analysis = analysis;
+            
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id,
+                "Analyzing Response", "Response analyzed", "processing", 33);
 
             // Analyze emotional content
+            _logger.LogInformation("Analyzing emotional content for interaction {InteractionId}", 
+                queuedResponse.Interaction.Id);
             var emotionalMarkers = await analysisEngine.AnalyzeEmotionalContentAsync(
                 queuedResponse.Interaction.Response.RawText);
             queuedResponse.Interaction.Response.Emotion = emotionalMarkers;
+            
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id,
+                "Computing Emotional Markers", 
+                $"Detected: {string.Join(", ", emotionalMarkers.DetectedEmotions.Take(3))}", 
+                "processing", 50);
 
             // Update belief model
+            _logger.LogInformation("Updating belief model with Bayesian inference for user {ProfileId}", 
+                queuedResponse.ProfileId);
             var updatedSnapshot = inferenceEngine.UpdateModel(profile, queuedResponse.Interaction, analysis);
+            
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id,
+                "Updating Belief Model", 
+                "Bayesian inference on belief dimensions", 
+                "processing", 75);
             
             if (profile.CurrentBeliefSnapshot != null)
             {
@@ -209,6 +239,11 @@ public class ResponseProcessingQueue : BackgroundService
             }
             profile.CurrentBeliefSnapshot = updatedSnapshot;
             profile.LastInteractionAt = DateTime.UtcNow;
+            
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id,
+                "Analysis Complete", 
+                $"Confidence: {updatedSnapshot.OverallConfidence:P0}", 
+                "completed", 100);
 
             var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
             var queueTime = (startTime - queuedResponse.QueuedAt).TotalMilliseconds;
@@ -220,6 +255,33 @@ public class ResponseProcessingQueue : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing response for user {ProfileId}", queuedResponse.ProfileId);
+            await NotifyActivity(queuedResponse.ProfileId, queuedResponse.Interaction.Id,
+                "Analysis Failed", 
+                $"Error: {ex.Message}", 
+                "error", 0);
+        }
+    }
+    
+    private async Task NotifyActivity(string profileId, string activityId, string title, string description, string status, int progress)
+    {
+        try
+        {
+            _logger.LogInformation("Sending ActivityUpdated: {Title} ({Progress}%) - Status: {Status}", title, progress, status);
+            
+            // This would ideally be sent to specific user, but for now send to all
+            await _hubContext.Clients.All.SendAsync("ActivityUpdated", new
+            {
+                Id = activityId,
+                ProfileId = profileId,
+                Title = title,
+                Description = description,
+                Status = status,
+                Progress = progress
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to notify activity update");
         }
     }
 
