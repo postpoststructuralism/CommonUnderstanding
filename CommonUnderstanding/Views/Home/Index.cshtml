@@ -1,114 +1,242 @@
 ﻿@{
-    ViewData["Title"] = "Common Understanding";
+    ViewData["Title"] = "Home - ILRS Portal";
 }
 
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-lg-8 offset-lg-2 text-center">
-            <h1 class="display-3 mb-4">
-                <i class="bi bi-peace text-primary"></i><br />
-                Common Understanding
-            </h1>
-            <p class="lead mb-5">
-                An AI-powered journey to discover your belief system and find common ground with others
-            </p>
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">
+            <i class="fas fa-home"></i> Home
+        </li>
+    </ol>
+</nav>
 
-            <div class="row mb-5">
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100 shadow hover-card">
-                        <div class="card-body text-center">
-                            <div class="mb-3">
-                                <i class="bi bi-compass display-4 text-primary"></i>
-                            </div>
-                            <h3>Discover Yourself</h3>
-                            <p class="text-muted">
-                                Interactive AI conversation to map your unique values and worldview
-                            </p>
-                            <a asp-controller="Discovery" asp-action="Start" class="btn btn-primary btn-lg">
-                                Begin Journey <i class="bi bi-arrow-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100 shadow hover-card">
-                        <div class="card-body text-center">
-                            <div class="mb-3">
-                                <i class="bi bi-globe display-4 text-success"></i>
-                            </div>
-                            <h3>Explore Beliefs</h3>
-                            <p class="text-muted">
-                                Browse canonical belief systems from across cultures and history
-                            </p>
-                            <a asp-controller="Explore" asp-action="Index" class="btn btn-success btn-lg">
-                                Explore Canon <i class="bi bi-book"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100 shadow hover-card">
-                        <div class="card-body text-center">
-                            <div class="mb-3">
-                                <i class="bi bi-arrows-angle-expand display-4 text-warning"></i>
-                            </div>
-                            <h3>Compare Systems</h3>
-                            <p class="text-muted">
-                                Analyze similarities and differences between worldviews
-                            </p>
-                            <a asp-controller="Explore" asp-action="Compare" class="btn btn-warning btn-lg">
-                                Compare <i class="bi bi-arrow-left-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
+<!-- Page Heading -->
+<h1 class="gc-page-heading">
+    <i class="bi bi-peace"></i> Common Understanding
+</h1>
+
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <!-- Welcome Section -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-info-circle"></i> Welcome to the ILRS Portal
             </div>
-
-            <div class="alert alert-light border">
-                <h5 class="mb-3"><i class="bi bi-lightbulb"></i> Why Build on Existing Knowledge?</h5>
-                <p class="text-muted mb-2">
-                    <strong>Don't reinvent the wheel.</strong> Humanity has spent millennia developing rich belief systems, 
-                    philosophies, and worldviews. Our knowledge base includes creation myths, core principles, and historical 
-                    context from religions, philosophies, and political systems worldwide.
+            <div class="gc-card-body">
+                <p class="lead mb-3">
+                    An AI-powered journey to discover your belief system and find common ground with others
                 </p>
-                <p class="text-muted mb-0">
-                    <strong>Find your place.</strong> Instead of starting from scratch, discover how your personal beliefs 
-                    align with established traditions. You might find unexpected resonance with systems you've never explored.
+                <p>
+                    This platform helps you explore personal beliefs, canonical worldviews, and connections 
+                    between different systems of understanding. Our knowledge base includes creation myths, 
+                    core principles, and historical context from religions, philosophies, and political systems worldwide.
                 </p>
             </div>
+        </div>
 
-            <div class="alert alert-info border mt-3">
-                <h5 class="mb-3"><i class="bi bi-diagram-3"></i> How It Works</h5>
-                <div class="row text-start">
-                    <div class="col-md-4 mb-2">
-                        <strong>1. Interactive Discovery</strong><br />
-                        <small class="text-muted">AI asks adaptive questions tailored to your responses</small>
+        <!-- Feature Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <div class="gc-card h-100">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-compass fa-3x" style="color: var(--gc-primary-blue);"></i>
                     </div>
-                    <div class="col-md-4 mb-2">
-                        <strong>2. Statistical Modeling</strong><br />
-                        <small class="text-muted">Bayesian inference builds a probabilistic model of your beliefs</small>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <strong>3. Find Common Ground</strong><br />
-                        <small class="text-muted">Compare your profile with canonical systems and other users</small>
+                    <h3 class="gc-section-heading text-center">Discover Yourself</h3>
+                    <p class="text-muted">
+                        Interactive AI conversation to map your unique values and worldview through 
+                        adaptive questioning and statistical modeling.
+                    </p>
+                    <div class="text-center mt-3">
+                        <a asp-controller="Discovery" asp-action="Start" class="gc-btn-primary">
+                            <i class="fas fa-play-circle"></i> Begin Journey
+                        </a>
                     </div>
                 </div>
             </div>
+            <div class="col-md-6 mb-3">
+                <div class="gc-card h-100">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-globe fa-3x" style="color: var(--gc-secondary-blue);"></i>
+                    </div>
+                    <h3 class="gc-section-heading text-center">Explore Beliefs</h3>
+                    <p class="text-muted">
+                        Browse canonical belief systems from across cultures and history, understanding 
+                        their core principles and teachings.
+                    </p>
+                    <div class="text-center mt-3">
+                        <a asp-controller="Explore" asp-action="Index" class="gc-btn-secondary">
+                            <i class="fas fa-book"></i> Explore Canon
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            <p class="text-muted mt-5">
-                <i class="bi bi-shield-check"></i> Privacy-focused • Locally processed • Open source
-            </p>
+        <!-- How It Works -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <i class="fas fa-diagram-project"></i> How It Works
+            </div>
+            <div class="gc-card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="gc-badge mb-2">Step 1</div>
+                        </div>
+                        <strong>Interactive Discovery</strong>
+                        <p class="text-muted small">
+                            AI asks adaptive questions tailored to your responses using Semantic Kernel
+                        </p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="gc-badge mb-2">Step 2</div>
+                        </div>
+                        <strong>Statistical Modeling</strong>
+                        <p class="text-muted small">
+                            Bayesian inference builds a probabilistic model of your beliefs
+                        </p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="gc-badge mb-2">Step 3</div>
+                        </div>
+                        <strong>Find Common Ground</strong>
+                        <p class="text-muted small">
+                            Compare your profile with canonical systems and other users
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Links -->
+        <div class="gc-filter-panel mb-4">
+            <h3 class="gc-section-heading">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </h3>
+            <div class="d-grid gap-2">
+                <a asp-controller="Discovery" asp-action="Start" class="gc-btn-primary">
+                    <i class="fas fa-compass"></i> Start Discovery
+                </a>
+                <a asp-controller="Explore" asp-action="Compare" class="gc-btn-secondary">
+                    <i class="fas fa-arrows-left-right"></i> Compare Systems
+                </a>
+                <a asp-controller="BeliefSystems" asp-action="Index" class="gc-btn-secondary">
+                    <i class="fas fa-list"></i> View All Systems
+                </a>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <i class="fas fa-star"></i> Key Features
+            </div>
+            <div class="gc-card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>Privacy-focused</strong><br/>
+                        <small class="text-muted">Your data stays secure</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>Locally processed</strong><br/>
+                        <small class="text-muted">Powered by Ollama</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>Open source</strong><br/>
+                        <small class="text-muted">Transparent algorithms</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>Adaptive AI</strong><br/>
+                        <small class="text-muted">Questions tailored to you</small>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
-<style>
-    .hover-card {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
+<!-- Information Banner -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-light border-gc shadow-gc-sm">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-2">
+                        <i class="fas fa-lightbulb text-warning"></i> 
+                        Why Build on Existing Knowledge?
+                    </h5>
+                    <p class="mb-0 text-muted">
+                        <strong>Don't reinvent the wheel.</strong> Humanity has spent millennia developing rich 
+                        belief systems, philosophies, and worldviews. Instead of starting from scratch, discover 
+                        how your personal beliefs align with established traditions.
+                    </p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <a asp-controller="Explore" asp-action="Index" class="gc-btn-primary">
+                        <i class="fas fa-arrow-right"></i> Learn More
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+<!-- Demo Table (GC Design System) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h2 class="gc-section-heading">
+            <i class="fas fa-table"></i> Recent Activity
+        </h2>
+        <table class="gc-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>System</th>
+                    <th>Engagement</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Philosophy</td>
+                    <td>Stoicism</td>
+                    <td>125 users</td>
+                    <td><span class="gc-badge">Active</span></td>
+                </tr>
+                <tr>
+                    <td>Religion</td>
+                    <td>Buddhism</td>
+                    <td>98 users</td>
+                    <td><span class="gc-badge">Active</span></td>
+                </tr>
+                <tr>
+                    <td>Political</td>
+                    <td>Liberalism</td>
+                    <td>87 users</td>
+                    <td><span class="gc-badge">Active</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* Page-specific enhancements */
+    .alert {
+        border-radius: var(--gc-border-radius);
+    }
+    
+    .list-unstyled li {
+        padding-left: 0.5rem;
     }
 </style>

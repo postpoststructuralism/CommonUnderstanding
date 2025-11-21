@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Canada Wordmark - Simplified Placeholder -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" width="300" height="80">
+  <!-- Canada Text with Flag -->
+  <text x="10" y="50" font-family="Georgia, serif" font-size="48" font-weight="bold" fill="#26374a">
+    Canada
+  </text>
+  
+  <!-- Maple Leaf -->
+  <g transform="translate(250, 15)">
+    <path d="M20 5 L18 12 L20 11 L22 12 L20 5 M18 12 L12 15 L18 16 L18 12 M22 12 L28 15 L22 16 L22 12 M12 15 L15 22 L18 19 L12 15 M28 15 L25 22 L22 19 L28 15 M15 22 L20 25 L20 20 L15 22 M25 22 L20 25 L20 20 L25 22" fill="#26374a"/>
+  </g>
+</svg>

@@ -1,5 +1,6 @@
 html {
   font-size: 14px;
+  scroll-behavior: smooth;
 }
 
 @media (min-width: 768px) {
@@ -8,24 +9,340 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
 html {
   position: relative;
   min-height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+  margin: 0;
+  padding: 0;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+/* ========================================
+   FOCUS STATES - GC ACCESSIBILITY
+   ======================================== */
+.btn:focus, 
+.btn:active:focus, 
+.btn-link.nav-link:focus, 
+.form-control:focus, 
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #335075;
+  outline: 2px solid #335075;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   FORM ENHANCEMENTS
+   ======================================== */
+.form-floating > .form-control-plaintext::placeholder, 
+.form-floating > .form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+.form-floating > .form-control-plaintext:focus::placeholder, 
+.form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/* GC Form Controls */
+.form-control,
+.form-select {
+  border-color: #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #26374a;
+  box-shadow: 0 0 0 3px rgba(38, 55, 74, 0.1);
+}
+
+/* ========================================
+   BOOTSTRAP OVERRIDES FOR GC THEME
+   ======================================== */
+.btn-primary {
+  background-color: #26374a;
+  border-color: #26374a;
+}
+
+.btn-primary:hover {
+  background-color: #335075;
+  border-color: #335075;
+}
+
+.btn-outline-primary {
+  color: #26374a;
+  border-color: #26374a;
+}
+
+.btn-outline-primary:hover {
+  background-color: #26374a;
+  border-color: #26374a;
+}
+
+.alert-primary {
+  background-color: rgba(38, 55, 74, 0.1);
+  border-color: #26374a;
+  color: #26374a;
+}
+
+.text-primary {
+  color: #26374a !important;
+}
+
+.bg-primary {
+  background-color: #26374a !important;
+}
+
+/* ========================================
+   CARD ENHANCEMENTS
+   ======================================== */
+.card {
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(38, 55, 74, 0.05);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08);
+}
+
+.card-header {
+  background-color: #f8fafc;
+  border-bottom-color: #e5e7eb;
+  font-weight: 600;
+  color: #26374a;
+}
+
+/* ========================================
+   TABLE ENHANCEMENTS
+   ======================================== */
+.table {
+  color: #1f2937;
+}
+
+.table thead {
+  background-color: #26374a;
+  color: white;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+.table-hover > tbody > tr:hover > * {
+  background-color: #f7f8fa;
+}
+
+/* ========================================
+   BADGE STYLES
+   ======================================== */
+.badge {
+  font-weight: 600;
+  padding: 0.375em 0.75em;
+}
+
+.badge-primary {
+  background-color: #26374a;
+}
+
+/* ========================================
+   BREADCRUMB CUSTOMIZATION
+   ======================================== */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0.75rem 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  color: #6b7280;
+}
+
+.breadcrumb-item.active {
+  color: #26374a;
+  font-weight: 600;
+}
+
+/* ========================================
+   MODAL ENHANCEMENTS
+   ======================================== */
+.modal-header {
+  background: linear-gradient(135deg, #26374a 0%, #335075 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+}
+
+.modal-footer {
+  background-color: #f8fafc;
+  border-top-color: #e5e7eb;
+}
+
+/* ========================================
+   PAGINATION
+   ======================================== */
+.pagination .page-link {
+  color: #26374a;
+  border-color: #e5e7eb;
+}
+
+.pagination .page-link:hover {
+  background-color: #f8fafc;
+  border-color: #26374a;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #26374a;
+  border-color: #26374a;
+}
+
+/* ========================================
+   DROPDOWN MENUS
+   ======================================== */
+.dropdown-menu {
+  border-color: #e5e7eb;
+  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08);
+}
+
+.dropdown-item:hover {
+  background-color: #f7f8fa;
+  color: #26374a;
+}
+
+.dropdown-item.active {
+  background-color: #26374a;
+}
+
+/* ========================================
+   PROGRESS BARS
+   ======================================== */
+.progress {
+  background-color: #e5e7eb;
+  border-radius: 0.375rem;
+}
+
+.progress-bar {
+  background-color: #26374a;
+}
+
+/* ========================================
+   ACCORDION
+   ======================================== */
+.accordion-button {
+  background-color: #f8fafc;
+  color: #26374a;
+  font-weight: 600;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: #26374a;
+  color: white;
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 0.25rem rgba(38, 55, 74, 0.25);
+}
+
+/* ========================================
+   TOOLTIPS & POPOVERS
+   ======================================== */
+.tooltip-inner {
+  background-color: #26374a;
+}
+
+.popover {
+  border-color: #e5e7eb;
+}
+
+.popover-header {
+  background-color: #26374a;
+  color: white;
+}
+
+/* ========================================
+   SPINNER/LOADING STATES
+   ======================================== */
+.spinner-border-primary {
+  color: #26374a;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-muted-gc {
+  color: #6b7280 !important;
+}
+
+.border-gc {
+  border-color: #e5e7eb !important;
+}
+
+.bg-gc-light {
+  background-color: #f8fafc !important;
+}
+
+.shadow-gc {
+  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08) !important;
+}
+
+.shadow-gc-sm {
+  box-shadow: 0 2px 8px rgba(38, 55, 74, 0.1) !important;
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+@media (max-width: 767px) {
+  .table-responsive-sm {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  .card,
+  .table {
+    box-shadow: none !important;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+}
+
+/* ========================================
+   SMOOTH SCROLLING
+   ======================================== */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ========================================
+   DARK MODE PREPARATION (Future Enhancement)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  /* Placeholder for future dark mode support */
 }
