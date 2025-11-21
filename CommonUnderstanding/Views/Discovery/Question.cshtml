@@ -278,38 +278,29 @@
             "Synthesizing new insights..."
         ];
         
-        // Initialize SignalR connection
+        // Initialize SignalR connection for activity monitoring
         async function initializeSignalR() {
-            connection = new signalR.HubConnectionBuilder()
-                .withUrl("/discoveryHub")
-                .withAutomaticReconnect()
-                .configureLogging(signalR.LogLevel.Information)
-                .build();
-
-            connection.on("StatusUpdate", (message, progress) => {
-                showAIStatus(message, progress);
-            });
-
-            connection.on("ProcessingComplete", (data) => {
-                console.log("Processing complete:", data);
-                showAIStatus("✓ Analysis complete! Loading next question...", 100);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            });
-
-            connection.on("Error", (message) => {
-                hideAIStatus();
-                alert("Error: " + message);
-                document.getElementById('submitBtn').disabled = false;
-            });
-
             try {
+                console.log('🔌 Initializing SignalR connection to /discoveryHub...');
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/discoveryHub")
+                    .withAutomaticReconnect()
+                    .configureLogging(signalR.LogLevel.Information)
+                    .build();
+
+                // Note: We're NOT using SignalR for form submission in this view,
+                // just for receiving activity updates from background processing
+
                 await connection.start();
-                console.log("SignalR connected successfully");
+                console.log("✅ SignalR connected successfully for activity monitoring");
+                console.log("Connection state:", connection.state);
+                
+                // Assign to window so activity monitor can use it
+                window.discoveryConnection = connection;
+                console.log("✅ window.discoveryConnection assigned");
             } catch (err) {
-                console.error("SignalR connection failed:", err);
-                console.log("Falling back to regular form submission");
+                console.error("❌ SignalR connection failed:", err);
+                console.log("Activity monitor will not show real-time updates");
             }
         }
 
@@ -342,7 +333,7 @@
             document.getElementById('submitText')?.classList.add('d-none');
             document.getElementById('loadingText')?.classList.remove('d-none');
             
-            // Always use regular form submission for now (SignalR/Ollama not configured on Azure)
+            // Use regular form submission (not SignalR)
             console.log("Submitting via normal form post");
             // Let the form submit naturally (don't prevent default)
         });
@@ -413,7 +404,7 @@
             </text>
         }
         
-        // Initialize SignalR on page load
+        // Initialize SignalR on page load (for activity monitoring only)
         document.addEventListener('DOMContentLoaded', function() {
             initializeSignalR();
         });

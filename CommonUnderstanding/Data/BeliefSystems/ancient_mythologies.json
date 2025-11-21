@@ -205,5 +205,188 @@
       "Togo",
       "Diaspora: Caribbean, Brazil, Americas"
     ]
+  },
+  {
+    "Name": "Lakota Spirituality",
+    "Category": "Religion",
+    "Culture": "Lakota/Dakota/Sioux (Indigenous North American)",
+    "Era": "Ancient - Present",
+    "Description": "Sacred traditions of the Lakota people emphasizing harmony with nature, the sacred hoop of life, and the interconnectedness of all beings through the concept of Mitakuye Oyasin (all my relations).",
+    "Sources": [
+      "Oral traditions passed through generations",
+      "Sacred pipe ceremonies",
+      "Black Elk Speaks (Nicholas Black Elk)",
+      "Winter counts (pictographic histories)"
+    ],
+    "CreationMyth": "In the time before time, Inyan (Rock), the first being, was all that existed. Feeling lonely, Inyan created Maka (Earth) from himself, bleeding out his blue blood which became the waters. Han (Darkness) was the first spirit. Wi (Sun) was created to light the world, and Skan (Sky) gave motion and life. The sacred White Buffalo Calf Woman appeared to the Lakota people, teaching them the Seven Sacred Rites and gifting them the sacred pipe (chanunpa). She told them to honor all their relatives—the two-legged, four-legged, winged ones, and all living things. She promised to return in times of need. The sacred hoop represents the cycle of life, with the four directions each holding sacred teachings.",
+    "CorePrinciples": [
+      "Mitakuye Oyasin: All my relations - interconnectedness of all life",
+      "Wakan Tanka: The Great Mystery/Great Spirit pervades all",
+      "Four sacred directions hold teachings and spiritual guardians",
+      "Sacred hoop: circle of life, seasons, generations",
+      "Vision quests for spiritual guidance and purpose",
+      "Sweat lodge (inipi) for purification and prayer",
+      "Pipe ceremony connects earth and sky, humans and spirits",
+      "Respect for Earth as mother, provider of all needs",
+      "Seven generations principle: consider impact on future descendants"
+    ],
+    "NotableFigures": [
+      "White Buffalo Calf Woman (sacred teacher)",
+      "Sitting Bull (Hunkpapa Lakota leader and holy man)",
+      "Crazy Horse (Oglala Lakota warrior and vision seeker)",
+      "Black Elk (Oglala Lakota medicine man and visionary)",
+      "Red Cloud (Oglala Lakota leader)"
+    ],
+    "Regions": [
+      "Great Plains (North and South Dakota, Montana, Wyoming)",
+      "Sacred sites: Black Hills (He Sapa), Bear Butte, Badlands"
+    ]
+  },
+  {
+    "Name": "Haudenosaunee Great Law of Peace",
+    "Category": "Political System",
+    "Culture": "Haudenosaunee/Iroquois Confederacy (Indigenous North American)",
+    "Era": "c. 1142 CE (traditional) - Present",
+    "Description": "Constitutional and spiritual framework of the Haudenosaunee Confederacy, emphasizing peace, democracy, and the balance of power through clan mothers and sachems, considered one of the world's oldest participatory democracies.",
+    "Sources": [
+      "Gayanashagowa (Great Law of Peace)",
+      "Oral traditions and wampum belts",
+      "Two Row Wampum Treaty",
+      "Condolence ceremony protocols"
+    ],
+    "CreationMyth": "In ancient times, the five nations (Mohawk, Oneida, Onondaga, Cayuga, Seneca) were locked in cycles of violence and blood feuds. The Peacemaker (Deganawida) was born among the Huron with a divine mission to end warfare. With his spokesman Hiawatha, who had lost his family to violence, the Peacemaker traveled among the nations teaching the principles of peace, unity, and the power of good minds. He convinced the violent sorcerer Tadodaho to embrace peace by combing the snakes from his hair. Under the Great Tree of Peace at Onondaga, the Peacemaker buried weapons of war, planted the tree with white roots reaching in four directions, and placed an eagle on top as guardian. The confederacy was established with 50 hereditary sachems chosen by clan mothers, creating a system of checks and balances.",
+    "CorePrinciples": [
+      "Great Law of Peace: constitution governing confederacy relations",
+      "Power of Good Mind: rational thought and peace over emotion and war",
+      "Consensus decision-making in Grand Council",
+      "Clan Mothers select and can remove sachems (chiefs)",
+      "Seven generations principle: consider impact of decisions",
+      "Tree of Peace: four white roots of peace extend to all nations",
+      "Wampum belts record treaties and constitutional provisions",
+      "Condolence ceremony heals grief and maintains peace",
+      "Women hold power over land, agriculture, and governance"
+    ],
+    "NotableFigures": [
+      "Deganawida (the Peacemaker, founder)",
+      "Hiawatha (spokesperson for the Peacemaker)",
+      "Jigonsaseh (Mother of Nations, first clan mother)",
+      "Tadodaho (transformed from sorcerer to first Onondaga sachem)",
+      "Joseph Brant/Thayendanegea (Mohawk leader, 18th century)"
+    ],
+    "Regions": [
+      "Northeastern North America (New York, Ontario, Quebec)",
+      "Six Nations territories (Tuscarora joined 1722)",
+      "Grand River Territory (Ontario)"
+    ]
+  },
+  {
+    "Name": "Māori Cosmology",
+    "Category": "Religion",
+    "Culture": "Māori (Indigenous New Zealand/Aotearoa)",
+    "Era": "Ancient - Present",
+    "Description": "Spiritual worldview of the Māori people emphasizing whakapapa (genealogy connecting all things), tapu (sacredness), mana (spiritual power/authority), and the balance between Papatūānuku (Earth Mother) and Ranginui (Sky Father).",
+    "Sources": [
+      "Oral traditions (kōrero tawhito)",
+      "Whakapapa (genealogical recitations)",
+      "Karakia (prayers and incantations)",
+      "Waiata (songs preserving knowledge)"
+    ],
+    "CreationMyth": "In the beginning, Ranginui (Sky Father) and Papatūānuku (Earth Mother) were locked in an eternal embrace, their children trapped in darkness between them. The children debated separating their parents. Tāne Mahuta (god of forests) placed his shoulders against his mother and feet against his father, pushing them apart to create light and space. This caused great grief—Ranginui's tears became rain, Papatūānuku's sighs became mist rising from the earth. Tāne created the first woman, Hineahuone, from earth and breathed life into her. Their daughter Hinetītama later became Hine-nui-te-pō, goddess of death, after learning Tāne was her father. Māui, the trickster demigod, fished up the North Island (Te Ika-a-Māui) and attempted to defeat death by crawling through Hine-nui-te-pō, but was crushed, making death permanent for humans.",
+    "CorePrinciples": [
+      "Whakapapa: genealogy connects all beings from gods to humans to nature",
+      "Tapu: sacred restrictions protecting spiritual power",
+      "Mana: spiritual authority and prestige earned through actions",
+      "Kaitiakitanga: guardianship/stewardship of land and resources",
+      "Mauri: life force present in all things",
+      "Utu: reciprocity, balance, and restoration of harmony",
+      "Whanaungatanga: kinship connections and responsibilities",
+      "Tino rangatiratanga: self-determination and sovereignty",
+      "Whenua: land as foundation of identity (placenta also means land)"
+    ],
+    "NotableFigures": [
+      "Ranginui and Papatūānuku (Sky Father and Earth Mother)",
+      "Tāne Mahuta (god of forests and birds)",
+      "Tangaroa (god of sea)",
+      "Māui (demigod, culture hero, trickster)",
+      "Te Whiti o Rongomai (prophet of passive resistance, 19th century)"
+    ],
+    "Regions": [
+      "Aotearoa (New Zealand)",
+      "Te Moana-nui-a-Kiwa (Pacific Ocean)",
+      "Ancestral homeland: Hawaiki"
+    ]
+  },
+  {
+    "Name": "Andean/Incan Religion",
+    "Category": "Religion",
+    "Culture": "Quechua/Inca (Indigenous South American)",
+    "Era": "Pre-Columbian (c. 1200-1533 CE) - Present (as folk Catholicism)",
+    "Description": "Cosmovision of the Inca Empire and broader Andean peoples emphasizing reciprocity with nature, ancestor veneration, and the sacred relationship between humans, earth (Pachamama), and the cosmos.",
+    "Sources": [
+      "Oral traditions (preserved through quipu knot records)",
+      "Chronicles of the Spanish conquest",
+      "Modern Andean cosmovision practices",
+      "Archaeological evidence from temples and sacred sites"
+    ],
+    "CreationMyth": "In the time of darkness before the current age, the creator god Viracocha emerged from Lake Titicaca and created the sun, moon, and stars. He molded humans from stone at Tiwanaku, breathing life into them. Displeased with the first creation, he sent a great flood to destroy them, then created a second humanity. Viracocha traveled teaching arts and agriculture, and two brothers helped spread his teachings. He walked across the waters of the Pacific, promising to return. The sun god Inti sent his children, Manco Cápac and Mama Ocllo, from Lake Titicaca with a golden staff to find the place where it would sink into the earth. At Cusco, the staff sank, and there they founded the Inca Empire. Inca rulers claimed descent from Inti, making them divine intermediaries.",
+    "CorePrinciples": [
+      "Ayni: reciprocity and mutual obligation between humans and nature",
+      "Pachamama: Earth Mother who provides and must be honored with offerings",
+      "Inti: Sun god as source of life and ancestor of Inca royalty",
+      "Huacas: sacred places, objects, and beings imbued with spiritual power",
+      "Ancestor veneration: mummified rulers consulted for guidance",
+      "Mit'a: reciprocal labor obligation to community and empire",
+      "Three realms: Hanan Pacha (upper/celestial), Kay Pacha (middle/earthly), Ukhu Pacha (inner/underworld)",
+      "Capacocha: ritual sacrifice of children at sacred mountains",
+      "Quipu: knotted strings recording information and prayers"
+    ],
+    "NotableFigures": [
+      "Viracocha (creator god)",
+      "Inti (sun god)",
+      "Mama Quilla (moon goddess)",
+      "Pachamama (earth goddess/mother)",
+      "Pachacuti (Inca emperor who expanded empire, 15th century)"
+    ],
+    "Regions": [
+      "Andean highlands (Peru, Bolivia, Ecuador, Chile, Argentina)",
+      "Sacred sites: Machu Picchu, Cusco, Lake Titicaca, Sacsayhuamán",
+      "Former Inca Empire (Tawantinsuyu)"
+    ]
+  },
+  {
+    "Name": "Sami Shamanism",
+    "Category": "Religion",
+    "Culture": "Sami (Indigenous Northern European)",
+    "Era": "Ancient - Present (suppressed 17th-19th centuries, reviving)",
+    "Description": "Animistic spiritual tradition of the Sami people emphasizing shamanic journeying (noaidi practices), reverence for nature spirits, and the sacred drum as gateway to other realms.",
+    "Sources": [
+      "Oral traditions (joik/yoik song-poems)",
+      "Runebomme/goavddis (sacred drums)",
+      "Archaeological findings",
+      "Written accounts by missionaries and ethnographers"
+    ],
+    "CreationMyth": "In the beginning, Radien-attje (the Creator) and Maderakka (Earth Mother) created the world. Maderakka has three daughters who assist in human life: Sarakka guides childbirth, Juksakka protects children, and Uksakka guards the doorway. The world has three realms: the upper world (where gods dwell), middle world (where humans and nature spirits live), and underworld (where Jabmeaimo, land of the dead, is located). The cosmic pillar connects these realms. Bieggolmai (Wind Man) was sent by Radien to help early humans survive the harsh north. The noaidi (shaman) can journey between these realms using the runebomme (sacred drum) and enter ecstatic trance to communicate with spirits, heal sickness, and predict the future.",
+    "CorePrinciples": [
+      "Animism: all natural phenomena have spirits/souls",
+      "Noaidi: shaman travels between realms for healing and guidance",
+      "Runebomme: sacred drum for divination and spirit communication",
+      "Sieidi: sacred stones and sites with spiritual power",
+      "Reindeer herding as sacred partnership with animals",
+      "Joik/yoik: improvised song-poems honoring persons, places, or animals",
+      "Respect for siida: traditional community and land use",
+      "Offering sites at significant landscape features",
+      "Three souls: free soul (travels in dreams), body soul, breath soul"
+    ],
+    "NotableFigures": [
+      "Radien-attje (Creator father)",
+      "Maderakka (Earth Mother)",
+      "Bieggolmai (Wind Man)",
+      "Historical noaidi (shamans) - names lost to forced conversion",
+      "Áillohaš (Johan Turi, early 20th c. author preserving traditions)"
+    ],
+    "Regions": [
+      "Sápmi (traditional Sami lands spanning Norway, Sweden, Finland, Russia)",
+      "Arctic and subarctic regions of Northern Scandinavia and Kola Peninsula"
+    ]
   }
 ]

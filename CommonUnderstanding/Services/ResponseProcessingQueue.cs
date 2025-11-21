@@ -69,6 +69,13 @@ public class ResponseProcessingQueue : BackgroundService
         _logger.LogInformation("Queued response for user {ProfileId}, queue size: {QueueSize}", 
             profileId, _responseQueue.Count);
         
+        // IMMEDIATELY notify UI that response is queued (synchronously, don't wait)
+        // Don't use Task.Run - just fire it off
+        _ = NotifyActivity(profileId, interaction.Id, 
+            "Response Queued", 
+            "Your response is waiting for AI analysis", 
+            "queued", 0);
+        
         return true;
     }
 
@@ -304,10 +311,23 @@ public class ResponseProcessingQueue : BackgroundService
             var analysisEngine = scope.ServiceProvider.GetRequiredService<ResponseAnalysisEngine>();
             var inferenceEngine = scope.ServiceProvider.GetRequiredService<BayesianInferenceEngine>();
 
+            // Notify batch started
+            await NotifyActivity(profileId, $"batch-{startTime.Ticks}",
+                "Batch Processing Started", 
+                $"Processing {responses.Count} responses together", 
+                "processing", 0);
+
             // Process each response in sequence (for now - could parallelize analysis later)
+            int processedCount = 0;
             foreach (var queuedResponse in responses)
             {
                 if (cancellationToken.IsCancellationRequested) break;
+
+                // Notify individual response processing
+                await NotifyActivity(profileId, queuedResponse.Interaction.Id,
+                    $"Analyzing Response ({processedCount + 1}/{responses.Count})", 
+                    "AI analysis in progress", 
+                    "processing", (processedCount * 100) / responses.Count);
 
                 var analysis = await analysisEngine.AnalyzeResponseAsync(queuedResponse.Interaction, profile);
                 queuedResponse.Interaction.Analysis = analysis;
@@ -323,9 +343,23 @@ public class ResponseProcessingQueue : BackgroundService
                     profile.HistoricalSnapshots.Add(profile.CurrentBeliefSnapshot);
                 }
                 profile.CurrentBeliefSnapshot = updatedSnapshot;
+
+                // Mark individual response as completed
+                await NotifyActivity(profileId, queuedResponse.Interaction.Id,
+                    "Analysis Complete", 
+                    $"Confidence: {updatedSnapshot.OverallConfidence:P0}", 
+                    "completed", 100);
+
+                processedCount++;
             }
 
             profile.LastInteractionAt = DateTime.UtcNow;
+
+            // Notify batch completed
+            await NotifyActivity(profileId, $"batch-{startTime.Ticks}",
+                "Batch Processing Complete", 
+                $"Processed {processedCount} responses", 
+                "completed", 100);
 
             var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
             var avgQueueTime = responses.Average(r => (startTime - r.QueuedAt).TotalMilliseconds);
@@ -337,6 +371,15 @@ public class ResponseProcessingQueue : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error batch processing responses for user {ProfileId}", profileId);
+            
+            // Notify error for batch
+            foreach (var response in responses)
+            {
+                await NotifyActivity(profileId, response.Interaction.Id,
+                    "Batch Processing Failed", 
+                    $"Error: {ex.Message}", 
+                    "error", 0);
+            }
         }
     }
 }

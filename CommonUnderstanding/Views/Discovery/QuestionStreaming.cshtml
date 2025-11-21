@@ -347,6 +347,9 @@
             try {
                 await connection.start();
                 console.log("SignalR connected");
+                
+                // Assign to window so activity monitor can use it
+                window.discoveryConnection = connection;
             } catch (err) {
                 console.error("SignalR connection error:", err);
             }
