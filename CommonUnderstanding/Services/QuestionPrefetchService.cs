@@ -114,6 +114,7 @@ public class QuestionPrefetchService : BackgroundService
             
             // Add all questions from batch to prefetch queue
             var addedCount = 0;
+            var duplicateCount = 0;
             foreach (var question in questionBatch)
             {
                 if (cancellationToken.IsCancellationRequested) break;
@@ -134,46 +135,57 @@ public class QuestionPrefetchService : BackgroundService
                 }
                 else
                 {
-                    _logger.LogDebug("Skipped duplicate question for user {UserId}", userId);
+                    duplicateCount++;
+                    _logger.LogWarning("Skipped duplicate question for user {UserId}. Question: {Question}, Hash: {Hash}", 
+                        userId, 
+                        question.Content.Question.Length > 100 
+                            ? question.Content.Question.Substring(0, 97) + "..." 
+                            : question.Content.Question,
+                        questionHash);
                 }
             }
             
-            _logger.LogInformation("Successfully prefetched {AddedCount} psychometric questions for user {UserId}, total queued: {Total}", 
-                addedCount, userId, profile.PrefetchedQuestions.Count);
+            _logger.LogInformation("Successfully prefetched {AddedCount} psychometric questions for user {UserId}, skipped {DuplicateCount} duplicates, total queued: {Total}", 
+                addedCount, userId, duplicateCount, profile.PrefetchedQuestions.Count);
             
-            // If we still need more questions and have room, generate another batch
-            if (profile.PrefetchedQuestions.Count < 10 && !cancellationToken.IsCancellationRequested)
+            // If ALL questions were duplicates, this is a serious problem
+            if (addedCount == 0 && questionBatch.Any())
             {
-                var remainingNeeded = 10 - profile.PrefetchedQuestions.Count;
-                if (remainingNeeded > 0)
+                _logger.LogError("CRITICAL: All {Count} generated questions were duplicates for user {UserId}! " +
+                    "Profile state: Confidence={Confidence}, Stage={Stage}, Interactions={Interactions}, " +
+                    "Asked hashes count={HashCount}", 
+                    questionBatch.Count, userId,
+                    profile.CurrentBeliefSnapshot?.OverallConfidence ?? 0,
+                    profile.Stage,
+                    profile.InteractionCount,
+                    profile.AskedQuestionHashes.Count);
+                
+                // Clear the asked hashes for this user to break the cycle
+                // This is a last resort, but better than being stuck
+                var oldCount = profile.AskedQuestionHashes.Count;
+                profile.AskedQuestionHashes.Clear();
+                _logger.LogWarning("Cleared {Count} asked question hashes for user {UserId} to prevent infinite duplicate loop", 
+                    oldCount, userId);
+                
+                // Try one more time with cleared hashes
+                _logger.LogInformation("Retrying question generation for user {UserId} after clearing hashes", userId);
+                var retryBatch = await psychAgent.GenerateAdaptiveQuestionBatchAsync(profile, batchSize);
+                
+                if (retryBatch != null && retryBatch.Any())
                 {
-                    _logger.LogInformation("Still need {Remaining} more questions for user {UserId}, generating additional batch", 
-                        remainingNeeded, userId);
-                    
-                    // Small delay before next batch to avoid overwhelming the LLM
-                    await Task.Delay(500, cancellationToken);
-                    
-                    var additionalBatch = await psychAgent.GenerateAdaptiveQuestionBatchAsync(
-                        profile, 
-                        Math.Min(5, remainingNeeded)
-                    );
-                    
-                    if (additionalBatch != null && additionalBatch.Any())
+                    foreach (var question in retryBatch)
                     {
-                        foreach (var question in additionalBatch)
-                        {
-                            if (cancellationToken.IsCancellationRequested) break;
-                            
-                            var questionHash = ComputeQuestionHash(question);
-                            if (!profile.AskedQuestionHashes.Contains(questionHash))
-                            {
-                                profile.PrefetchedQuestions.Enqueue(question);
-                            }
-                        }
+                        if (cancellationToken.IsCancellationRequested) break;
                         
-                        _logger.LogInformation("Added {Count} more questions, total queued: {Total}", 
-                            additionalBatch.Count, profile.PrefetchedQuestions.Count);
+                        var hash = ComputeQuestionHash(question);
+                        if (!profile.AskedQuestionHashes.Contains(hash))
+                        {
+                            profile.PrefetchedQuestions.Enqueue(question);
+                            addedCount++;
+                        }
                     }
+                    
+                    _logger.LogInformation("Retry successful: Added {Count} questions after clearing hashes", addedCount);
                 }
             }
         }

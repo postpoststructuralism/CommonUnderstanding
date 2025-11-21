@@ -76,16 +76,19 @@ public class PsychometricianAgent
         4. **Binary Forced Choice** (when measuring extreme dimensions)
         5. **Scenario-Based Situational Judgment Tests** (realistic vignettes)
         
-        **Output Format (JSON Array):**
+        **CRITICAL: Output ONLY a valid JSON array with NO preamble, explanation, or markdown formatting.**
+        **Start your response with [ and end with ]**
+        
+        **Required JSON Structure:**
         [
           {
             "question_type": "multiple_choice|scale|ranking|binary",
             "target_dimensions": ["dimension1", "dimension2"],
-            "information_potential": 0.0-1.0,
+            "information_potential": 0.85,
             "difficulty_level": "low|medium|high",
             "context": "Brief scenario if needed",
             "question": "Clear, unbiased question text",
-            "options": ["Option 1 (represents position X)", "Option 2 (represents position Y)", ...],
+            "options": ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5"],
             "dimension_mapping": {
               "Option 1": {"dimension1": 0.8, "dimension2": -0.3},
               "Option 2": {"dimension1": -0.5, "dimension2": 0.7}
@@ -94,7 +97,7 @@ public class PsychometricianAgent
           }
         ]
         
-        Generate {{{batchSize}}} questions that collectively maximize information gain across uncertain belief dimensions.
+        Generate EXACTLY {{{batchSize}}} questions as a valid JSON array. Do not include any text before or after the JSON array.
         """;
 
         _logger.LogInformation("Psychometrician Agent generating {BatchSize} optimal questions for user {UserId}", 
@@ -263,8 +266,24 @@ public class PsychometricianAgent
         
         try
         {
+            // Extract JSON array from response (AI may include preamble text)
+            var jsonStart = questionBatchJson.IndexOf('[');
+            var jsonEnd = questionBatchJson.LastIndexOf(']');
+            
+            if (jsonStart == -1 || jsonEnd == -1 || jsonEnd <= jsonStart)
+            {
+                _logger.LogWarning("No JSON array found in AI response for user {UserId}. Response: {Response}", 
+                    profile.Id, questionBatchJson.Length > 200 ? questionBatchJson.Substring(0, 200) + "..." : questionBatchJson);
+                return FallbackQuestionGeneration(profile);
+            }
+            
+            var jsonText = questionBatchJson.Substring(jsonStart, jsonEnd - jsonStart + 1);
+            
+            _logger.LogDebug("Extracted JSON: {JsonLength} characters from {TotalLength} character response", 
+                jsonText.Length, questionBatchJson.Length);
+            
             // Attempt to parse as JSON
-            var jsonDoc = JsonDocument.Parse(questionBatchJson);
+            var jsonDoc = JsonDocument.Parse(jsonText);
             var questionsArray = jsonDoc.RootElement;
 
             foreach (var questionElement in questionsArray.EnumerateArray())
@@ -310,27 +329,39 @@ public class PsychometricianAgent
                 };
 
                 questions.Add(interaction);
+                
+                _logger.LogDebug("Parsed psychometric question: Type={Type}, Question={QuestionPreview}", 
+                    questionType, questionText.Length > 50 ? questionText.Substring(0, 47) + "..." : questionText);
             }
+            
+            _logger.LogInformation("Successfully parsed {Count} psychometric questions for user {UserId}", 
+                questions.Count, profile.Id);
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to parse psychometric question batch as JSON. Falling back to text parsing.");
-            // Fallback: Create a simple question from the text
-            questions.Add(new UserInteraction
-            {
-                UserId = profile.Id,
-                Type = InteractionType.OpenEndedQuestion,
-                Content = new InteractionContent
-                {
-                    Question = questionBatchJson.Length > 200 
-                        ? questionBatchJson.Substring(0, 197) + "..." 
-                        : questionBatchJson,
-                    Format = InteractionFormat.OpenText
-                }
-            });
+            _logger.LogWarning(ex, "Failed to parse psychometric question batch as JSON for user {UserId}. Response preview: {Preview}", 
+                profile.Id, questionBatchJson.Length > 300 ? questionBatchJson.Substring(0, 297) + "..." : questionBatchJson);
+            
+            return FallbackQuestionGeneration(profile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error parsing psychometric questions for user {UserId}", profile.Id);
+            return FallbackQuestionGeneration(profile);
         }
 
         return questions;
+    }
+
+    /// <summary>
+    /// Generate fallback questions when parsing fails
+    /// </summary>
+    private List<UserInteraction> FallbackQuestionGeneration(UserProfile profile)
+    {
+        _logger.LogWarning("Using fallback question generation for user {UserId}", profile.Id);
+        
+        // Return empty list - QuestionPrefetchService will handle fallback to DiscoveryQuestionEngine
+        return new List<UserInteraction>();
     }
 
     private InteractionType MapQuestionType(string questionType)

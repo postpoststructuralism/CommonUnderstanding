@@ -194,8 +194,9 @@ public class DiscoveryController : Controller
             nextQuestion = await _orchestrator.StartDiscoveryAsync(profile);
         }
 
-        // Trigger background prefetch to keep queue full
-        _prefetchService.RequestPrefetch(profileId);
+        // NOTE: Prefetch is now triggered by ResponseProcessingQueue AFTER analysis completes
+        // This ensures questions are generated based on updated belief state
+        // See ResponseProcessingQueue.ProcessSingleResponse() and ProcessResponseBatch()
 
         // Store next question
         _profileStore.SetPendingInteraction(profileId, nextQuestion);
@@ -364,6 +365,40 @@ public class DiscoveryController : Controller
             .ToList();
         
         return View(profiles);
+    }
+
+    // GET: Discovery/Debug (for troubleshooting)
+    public IActionResult Debug()
+    {
+        string? profileId = HttpContext.Request.Cookies["ProfileId"];
+        
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
+        {
+            return Json(new { error = "No active profile" });
+        }
+
+        var profile = _profileStore.GetProfile(profileId);
+        
+        return Json(new
+        {
+            profileId = profile.Id,
+            name = profile.Name,
+            stage = profile.Stage.ToString(),
+            interactionCount = profile.InteractionCount,
+            prefetchedQuestionsCount = profile.PrefetchedQuestions.Count,
+            askedQuestionHashes = profile.AskedQuestionHashes.Count,
+            confidence = profile.CurrentBeliefSnapshot?.OverallConfidence ?? 0,
+            entropy = profile.CurrentBeliefSnapshot?.Statistics.Entropy ?? 0,
+            pendingResponseQueue = _responseQueue.GetPendingCountForUser(profileId),
+            prefetchedQuestions = profile.PrefetchedQuestions.Select(q => new
+            {
+                type = q.Type.ToString(),
+                question = q.Content.Question.Length > 100 
+                    ? q.Content.Question.Substring(0, 97) + "..." 
+                    : q.Content.Question
+            }).ToList(),
+            lastInteraction = profile.Interactions.LastOrDefault()?.Content.Question
+        });
     }
 
     #region Helper Methods

@@ -258,6 +258,15 @@ public class ResponseProcessingQueue : BackgroundService
             _logger.LogInformation(
                 "Processed response for user {ProfileId} - Queue time: {QueueTime}ms, Processing time: {ProcessTime}ms, Confidence: {Confidence:F3}",
                 queuedResponse.ProfileId, queueTime, processingTime, updatedSnapshot.OverallConfidence);
+            
+            // NOW trigger prefetch AFTER profile has been updated with new analysis
+            // This ensures psychometric agent generates questions based on latest belief state
+            using var prefetchScope = _scopeFactory.CreateScope();
+            var prefetchService = prefetchScope.ServiceProvider.GetRequiredService<QuestionPrefetchService>();
+            prefetchService.RequestPrefetch(queuedResponse.ProfileId);
+            
+            _logger.LogInformation("Triggered prefetch for user {ProfileId} after analysis completion", 
+                queuedResponse.ProfileId);
         }
         catch (Exception ex)
         {
@@ -367,6 +376,15 @@ public class ResponseProcessingQueue : BackgroundService
             _logger.LogInformation(
                 "Batch processed {Count} responses for user {ProfileId} - Avg queue time: {QueueTime}ms, Total processing time: {ProcessTime}ms",
                 responses.Count, profileId, avgQueueTime, processingTime);
+            
+            // NOW trigger prefetch AFTER all responses in batch have been analyzed
+            // This ensures psychometric agent generates questions based on fully updated belief state
+            using var prefetchScope = _scopeFactory.CreateScope();
+            var prefetchService = prefetchScope.ServiceProvider.GetRequiredService<QuestionPrefetchService>();
+            prefetchService.RequestPrefetch(profileId);
+            
+            _logger.LogInformation("Triggered prefetch for user {ProfileId} after batch analysis completion", 
+                profileId);
         }
         catch (Exception ex)
         {
