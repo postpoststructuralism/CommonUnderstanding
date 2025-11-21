@@ -28,6 +28,7 @@ builder.Services.AddSingleton<SemanticKernelService>();
 builder.Services.AddScoped<BeliefAnalysisService>();
 
 // Register Discovery services
+builder.Services.AddScoped<PsychometricianAgent>();  // NEW: Expert psychometric question generation
 builder.Services.AddScoped<DiscoveryQuestionEngine>();
 builder.Services.AddScoped<ResponseAnalysisEngine>();
 builder.Services.AddScoped<BayesianInferenceEngine>();

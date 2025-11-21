@@ -30,26 +30,21 @@ public class DiscoveryController : Controller
     }
 
     // GET: Discovery/Start
-    public IActionResult Start()
+    public async Task<IActionResult> Start()
     {
-        return View();
-    }
-
-    // POST: Discovery/Start
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Start(string userName)
-    {
-        if (string.IsNullOrWhiteSpace(userName))
+        // Check if user already has a profile
+        string? profileId = HttpContext.Request.Cookies["ProfileId"];
+        
+        if (!string.IsNullOrEmpty(profileId) && _profileStore.ProfileExists(profileId))
         {
-            ModelState.AddModelError("", "Please enter your name");
-            return View();
+            // User already has an active session, redirect to continue
+            return RedirectToAction(nameof(Question));
         }
-
-        // Create new user profile
+        
+        // Create new user profile automatically with anonymous name
         var profile = new UserProfile
         {
-            Name = userName,
+            Name = $"User-{Guid.NewGuid().ToString().Substring(0, 8)}",
             Stage = DiscoveryStage.Initial
         };
 

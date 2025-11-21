@@ -83,11 +83,10 @@ public class BeliefDiscoveryOrchestrator
     {
         _logger.LogInformation("Starting discovery journey for user {UserId}", profile.Id);
 
-        // IMMEDIATELY generate 10 questions + 10 jokes - don't wait for background service
-        _logger.LogInformation("Pre-generating 20 interactions (10 questions + 10 jokes) for user {UserId}", profile.Id);
+        // Generate initial set of questions (NO jokes in prefetch queue)
+        _logger.LogInformation("Pre-generating 10 questions for user {UserId}", profile.Id);
         
         var questions = new List<UserInteraction>();
-        var jokes = new List<UserInteraction>();
         
         // Generate 10 questions
         for (int i = 0; i < 10; i++)
@@ -101,46 +100,18 @@ public class BeliefDiscoveryOrchestrator
             }
         }
         
-        // Generate 10 jokes
-        for (int i = 0; i < 10; i++)
+        // Queue questions (starting from second one)
+        for (int i = 1; i < questions.Count; i++)
         {
-            var joke = GenerateJoke(profile, i);
-            jokes.Add(joke);
+            profile.PrefetchedQuestions.Enqueue(questions[i]);
         }
         
-        // Interleave them: Q, Q, J, Q, Q, J, Q, Q, J...
-        // Pattern: 2 questions, then 1 joke, repeat
-        var interleaved = new List<UserInteraction>();
-        int qIndex = 1; // Start at 1 since we'll return the first question separately
-        int jIndex = 0;
-        
-        while (qIndex < questions.Count || jIndex < jokes.Count)
-        {
-            // Add 2 questions
-            for (int i = 0; i < 2 && qIndex < questions.Count; i++)
-            {
-                interleaved.Add(questions[qIndex++]);
-            }
-            
-            // Add 1 joke
-            if (jIndex < jokes.Count)
-            {
-                interleaved.Add(jokes[jIndex++]);
-            }
-        }
-        
-        // Queue them all up
-        foreach (var item in interleaved)
-        {
-            profile.PrefetchedQuestions.Enqueue(item);
-        }
-        
-        _logger.LogInformation("Queued {Count} interactions for user {UserId} (Questions first, then alternating)", interleaved.Count, profile.Id);
+        _logger.LogInformation("Queued {Count} questions for user {UserId}", questions.Count - 1, profile.Id);
         
         // Return the FIRST question (never a joke)
         return questions[0];
     }
-    
+
     /// <summary>
     /// Generate a corny joke with thumbs up/down voting
     /// </summary>

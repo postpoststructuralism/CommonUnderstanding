@@ -67,6 +67,7 @@ public class DiscoveryHub : Hub
     /// <summary>
     /// Process user response with streaming status updates
     /// NOW: Queue response immediately and return next question, show progress as background processes
+    /// If background processing is active, show a joke. Otherwise show next real question.
     /// </summary>
     public async Task ProcessResponseStreaming(string profileId, string? selectedOption, string? responseText, string? response, double? numericValue)
     {
@@ -118,45 +119,68 @@ public class DiscoveryHub : Hub
                     : null
             };
             interaction.ResponseTimeMs = (long)(DateTime.UtcNow - interaction.Timestamp).TotalMilliseconds;
-            profile.Interactions.Add(interaction);
-
-            // IMMEDIATELY queue for background processing
-            await Clients.Caller.SendAsync("StatusUpdate", "✓ Response recorded", 20);
-            _responseQueue.QueueResponse(profileId, interaction);
             
-            var pendingCount = _responseQueue.GetPendingCountForUser(profileId);
-            await Clients.Caller.SendAsync("StatusUpdate", 
-                $"⚡ Queued for analysis ({pendingCount} pending)", 40);
-            
-            // Notify activity monitor
-            var responsePreview = fullResponseText.Length > 50 
-                ? fullResponseText.Substring(0, 47) + "..." 
-                : fullResponseText;
-            await Clients.Caller.SendAsync("ActivityQueued", new
+            // Skip adding joke interactions to the profile
+            if (interaction.Type != InteractionType.Joke)
             {
-                Id = interaction.Id,
-                Title = "Response Queued",
-                Description = $"Analyzing: \"{responsePreview}\"",
-                Status = "queued"
-            });
+                profile.Interactions.Add(interaction);
+            }
 
-            // IMMEDIATELY get next question from prefetch queue
-            UserInteraction? nextQuestion = null;
-            if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
+            // IMMEDIATELY queue for background processing (unless it's a joke)
+            if (interaction.Type != InteractionType.Joke)
             {
-                var hash = ComputeQuestionHash(prefetchedQuestion);
-                profile.AskedQuestionHashes.Add(hash);
-                nextQuestion = prefetchedQuestion;
+                await Clients.Caller.SendAsync("StatusUpdate", "✓ Response recorded", 20);
+                _responseQueue.QueueResponse(profileId, interaction);
+                
+                var pendingCount = _responseQueue.GetPendingCountForUser(profileId);
                 await Clients.Caller.SendAsync("StatusUpdate", 
-                    $"💡 Next question ready ({profile.PrefetchedQuestions.Count} queued)", 80);
+                    $"⚡ Queued for analysis ({pendingCount} pending)", 40);
+                
+                // Notify activity monitor
+                var responsePreview = fullResponseText.Length > 50 
+                    ? fullResponseText.Substring(0, 47) + "..." 
+                    : fullResponseText;
+                await Clients.Caller.SendAsync("ActivityQueued", new
+                {
+                    Id = interaction.Id,
+                    Title = "Response Queued",
+                    Description = $"Analyzing: \"{responsePreview}\"",
+                    Status = "queued"
+                });
+            }
+
+            // Check if there are pending responses being processed
+            var pendingResponses = _responseQueue.GetPendingCountForUser(profileId);
+            UserInteraction? nextQuestion = null;
+            
+            // If there are pending responses, show a joke to keep user engaged
+            if (pendingResponses > 0)
+            {
+                await Clients.Caller.SendAsync("StatusUpdate", 
+                    $"💡 Background processing active ({pendingResponses} pending)", 60);
+                nextQuestion = GenerateJoke(profile);
+                _logger.LogInformation("Showing joke to user {UserId} while {Count} responses are being processed", 
+                    profileId, pendingResponses);
             }
             else
             {
-                // Fallback: generate question now if prefetch is empty
-                await Clients.Caller.SendAsync("StatusUpdate", "⏳ Generating question...", 60);
-                nextQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
-                var hash = ComputeQuestionHash(nextQuestion);
-                profile.AskedQuestionHashes.Add(hash);
+                // No background processing - show next real question from prefetch queue
+                if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
+                {
+                    var hash = ComputeQuestionHash(prefetchedQuestion);
+                    profile.AskedQuestionHashes.Add(hash);
+                    nextQuestion = prefetchedQuestion;
+                    await Clients.Caller.SendAsync("StatusUpdate", 
+                        $"💡 Next question ready ({profile.PrefetchedQuestions.Count} queued)", 80);
+                }
+                else
+                {
+                    // Fallback: generate question now if prefetch is empty
+                    await Clients.Caller.SendAsync("StatusUpdate", "⏳ Generating question...", 60);
+                    nextQuestion = await _questionEngine.GenerateNextQuestionAsync(profile);
+                    var hash = ComputeQuestionHash(nextQuestion);
+                    profile.AskedQuestionHashes.Add(hash);
+                }
             }
 
             _profileStore.SetPendingInteraction(profileId, nextQuestion);
@@ -171,7 +195,7 @@ public class DiscoveryHub : Hub
                 NextQuestion = nextQuestion,
                 InteractionCount = profile.InteractionCount,
                 Stage = profile.Stage.ToString(),
-                PendingAnalysis = pendingCount,
+                PendingAnalysis = pendingResponses,
                 PrefetchedQuestions = profile.PrefetchedQuestions.Count
             });
         }
@@ -180,6 +204,44 @@ public class DiscoveryHub : Hub
             _logger.LogError(ex, "Error processing response for profile {ProfileId}", profileId);
             await Clients.Caller.SendAsync("Error", $"Processing failed: {ex.Message}");
         }
+    }
+    
+    /// <summary>
+    /// Generate a corny joke with thumbs up/down voting
+    /// </summary>
+    private UserInteraction GenerateJoke(UserProfile profile)
+    {
+        var jokes = new[]
+        {
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "What do you call a fake noodle? An impasta!",
+            "Why did the scarecrow win an award? He was outstanding in his field!",
+            "What do you call a bear with no teeth? A gummy bear!",
+            "Why don't eggs tell jokes? They'd crack each other up!",
+            "What did the ocean say to the beach? Nothing, it just waved!",
+            "Why did the bicycle fall over? It was two tired!",
+            "What do you call cheese that isn't yours? Nacho cheese!",
+            "Why couldn't the leopard play hide and seek? Because he was always spotted!",
+            "What did one wall say to the other wall? I'll meet you at the corner!",
+            "Why did the math book look so sad? Because it had too many problems!",
+            "What do you call a dinosaur with an extensive vocabulary? A thesaurus!"
+        };
+        
+        var random = new Random();
+        var jokeIndex = random.Next(jokes.Length);
+        
+        return new UserInteraction
+        {
+            UserId = profile.Id,
+            Type = InteractionType.Joke,
+            Content = new InteractionContent
+            {
+                Question = jokes[jokeIndex],
+                Format = InteractionFormat.ThumbsVote,
+                Options = new List<string> { "👍", "👎" }
+            },
+            TargetedDimensions = new List<string> { "humor", "engagement" }
+        };
     }
 
     /// <summary>
@@ -202,7 +264,7 @@ public class DiscoveryHub : Hub
     /// <summary>
     /// Start a new discovery session
     /// </summary>
-    public async Task StartDiscovery(string userName)
+    public async Task StartDiscovery()
     {
         try
         {
@@ -210,7 +272,7 @@ public class DiscoveryHub : Hub
 
             var profile = new UserProfile
             {
-                Name = userName,
+                Name = $"User-{Guid.NewGuid().ToString().Substring(0, 8)}",
                 Stage = DiscoveryStage.Initial
             };
 
@@ -229,7 +291,7 @@ public class DiscoveryHub : Hub
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error starting discovery for {UserName}", userName);
+            _logger.LogError(ex, "Error starting discovery");
             await Clients.Caller.SendAsync("Error", $"Failed to start: {ex.Message}");
         }
     }
