@@ -88,7 +88,7 @@ public class ResponseProcessingQueue : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Response Processing Queue started");
+        _logger.LogInformation("🚀 Response Processing Queue started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -106,13 +106,13 @@ public class ResponseProcessingQueue : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in response processing queue");
+                _logger.LogError(ex, "❌ Error in response processing queue");
                 await Task.Delay(1000, stoppingToken);
             }
         }
 
         // Process remaining items on shutdown
-        _logger.LogInformation("Response Processing Queue shutting down, processing remaining {Count} items", 
+        _logger.LogInformation("🛑 Response Processing Queue shutting down, processing remaining {Count} items", 
             _responseQueue.Count);
         
         while (_responseQueue.TryDequeue(out var response))
@@ -120,7 +120,7 @@ public class ResponseProcessingQueue : BackgroundService
             await ProcessSingleResponse(response, CancellationToken.None);
         }
 
-        _logger.LogInformation("Response Processing Queue stopped");
+        _logger.LogInformation("✅ Response Processing Queue stopped");
     }
 
     private async Task ProcessNextBatch(CancellationToken cancellationToken)
@@ -188,9 +188,12 @@ public class ResponseProcessingQueue : BackgroundService
             var profile = _profileStore.GetProfile(queuedResponse.ProfileId);
             if (profile == null)
             {
-                _logger.LogWarning("Profile {ProfileId} not found, dropping response", queuedResponse.ProfileId);
+                _logger.LogWarning("⚠️ Profile {ProfileId} not found, dropping response", queuedResponse.ProfileId);
                 return;
             }
+
+            _logger.LogInformation("🔍 Processing response for user {UserId}, queue depth: {Depth}", 
+                queuedResponse.ProfileId, _responseQueue.Count);
 
             using var scope = _scopeFactory.CreateScope();
             var analysisEngine = scope.ServiceProvider.GetRequiredService<ResponseAnalysisEngine>();

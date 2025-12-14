@@ -1,6 +1,8 @@
 using CommonUnderstanding.Models;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CommonUnderstanding.Services;
 
@@ -34,7 +36,7 @@ public class QuestionPrefetchService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Question Prefetch Service started");
+        _logger.LogInformation("🚀 Question Prefetch Service started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -42,6 +44,7 @@ public class QuestionPrefetchService : BackgroundService
             {
                 if (_prefetchQueue.TryDequeue(out var userId))
                 {
+                    _logger.LogInformation("📋 Processing prefetch request for user {UserId}", userId);
                     await PrefetchQuestionsForUser(userId, stoppingToken);
                 }
                 else
@@ -56,12 +59,12 @@ public class QuestionPrefetchService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in question prefetch service");
+                _logger.LogError(ex, "❌ Error in question prefetch service");
                 await Task.Delay(1000, stoppingToken);
             }
         }
 
-        _logger.LogInformation("Question Prefetch Service stopped");
+        _logger.LogInformation("🛑 Question Prefetch Service stopped");
     }
 
     private async Task PrefetchQuestionsForUser(string userId, CancellationToken cancellationToken)
@@ -95,6 +98,10 @@ public class QuestionPrefetchService : BackgroundService
                 var question = await GenerateUniqueQuestion(profile);
                 if (question != null)
                 {
+                    // Mark question as asked WHEN QUEUED so subsequent prefetches know about it
+                    var hash = ComputeQuestionHash(question);
+                    profile.AskedQuestionHashes.Add(hash);
+                    
                     profile.PrefetchedQuestions.Enqueue(question);
                     _logger.LogInformation("Prefetched question {Index} for user {UserId}, total queued: {Total}", 
                         i + 1, userId, profile.PrefetchedQuestions.Count);
@@ -140,12 +147,20 @@ public class QuestionPrefetchService : BackgroundService
 
     private string ComputeQuestionHash(UserInteraction interaction)
     {
-        // Create a hash based on question text and options to detect duplicates
-    var content = interaction.Content.Question;
+        // Create a stable hash based on question text and options to detect duplicates
+        var content = interaction.Content.Question ?? "";
         if (interaction.Content.Options?.Any() == true)
-     {
-            content += string.Join("|", interaction.Content.Options);
+        {
+            content += "|" + string.Join("|", interaction.Content.Options);
         }
-  return content.GetHashCode().ToString();
+        if (!string.IsNullOrEmpty(interaction.Content.Context))
+        {
+            content += "|" + interaction.Content.Context;
+        }
+        
+        // Use SHA256 for stable hashing across runs
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToBase64String(hashBytes);
     }
 }

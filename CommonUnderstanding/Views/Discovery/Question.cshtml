@@ -306,7 +306,9 @@
 
             try {
                 await connection.start();
+                window.discoveryConnection = connection; // Make available to activity monitor
                 console.log("SignalR connected successfully");
+                console.log("✅ window.discoveryConnection set");
             } catch (err) {
                 console.error("SignalR connection failed:", err);
                 console.log("Falling back to regular form submission");

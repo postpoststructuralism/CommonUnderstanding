@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CommonUnderstanding.Hubs;
 
@@ -144,8 +146,7 @@ public class DiscoveryHub : Hub
             UserInteraction? nextQuestion = null;
             if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
             {
-                var hash = ComputeQuestionHash(prefetchedQuestion);
-                profile.AskedQuestionHashes.Add(hash);
+                // Hash was already added when prefetched
                 nextQuestion = prefetchedQuestion;
                 await Clients.Caller.SendAsync("StatusUpdate", 
                     $"💡 Next question ready ({profile.PrefetchedQuestions.Count} queued)", 80);
@@ -183,7 +184,7 @@ public class DiscoveryHub : Hub
     }
 
     /// <summary>
-    /// Compute hash for question to detect duplicates
+    /// Compute stable hash for question to detect duplicates
     /// </summary>
     private string ComputeQuestionHash(UserInteraction interaction)
     {
@@ -196,7 +197,11 @@ public class DiscoveryHub : Hub
         {
             content += "|" + interaction.Content.Context;
         }
-        return content.GetHashCode().ToString();
+        
+        // Use SHA256 for stable hashing across runs
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToBase64String(hashBytes);
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
 using CommonUnderstanding.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CommonUnderstanding.Services;
 
@@ -83,11 +85,10 @@ public class BeliefDiscoveryOrchestrator
     {
         _logger.LogInformation("Starting discovery journey for user {UserId}", profile.Id);
 
-        // IMMEDIATELY generate 10 questions + 10 jokes - don't wait for background service
-        _logger.LogInformation("Pre-generating 20 interactions (10 questions + 10 jokes) for user {UserId}", profile.Id);
+        // IMMEDIATELY generate 10 questions - don't wait for background service
+        _logger.LogInformation("Pre-generating 10 questions for user {UserId}", profile.Id);
         
         var questions = new List<UserInteraction>();
-        var jokes = new List<UserInteraction>();
         
         // Generate 10 questions
         for (int i = 0; i < 10; i++)
@@ -101,79 +102,16 @@ public class BeliefDiscoveryOrchestrator
             }
         }
         
-        // Generate 10 jokes
-        for (int i = 0; i < 10; i++)
+        // Queue remaining questions (skip first one which we'll return)
+        for (int i = 1; i < questions.Count; i++)
         {
-            var joke = GenerateJoke(profile, i);
-            jokes.Add(joke);
+            profile.PrefetchedQuestions.Enqueue(questions[i]);
         }
         
-        // Interleave them: Q, Q, J, Q, Q, J, Q, Q, J...
-        // Pattern: 2 questions, then 1 joke, repeat
-        var interleaved = new List<UserInteraction>();
-        int qIndex = 1; // Start at 1 since we'll return the first question separately
-        int jIndex = 0;
+        _logger.LogInformation("Queued {Count} questions for user {UserId}", questions.Count - 1, profile.Id);
         
-        while (qIndex < questions.Count || jIndex < jokes.Count)
-        {
-            // Add 2 questions
-            for (int i = 0; i < 2 && qIndex < questions.Count; i++)
-            {
-                interleaved.Add(questions[qIndex++]);
-            }
-            
-            // Add 1 joke
-            if (jIndex < jokes.Count)
-            {
-                interleaved.Add(jokes[jIndex++]);
-            }
-        }
-        
-        // Queue them all up
-        foreach (var item in interleaved)
-        {
-            profile.PrefetchedQuestions.Enqueue(item);
-        }
-        
-        _logger.LogInformation("Queued {Count} interactions for user {UserId} (Questions first, then alternating)", interleaved.Count, profile.Id);
-        
-        // Return the FIRST question (never a joke)
+        // Return the first question
         return questions[0];
-    }
-    
-    /// <summary>
-    /// Generate a corny joke with thumbs up/down voting
-    /// </summary>
-    private UserInteraction GenerateJoke(UserProfile profile, int index)
-    {
-        var jokes = new[]
-        {
-            "Why don't scientists trust atoms? Because they make up everything!",
-            "What do you call a fake noodle? An impasta!",
-            "Why did the scarecrow win an award? He was outstanding in his field!",
-            "What do you call a bear with no teeth? A gummy bear!",
-            "Why don't eggs tell jokes? They'd crack each other up!",
-            "What did the ocean say to the beach? Nothing, it just waved!",
-            "Why did the bicycle fall over? It was two tired!",
-            "What do you call cheese that isn't yours? Nacho cheese!",
-            "Why couldn't the leopard play hide and seek? Because he was always spotted!",
-            "What did one wall say to the other wall? I'll meet you at the corner!",
-            "Why did the math book look so sad? Because it had too many problems!",
-            "What do you call a dinosaur with an extensive vocabulary? A thesaurus!"
-        };
-        
-        return new UserInteraction
-        {
-            UserId = profile.Id,
-            Type = InteractionType.Joke,
-            Content = new InteractionContent
-            {
-                Question = jokes[index % jokes.Length],
-                Format = InteractionFormat.ThumbsVote,
-                Options = new List<string> { "👍", "👎" }
-            },
-            TargetedDimensions = new List<string> { "humor", "engagement" }
-        };
     }
 
     /// <summary>
@@ -184,8 +122,7 @@ public class BeliefDiscoveryOrchestrator
         // First, check if we have prefetched questions available
         if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
         {
-            var hash = ComputeQuestionHash(prefetchedQuestion);
-            profile.AskedQuestionHashes.Add(hash);
+            // Hash was already added when prefetched
             _logger.LogInformation("Using prefetched question for user {UserId}", profile.Id);
             return prefetchedQuestion;
         }
@@ -249,7 +186,7 @@ public class BeliefDiscoveryOrchestrator
     }
 
     /// <summary>
-    /// Compute hash for question to detect duplicates
+    /// Compute stable hash for question to detect duplicates
     /// </summary>
     private string ComputeQuestionHash(UserInteraction interaction)
     {
@@ -262,7 +199,11 @@ public class BeliefDiscoveryOrchestrator
         {
             content += "|" + interaction.Content.Context;
         }
-        return content.GetHashCode().ToString();
+        
+        // Use SHA256 for stable hashing across runs
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToBase64String(hashBytes);
     }
 
     /// <summary>

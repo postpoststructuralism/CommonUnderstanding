@@ -352,44 +352,77 @@
     }
 
     // Hook into response processing via SignalR
-    if (typeof window.discoveryConnection !== 'undefined') {
-        // Listen for ActivityUpdated events from server
-        window.discoveryConnection.on('ActivityUpdated', function(activity) {
-            console.log('Activity update received:', activity);
+    function attachSignalRHandlers() {
+        if (typeof window.discoveryConnection !== 'undefined' && window.discoveryConnection !== null) {
+            console.log('✅ Activity Monitor: Attaching SignalR handlers to connection');
             
-            const existingActivity = activities.find(a => a.id === activity.Id);
-            
-            if (existingActivity) {
-                // Update existing activity
-                existingActivity.title = activity.Title;
-                existingActivity.description = activity.Description;
-                existingActivity.status = activity.Status;
-                existingActivity.progress = activity.Progress;
+            // Listen for activityUpdated events from server (camelCase from SignalR)
+            window.discoveryConnection.on('activityUpdated', function(activity) {
+                console.log('📊 Activity update received:', activity);
                 
-                // Auto-remove completed/error after 5 seconds
-                if (activity.Status === 'completed' || activity.Status === 'error') {
-                    setTimeout(() => {
-                        activities = activities.filter(a => a.id !== activity.Id);
-                        renderActivities();
-                    }, 5000);
+                const existingActivity = activities.find(a => a.id === activity.id);
+                
+                if (existingActivity) {
+                    // Update existing activity
+                    existingActivity.title = activity.title;
+                    existingActivity.description = activity.description;
+                    existingActivity.status = activity.status;
+                    existingActivity.progress = activity.progress;
+                    
+                    // Auto-remove completed/error after 5 seconds
+                    if (activity.status === 'completed' || activity.status === 'error') {
+                        setTimeout(() => {
+                            activities = activities.filter(a => a.id !== activity.id);
+                            renderActivities();
+                        }, 5000);
+                    }
+                } else {
+                    // Add new activity
+                    activities.unshift({
+                        id: activity.id,
+                        title: activity.title,
+                        description: activity.description,
+                        status: activity.status,
+                        progress: activity.progress || 0,
+                        startTime: Date.now()
+                    });
+                    
+                    if (activities.length > 10) activities.pop();
                 }
-            } else {
-                // Add new activity
+                
+                renderActivities();
+            });
+            
+            // Also listen for activityQueued
+            window.discoveryConnection.on('activityQueued', function(activity) {
+                console.log('📥 Activity queued:', activity);
+                
                 activities.unshift({
-                    id: activity.Id,
-                    title: activity.Title,
-                    description: activity.Description,
-                    status: activity.Status,
-                    progress: activity.Progress || 0,
+                    id: activity.id,
+                    title: activity.title,
+                    description: activity.description,
+                    status: activity.status || 'queued',
+                    progress: 0,
                     startTime: Date.now()
                 });
                 
                 if (activities.length > 10) activities.pop();
-            }
+                renderActivities();
+            });
             
-            renderActivities();
-        });
+            console.log('✅ Activity Monitor: Handlers attached successfully');
+            return true;
+        } else {
+            console.log('⏳ Activity Monitor: Waiting for connection... (window.discoveryConnection = ' + typeof window.discoveryConnection + ')');
+            // Retry after a short delay
+            setTimeout(attachSignalRHandlers, 200);
+            return false;
+        }
     }
+    
+    // Try to attach handlers on load
+    console.log('🚀 Activity Monitor: Initializing');
+    attachSignalRHandlers();
 
     // Auto-update timestamps
     setInterval(renderActivities, 1000);
