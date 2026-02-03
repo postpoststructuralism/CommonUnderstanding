@@ -352,7 +352,12 @@
     }
 
     // Hook into response processing via SignalR
+    let attachAttempts = 0;
+    const maxAttachAttempts = 20; // Try for ~4 seconds then give up
+    
     function attachSignalRHandlers() {
+        attachAttempts++;
+        
         if (typeof window.discoveryConnection !== 'undefined' && window.discoveryConnection !== null) {
             console.log('✅ Activity Monitor: Attaching SignalR handlers to connection');
             
@@ -412,10 +417,13 @@
             
             console.log('✅ Activity Monitor: Handlers attached successfully');
             return true;
-        } else {
+        } else if (attachAttempts < maxAttachAttempts) {
             console.log('⏳ Activity Monitor: Waiting for connection... (window.discoveryConnection = ' + typeof window.discoveryConnection + ')');
             // Retry after a short delay
             setTimeout(attachSignalRHandlers, 200);
+            return false;
+        } else {
+            console.log('⏹️ Activity Monitor: No SignalR connection found after ' + maxAttachAttempts + ' attempts. Activity monitoring disabled for this page.');
             return false;
         }
     }

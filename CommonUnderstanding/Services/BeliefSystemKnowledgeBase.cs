@@ -100,21 +100,26 @@ public class BeliefSystemKnowledgeBase
     /// </summary>
     public BeliefUniversePosition CalculateUniversePosition(BeliefSnapshot userProfile)
     {
-        // Create a simplified match list based on available belief systems
-        var simpleMatches = new List<BeliefSystemMatch>();
+        // Calculate actual similarity scores with all belief systems
+        var matches = new List<BeliefSystemMatch>();
         
-        foreach (var system in _allSystems.Take(5)) // Top 5 for now
+        foreach (var system in _allSystems)
         {
-            simpleMatches.Add(new BeliefSystemMatch
+            var similarity = CalculateSimilarity(userProfile, system);
+            
+            matches.Add(new BeliefSystemMatch
             {
                 SystemId = system.Id,
                 SystemName = system.Name,
-                MatchPercentage = 50.0, // Placeholder - will implement proper scoring later
-                DimensionalAlignment = new Dictionary<string, double>(),
-                SharedValues = new List<string> { "Pending detailed analysis" },
-                KeyDifferences = new List<string>()
+                MatchPercentage = similarity.OverallMatch * 100,
+                DimensionalAlignment = similarity.DimensionScores,
+                SharedValues = similarity.SharedValues,
+                KeyDifferences = similarity.KeyDifferences
             });
         }
+        
+        // Sort by match percentage and take top 5
+        var topMatches = matches.OrderByDescending(m => m.MatchPercentage).Take(5).ToList();
         
         // Build coordinates from user's dimensions
         var coordinates = new Dictionary<string, double>();
@@ -129,12 +134,112 @@ public class BeliefSystemKnowledgeBase
         var position = new BeliefUniversePosition
         {
             UserId = userProfile.UserId,
-            NearestSystems = simpleMatches,
+            NearestSystems = topMatches,
             UniverseCoordinates = coordinates,
-            PositionNarrative = GeneratePositionDescription(userProfile, simpleMatches, region)
+            PositionNarrative = GeneratePositionDescription(userProfile, topMatches, region)
         };
 
         return position;
+    }
+
+    /// <summary>
+    /// Calculate similarity between user's beliefs and a canonical belief system
+    /// </summary>
+    private (double OverallMatch, Dictionary<string, double> DimensionScores, List<string> SharedValues, List<string> KeyDifferences) 
+        CalculateSimilarity(BeliefSnapshot userProfile, CanonicalBeliefSystem system)
+    {
+        var dimensionScores = new Dictionary<string, double>();
+        var sharedValues = new List<string>();
+        var keyDifferences = new List<string>();
+        
+        // Calculate value alignment
+        double valueAlignment = 0.0;
+        int valueMatches = 0;
+        
+        foreach (var userValue in userProfile.Values.Take(5))
+        {
+            // Check against system's core principles
+            var valueMatch = system.CorePrinciples.Any(p => 
+                p.Contains(userValue.Name, StringComparison.OrdinalIgnoreCase) ||
+                userValue.Name.Contains(p, StringComparison.OrdinalIgnoreCase));
+            
+            // Also check against system's profile values
+            if (!valueMatch && system.Profile?.Values != null)
+            {
+                valueMatch = system.Profile.Values.Any(v => 
+                    v.Name.Equals(userValue.Name, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            if (valueMatch)
+            {
+                valueAlignment += userValue.Confidence;
+                valueMatches++;
+                sharedValues.Add(userValue.Name);
+            }
+        }
+        
+        if (valueMatches > 0)
+        {
+            var maxValues = Math.Max(userProfile.Values.Count, 
+                system.Profile?.Values?.Count ?? system.CorePrinciples.Count);
+            valueAlignment /= maxValues;
+        }
+        
+        // Calculate dimensional alignment using system's Profile
+        double dimensionAlignment = 0.5; // Default moderate alignment
+        if (system.Profile?.Dimensions != null && system.Profile.Dimensions.Any())
+        {
+            double alignedDimensions = 0.0;
+            int totalDimensions = 0;
+            
+            foreach (var sysDim in system.Profile.Dimensions.Where(d => d.Position.HasValue))
+            {
+                var userDim = userProfile.Dimensions.FirstOrDefault(d => 
+                    d.Name.Equals(sysDim.Name, StringComparison.OrdinalIgnoreCase));
+                
+                if (userDim?.Position.HasValue == true)
+                {
+                    totalDimensions++;
+                    // Calculate how close the positions are (-1 to 1 scale)
+                    var distance = Math.Abs(userDim.Position.Value - sysDim.Position!.Value);
+                    var similarity = 1.0 - (distance / 2.0); // Normalize to 0-1
+                    
+                    dimensionScores[sysDim.Name] = similarity * 100;
+                    alignedDimensions += similarity;
+                }
+            }
+            
+            if (totalDimensions > 0)
+            {
+                dimensionAlignment = alignedDimensions / totalDimensions;
+            }
+        }
+        
+        // Weighted overall match: values matter more than abstract dimensions
+        var overallMatch = (valueAlignment * 0.6) + (dimensionAlignment * 0.4);
+        
+        // Identify key differences (areas where confidence is high but alignment is low)
+        foreach (var userDim in userProfile.Dimensions.Where(d => d.Confidence > 0.7 && d.Position.HasValue))
+        {
+            var sysDim = system.Profile?.Dimensions?.FirstOrDefault(d => 
+                d.Name.Equals(userDim.Name, StringComparison.OrdinalIgnoreCase));
+            
+            if (sysDim?.Position.HasValue == true)
+            {
+                var distance = Math.Abs(userDim.Position!.Value - sysDim.Position.Value);
+                
+                if (distance > 1.0) // Significant difference (more than halfway across spectrum)
+                {
+                    var userTendency = userDim.Position.Value > 0 ? "positive" : "negative";
+                    var systemTendency = sysDim.Position.Value > 0 ? "positive" : "negative";
+                    
+                    keyDifferences.Add($"{userDim.Name}: Your position ({userDim.Position.Value:F2}) differs from " +
+                        $"{system.Name}'s position ({sysDim.Position.Value:F2})");
+                }
+            }
+        }
+        
+        return (overallMatch, dimensionScores, sharedValues, keyDifferences);
     }
 
     private string DetermineBeliefRegion(BeliefSnapshot profile)

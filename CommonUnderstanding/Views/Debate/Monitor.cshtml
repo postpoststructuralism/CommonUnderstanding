@@ -1,0 +1,531 @@
+@{
+    ViewData["Title"] = "Live Debate Monitor";
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-3">
+                <i class="bi bi-chat-dots"></i> Live Debate Monitor
+                <span class="badge bg-success ms-2" id="statusBadge">Connected</span>
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" id="newSessionBtn">
+                <i class="bi bi-plus-circle"></i> New Session
+            </button>
+            <button class="btn btn-outline-secondary" id="endSessionBtn" disabled>
+                <i class="bi bi-stop-circle"></i> End Session
+            </button>
+        </div>
+    </div>
+
+    <!-- Session Selection / Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <label for="sessionSelect" class="form-label">Active Session:</label>
+                            <select class="form-select" id="sessionSelect">
+                                <option value="">No session selected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex gap-3" id="sessionStats">
+                                <div class="text-center">
+                                    <div class="fs-4 fw-bold text-primary" id="messageCount">0</div>
+                                    <small class="text-muted">Messages</small>
+                                </div>
+                                <div class="text-center">
+                                    <div class="fs-4 fw-bold text-success" id="factCheckCount">0</div>
+                                    <small class="text-muted">Fact Checks</small>
+                                </div>
+                                <div class="text-center">
+                                    <div class="fs-4 fw-bold text-warning" id="alertCount">0</div>
+                                    <small class="text-muted">Alerts</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Debate Area -->
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4" style="height: 600px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-chat-text"></i> Debate Messages</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="debateMessages" class="overflow-auto p-3" style="height: 500px;">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-chat-left-dots fs-1"></i>
+                            <p class="mt-3">Select or create a session to start debating</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="messageInput" 
+                               placeholder="Create or join a session to start debating..." disabled>
+                        <button class="btn btn-primary" id="sendBtn" disabled>
+                            <i class="bi bi-send"></i> Send
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2" id="sessionHint">
+                        <i class="bi bi-info-circle"></i> Click "New Session" above to get started
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Analysis Sidebar -->
+        <div class="col-md-4">
+            <!-- Misunderstanding Alerts -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Active Alerts
+                    </h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 250px; overflow-y: auto;">
+                    <div id="alertsPanel">
+                        <small class="text-muted">No alerts</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Fact Checks -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-check2-circle"></i> Recent Fact Checks
+                    </h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 250px; overflow-y: auto;">
+                    <div id="factChecksPanel">
+                        <small class="text-muted">No fact checks yet</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intent Insights -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bullseye"></i> Intent Insights
+                    </h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 150px; overflow-y: auto;">
+                    <div id="intentPanel">
+                        <small class="text-muted">No intent data</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Session Modal -->
+<div class="modal fade" id="newSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Debate Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="sessionTitle" class="form-label">Session Title</label>
+                    <input type="text" class="form-control" id="sessionTitle" 
+                           placeholder="e.g., Climate Policy Discussion">
+                </div>
+                <div class="mb-3">
+                    <label for="userName" class="form-label">Your Name</label>
+                    <input type="text" class="form-control" id="userName" 
+                           placeholder="Enter your name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="createSessionBtn">Create & Join</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/js/signalr/dist/browser/signalr.min.js"></script>
+<script>
+    let connection = null;
+    let currentSessionId = null;
+    let userName = localStorage.getItem('debateUserName') || '';
+    let stats = { messages: 0, factChecks: 0, alerts: 0 };
+
+    // Initialize SignalR connection
+    async function initializeConnection() {
+        connection = new signalR.HubConnectionBuilder()
+            .withUrl("/debatehub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Event Handlers
+        connection.on("ReceiveMessage", (data) => {
+            addMessageToUI(data);
+            stats.messages++;
+            updateStats();
+        });
+
+        connection.on("ReceiveAnalysis", (message) => {
+            updateMessageAnalysis(message);
+        });
+
+        connection.on("ReceiveFactChecks", (data) => {
+            displayFactChecks(data.factChecks, data.messageId);
+            stats.factChecks += data.factChecks.length;
+            updateStats();
+        });
+
+        connection.on("ReceiveMisunderstandingAlert", (data) => {
+            displayMisunderstandingAlerts(data.alerts, data.messageId);
+            stats.alerts += data.alerts.length;
+            updateStats();
+        });
+
+        connection.on("ReceiveIntentAnalysis", (data) => {
+            displayIntentAnalysis(data.intent);
+        });
+
+        connection.on("UserJoined", (data) => {
+            addSystemMessage(`${data.userName} joined the debate`);
+        });
+
+        connection.on("UserLeft", (data) => {
+            addSystemMessage('A participant left the debate');
+        });
+
+        connection.on("Error", (data) => {
+            showError(data.message);
+        });
+
+        connection.onreconnecting(() => {
+            document.getElementById('statusBadge').className = 'badge bg-warning ms-2';
+            document.getElementById('statusBadge').textContent = 'Reconnecting...';
+        });
+
+        connection.onreconnected(() => {
+            document.getElementById('statusBadge').className = 'badge bg-success ms-2';
+            document.getElementById('statusBadge').textContent = 'Connected';
+            if (currentSessionId && userName) {
+                connection.invoke("JoinSession", currentSessionId, userName);
+            }
+        });
+
+        connection.onclose(() => {
+            document.getElementById('statusBadge').className = 'badge bg-danger ms-2';
+            document.getElementById('statusBadge').textContent = 'Disconnected';
+        });
+
+        await connection.start();
+        document.getElementById('statusBadge').className = 'badge bg-success ms-2';
+        document.getElementById('statusBadge').textContent = 'Connected';
+    }
+
+    // UI Functions
+    function addMessageToUI(data) {
+        const messagesDiv = document.getElementById('debateMessages');
+        if (messagesDiv.querySelector('.text-muted')) {
+            messagesDiv.innerHTML = '';
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message mb-3 p-3 border rounded';
+        messageDiv.id = `msg-${data.messageId || Date.now()}`;
+        messageDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <strong class="text-primary">${escapeHtml(data.userName)}</strong>
+                <small class="text-muted">${new Date(data.timestamp).toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">${escapeHtml(data.content)}</div>
+            ${data.isAnalyzing ? '<div class="mt-2"><small class="text-muted"><i class="spinner-border spinner-border-sm"></i> Analyzing...</small></div>' : ''}
+            <div class="analysis-section mt-2"></div>
+        `;
+        
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function updateMessageAnalysis(message) {
+        const messageDiv = document.getElementById(`msg-${message.id}`);
+        if (!messageDiv) return;
+
+        const spinner = messageDiv.querySelector('.spinner-border');
+        if (spinner) spinner.parentElement.remove();
+    }
+
+    function displayFactChecks(factChecks, messageId) {
+        const panel = document.getElementById('factChecksPanel');
+        if (panel.querySelector('.text-muted')) {
+            panel.innerHTML = '';
+        }
+
+        factChecks.forEach(fc => {
+            const verdictClass = {
+                'TRUE': 'success',
+                'FALSE': 'danger',
+                'PARTIALLY_TRUE': 'warning',
+                'UNVERIFIABLE': 'secondary'
+            }[fc.verdict] || 'secondary';
+
+            const checkDiv = document.createElement('div');
+            checkDiv.className = 'fact-check mb-2 p-2 border rounded';
+            checkDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-${verdictClass}">${fc.verdict}</span>
+                    <small class="text-muted">${Math.round(fc.confidence * 100)}%</small>
+                </div>
+                <small><strong>Claim:</strong> ${escapeHtml(fc.claim)}</small><br>
+                <small class="text-muted">${escapeHtml(fc.evidence)}</small>
+            `;
+            
+            panel.insertBefore(checkDiv, panel.firstChild);
+        });
+
+        // Keep only last 5
+        while (panel.children.length > 5) {
+            panel.removeChild(panel.lastChild);
+        }
+    }
+
+    function displayMisunderstandingAlerts(alerts, messageId) {
+        const panel = document.getElementById('alertsPanel');
+        if (panel.querySelector('.text-muted')) {
+            panel.innerHTML = '';
+        }
+
+        alerts.forEach(alert => {
+            const severityClass = alert.severity > 0.7 ? 'danger' : alert.severity > 0.4 ? 'warning' : 'info';
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${severityClass} alert-dismissible fade show p-2 mb-2`;
+            alertDiv.innerHTML = `
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+                <strong>${alert.type}</strong><br>
+                <small>${escapeHtml(alert.description)}</small><br>
+                <small class="text-muted"><i class="bi bi-lightbulb"></i> ${escapeHtml(alert.suggestion)}</small>
+            `;
+            
+            panel.insertBefore(alertDiv, panel.firstChild);
+        });
+    }
+
+    function displayIntentAnalysis(intent) {
+        const panel = document.getElementById('intentPanel');
+        
+        const toneColors = {
+            'POSITIVE': 'success',
+            'NEUTRAL': 'secondary',
+            'NEGATIVE': 'danger',
+            'DEFENSIVE': 'warning',
+            'COLLABORATIVE': 'info'
+        };
+
+        panel.innerHTML = `
+            <div class="mb-2">
+                <small><strong>Primary Intent:</strong></small><br>
+                <span class="badge bg-primary">${intent.primaryIntent}</span>
+            </div>
+            <div class="mb-2">
+                <small><strong>Tone:</strong></small><br>
+                <span class="badge bg-${toneColors[intent.emotionalTone] || 'secondary'}">${intent.emotionalTone}</span>
+            </div>
+            <div>
+                <small>
+                    ${intent.isQuestionSeeking ? '<i class="bi bi-question-circle text-info"></i> Question-seeking ' : ''}
+                    ${intent.isStatementAsserting ? '<i class="bi bi-exclamation-circle text-primary"></i> Asserting ' : ''}
+                    ${intent.isPersuasionAttempt ? '<i class="bi bi-megaphone text-warning"></i> Persuading ' : ''}
+                </small>
+            </div>
+        `;
+    }
+
+    function addSystemMessage(text) {
+        const messagesDiv = document.getElementById('debateMessages');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'text-center text-muted my-2';
+        msgDiv.innerHTML = `<small><i>${escapeHtml(text)}</i></small>`;
+        messagesDiv.appendChild(msgDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function updateStats() {
+        document.getElementById('messageCount').textContent = stats.messages;
+        document.getElementById('factCheckCount').textContent = stats.factChecks;
+        document.getElementById('alertCount').textContent = stats.alerts;
+    }
+
+    function showError(message) {
+        alert(message);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Event Handlers
+    document.getElementById('newSessionBtn').addEventListener('click', () => {
+        const modal = new bootstrap.Modal(document.getElementById('newSessionModal'));
+        modal.show();
+    });
+
+    document.getElementById('createSessionBtn').addEventListener('click', async () => {
+        const title = document.getElementById('sessionTitle').value.trim();
+        const name = document.getElementById('userName').value.trim();
+
+        if (!title || !name) {
+            alert('Please enter both session title and your name');
+            return;
+        }
+
+        userName = name;
+        localStorage.setItem('debateUserName', userName);
+
+        try {
+            const response = await fetch('/api/debate/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+
+            const session = await response.json();
+            currentSessionId = session.id;
+
+            await connection.invoke("JoinSession", session.id, userName);
+
+            document.getElementById('sessionSelect').innerHTML = `
+                <option value="${session.id}" selected>${session.title}</option>
+            `;
+            
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('endSessionBtn').disabled = false;
+            document.getElementById('debateMessages').innerHTML = '';
+            document.getElementById('sessionHint').style.display = 'none';
+            
+            stats = { messages: 0, factChecks: 0, alerts: 0 };
+            updateStats();
+
+            bootstrap.Modal.getInstance(document.getElementById('newSessionModal')).hide();
+        } catch (error) {
+            showError('Failed to create session: ' + error.message);
+        }
+    });
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+
+        if (!content || !currentSessionId) return;
+
+        try {
+            await connection.invoke("SendMessage", currentSessionId, userName, content);
+            input.value = '';
+        } catch (error) {
+            showError('Failed to send message: ' + error.message);
+        }
+    });
+
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('sendBtn').click();
+        }
+    });
+
+    document.getElementById('endSessionBtn').addEventListener('click', async () => {
+        if (!currentSessionId || !confirm('Are you sure you want to end this session?')) return;
+
+        try {
+            await fetch(`/api/debate/sessions/${currentSessionId}/end`, { method: 'POST' });
+            
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('endSessionBtn').disabled = true;
+            
+            addSystemMessage('Session ended');
+        } catch (error) {
+            showError('Failed to end session: ' + error.message);
+        }
+    });
+
+    // Load active sessions on page load
+    async function loadActiveSessions() {
+        try {
+            const response = await fetch('/api/debate/sessions');
+            const sessions = await response.json();
+            
+            const select = document.getElementById('sessionSelect');
+            sessions.forEach(session => {
+                const option = document.createElement('option');
+                option.value = session.id;
+                option.textContent = session.title;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load sessions:', error);
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initializeConnection();
+        await loadActiveSessions();
+        
+        // Auto-open new session modal if no session selected and userName not set
+        if (!userName) {
+            setTimeout(() => {
+                const modal = new bootstrap.Modal(document.getElementById('newSessionModal'));
+                modal.show();
+            }, 500);
+        }
+    });
+</script>
+}
+
+@section Styles {
+<style>
+    .message {
+        transition: background-color 0.3s;
+    }
+    .message:hover {
+        background-color: #f8f9fa;
+    }
+    .fact-check {
+        background-color: #f8f9fa;
+        font-size: 0.875rem;
+    }
+    .analysis-section {
+        border-top: 1px solid #dee2e6;
+        padding-top: 0.5rem;
+    }
+    #debateMessages::-webkit-scrollbar {
+        width: 8px;
+    }
+    #debateMessages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    #debateMessages::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    #debateMessages::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+}

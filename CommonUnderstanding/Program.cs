@@ -43,6 +43,9 @@ builder.Services.AddSingleton<ResponseProcessingQueue>();
 // Register the singleton instance as the hosted service
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ResponseProcessingQueue>());
 
+// Register Debate Monitor service
+builder.Services.AddSingleton<DebateMonitorService>();
+
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -79,5 +82,6 @@ app.MapControllerRoute(
 
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");
+app.MapHub<CommonUnderstanding.Hubs.DebateHub>("/debatehub");
 
 app.Run();
