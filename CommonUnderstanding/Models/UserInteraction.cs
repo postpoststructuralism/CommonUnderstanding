@@ -49,8 +49,7 @@ public enum InteractionType
     StatementAgreement,     // "Agree/Disagree: The ends justify the means"
     ValueRanking,          // Rank these 5 values in order of importance
     BinaryChoice,          // "Would you rather X or Y?"
-    EmotionalPrompt,       // Content designed to elicit emotional response
-    Joke                   // Corny joke for engagement and pacing
+    EmotionalPrompt        // Content designed to elicit emotional response
 }
 
 /// <summary>
