@@ -87,3 +87,6 @@ appsettings.Development.json
 launchSettings.json
 /app-logs
 /app-logs-latest
+/CommonUnderstanding/arguments.db
+/CommonUnderstanding/arguments.db-shm
+/CommonUnderstanding/arguments.db-wal
