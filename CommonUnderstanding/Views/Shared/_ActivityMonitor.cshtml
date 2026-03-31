@@ -271,7 +271,6 @@
     // Render activities
     function renderActivities() {
         try {
-            console.log('RENDER ACTIVITIES CALLED, activities.length =', activities.length);
             const list = document.getElementById('activityList');
             const emptyState = document.getElementById('emptyState');
             const count = document.getElementById('activityCount');
@@ -285,7 +284,6 @@
             count.textContent = activeCount;
             
             if (activities.length === 0) {
-                console.log('No activities, showing empty state');
                 emptyState.style.display = 'block';
                 emptyState.innerHTML = `
                     <i class="bi bi-inbox"></i>
@@ -301,7 +299,6 @@
                 return;
             }
             
-            console.log('Rendering', activities.length, 'activities');
             emptyState.style.display = 'none';
             
             list.innerHTML = activities.map(activity => {
@@ -330,7 +327,6 @@
                     </div>
                 `;
             }).join('');
-            console.log('✓ Rendered', activities.length, 'activities successfully');
         } catch (error) {
             console.error('ERROR in renderActivities:', error);
         }
@@ -338,10 +334,11 @@
 
     // Hook into response processing via SignalR
     // Wait for SignalR connection to be established and assigned to window
+    var _signalRRetries = 0;
+    var _maxSignalRRetries = 10; // Stop after 5 seconds (10 × 500ms)
     function initActivityMonitor() {
-        console.log('Checking for SignalR connection...');
         if (typeof window.discoveryConnection !== 'undefined' && window.discoveryConnection) {
-            console.log('✓ SignalR connection found! Registering ActivityUpdated handler...');
+            console.log('✓ SignalR connection found — registering ActivityUpdated handler');
             connectionStatus = 'Connected';
             renderActivities();
             
@@ -388,11 +385,15 @@
             
             console.log('✓ Activity monitor connected to SignalR');
         } else {
-            console.log('⏳ SignalR connection not ready, retrying...');
-            connectionStatus = 'Connecting...';
-            renderActivities();
-            // Retry after a short delay
-            setTimeout(initActivityMonitor, 500);
+            _signalRRetries++;
+            if (_signalRRetries <= _maxSignalRRetries) {
+                connectionStatus = 'Connecting...';
+                setTimeout(initActivityMonitor, 500);
+            } else {
+                // No SignalR hub on this page — stop polling silently
+                connectionStatus = 'Standby';
+                renderActivities();
+            }
         }
     }
 
@@ -401,7 +402,6 @@
     
     // Initial render and connection setup
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Activity Monitor initializing...');
         renderActivities();
         initActivityMonitor();
     });

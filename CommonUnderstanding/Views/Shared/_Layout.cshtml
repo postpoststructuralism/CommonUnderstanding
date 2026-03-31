@@ -64,6 +64,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "EmergentConclusions" ? "active" : "")"
+                           asp-controller="EmergentConclusions" asp-action="Index">
+                            <i class="bi bi-lightbulb"></i> Emergent Conclusions
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reference" ? "active" : "")"
                            asp-controller="Reference" asp-action="Index">
                             <i class="bi bi-book"></i> Reference
@@ -81,9 +87,6 @@
             </div>
         </div>
     </nav>
-
-    <!-- Background Processing Activity Monitor -->
-    @await Html.PartialAsync("_ActivityMonitor")
 
     <!-- MAIN CONTENT -->
     <div class="gc-main-content container-fluid">

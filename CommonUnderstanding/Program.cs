@@ -61,6 +61,11 @@ builder.Services.AddScoped<StakeholderService>();
 builder.Services.AddScoped<DecisionSupportService>();
 builder.Services.AddScoped<ComparativeAnalysisService>();
 
+// Register Emergent Conclusions Engine
+builder.Services.AddScoped<BlindspotDetector>();
+builder.Services.AddScoped<HarmonyDetector>();
+builder.Services.AddScoped<EmergentConclusionsEngine>();
+
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -126,7 +131,26 @@ using (var scope = app.Services.CreateScope())
             NetDirection TEXT NOT NULL DEFAULT 'Insufficient',
             NetConfidence REAL NOT NULL DEFAULT 0.0,
             CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
-        )"
+        )",
+        @"CREATE TABLE IF NOT EXISTS PersistedEmergentReports (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            GeneratedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            IsDeepAnalysis INTEGER NOT NULL DEFAULT 0,
+            TotalArguments INTEGER NOT NULL DEFAULT 0,
+            TotalPropositions INTEGER NOT NULL DEFAULT 0,
+            TotalEvidenceItems INTEGER NOT NULL DEFAULT 0,
+            AverageConfidence REAL NOT NULL DEFAULT 0.5,
+            SettledCount INTEGER NOT NULL DEFAULT 0,
+            ContestedCount INTEGER NOT NULL DEFAULT 0,
+            BlindspotCount INTEGER NOT NULL DEFAULT 0,
+            HarmonyCount INTEGER NOT NULL DEFAULT 0,
+            CriticalAssumptionsUntested INTEGER NOT NULL DEFAULT 0,
+            BlindspotsSummaryJson TEXT NULL,
+            HarmoniesSummaryJson TEXT NULL,
+            ExecutiveSummary TEXT NULL,
+            FullReportJson TEXT NULL
+        )",
+        "ALTER TABLE PersistedEmergentReports ADD COLUMN FullReportJson TEXT NULL"
     ];
     foreach (var sql in alterStatements)
     {

@@ -29,6 +29,9 @@ public class ApplicationDbContext : DbContext
     // Phase 5 — Comparative Analysis
     public DbSet<ArgumentComparison> ArgumentComparisons => Set<ArgumentComparison>();
 
+    // Emergent Conclusions — historical snapshots
+    public DbSet<PersistedEmergentReport> PersistedEmergentReports => Set<PersistedEmergentReport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
