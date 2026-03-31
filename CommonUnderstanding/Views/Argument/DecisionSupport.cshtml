@@ -1,0 +1,195 @@
+@model CommonUnderstanding.Services.DecisionSupportResult
+@using CommonUnderstanding.Models
+
+@{
+    var argument = ViewBag.Argument as CommonUnderstanding.Models.Argument;
+    ViewData["Title"] = $"Decision Support — {argument?.Title ?? "Argument"}";
+
+    string RecClass(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed     => "success",
+        DecisionRecommendation.Reject      => "danger",
+        DecisionRecommendation.Defer       => "warning",
+        _                                  => "info"
+    };
+    string RecIcon(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed     => "bi-check-circle-fill",
+        DecisionRecommendation.Reject      => "bi-x-circle-fill",
+        DecisionRecommendation.Defer       => "bi-pause-circle-fill",
+        _                                  => "bi-search"
+    };
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
+        <li class="breadcrumb-item"><a asp-action="View" asp-route-id="@Model.ArgumentId">@argument?.Title</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Decision Support</li>
+    </ol>
+</nav>
+
+<h1 class="gc-page-heading">
+    <i class="bi bi-clipboard2-check"></i> Decision Support Report
+</h1>
+<p class="lead text-muted mb-4">@argument?.Title</p>
+
+<!-- ── Final Recommendation ─────────────────────────────────────────────── -->
+<div class="gc-card mb-4 border-@RecClass(Model.FinalRecommendation) border-3">
+    <div class="gc-card-header bg-@RecClass(Model.FinalRecommendation) text-white fs-5">
+        <i class="bi @RecIcon(Model.FinalRecommendation) me-2"></i>
+        Recommendation: <strong>@Model.FinalRecommendation</strong>
+        <span class="badge bg-white text-@RecClass(Model.FinalRecommendation) ms-2 fs-6">
+            @Model.ConfidenceLevel Confidence
+        </span>
+    </div>
+    <div class="gc-card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-auto">
+                <div class="text-center">
+                    <div class="display-4 fw-bold text-@(Model.BaseConfidence >= 0.70 ? "success" : Model.BaseConfidence >= 0.45 ? "warning" : "danger")">
+                        @Model.BaseConfidence.ToString("P0")
+                    </div>
+                    <div class="text-muted small">Evidence Confidence</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="progress mb-2" style="height:14px;">
+                    <div class="progress-bar bg-@(Model.BaseConfidence >= 0.70 ? "success" : Model.BaseConfidence >= 0.45 ? "warning" : "danger")"
+                         style="width:@((Model.BaseConfidence * 100).ToString("F0"))%"></div>
+                </div>
+                <p class="text-muted small mb-0">@Model.ReasoningTrace</p>
+            </div>
+        </div>
+
+        <p class="text-muted small mb-0">
+            Generated @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' HH:mm UTC")
+        </p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column -->
+    <div class="col-lg-7">
+
+        <!-- Stakeholder consensus -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="bi bi-people me-1"></i> Stakeholder Consensus
+                <span class="badge bg-secondary ms-1">@Model.StakeholderConsensus.TotalResponses response(s)</span>
+            </div>
+            <div class="gc-card-body">
+                @if (Model.StakeholderConsensus.TotalResponses == 0)
+                {
+                    <p class="text-muted mb-0">No stakeholder positions have been recorded yet.</p>
+                }
+                else
+                {
+                    var total = Model.StakeholderConsensus.TotalResponses;
+                    double supportPct = (double)Model.StakeholderConsensus.SupportCount / total;
+                    double opposePct  = (double)Model.StakeholderConsensus.OpposeCount  / total;
+                    double undPct     = (double)Model.StakeholderConsensus.UndecidedCount / total;
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-success fw-semibold"><i class="bi bi-hand-thumbs-up-fill"></i> Support (@Model.StakeholderConsensus.SupportCount)</span>
+                            <span class="text-danger fw-semibold"><i class="bi bi-hand-thumbs-down-fill"></i> Oppose (@Model.StakeholderConsensus.OpposeCount)</span>
+                            <span class="text-secondary fw-semibold"><i class="bi bi-question-circle-fill"></i> Undecided (@Model.StakeholderConsensus.UndecidedCount)</span>
+                        </div>
+                        <div class="progress" style="height:20px;">
+                            <div class="progress-bar bg-success" style="width:@((supportPct * 100).ToString("F0"))%">@(supportPct > 0.05 ? Model.StakeholderConsensus.SupportCount.ToString() : "")</div>
+                            <div class="progress-bar bg-danger" style="width:@((opposePct * 100).ToString("F0"))%">@(opposePct > 0.05 ? Model.StakeholderConsensus.OpposeCount.ToString() : "")</div>
+                            <div class="progress-bar bg-secondary" style="width:@((undPct * 100).ToString("F0"))%">@(undPct > 0.05 ? Model.StakeholderConsensus.UndecidedCount.ToString() : "")</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 small">
+                        <span>Consensus rate: <strong>@Model.StakeholderConsensus.ConsensusRate.ToString("P0")</strong></span>
+                        <span>Majority: <strong>@Model.StakeholderConsensus.MajorityPosition</strong></span>
+                        @if (Model.StakeholderConsensus.HasConsensus)
+                        {
+                            <span class="badge bg-success">Consensus reached</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">No clear consensus</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Contested premises -->
+        @if (Model.ContestedPremises.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header text-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Contested Premises
+                    <span class="badge bg-warning text-dark ms-1">@Model.ContestedPremises.Count</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var cp in Model.ContestedPremises)
+                    {
+                        <div class="list-group-item">
+                            <p class="mb-1">@cp.Text</p>
+                            <div class="d-flex gap-3 small">
+                                <span class="text-danger">
+                                    <i class="bi bi-x-circle-fill me-1"></i>
+                                    Rejected by @cp.RejectCount
+                                    @if (cp.RejectedBy.Any())
+                                    {
+                                        <span class="text-muted">([@string.Join(", ", cp.RejectedBy)])</span>
+                                    }
+                                </span>
+                                @if (cp.AcceptCount > 0)
+                                {
+                                    <span class="text-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        Accepted by @cp.AcceptCount
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right column -->
+    <div class="col-lg-5">
+
+        <!-- Discussion topics -->
+        @if (Model.SuggestedDiscussionTopics.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-chat-dots me-1"></i> Suggested Discussion Topics
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var topic in Model.SuggestedDiscussionTopics)
+                    {
+                        <li class="list-group-item small">
+                            <i class="bi bi-arrow-right-circle me-2 text-primary"></i>@topic
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <!-- Actions -->
+        <div class="d-grid gap-2">
+            <a asp-action="View" asp-route-id="@Model.ArgumentId" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Argument
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-list me-1"></i> All Arguments
+            </a>
+            <a asp-controller="CommonUnderstanding" asp-action="Index" class="btn btn-outline-info">
+                <i class="bi bi-diagram-2 me-1"></i> Common Understanding Graph
+            </a>
+        </div>
+    </div>
+</div>

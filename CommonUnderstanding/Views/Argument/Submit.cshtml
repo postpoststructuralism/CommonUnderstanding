@@ -1,0 +1,107 @@
+@model CommonUnderstanding.Controllers.ArgumentSubmitModel
+
+@{
+    ViewData["Title"] = "A Common Understanding — Argument Analysis";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid py-4 px-4">
+
+    <!-- Page heading -->
+    <div class="mb-4 pb-2 border-bottom">
+        <h2 class="fw-semibold mb-1" style="letter-spacing: -0.01em;">Submit an Argument for Structured Analysis</h2>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            The system will decompose the argument into its logical components — claim, premises, syllogisms, hidden assumptions, qualifiers, and rebuttals — and produce a formal adjudication report.
+        </p>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form asp-action="Submit" method="post" id="submitForm">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4 align-items-start">
+
+            <!-- Argument text — takes most of the horizontal space -->
+            <div class="col-xl-8 col-lg-7">
+                <label asp-for="ArgumentText" class="form-label fw-semibold small text-uppercase tracking-wide text-secondary mb-1">
+                    Argument Statement
+                </label>
+                <textarea asp-for="ArgumentText" id="argumentText" class="form-control font-monospace"
+                          rows="16" autofocus spellcheck="true"
+                          style="font-size: 0.875rem; line-height: 1.6; resize: vertical;"
+                          placeholder="Enter the complete argument. Include the central claim, all supporting premises, any cited evidence, qualifying conditions, and known counter-arguments."></textarea>
+                <span asp-validation-for="ArgumentText" class="text-danger small d-block mt-1"></span>
+                <div class="d-flex justify-content-end mt-1">
+                    <span id="charCount" class="text-muted" style="font-size: 0.78rem;">0 characters</span>
+                </div>
+            </div>
+
+            <!-- Right column: submitter + action + analysis pipeline summary -->
+            <div class="col-xl-4 col-lg-5 d-flex flex-column gap-4">
+
+                <!-- Submitter -->
+                <div>
+                    <label asp-for="SubmittedBy" class="form-label fw-semibold small text-uppercase text-secondary mb-1">
+                        Submitted By <span class="fw-normal text-muted">(optional)</span>
+                    </label>
+                    <input asp-for="SubmittedBy" class="form-control" placeholder="Name or designation" maxlength="100" />
+                </div>
+
+                <!-- Submit button -->
+                <div>
+                    <button type="submit" class="btn btn-primary w-100" id="submitBtn" style="padding: 0.6rem 1rem; font-size: 0.95rem;">
+                        <i class="bi bi-send me-2"></i>Submit for Analysis
+                    </button>
+                    <div class="text-center mt-2">
+                        <a asp-action="Index" class="text-muted" style="font-size: 0.8rem;">
+                            <i class="bi bi-clock-history me-1"></i>Prior submissions
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Analysis pipeline — compact, institutional -->
+                <div class="border rounded p-3 bg-light" style="font-size: 0.8rem;">
+                    <p class="fw-semibold text-secondary text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">Analysis Pipeline</p>
+                    <ol class="ps-3 mb-0 text-secondary" style="line-height: 1.8;">
+                        <li>Central claim extraction</li>
+                        <li>Premise identification</li>
+                        <li>Syllogistic structure</li>
+                        <li>Hidden assumption surfacing</li>
+                        <li>Informal fallacy detection</li>
+                        <li>Adjudication &amp; confidence scoring</li>
+                    </ol>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        const textarea = document.getElementById('argumentText');
+        const counter  = document.getElementById('charCount');
+        const btn      = document.getElementById('submitBtn');
+
+        function updateCount() {
+            const n = textarea.value.length;
+            counter.textContent = n.toLocaleString() + ' characters';
+        }
+        textarea.addEventListener('input', updateCount);
+
+        document.getElementById('submitForm').addEventListener('submit', function () {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Submitting\u2026';
+        });
+    </script>
+}
+
+

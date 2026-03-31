@@ -27,7 +27,7 @@
                 <img src="~/images/sig-blk-en.svg" alt="Government of Canada" class="gc-logo" />
                 <div class="gc-site-title">
                     <h1>A Common Understanding</h1>
-                   @*  <span class="subtitle">Indian Land Registry System</span> *@
+                    <span class="subtitle">Evidence-Based Decision Platform</span>
                 </div>
             </div>
             <button class="gc-lang-toggle" onclick="toggleLanguage()" title="Français">
@@ -46,31 +46,35 @@
             <div class="collapse navbar-collapse" id="gcNavbarContent">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" 
-                           asp-controller="Home" asp-action="Index">
-                            <i class="fas fa-home"></i> Home
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" 
+                           asp-controller="Dashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Explore" ? "active" : "")" 
-                           asp-controller="Explore" asp-action="Index">
-                            <i class="fas fa-globe"></i> Explore Canon
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Argument" ? "active" : "")"
+                           asp-controller="Argument" asp-action="Index">
+                            <i class="bi bi-diagram-3"></i> Arguments
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Discovery" ? "active" : "")" 
-                           asp-controller="Discovery" asp-action="Start">
-                            <i class="fas fa-compass"></i> Find Your Place
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CommonUnderstanding" ? "active" : "")"
+                           asp-controller="CommonUnderstanding" asp-action="Index">
+                            <i class="bi bi-diagram-2"></i> Common Understanding
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-controller="Explore" asp-action="Compare">
-                            <i class="fas fa-arrows-left-right"></i> Compare
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reference" ? "active" : "")"
+                           asp-controller="Reference" asp-action="Index">
+                            <i class="bi bi-book"></i> Reference
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="togglePanel(); return false;">
-                            <i class="fas fa-robot"></i> Ollama Admin
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Settings" ? "active" : "")"
+                           asp-controller="Settings" asp-action="Index">
+                            <i class="bi bi-gear"></i> Settings
+                            <span id="navAiStatusDot" title="AI Status"
+                                  style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6b7280;margin-left:4px;vertical-align:middle;"></span>
                         </a>
                     </li>
                 </ul>
@@ -78,9 +82,6 @@
         </div>
     </nav>
 
-    <!-- AI Control Panel -->
-    @await Html.PartialAsync("_AIControlPanel")
-    
     <!-- Background Processing Activity Monitor -->
     @await Html.PartialAsync("_ActivityMonitor")
 
@@ -131,6 +132,21 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     
     <script>
+        // AI status dot in nav — polls every 30s
+        (async function updateNavAiDot() {
+            try {
+                const r = await fetch('/api/AIStatus/status');
+                const d = await r.json();
+                const dot = document.getElementById('navAiStatusDot');
+                if (!dot) return;
+                if (d.ollamaConnected && d.modelLoaded) dot.style.background = '#198754';
+                else if (d.ollamaConnected)              dot.style.background = '#ffc107';
+                else                                     dot.style.background = '#dc3545';
+                dot.title = d.ollamaConnected ? (d.modelLoaded ? 'AI: Ready' : 'AI: Partial') : 'AI: Offline';
+            } catch { /* silent fail */ }
+            setTimeout(updateNavAiDot, 30000);
+        })();
+
         // Language Toggle Function
         function toggleLanguage() {
             // Placeholder for future i18n implementation

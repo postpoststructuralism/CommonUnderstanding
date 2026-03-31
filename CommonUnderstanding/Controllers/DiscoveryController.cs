@@ -367,6 +367,35 @@ public class DiscoveryController : Controller
         return View(profiles);
     }
 
+    // GET: Discovery/CompareToCanonical
+    public IActionResult CompareToCanonical()
+    {
+        string? profileId = HttpContext.Request.Cookies["ProfileId"];
+        
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
+        {
+            HttpContext.Response.Cookies.Delete("ProfileId");
+            TempData["Error"] = "No active profile found. Please start discovery first.";
+            return RedirectToAction(nameof(Start));
+        }
+
+        var profile = _profileStore.GetProfile(profileId);
+        
+        if (profile?.CurrentBeliefSnapshot == null || profile.InteractionCount < 5)
+        {
+            TempData["Error"] = "Please answer at least 5 questions before comparing your beliefs.";
+            return RedirectToAction(nameof(Question));
+        }
+
+        // Get top matches
+        var matches = _knowledgeBase.CompareUserToCanonicalSystems(profile.CurrentBeliefSnapshot, topN: 20);
+        
+        ViewBag.Profile = profile;
+        ViewBag.Snapshot = profile.CurrentBeliefSnapshot;
+        
+        return View(matches);
+    }
+
     // GET: Discovery/Debug (for troubleshooting)
     public IActionResult Debug()
     {

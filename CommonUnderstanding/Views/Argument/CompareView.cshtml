@@ -1,0 +1,300 @@
+@model CommonUnderstanding.Models.ArgumentComparison
+@using CommonUnderstanding.Models
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = $"Compare: {Model.ArgumentA?.Title} vs. {Model.ArgumentB?.Title}";
+
+    var conflictingPremises = string.IsNullOrWhiteSpace(Model.ConflictingPremisesJson)
+        ? new List<ConflictingPremisePair>()
+        : JsonSerializer.Deserialize<List<ConflictingPremisePair>>(Model.ConflictingPremisesJson)
+          ?? new List<ConflictingPremisePair>();
+
+    var sharedGround = string.IsNullOrWhiteSpace(Model.ComplementaryPremisesJson)
+        ? new List<string>()
+        : JsonSerializer.Deserialize<List<string>>(Model.ComplementaryPremisesJson)
+          ?? new List<string>();
+
+    var uniqueToA = string.IsNullOrWhiteSpace(Model.UniqueToPremisesAJson)
+        ? new List<string>()
+        : JsonSerializer.Deserialize<List<string>>(Model.UniqueToPremisesAJson)
+          ?? new List<string>();
+
+    var uniqueToB = string.IsNullOrWhiteSpace(Model.UniqueToPremisesBJson)
+        ? new List<string>()
+        : JsonSerializer.Deserialize<List<string>>(Model.UniqueToPremisesBJson)
+          ?? new List<string>();
+
+    string directionClass = Model.NetDirection switch
+    {
+        NetDirection.FavoursA   => "primary",
+        NetDirection.FavoursB   => "danger",
+        NetDirection.Balanced   => "success",
+        _                        => "secondary"
+    };
+    string directionIcon = Model.NetDirection switch
+    {
+        NetDirection.FavoursA   => "bi-arrow-left-circle-fill",
+        NetDirection.FavoursB   => "bi-arrow-right-circle-fill",
+        NetDirection.Balanced   => "bi-dash-circle-fill",
+        _                        => "bi-question-circle-fill"
+    };
+    string directionLabel = Model.NetDirection switch
+    {
+        NetDirection.FavoursA   => $"Favours: {Model.ArgumentA?.Title}",
+        NetDirection.FavoursB   => $"Favours: {Model.ArgumentB?.Title}",
+        NetDirection.Balanced   => "Balanced — neither argument dominates",
+        _                        => "Insufficient data to determine"
+    };
+
+    var confA = Model.ArgumentA?.AdjudicationSummary?.OverallConfidence;
+    var confB = Model.ArgumentB?.AdjudicationSummary?.OverallConfidence;
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Argument" asp-action="Index">Arguments</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Argument" asp-action="Compare">Compare</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Analysis</li>
+    </ol>
+</nav>
+
+<!-- Header: two argument titles -->
+<div class="row g-3 align-items-center mb-4">
+    <div class="col-md-5">
+        <div class="gc-card border-primary border-2 h-100">
+            <div class="gc-card-body">
+                <div class="d-flex align-items-center mb-1">
+                    <span class="badge bg-primary me-2">A</span>
+                    <small class="text-muted">
+                        @(confA.HasValue ? $"{confA.Value:P0} confidence" : "no score")
+                    </small>
+                </div>
+                <h2 class="h5 mb-2">@Model.ArgumentA?.Title</h2>
+                <a asp-action="View" asp-route-id="@Model.ArgumentAId"
+                   class="btn btn-sm btn-outline-primary">View full analysis →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 text-center">
+        <span class="display-6 text-muted fw-bold">vs.</span>
+    </div>
+    <div class="col-md-5">
+        <div class="gc-card border-danger border-2 h-100">
+            <div class="gc-card-body">
+                <div class="d-flex align-items-center mb-1">
+                    <span class="badge bg-danger me-2">B</span>
+                    <small class="text-muted">
+                        @(confB.HasValue ? $"{confB.Value:P0} confidence" : "no score")
+                    </small>
+                </div>
+                <h2 class="h5 mb-2">@Model.ArgumentB?.Title</h2>
+                <a asp-action="View" asp-route-id="@Model.ArgumentBId"
+                   class="btn btn-sm btn-outline-danger">View full analysis →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Net Assessment -->
+<div class="gc-card mb-4 border-@directionClass border-2">
+    <div class="gc-card-body">
+        <h2 class="h5 mb-3"><i class="bi bi-balance-scale"></i> Net Assessment</h2>
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <i class="bi @directionIcon text-@directionClass fs-2"></i>
+            <div>
+                <div class="fw-bold fs-5 text-@directionClass">@directionLabel</div>
+                @if (Model.NetConfidence > 0)
+                {
+                    <small class="text-muted">AI confidence in this assessment: @Model.NetConfidence.ToString("P0")</small>
+                }
+            </div>
+        </div>
+        @if (Model.NetConfidence > 0)
+        {
+            <div class="progress mb-3" style="height: 8px;" title="Net confidence: @Model.NetConfidence.ToString("P0")">
+                <div class="progress-bar bg-@directionClass"
+                     role="progressbar"
+                     style="width: @((Model.NetConfidence * 100).ToString("F0"))%"
+                     aria-valuenow="@((Model.NetConfidence * 100).ToString("F0"))"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.SynthesisNarrative))
+        {
+            <div class="mt-3">
+                @foreach (var para in Model.SynthesisNarrative.Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
+                {
+                    <p>@para</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="compareTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-conflicts" type="button" role="tab">
+            <i class="bi bi-lightning-charge text-danger"></i>
+            Conflicts
+            @if (conflictingPremises.Any())
+            {
+                <span class="badge bg-danger ms-1">@conflictingPremises.Count</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-shared" type="button" role="tab">
+            <i class="bi bi-intersect text-success"></i>
+            Shared Ground
+            @if (sharedGround.Any())
+            {
+                <span class="badge bg-success ms-1">@sharedGround.Count</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unique" type="button" role="tab">
+            <i class="bi bi-layout-split"></i>
+            Unique Claims
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="compareTabContent">
+
+    <!-- Conflicts tab -->
+    <div class="tab-pane fade show active" id="tab-conflicts" role="tabpanel">
+        @if (!conflictingPremises.Any())
+        {
+            <div class="gc-card">
+                <div class="gc-card-body text-center py-4">
+                    <i class="bi bi-check-circle text-success fs-3"></i>
+                    <p class="mt-2 text-muted">No directly conflicting premises were identified.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-3">
+                These premises directly contradict each other between the two arguments.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-bordered align-top">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:37%"><i class="bi bi-a-circle text-primary"></i> Argument A premise</th>
+                            <th style="width:37%"><i class="bi bi-b-circle text-danger"></i> Argument B premise</th>
+                            <th style="width:26%">Nature of conflict</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in conflictingPremises)
+                        {
+                            <tr>
+                                <td class="border-start border-3 border-primary ps-3">@c.PremiseA</td>
+                                <td class="border-start border-3 border-danger ps-3">@c.PremiseB</td>
+                                <td class="text-muted fst-italic small">@c.Explanation</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Shared ground tab -->
+    <div class="tab-pane fade" id="tab-shared" role="tabpanel">
+        @if (!sharedGround.Any())
+        {
+            <div class="gc-card">
+                <div class="gc-card-body text-center py-4">
+                    <i class="bi bi-dash-circle text-muted fs-3"></i>
+                    <p class="mt-2 text-muted">No shared premises or assumptions were identified.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-3">
+                Both arguments rely on or agree with the following propositions.
+            </p>
+            <ul class="list-group">
+                @foreach (var shared in sharedGround)
+                {
+                    <li class="list-group-item">
+                        <i class="bi bi-check2-circle text-success me-2"></i>@shared
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <!-- Unique claims tab -->
+    <div class="tab-pane fade" id="tab-unique" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h3 class="h6 text-primary mb-3">
+                    <i class="bi bi-a-circle-fill"></i> Only in Argument A
+                </h3>
+                @if (!uniqueToA.Any())
+                {
+                    <p class="text-muted small">None identified.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var item in uniqueToA)
+                        {
+                            <li class="list-group-item list-group-item-action">
+                                <i class="bi bi-arrow-right-short text-primary"></i> @item
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="col-md-6">
+                <h3 class="h6 text-danger mb-3">
+                    <i class="bi bi-b-circle-fill"></i> Only in Argument B
+                </h3>
+                @if (!uniqueToB.Any())
+                {
+                    <p class="text-muted small">None identified.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var item in uniqueToB)
+                        {
+                            <li class="list-group-item list-group-item-action">
+                                <i class="bi bi-arrow-right-short text-danger"></i> @item
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Footer actions -->
+<div class="mt-5 d-flex gap-2">
+    <a asp-action="Compare" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-repeat"></i> New comparison
+    </a>
+    <a asp-action="View" asp-route-id="@Model.ArgumentAId" class="btn btn-outline-primary">
+        <i class="bi bi-a-circle"></i> View Argument A
+    </a>
+    <a asp-action="View" asp-route-id="@Model.ArgumentBId" class="btn btn-outline-danger">
+        <i class="bi bi-b-circle"></i> View Argument B
+    </a>
+</div>
+
+<p class="text-muted small mt-3">
+    Analysis generated @Model.CreatedAt.ToString("MMMM d, yyyy 'at' HH:mm UTC")
+</p>

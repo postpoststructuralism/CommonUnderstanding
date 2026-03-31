@@ -1,0 +1,237 @@
+@model IEnumerable<CommonUnderstanding.Models.CommonUnderstandingNode>
+@using CommonUnderstanding.Models
+
+@{
+    ViewData["Title"] = "Common Understanding";
+    var stats = ViewBag.Stats as CommonUnderstanding.Services.GraphStatistics;
+    var grouped = ViewBag.Grouped as Dictionary<PropositionStatus, List<CommonUnderstandingNode>>;
+    bool isSearch = ViewBag.IsSearch == true;
+    string? query = ViewBag.Query as string;
+
+    static string StatusColor(PropositionStatus s) => s switch
+    {
+        PropositionStatus.Settled => "success",
+        PropositionStatus.Contested => "warning",
+        PropositionStatus.Unknown => "secondary",
+        _ => "light"
+    };
+    static string StatusIcon(PropositionStatus s) => s switch
+    {
+        PropositionStatus.Settled => "bi-check-circle-fill",
+        PropositionStatus.Contested => "bi-exclamation-triangle-fill",
+        PropositionStatus.Unknown => "bi-question-circle",
+        _ => "bi-circle"
+    };
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Common Understanding</li>
+    </ol>
+</nav>
+
+<h1 class="gc-page-heading">
+    <i class="bi bi-diagram-2"></i> Common Understanding
+</h1>
+
+<!-- Search bar -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <input type="text" name="search" class="form-control"
+                   placeholder="Search propositions…" value="@query" />
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-search"></i>
+            </button>
+            @if (!string.IsNullOrWhiteSpace(query))
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Status filter tabs -->
+@{
+    var activeFilter = ViewBag.Filter as string ?? "all";
+}
+<ul class="nav nav-pills mb-4 flex-wrap gap-1">
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "all" ? "active" : "")"
+           asp-action="Index" asp-route-filter="all">
+            All
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "Settled" ? "active bg-success" : "text-success")"
+           asp-action="Index" asp-route-filter="Settled">
+            <i class="bi bi-check-circle-fill me-1"></i>Settled
+            @if (stats != null) { <span class="badge bg-success ms-1">@stats.SettledCount</span> }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "Contested" ? "active bg-warning text-dark" : "text-warning")"
+           asp-action="Index" asp-route-filter="Contested">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>Contested
+            @if (stats != null) { <span class="badge bg-warning text-dark ms-1">@stats.ContestedCount</span> }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "Unknown" ? "active" : "text-secondary")"
+           asp-action="Index" asp-route-filter="Unknown">
+            <i class="bi bi-question-circle me-1"></i>Unknown
+            @if (stats != null) { <span class="badge bg-secondary ms-1">@stats.UnknownCount</span> }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "Unevaluated" ? "active" : "text-muted")"
+           asp-action="Index" asp-route-filter="Unevaluated">
+            <i class="bi bi-circle me-1"></i>Unevaluated
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeFilter == "gaps" ? "active bg-danger" : "text-danger")"
+           asp-action="Index" asp-route-filter="gaps">
+            <i class="bi bi-journal-x me-1"></i>Evidence Gaps
+        </a>
+    </li>
+</ul>
+
+<!-- Statistics bar -->
+@if (stats != null && !isSearch)
+{
+    <div class="row mb-4">
+        <div class="col-lg-10">
+            <div class="gc-card">
+                <div class="gc-card-body py-3">
+                    <div class="row text-center g-0">
+                        <div class="col">
+                            <div class="display-6 fw-bold">@stats.TotalNodes</div>
+                            <div class="text-muted small">Total Propositions</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold text-success">@stats.SettledCount</div>
+                            <div class="text-muted small">Settled</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold text-warning">@stats.ContestedCount</div>
+                            <div class="text-muted small">Contested</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold text-secondary">@stats.UnknownCount</div>
+                            <div class="text-muted small">Unknown</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold text-muted">@stats.UnevaluatedCount</div>
+                            <div class="text-muted small">Unevaluated</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold">@stats.AverageConfidence.ToString("P0")</div>
+                            <div class="text-muted small">Avg Confidence</div>
+                        </div>
+                        <div class="col border-start">
+                            <div class="display-6 fw-bold">@stats.TotalEvidenceItems</div>
+                            <div class="text-muted small">Evidence Items</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="gc-card text-center py-5">
+        <i class="bi bi-diagram-2 display-3 text-muted mb-3 d-block"></i>
+        <h4 class="text-muted">
+            @(isSearch ? $"No propositions matched \"{query}\"" : "No propositions in the graph yet")
+        </h4>
+        <p class="text-muted">
+            Submit and analyze arguments on the
+            <a asp-controller="Argument" asp-action="Index">Arguments</a> page to populate this graph.
+        </p>
+    </div>
+}
+else if (isSearch)
+{
+    <!-- Search results — flat list -->
+    <h5 class="mb-3">
+        <i class="bi bi-search"></i>
+        @Model.Count() result(s) for "<strong>@query</strong>"
+    </h5>
+    <div class="list-group mb-4">
+        @foreach (var node in Model)
+        {
+            <a asp-action="Node" asp-route-id="@node.Id"
+               class="list-group-item list-group-item-action">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="me-3">@node.Text</span>
+                    <div class="d-flex gap-2 flex-shrink-0">
+                        <span class="badge bg-@StatusColor(node.Status)">
+                            <i class="bi @StatusIcon(node.Status)"></i> @node.Status
+                        </span>
+                        <span class="badge bg-light text-dark border">
+                            @node.Confidence.ToString("P0")
+                        </span>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+}
+else
+{
+    <!-- Grouped by status -->
+    @foreach (var status in new[] { PropositionStatus.Contested, PropositionStatus.Settled, PropositionStatus.Unknown, PropositionStatus.Unevaluated })
+    {
+        if (grouped == null || !grouped.TryGetValue(status, out var nodes) || !nodes.Any())
+            continue;
+
+        <div class="mb-4">
+            <h5 class="mb-3">
+                <span class="badge bg-@StatusColor(status) me-2">
+                    <i class="bi @StatusIcon(status)"></i> @status
+                </span>
+                <span class="text-muted">@nodes.Count proposition(s)</span>
+            </h5>
+            <div class="list-group">
+                @foreach (var node in nodes.Take(50))
+                {
+                    var argIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(node.ArgumentIdsJson) ?? new();
+                    <a asp-action="Node" asp-route-id="@node.Id"
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3 flex-grow-1">
+                                <span>@node.Text</span>
+                                <div class="text-muted small mt-1">
+                                    <i class="bi bi-calendar2"></i> @node.LastUpdatedAt.ToString("MMM d, yyyy")
+                                    &nbsp;·&nbsp;
+                                    <i class="bi bi-journal"></i> @node.EvidenceCount evidence
+                                    &nbsp;·&nbsp;
+                                    <i class="bi bi-link-45deg"></i> @argIds.Count argument(s)
+                                    &nbsp;·&nbsp;
+                                    v@node.Version
+                                </div>
+                            </div>
+                            <div class="text-end flex-shrink-0">
+                                <div class="fw-semibold text-@(node.Confidence >= 0.70 ? "success" : node.Confidence >= 0.45 ? "warning" : "danger")">
+                                    @node.Confidence.ToString("P0")
+                                </div>
+                                <div class="small text-muted">confidence</div>
+                            </div>
+                        </div>
+                    </a>
+                }
+                @if (nodes.Count > 50)
+                {
+                    <div class="list-group-item text-muted small text-center">
+                        … @(nodes.Count - 50) more — use search to narrow results
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

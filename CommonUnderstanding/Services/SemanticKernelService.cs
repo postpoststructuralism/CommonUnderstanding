@@ -50,10 +50,17 @@ public class SemanticKernelService
         try
         {
             var builder = Kernel.CreateBuilder();
-            
+
+            // Use a custom HttpClient with a generous timeout for large models
+            var httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(ollamaEndpoint),
+                Timeout = TimeSpan.FromMinutes(5)
+            };
+
             builder.AddOllamaChatCompletion(
                 modelId: ollamaModel,
-                endpoint: new Uri(ollamaEndpoint));
+                httpClient: httpClient);
 
             // cache the current values
             _currentEndpoint = ollamaEndpoint;

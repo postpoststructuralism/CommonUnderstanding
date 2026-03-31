@@ -1,0 +1,199 @@
+@model IEnumerable<CommonUnderstanding.Models.Argument>
+@using CommonUnderstanding.Models
+
+@{
+    ViewData["Title"] = "Decision Arguments";
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Arguments</li>
+    </ol>
+</nav>
+
+<h1 class="gc-page-heading">
+    <i class="bi bi-diagram-3"></i> Argument Analysis
+</h1>
+
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="gc-card mb-4">
+            <div class="gc-card-body">
+                <p class="lead mb-3">
+                    Submit an argument or proposal for objective, evidence-based decomposition and adjudication.
+                </p>
+                <p class="text-muted mb-0">
+                    The system breaks arguments into their component propositions and logical structure,
+                    then adjudicates each claim against relevant evidence.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 d-flex align-items-start justify-content-end gap-2 flex-wrap">
+        <a asp-action="Compare" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-arrow-left-right"></i> Compare Arguments
+        </a>
+        <a asp-action="Submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle"></i> Submit New Argument
+        </a>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filter bar -->
+<form method="get" asp-action="Index" class="row g-2 mb-4 align-items-end">
+    <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Status</label>
+        <select name="status" class="form-select form-select-sm">
+            <option value="">All statuses</option>
+            <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
+            <option value="Complete" selected="@(ViewBag.Status == "Complete")">Complete</option>
+            <option value="Decomposing" selected="@(ViewBag.Status == "Decomposing")">Decomposing</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Recommendation</label>
+        <select name="recommendation" class="form-select form-select-sm">
+            <option value="">All recommendations</option>
+            <option value="Proceed" selected="@(ViewBag.Recommendation == "Proceed")">Proceed</option>
+            <option value="Investigate" selected="@(ViewBag.Recommendation == "Investigate")">Investigate</option>
+            <option value="Defer" selected="@(ViewBag.Recommendation == "Defer")">Defer</option>
+            <option value="Reject" selected="@(ViewBag.Recommendation == "Reject")">Reject</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Sort by</label>
+        <select name="sort" class="form-select form-select-sm">
+            <option value="" selected="@(string.IsNullOrEmpty(ViewBag.Sort as string))">Date (newest first)</option>
+            <option value="confidence" selected="@(ViewBag.Sort == "confidence")">Confidence (highest first)</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+            <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+        @if (!string.IsNullOrEmpty(ViewBag.Status as string) || !string.IsNullOrEmpty(ViewBag.Recommendation as string) || !string.IsNullOrEmpty(ViewBag.Sort as string))
+        {
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+        }
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="gc-card text-center py-5">
+        <i class="bi bi-diagram-3 display-3 text-muted mb-3 d-block"></i>
+        <h4 class="text-muted">No arguments submitted yet</h4>
+        <p class="text-muted">Submit an argument to get started.</p>
+        <a asp-action="Submit" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle"></i> Submit First Argument
+        </a>
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var arg in Model)
+        {
+            var statusClass = arg.Status switch
+            {
+                ArgumentStatus.Complete => "success",
+                ArgumentStatus.Decomposing => "warning",
+                ArgumentStatus.Adjudicating => "info",
+                _ => "secondary"
+            };
+            var statusIcon = arg.Status switch
+            {
+                ArgumentStatus.Complete => "bi-check-circle-fill",
+                ArgumentStatus.Decomposing => "bi-cpu",
+                ArgumentStatus.Adjudicating => "bi-graph-up",
+                _ => "bi-pencil"
+            };
+
+            <div class="col-lg-6 mb-4">
+                <div class="gc-card h-100">
+                    <div class="gc-card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="mb-0">@arg.Title</h5>
+                            <span class="badge bg-@statusClass">
+                                <i class="bi @statusIcon"></i> @arg.Status
+                            </span>
+                        </div>
+
+                        <p class="text-muted small mb-3 argument-preview">
+                            @(arg.RawText.Length > 180 ? arg.RawText[..180] + "…" : arg.RawText)
+                        </p>
+
+                        <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
+                            <span>
+                                <i class="bi bi-calendar"></i> @arg.CreatedAt.ToString("MMM d, yyyy")
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(arg.SubmittedBy))
+                            {
+                                <span><i class="bi bi-person"></i> @arg.SubmittedBy</span>
+                            }
+                        </div>
+
+                        @if (arg.AdjudicationSummary != null)
+                        {
+                            var conf = arg.AdjudicationSummary.OverallConfidence;
+                            var confClass = conf >= 0.7 ? "success" : conf >= 0.45 ? "warning" : "danger";
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Overall Confidence</span>
+                                    <strong class="text-@confClass">@conf.ToString("P0")</strong>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-@confClass" style="width: @((conf * 100).ToString("F0"))%"></div>
+                                </div>
+                                <div class="mt-1 small">
+                                    <span class="badge bg-@(arg.AdjudicationSummary.Recommendation == DecisionRecommendation.Proceed ? "success" : arg.AdjudicationSummary.Recommendation == DecisionRecommendation.Reject ? "danger" : "warning")">
+                                        @arg.AdjudicationSummary.Recommendation
+                                    </span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2">
+                            @if (arg.Status == ArgumentStatus.Complete)
+                            {
+                                <a asp-action="View" asp-route-id="@arg.Id" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-eye"></i> View Analysis
+                                </a>
+                            }
+                            else if (arg.Status == ArgumentStatus.Draft)
+                            {
+                                <a asp-action="Analyze" asp-route-id="@arg.Id" class="btn btn-success btn-sm">
+                                    <i class="bi bi-play-fill"></i> Analyze
+                                </a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary btn-sm" disabled>
+                                    <span class="spinner-border spinner-border-sm me-1"></span> Processing…
+                                </button>
+                            }
+
+                            <form asp-action="Delete" asp-route-id="@arg.Id" method="post" class="d-inline"
+                                  onsubmit="return confirm('Delete this argument?')">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
