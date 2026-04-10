@@ -52,6 +52,24 @@ public class UserProfile
 }
 
 /// <summary>
+/// EF Core entity for persisting a UserProfile across sessions.
+/// Complex nested types are stored as JSON columns.
+/// </summary>
+public class PersistedUserProfile
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastInteractionAt { get; set; }
+    public string Stage { get; set; } = "Initial";
+    public string? CurrentBeliefSnapshotJson { get; set; }
+    public string HistoricalSnapshotsJson { get; set; } = "[]";
+    public string InteractionsJson { get; set; } = "[]";
+    public string AskedQuestionHashesJson { get; set; } = "[]";
+    public string ExploredDimensionsJson { get; set; } = "[]";
+}
+
+/// <summary>
 /// Stages in the belief discovery process
 /// </summary>
 public enum DiscoveryStage

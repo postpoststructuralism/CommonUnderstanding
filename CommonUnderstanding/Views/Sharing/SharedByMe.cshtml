@@ -1,0 +1,96 @@
+@model CommonUnderstanding.Controllers.SharedItemListViewModel
+@using CommonUnderstanding.Models
+@{
+    ViewData["Title"] = "Shared By Me";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-share me-2"></i>Shared By Me
+        </h1>
+        <p class="text-muted mb-0">Content you've shared with your connections</p>
+    </div>
+    <a asp-action="SharedWithMe" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-inbox me-1"></i>View Incoming
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Items.Any())
+{
+    <div class="gc-card text-center py-5">
+        <i class="bi bi-share display-3 text-muted mb-3 d-block"></i>
+        <h3>Nothing shared yet</h3>
+        <p class="text-muted">Share an argument or analysis with a connection from the Arguments page.</p>
+        <a asp-controller="Argument" asp-action="Index" class="btn btn-primary mt-2">
+            <i class="bi bi-diagram-3 me-1"></i>Go to Arguments
+        </a>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var vm in Model.Items)
+        {
+            var typeIcon = vm.Item.ItemType switch
+            {
+                SharedItemType.Argument       => "bi-diagram-3",
+                SharedItemType.Analysis       => "bi-bar-chart-steps",
+                SharedItemType.EmergentReport => "bi-lightbulb",
+                SharedItemType.ConvergenceMap => "bi-intersect",
+                _                             => "bi-file-earmark"
+            };
+            var visibilityBadge = vm.Item.Visibility switch
+            {
+                ItemVisibility.Public      => ("success", "globe2", "Public"),
+                ItemVisibility.Connections => ("primary", "people",  "Connections"),
+                _                          => ("secondary", "lock",  "Private")
+            };
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="gc-card h-100">
+                    <div class="gc-card-header d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">
+                            <i class="bi @typeIcon me-1"></i>@vm.Item.ItemType
+                        </span>
+                        <span class="badge bg-@visibilityBadge.Item1">
+                            <i class="bi bi-@visibilityBadge.Item2 me-1"></i>@visibilityBadge.Item3
+                        </span>
+                    </div>
+                    <div class="gc-card-body">
+                        <h3 class="h6 mb-1">@vm.Item.ItemTitle</h3>
+                        <p class="small text-muted mb-2">@vm.Item.SharedAt.ToString("MMM d, yyyy HH:mm")</p>
+
+                        @if (!string.IsNullOrWhiteSpace(vm.Item.Message))
+                        {
+                            <p class="small fst-italic border-start border-3 ps-2 text-muted mb-2">
+                                "@vm.Item.Message"
+                            </p>
+                        }
+
+                        @if (vm.Reactions.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var r in vm.Reactions.GroupBy(r => r.Emoji))
+                                {
+                                    <span class="badge bg-light text-dark border">@r.Key @r.Count()</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="small text-muted fst-italic mb-0">No reactions yet</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

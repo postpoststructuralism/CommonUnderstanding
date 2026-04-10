@@ -1,0 +1,86 @@
+@using CommonUnderstanding.Models
+@{
+    ViewData["Title"] = "Create Collaborative Session";
+    var connectedUsers = ViewBag.ConnectedUsers as List<CommonUnderstanding.Models.UserProfile> ?? new();
+}
+
+<div class="mb-4">
+    <h1 class="gc-page-heading mb-1">
+        <i class="bi bi-plus-circle me-2"></i>New Collaborative Session
+    </h1>
+    <p class="text-muted mb-0">Invite connected users to contribute arguments and analyse them together</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="gc-card">
+            <div class="gc-card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Session title <span class="text-danger">*</span></label>
+                        <input type="text" id="title" name="title" class="form-control"
+                               placeholder="e.g. Climate Policy Evidence Review" maxlength="200" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <span class="text-muted">(optional)</span></label>
+                        <textarea id="description" name="description" class="form-control" rows="3"
+                                  maxlength="1000" placeholder="What is this session trying to understand?"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Invite connections</label>
+                        @if (!connectedUsers.Any())
+                        {
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                You have no active connections yet.
+                                <a asp-controller="Connections" asp-action="Index">Connect with other users</a> to invite them.
+                            </div>
+                        }
+                        else
+                        {
+                            foreach (var user in connectedUsers)
+                            {
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="invitedUserIds" value="@user.Id"
+                                           id="user_@user.Id" />
+                                    <label class="form-check-label" for="user_@user.Id">
+                                        <i class="bi bi-person-circle me-1 text-primary"></i>
+                                        @user.Name
+                                        <span class="badge bg-light text-secondary ms-1">@user.Stage</span>
+                                    </label>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>Create Session
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="gc-card">
+            <div class="gc-card-header"><h2 class="h6 mb-0"><i class="bi bi-info-circle me-1"></i>How it works</h2></div>
+            <div class="gc-card-body small text-muted">
+                <ol class="ps-3">
+                    <li class="mb-2">Create the session and invite connections.</li>
+                    <li class="mb-2">Each participant selects arguments to contribute.</li>
+                    <li class="mb-2">Run joint analysis — arguments are decomposed, compared, and merged into a shared proposition graph.</li>
+                    <li class="mb-2">Review the joint Emergent Conclusions report and convergence map.</li>
+                    <li>Use expansion pathways to grow areas of shared understanding.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>

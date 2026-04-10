@@ -267,7 +267,10 @@ public class ResponseProcessingQueue : BackgroundService
             using var prefetchScope = _scopeFactory.CreateScope();
             var prefetchService = prefetchScope.ServiceProvider.GetRequiredService<QuestionPrefetchService>();
             prefetchService.RequestPrefetch(queuedResponse.ProfileId);
-            
+
+            // Persist the updated profile to the database so it survives restarts
+            await _profileStore.SaveProfileAsync(queuedResponse.ProfileId);
+
             _logger.LogInformation("Triggered prefetch for user {ProfileId} after analysis completion", 
                 queuedResponse.ProfileId);
         }

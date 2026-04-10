@@ -1,6 +1,8 @@
 using CommonUnderstanding.Services;
 using CommonUnderstanding.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,7 @@ builder.Services.AddControllersWithViews();
 var dbPath = Path.Combine(builder.Environment.ContentRootPath, "arguments.db");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
+
 
 // Add HttpContextAccessor for views that need Request access
 builder.Services.AddHttpContextAccessor();
@@ -66,6 +69,25 @@ builder.Services.AddScoped<BlindspotDetector>();
 builder.Services.AddScoped<HarmonyDetector>();
 builder.Services.AddScoped<EmergentConclusionsEngine>();
 
+// Account system (ADFS-ready cookie auth)
+builder.Services.AddSingleton<AccountService>();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(30);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+    });
+
+// Register Multi-User Convergence services (Phase 6)
+builder.Services.AddScoped<UserConnectionService>();
+builder.Services.AddScoped<ConvergenceMapService>();
+builder.Services.AddScoped<ConvergenceExpansionService>();
+builder.Services.AddScoped<CollaborativeSessionService>();
+
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -94,6 +116,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -150,7 +173,87 @@ using (var scope = app.Services.CreateScope())
             ExecutiveSummary TEXT NULL,
             FullReportJson TEXT NULL
         )",
-        "ALTER TABLE PersistedEmergentReports ADD COLUMN FullReportJson TEXT NULL"
+        "ALTER TABLE PersistedEmergentReports ADD COLUMN FullReportJson TEXT NULL",
+
+        // Phase 6 — Multi-User Convergence (new tables added after initial DB creation)
+        @"CREATE TABLE IF NOT EXISTS UserConnections (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            InitiatorUserId TEXT NOT NULL,
+            RecipientUserId TEXT NOT NULL,
+            Status TEXT NOT NULL DEFAULT 'Pending',
+            InitiatorMessage TEXT NULL,
+            InitiatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            RespondedAt TEXT NULL
+        )",
+        "CREATE INDEX IF NOT EXISTS IX_UserConnections_Pair ON UserConnections (InitiatorUserId, RecipientUserId)",
+
+        @"CREATE TABLE IF NOT EXISTS SharedItems (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ItemType TEXT NOT NULL,
+            ItemReferenceId TEXT NOT NULL,
+            ItemTitle TEXT NOT NULL DEFAULT '',
+            SharedByUserId TEXT NOT NULL,
+            SharedWithUserIdsJson TEXT NOT NULL DEFAULT '[]',
+            Visibility TEXT NOT NULL DEFAULT 'Connections',
+            Message TEXT NULL,
+            SharedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            ReactionsJson TEXT NOT NULL DEFAULT '[]'
+        )",
+        "CREATE INDEX IF NOT EXISTS IX_SharedItems_SharedBy ON SharedItems (SharedByUserId)",
+
+        @"CREATE TABLE IF NOT EXISTS ConvergenceMaps (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            User1Id TEXT NOT NULL,
+            User2Id TEXT NOT NULL,
+            GeneratedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            LastRefreshedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            OverallConvergenceScore REAL NOT NULL DEFAULT 0.0,
+            ProfileOverlapJson TEXT NULL,
+            SharedPropositionIdsJson TEXT NOT NULL DEFAULT '[]',
+            DisputedPropositionIdsJson TEXT NOT NULL DEFAULT '[]',
+            DivergencePointsJson TEXT NOT NULL DEFAULT '[]',
+            ExpansionPathwaysJson TEXT NOT NULL DEFAULT '[]',
+            EvolutionHistoryJson TEXT NOT NULL DEFAULT '[]',
+            NarrativeSummary TEXT NULL
+        )",
+        "CREATE INDEX IF NOT EXISTS IX_ConvergenceMaps_Users ON ConvergenceMaps (User1Id, User2Id)",
+
+        @"CREATE TABLE IF NOT EXISTS CollaborativeSessions (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Title TEXT NOT NULL DEFAULT '',
+            Description TEXT NULL,
+            ParticipantIdsJson TEXT NOT NULL DEFAULT '[]',
+            ContributedArgumentIdsJson TEXT NOT NULL DEFAULT '[]',
+            MergedNodeIdsJson TEXT NOT NULL DEFAULT '[]',
+            Status TEXT NOT NULL DEFAULT 'Active',
+            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            ConcludedAt TEXT NULL,
+            JointConvergenceMapId INTEGER NULL,
+            ConsolidatedReportJson TEXT NULL,
+            ExecutiveSummary TEXT NULL
+        )",
+
+        @"CREATE TABLE IF NOT EXISTS UserProfiles (
+            Id TEXT PRIMARY KEY,
+            Name TEXT NOT NULL DEFAULT '',
+            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            LastInteractionAt TEXT NOT NULL DEFAULT (datetime('now')),
+            Stage TEXT NOT NULL DEFAULT 'Initial',
+            CurrentBeliefSnapshotJson TEXT NULL,
+            HistoricalSnapshotsJson TEXT NOT NULL DEFAULT '[]',
+            InteractionsJson TEXT NOT NULL DEFAULT '[]',
+            AskedQuestionHashesJson TEXT NOT NULL DEFAULT '[]',
+            ExploredDimensionsJson TEXT NOT NULL DEFAULT '[]'
+        )",
+
+        @"CREATE TABLE IF NOT EXISTS UserAccounts (
+            Id TEXT PRIMARY KEY,
+            Username TEXT NOT NULL UNIQUE,
+            DisplayName TEXT NOT NULL DEFAULT '',
+            PasswordHash TEXT NOT NULL DEFAULT '',
+            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            IsActive INTEGER NOT NULL DEFAULT 1
+        )"
     ];
     foreach (var sql in alterStatements)
     {

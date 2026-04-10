@@ -32,6 +32,18 @@ public class ApplicationDbContext : DbContext
     // Emergent Conclusions — historical snapshots
     public DbSet<PersistedEmergentReport> PersistedEmergentReports => Set<PersistedEmergentReport>();
 
+    // Phase 6 — Multi-User Convergence
+    public DbSet<UserConnection> UserConnections => Set<UserConnection>();
+    public DbSet<SharedItem> SharedItems => Set<SharedItem>();
+    public DbSet<ConvergenceMap> ConvergenceMaps => Set<ConvergenceMap>();
+    public DbSet<CollaborativeSession> CollaborativeSessions => Set<CollaborativeSession>();
+
+    // Persisted user profiles (durable identity across sessions)
+    public DbSet<PersistedUserProfile> UserProfiles => Set<PersistedUserProfile>();
+
+    // Account system (manually-managed, ADFS-ready)
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -167,6 +179,54 @@ public class ApplicationDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.ArgumentBId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // UserConnection
+        modelBuilder.Entity<UserConnection>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<string>();
+            e.HasIndex(x => new { x.InitiatorUserId, x.RecipientUserId });
+        });
+
+        // SharedItem
+        modelBuilder.Entity<SharedItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ItemType).HasConversion<string>();
+            e.Property(x => x.Visibility).HasConversion<string>();
+            e.HasIndex(x => x.SharedByUserId);
+        });
+
+        // ConvergenceMap
+        modelBuilder.Entity<ConvergenceMap>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.User1Id, x.User2Id });
+        });
+
+        // CollaborativeSession
+        modelBuilder.Entity<CollaborativeSession>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<string>();
+        });
+
+        // PersistedUserProfile
+        modelBuilder.Entity<PersistedUserProfile>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Stage).HasMaxLength(50);
+        });
+
+        // UserAccount
+        modelBuilder.Entity<UserAccount>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Username).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.Username).IsUnique();
+            e.Property(x => x.DisplayName).HasMaxLength(200);
         });
     }
 }

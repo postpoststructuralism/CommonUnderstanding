@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace CommonUnderstanding.Controllers;
 
+[Authorize]
 public class ArgumentController : Controller
 {
     private readonly ApplicationDbContext _db;
@@ -50,8 +53,10 @@ public class ArgumentController : Controller
     /// </summary>
     public async Task<IActionResult> Index(string? status, string? recommendation, string? sort)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var query = _db.Arguments
             .Include(a => a.AdjudicationSummary)
+            .Where(a => a.SubmittedBy == userId)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<ArgumentStatus>(status, out var statusEnum))
@@ -103,7 +108,7 @@ public class ArgumentController : Controller
         {
             Title = provisionalTitle,
             RawText = rawText,
-            SubmittedBy = model.SubmittedBy?.Trim(),
+            SubmittedBy = User.FindFirstValue(ClaimTypes.NameIdentifier),
             Status = ArgumentStatus.Draft
         };
 
@@ -517,7 +522,7 @@ public class ArgumentController : Controller
         var existingClaims = await _db.Claims.Where(c => c.ArgumentId == argument.Id).ToListAsync();
         _db.Claims.RemoveRange(existingClaims);
 
-        var claim = new Claim
+        var claim = new CommonUnderstanding.Models.Claim
         {
             ArgumentId = argument.Id,
             Text = decomposition.ClaimText,

@@ -137,10 +137,6 @@ else
                             <span>
                                 <i class="bi bi-calendar"></i> @arg.CreatedAt.ToString("MMM d, yyyy")
                             </span>
-                            @if (!string.IsNullOrWhiteSpace(arg.SubmittedBy))
-                            {
-                                <span><i class="bi bi-person"></i> @arg.SubmittedBy</span>
-                            }
                         </div>
 
                         @if (arg.AdjudicationSummary != null)

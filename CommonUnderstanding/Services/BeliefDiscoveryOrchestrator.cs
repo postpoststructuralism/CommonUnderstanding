@@ -83,15 +83,17 @@ public class BeliefDiscoveryOrchestrator
     {
         _logger.LogInformation("Starting discovery journey for user {UserId}", profile.Id);
 
-        // Generate initial set of questions (NO jokes in prefetch queue)
-        _logger.LogInformation("Pre-generating 10 questions for user {UserId}", profile.Id);
+        // Seed the prefetch queue with the 5 hardcoded initial survey questions.
+        // We use forcedIndex explicitly so that all 5 questions are distinct —
+        // using profile.InteractionCount in a loop would return the same question
+        // every iteration since the count doesn't change between iterations.
+        _logger.LogInformation("Pre-generating 5 initial survey questions for user {UserId}", profile.Id);
         
         var questions = new List<UserInteraction>();
-        
-        // Generate 10 questions
-        for (int i = 0; i < 10; i++)
+        const int initialSurveyCount = 5;
+        for (int i = 0; i < initialSurveyCount; i++)
         {
-            var question = await _questionEngine.GenerateNextQuestionAsync(profile);
+            var question = _questionEngine.GenerateInitialSurveyQuestion(profile, forcedIndex: i);
             var hash = ComputeQuestionHash(question);
             if (!profile.AskedQuestionHashes.Contains(hash))
             {
@@ -106,10 +108,10 @@ public class BeliefDiscoveryOrchestrator
             profile.PrefetchedQuestions.Enqueue(questions[i]);
         }
         
-        _logger.LogInformation("Queued {Count} questions for user {UserId}", questions.Count - 1, profile.Id);
+        _logger.LogInformation("Queued {Count} initial questions for user {UserId}", questions.Count - 1, profile.Id);
         
-        // Return the FIRST question (never a joke)
-        return questions[0];
+        // Return the first question, or fall back to adaptive generation if all were already asked
+        return questions.Count > 0 ? questions[0] : await GetNextQuestionAsync(profile);
     }
 
     /// <summary>
@@ -145,6 +147,20 @@ public class BeliefDiscoveryOrchestrator
             },
             TargetedDimensions = new List<string> { "humor", "engagement" }
         };
+    }
+
+    /// <summary>
+    /// Generate the best next question for an existing profile without the startup bulk-seeding
+    /// overhead of <see cref="StartDiscoveryAsync"/>. Use this as the fallback when the
+    /// prefetch queue is empty mid-session.
+    /// </summary>
+    public async Task<UserInteraction> GetNextQuestionAsync(UserProfile profile)
+    {
+        // Still in initial survey phase — return a hardcoded question immediately (no AI calls)
+        if (profile.InteractionCount < 5)
+            return _questionEngine.GenerateInitialSurveyQuestion(profile);
+
+        return await GenerateAdaptiveQuestionAsync(profile);
     }
 
     /// <summary>
@@ -304,27 +320,16 @@ public class BeliefDiscoveryOrchestrator
         UserProfile profile,
         BeliefSnapshot snapshot)
     {
+        // Prefer the dimension with the lowest confidence that hasn't been asked yet
         var uncertainDimensions = snapshot.Dimensions
             .Where(d => d.Confidence < 0.6)
             .OrderBy(d => d.Confidence)
             .ToList();
 
-        if (uncertainDimensions.Any())
-        {
-            var dim = uncertainDimensions.First();
-            return _questionEngine.GenerateScaleQuestion(
-                profile, 
-                dim.Name, 
-                "Strongly Disagree", 
-                "Strongly Agree");
-        }
+        var preferDimension = uncertainDimensions.FirstOrDefault()?.Name;
 
-        // Default scale question
-        return _questionEngine.GenerateScaleQuestion(
-            profile,
-            "individual-collective",
-            "Individual Freedom",
-            "Collective Good");
+        // Let the engine pick an unseen question, optionally biased toward the uncertain dimension
+        return _questionEngine.GenerateScaleQuestion(profile, preferDimension);
     }
 
     private async Task<UserInteraction> GenerateFollowUpQuestion(
