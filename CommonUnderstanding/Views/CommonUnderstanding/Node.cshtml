@@ -1,0 +1,214 @@
+@model CommonUnderstanding.Models.CommonUnderstandingNode
+@using CommonUnderstanding.Models
+
+@{
+    ViewData["Title"] = "Proposition: " + (Model.Text.Length > 60 ? Model.Text[..60] + "…" : Model.Text);
+    var outEdges = ViewBag.OutboundEdges as List<CommonUnderstandingEdge> ?? new();
+    var inEdges  = ViewBag.InboundEdges  as List<CommonUnderstandingEdge> ?? new();
+    var argIds   = System.Text.Json.JsonSerializer.Deserialize<List<int>>(Model.ArgumentIdsJson) ?? new();
+
+    string StatusColor(PropositionStatus s) => s switch
+    {
+        PropositionStatus.Settled   => "success",
+        PropositionStatus.Contested => "warning",
+        PropositionStatus.Unknown   => "secondary",
+        _ => "light"
+    };
+    string StatusIcon(PropositionStatus s) => s switch
+    {
+        PropositionStatus.Settled   => "bi-check-circle-fill",
+        PropositionStatus.Contested => "bi-exclamation-triangle-fill",
+        PropositionStatus.Unknown   => "bi-question-circle",
+        _ => "bi-circle"
+    };
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-controller="CommonUnderstanding" asp-action="Index">Common Understanding</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Proposition #@Model.Id</li>
+    </ol>
+</nav>
+
+<h1 class="gc-page-heading">
+    <i class="bi bi-card-text"></i> Proposition
+</h1>
+
+<div class="row g-4">
+    <!-- Left: main details -->
+    <div class="col-lg-8">
+        <div class="gc-card mb-4">
+            <div class="gc-card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-quote me-1"></i> Full Text</span>
+                <span class="badge bg-@StatusColor(Model.Status)">
+                    <i class="bi @StatusIcon(Model.Status)"></i> @Model.Status
+                </span>
+            </div>
+            <div class="gc-card-body">
+                <p class="lead mb-0">@Model.Text</p>
+            </div>
+        </div>
+
+        <!-- Outbound edges -->
+        @if (outEdges.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-arrow-right-circle me-1"></i> Supports / Relates To
+                    <span class="badge bg-secondary ms-1">@outEdges.Count</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Target Proposition</th>
+                                <th>Relationship</th>
+                                <th class="text-end">Strength</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var edge in outEdges)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (edge.TargetNode != null)
+                                        {
+                                            <a asp-action="Node" asp-route-id="@edge.TargetNodeId">
+                                                @(edge.TargetNode.Text.Length > 80 ? edge.TargetNode.Text[..80] + "…" : edge.TargetNode.Text)
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">#@edge.TargetNodeId</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-info text-dark">@edge.Relationship</span></td>
+                                    <td class="text-end">@edge.Strength.ToString("P0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Inbound edges -->
+        @if (inEdges.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-arrow-left-circle me-1"></i> Referenced By
+                    <span class="badge bg-secondary ms-1">@inEdges.Count</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Source Proposition</th>
+                                <th>Relationship</th>
+                                <th class="text-end">Strength</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var edge in inEdges)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (edge.SourceNode != null)
+                                        {
+                                            <a asp-action="Node" asp-route-id="@edge.SourceNodeId">
+                                                @(edge.SourceNode.Text.Length > 80 ? edge.SourceNode.Text[..80] + "…" : edge.SourceNode.Text)
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">#@edge.SourceNodeId</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-info text-dark">@edge.Relationship</span></td>
+                                    <td class="text-end">@edge.Strength.ToString("P0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right: metadata panel -->
+    <div class="col-lg-4">
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="bi bi-info-circle me-1"></i> Metadata
+            </div>
+            <div class="list-group list-group-flush">
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Confidence</span>
+                    <span class="fw-semibold text-@(Model.Confidence >= 0.70 ? "success" : Model.Confidence >= 0.45 ? "warning" : "danger")">
+                        @Model.Confidence.ToString("P1")
+                    </span>
+                </div>
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Evidence weight</span>
+                    </div>
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar bg-@(Model.Confidence >= 0.70 ? "success" : Model.Confidence >= 0.45 ? "warning" : "danger")"
+                             style="width:@((Model.Confidence * 100).ToString("F0"))%">
+                        </div>
+                    </div>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Status</span>
+                    <span class="badge bg-@StatusColor(Model.Status)">@Model.Status</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Version</span>
+                    <span class="fw-semibold">v@Model.Version</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Evidence items</span>
+                    <span class="fw-semibold">@Model.EvidenceCount</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Arguments</span>
+                    <span class="fw-semibold">@argIds.Count</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">First seen</span>
+                    <span>@Model.FirstSeenAt.ToString("MMM d, yyyy")</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Last updated</span>
+                    <span>@Model.LastUpdatedAt.ToString("MMM d, yyyy")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contributing arguments -->
+        @if (argIds.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-journals me-1"></i> Contributing Arguments
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var id in argIds)
+                    {
+                        <a asp-controller="Argument" asp-action="View" asp-route-id="@id"
+                           class="list-group-item list-group-item-action small">
+                            <i class="bi bi-arrow-up-right-circle me-1"></i> Argument #@id
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        <a asp-action="Index" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-arrow-left me-1"></i> Back to Common Understanding
+        </a>
+    </div>
+</div>

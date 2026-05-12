@@ -1,6 +1,331 @@
 ﻿@{
-    ViewData["Title"] = "Privacy Policy";
+    ViewData["Title"] = "Privacy Notice - ILRS Portal";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a asp-controller="Home" asp-action="Index">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Privacy Notice</li>
+    </ol>
+</nav>
+
+<!-- Page Heading -->
+<h1 class="gc-page-heading">
+    <i class="fas fa-shield-alt"></i> Privacy Notice
+</h1>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Overview -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-info-circle"></i> Our Commitment to Privacy
+            </div>
+            <div class="gc-card-body">
+                <p class="lead">
+                    The Government of Canada is committed to protecting the privacy of individuals with respect to 
+                    personal information and data handled by federal institutions.
+                </p>
+                <p>
+                    This privacy notice explains how the Indian Land Registry System (ILRS) Portal collects, uses, 
+                    discloses, retains, and protects your personal information in accordance with the 
+                    <strong>Privacy Act</strong> and other applicable federal legislation.
+                </p>
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Important:</strong> This application processes data locally using Ollama. 
+                    Your belief discovery responses are not transmitted to external servers.
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Collection -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-database"></i> Information We Collect
+            </div>
+            <div class="gc-card-body">
+                <h3 class="gc-section-heading">Personal Information</h3>
+                <ul>
+                    <li>User profile data (optional name, preferences)</li>
+                    <li>Discovery session responses and belief profiles</li>
+                    <li>Interaction history with the AI system</li>
+                    <li>Session metadata (timestamps, duration)</li>
+                </ul>
+
+                <h3 class="gc-section-heading mt-4">Technical Information</h3>
+                <ul>
+                    <li>Browser type and version</li>
+                    <li>IP address (anonymized)</li>
+                    <li>Device information</li>
+                    <li>Session cookies (essential only)</li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Local Processing:</strong> AI analysis is performed locally using Semantic Kernel 
+                    and Ollama. Your responses are not sent to third-party AI services.
+                </div>
+            </div>
+        </div>
+
+        <!-- How We Use Information -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-cogs"></i> How We Use Your Information
+            </div>
+            <div class="gc-card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <h5><i class="fas fa-chart-line text-primary"></i> Service Delivery</h5>
+                            <p class="small text-muted mb-0">
+                                Process discovery questions, generate belief profiles, and provide 
+                                comparison analytics.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <h5><i class="fas fa-shield-alt text-success"></i> Security</h5>
+                            <p class="small text-muted mb-0">
+                                Protect against unauthorized access, maintain system integrity, 
+                                and prevent fraud.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <h5><i class="fas fa-wrench text-warning"></i> Improvement</h5>
+                            <p class="small text-muted mb-0">
+                                Analyze aggregated usage patterns to improve question quality 
+                                and system performance.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <h5><i class="fas fa-balance-scale text-info"></i> Compliance</h5>
+                            <p class="small text-muted mb-0">
+                                Meet legal and regulatory requirements under federal privacy laws.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Protection -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-lock"></i> Data Protection & Security
+            </div>
+            <div class="gc-card-body">
+                <table class="gc-table">
+                    <thead>
+                        <tr>
+                            <th>Security Measure</th>
+                            <th>Implementation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="fas fa-network-wired"></i> Encryption</td>
+                            <td>All data transmitted over HTTPS/TLS 1.3</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-server"></i> Local Processing</td>
+                            <td>AI inference runs on-premises via Ollama</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-user-shield"></i> Access Control</td>
+                            <td>Role-based authentication and authorization</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-history"></i> Data Retention</td>
+                            <td>Session data retained for 90 days, then anonymized</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-trash-alt"></i> Right to Deletion</td>
+                            <td>Users can request profile deletion at any time</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Your Rights -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="fas fa-hand-paper"></i> Your Privacy Rights
+            </div>
+            <div class="gc-card-body">
+                <p>Under the <strong>Privacy Act</strong>, you have the right to:</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <span class="gc-badge">Access</span>
+                        Request access to your personal information
+                    </li>
+                    <li class="mb-2">
+                        <span class="gc-badge">Correction</span>
+                        Request correction of inaccurate information
+                    </li>
+                    <li class="mb-2">
+                        <span class="gc-badge">Deletion</span>
+                        Request deletion of your profile and data
+                    </li>
+                    <li class="mb-2">
+                        <span class="gc-badge">Portability</span>
+                        Export your belief profile in JSON format
+                    </li>
+                    <li class="mb-2">
+                        <span class="gc-badge">Complaint</span>
+                        File a complaint with the Privacy Commissioner
+                    </li>
+                </ul>
+
+                <div class="mt-4">
+                    <a href="#" class="gc-btn-primary me-2">
+                        <i class="fas fa-download"></i> Export My Data
+                    </a>
+                    <a href="#" class="gc-btn-secondary">
+                        <i class="fas fa-trash"></i> Delete My Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <i class="fas fa-envelope"></i> Privacy Questions?
+            </div>
+            <div class="gc-card-body">
+                <p>
+                    For questions about this privacy notice or to exercise your privacy rights, contact:
+                </p>
+                <div class="p-3 bg-light rounded">
+                    <p class="mb-2">
+                        <strong>Privacy Coordinator</strong><br/>
+                        Indian Land Registry System<br/>
+                        Department of Indigenous Services Canada
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-envelope"></i> Email: 
+                        <a href="mailto:privacy-ilrs@example.gc.ca">privacy-ilrs@example.gc.ca</a>
+                    </p>
+                    <p class="mb-0">
+                        <i class="fas fa-phone"></i> Phone: 1-800-XXX-XXXX (toll-free)
+                    </p>
+                </div>
+
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-external-link-alt"></i>
+                    For general privacy concerns, contact the 
+                    <a href="https://www.priv.gc.ca" target="_blank" rel="noopener">
+                        Office of the Privacy Commissioner of Canada
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Links -->
+        <div class="gc-filter-panel mb-4">
+            <h3 class="gc-section-heading">
+                <i class="fas fa-link"></i> Related Resources
+            </h3>
+            <div class="list-group">
+                <a href="https://www.priv.gc.ca/en/privacy-topics/privacy-laws-in-canada/the-privacy-act/" 
+                   target="_blank" 
+                   class="list-group-item list-group-item-action"
+                   rel="noopener">
+                    <i class="fas fa-gavel"></i> Privacy Act
+                </a>
+                <a href="https://www.canada.ca/en/treasury-board-secretariat/services/access-information-privacy.html" 
+                   target="_blank" 
+                   class="list-group-item list-group-item-action"
+                   rel="noopener">
+                    <i class="fas fa-book"></i> Access to Information
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-file-contract"></i> Terms of Use
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-cookie-bite"></i> Cookie Policy
+                </a>
+            </div>
+        </div>
+
+        <!-- Key Highlights -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <i class="fas fa-key"></i> Privacy Highlights
+            </div>
+            <div class="gc-card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-3">
+                        <i class="fas fa-laptop-house text-success"></i>
+                        <strong>Local AI Processing</strong><br/>
+                        <small class="text-muted">
+                            No data sent to external AI services
+                        </small>
+                    </li>
+                    <li class="mb-3">
+                        <i class="fas fa-user-lock text-primary"></i>
+                        <strong>Privacy by Design</strong><br/>
+                        <small class="text-muted">
+                            Built with privacy as a core principle
+                        </small>
+                    </li>
+                    <li class="mb-3">
+                        <i class="fas fa-shield-virus text-info"></i>
+                        <strong>Secure Storage</strong><br/>
+                        <small class="text-muted">
+                            Encrypted at rest and in transit
+                        </small>
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-calendar-times text-warning"></i>
+                        <strong>Limited Retention</strong><br/>
+                        <small class="text-muted">
+                            Data anonymized after 90 days
+                        </small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="alert alert-light mt-4">
+            <small class="text-muted">
+                <i class="fas fa-clock"></i> 
+                <strong>Last Updated:</strong> @DateTime.Now.ToString("MMMM dd, yyyy")
+            </small>
+        </div>
+    </div>
+</div>
+
+<style>
+    .list-group-item {
+        border-color: var(--gc-border-light);
+        transition: all var(--gc-transition);
+    }
+    
+    .list-group-item:hover {
+        background-color: var(--gc-hover-bg);
+        color: var(--gc-primary-blue);
+    }
+    
+    .list-group-item i {
+        width: 20px;
+        margin-right: 0.5rem;
+    }
+</style>

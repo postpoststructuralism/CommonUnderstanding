@@ -1,0 +1,942 @@
+﻿@model CommonUnderstanding.Models.Argument
+@using CommonUnderstanding.Models
+@using CommonUnderstanding.Services
+
+@{
+    ViewData["Title"] = Model.Title;
+    var claim = Model.Claims.FirstOrDefault();
+    var premises = claim?.Premises.OrderBy(p => p.SortOrder).ToList() ?? new();
+    var syllogisms = claim?.Syllogisms.OrderBy(s => s.SortOrder).ToList() ?? new();
+    var assumptions = claim?.Assumptions.ToList() ?? new();
+    var qualifiers = claim?.Qualifiers.ToList() ?? new();
+    var rebuttals = claim?.Rebuttals.ToList() ?? new();
+    var adjudication = Model.AdjudicationSummary;
+    var stakeholderPositions = ViewBag.StakeholderPositions as List<StakeholderPosition>;
+    var stakeholderConsensus = ViewBag.StakeholderConsensus as StakeholderConsensus;
+    var ds = ViewBag.DecisionSupport as DecisionSupportResult;
+
+    static string ConfBadge(double c) => c >= 0.70 ? "success" : c >= 0.45 ? "warning" : "danger";
+    static string StatusBadge(PropositionStatus s) => s switch
+    {
+        PropositionStatus.Settled   => "success",
+        PropositionStatus.Contested => "warning",
+        PropositionStatus.Unknown   => "secondary",
+        _                           => "secondary"
+    };
+    static string RecClass(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed      => "success",
+        DecisionRecommendation.Reject       => "danger",
+        DecisionRecommendation.Defer        => "warning",
+        _                                   => "info"
+    };
+    static string RecIcon(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed      => "bi-check-circle-fill",
+        DecisionRecommendation.Reject       => "bi-x-circle-fill",
+        DecisionRecommendation.Defer        => "bi-pause-circle-fill",
+        _                                   => "bi-search"
+    };
+
+    // History timeline
+    var history = new List<(DateTime When, string Icon, string Color, string Title, string Detail)>();
+    history.Add((Model.CreatedAt, "bi-file-plus", "primary", "Argument submitted",
+        string.IsNullOrWhiteSpace(Model.SubmittedBy) ? "" : $"by {Model.SubmittedBy}"));
+    if (Model.UpdatedAt.HasValue && Model.Status == ArgumentStatus.Complete)
+        history.Add((Model.UpdatedAt.Value, "bi-cpu", "info", "AI decomposition completed",
+            $"Premises: {premises.Count}, Syllogisms: {syllogisms.Count}"));
+    foreach (var p in premises)
+        foreach (var ev in p.EvidenceItems.OrderBy(e => e.AddedAt))
+            history.Add((ev.AddedAt, "bi-journal-plus", "success",
+                $"Evidence added: {(p.Text.Length > 55 ? p.Text[..55] + "…" : p.Text)}",
+                ev.Citation));
+    if (stakeholderPositions != null)
+        foreach (var pos in stakeholderPositions.OrderBy(p => p.CreatedAt))
+            history.Add((pos.CreatedAt, "bi-person-check", "secondary",
+                "Stakeholder position recorded",
+                pos.IsAnonymous ? $"Anonymous — {pos.Position}" : $"{pos.StakeholderRef?.Name ?? "Unknown"} — {pos.Position}"));
+    if (adjudication != null)
+        history.Add((adjudication.ComputedAt, "bi-clipboard2-check", "warning",
+            "Adjudication computed",
+            $"Confidence: {adjudication.OverallConfidence:P0}, Recommendation: {adjudication.Recommendation}"));
+    history = history.OrderByDescending(e => e.When).ToList();
+
+    int evidenceTotal  = premises.Sum(p => p.EvidenceItems.Count);
+    int stakeholderCount = stakeholderPositions?.Count ?? 0;
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+    </ol>
+</nav>
+
+<!-- ── Page Header ──────────────────────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div class="flex-grow-1 me-3">
+        <h1 class="gc-page-heading mb-1">@Model.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(claim?.ClaimType))
+        {
+            <span class="badge bg-secondary me-1">@claim.ClaimType claim</span>
+        }
+        <span class="badge bg-@(Model.Status == ArgumentStatus.Complete ? "primary" : "secondary")">@Model.Status</span>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        @if (adjudication != null)
+        {
+            <div class="text-center me-2">
+                <div class="fw-bold fs-4 text-@ConfBadge(adjudication.OverallConfidence)">
+                    @adjudication.OverallConfidence.ToString("P0")
+                </div>
+                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;">Confidence</div>
+            </div>
+            <span class="badge bg-@RecClass(adjudication.Recommendation) fs-6 py-2 px-3">
+                <i class="bi @RecIcon(adjudication.Recommendation) me-1"></i>@adjudication.Recommendation
+            </span>
+        }
+        <a asp-action="Analyze" asp-route-id="@Model.Id" asp-route-force="true"
+           class="btn btn-outline-primary btn-sm"
+           onclick="return confirm('Re-run will overwrite the current decomposition. Continue?')">
+            <i class="bi bi-arrow-repeat"></i> Re-analyze
+        </a>
+    </div>
+</div>
+
+<!-- ── Tab Navigation ──────────────────────────────────────────────────────── -->
+<ul class="nav nav-tabs mb-0" id="argTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab" aria-selected="true">
+            <i class="bi bi-bullseye me-1"></i> Overview
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="evidence-tab" data-bs-toggle="tab"
+                data-bs-target="#tab-evidence" type="button" role="tab" aria-selected="false">
+            <i class="bi bi-journal-text me-1"></i> Evidence
+            @if (evidenceTotal > 0) { <span class="badge bg-secondary ms-1">@evidenceTotal</span> }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="stakeholders-tab" data-bs-toggle="tab"
+                data-bs-target="#tab-stakeholders" type="button" role="tab" aria-selected="false">
+            <i class="bi bi-people me-1"></i> Stakeholders
+            @if (stakeholderCount > 0) { <span class="badge bg-secondary ms-1">@stakeholderCount</span> }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="decision-tab" data-bs-toggle="tab"
+                data-bs-target="#tab-decision" type="button" role="tab" aria-selected="false">
+            <i class="bi bi-clipboard2-check me-1"></i> Decision
+            @if (adjudication != null)
+            { <span class="badge bg-@RecClass(adjudication.Recommendation) ms-1">@adjudication.Recommendation</span> }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab"
+                data-bs-target="#tab-history" type="button" role="tab" aria-selected="false">
+            <i class="bi bi-clock-history me-1"></i> History
+        </button>
+    </li>
+</ul>
+
+<!-- ── Tab Content ─────────────────────────────────────────────────────────── -->
+<div class="tab-content border border-top-0 rounded-bottom bg-white p-4 mb-4" id="argTabsContent">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TAB 1  OVERVIEW
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel"
+         aria-labelledby="overview-tab">
+        @if (claim == null)
+        {
+            <div class="alert alert-warning mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                No decomposition yet.
+                <a asp-action="Analyze" asp-route-id="@Model.Id">Run analysis</a> to generate the argument structure.
+            </div>
+        }
+        else
+        {
+            <!-- Central claim -->
+            <div class="gc-card mb-4 border-primary border-2">
+                <div class="gc-card-header bg-primary text-white">
+                    <i class="bi bi-bullseye me-1"></i> Central Claim
+                    @if (!string.IsNullOrWhiteSpace(claim.ClaimType))
+                    {
+                        <span class="badge bg-light text-dark ms-2">@claim.ClaimType</span>
+                    }
+                </div>
+                <div class="gc-card-body">
+                    <p class="lead mb-0">@claim.Text</p>
+                </div>
+            </div>
+
+            <!-- Premises summary (read-only) -->
+            @if (premises.Any())
+            {
+                <div class="gc-card mb-4">
+                    <div class="gc-card-header">
+                        <i class="bi bi-list-check me-1"></i> Premises
+                        <span class="badge bg-secondary ms-1">@premises.Count</span>
+                        <small class="text-muted ms-2 fw-normal">
+                            Switch to the <strong>Evidence</strong> tab to add or review evidence.
+                        </small>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var p in premises)
+                        {
+                            <div class="list-group-item d-flex align-items-start gap-3 py-3">
+                                <div class="flex-grow-1">
+                                    <p class="mb-1">@p.Text</p>
+                                    @if (p.EvidenceItems.Any())
+                                    {
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <div class="progress" style="height:5px;width:140px;">
+                                                <div class="progress-bar bg-@ConfBadge(p.ConfidenceScore)"
+                                                     style="width:@((p.ConfidenceScore * 100).ToString("F0"))%"></div>
+                                            </div>
+                                            <small class="text-@ConfBadge(p.ConfidenceScore) fw-semibold">
+                                                @p.ConfidenceScore.ToString("P0")
+                                            </small>
+                                            <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
+                                            <small class="text-muted">@p.EvidenceItems.Count ev.</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted"><i class="bi bi-exclamation-circle me-1"></i>No evidence yet</small>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(p.ProvisionalAssessment))
+                                    {
+                                        <div class="mt-2 p-2 bg-light rounded small">
+                                            <i class="bi bi-robot me-1 text-info"></i>
+                                            <strong>AI assessment</strong>
+                                            <span class="badge bg-@ConfBadge(p.ProvisionalConfidence ?? 0.5) ms-1">@((p.ProvisionalConfidence ?? 0.5).ToString("P0"))</span>
+                                            <span class="text-muted ms-1">—</span>
+                                            @p.ProvisionalAssessment
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Syllogisms -->
+            @if (syllogisms.Any())
+            {
+                <div class="gc-card mb-4">
+                    <div class="gc-card-header">
+                        <i class="bi bi-arrow-down-right-square me-1"></i> Logical Structure
+                        <span class="badge bg-secondary ms-1">@syllogisms.Count</span>
+                    </div>
+                    <div class="gc-card-body">
+                        <div class="row">
+                            @foreach (var (s, idx) in syllogisms.Select((s, i) => (s, i + 1)))
+                            {
+                                <div class="col-lg-6 mb-3">
+                                    <div class="card h-100 border-@(s.IsValidForm ? "success" : "danger")">
+                                        <div class="card-header d-flex justify-content-between align-items-center py-2">
+                                            <span><strong>@idx</strong> — @s.InferenceType</span>
+                                            <span class="badge bg-@(s.IsValidForm ? "success" : "danger")">
+                                                <i class="bi bi-@(s.IsValidForm ? "check" : "x")-circle me-1"></i>
+                                                @(s.IsValidForm ? "Valid" : "Issue")
+                                            </span>
+                                        </div>
+                                        <div class="card-body small">
+                                            <div class="mb-2">
+                                                <span class="text-muted text-uppercase" style="font-size:.68rem;letter-spacing:.04em;">Major</span><br>@s.MajorPremise
+                                            </div>
+                                            <div class="mb-2">
+                                                <span class="text-muted text-uppercase" style="font-size:.68rem;letter-spacing:.04em;">Minor</span><br>@s.MinorPremise
+                                            </div>
+                                            <div class="pt-2 border-top">
+                                                <span class="text-muted text-uppercase" style="font-size:.68rem;letter-spacing:.04em;">∴ Conclusion</span><br>
+                                                <strong>@s.Conclusion</strong>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(s.FallaciesDetected))
+                                            {
+                                                <div class="alert alert-warning mb-0 mt-2 py-1 small">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>@s.FallaciesDetected
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Assumptions / Qualifiers / Rebuttals -->
+            @if (assumptions.Any() || qualifiers.Any() || rebuttals.Any())
+            {
+                <div class="row mb-4">
+                    @if (assumptions.Any())
+                    {
+                        <div class="col-lg-4 mb-3">
+                            <div class="gc-card h-100">
+                                <div class="gc-card-header">
+                                    <i class="bi bi-eye-slash me-1"></i> Hidden Assumptions
+                                    <span class="badge bg-secondary ms-1">@assumptions.Count</span>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var a in assumptions)
+                                    {
+                                        <li class="list-group-item">
+                                            @if (a.IsCritical) { <span class="badge bg-danger me-1">Critical</span> }
+                                            @a.Text
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    @if (qualifiers.Any())
+                    {
+                        <div class="col-lg-4 mb-3">
+                            <div class="gc-card h-100">
+                                <div class="gc-card-header">
+                                    <i class="bi bi-funnel me-1"></i> Qualifiers &amp; Scope
+                                    <span class="badge bg-secondary ms-1">@qualifiers.Count</span>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var q in qualifiers)
+                                    {
+                                        <li class="list-group-item">
+                                            @if (!string.IsNullOrWhiteSpace(q.QualifierType)) { <span class="badge bg-info text-dark me-1">@q.QualifierType</span> }
+                                            @q.Text
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    @if (rebuttals.Any())
+                    {
+                        <div class="col-lg-4 mb-3">
+                            <div class="gc-card h-100">
+                                <div class="gc-card-header">
+                                    <i class="bi bi-shield-exclamation me-1"></i> Rebuttals &amp; Defeaters
+                                    <span class="badge bg-secondary ms-1">@rebuttals.Count</span>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var r in rebuttals)
+                                    {
+                                        var sc = r.Strength?.ToLower() switch { "high" => "danger", "medium" => "warning", _ => "secondary" };
+                                        <li class="list-group-item">
+                                            @if (!string.IsNullOrWhiteSpace(r.Strength)) { <span class="badge bg-@sc me-1">@r.Strength</span> }
+                                            @r.Text
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Original text (collapsed) -->
+            <div class="gc-card">
+                <div class="gc-card-header d-flex justify-content-between">
+                    <span><i class="bi bi-file-text me-1"></i> Original Argument Text</span>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="collapse" data-bs-target="#originalText">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="collapse" id="originalText">
+                    <div class="gc-card-body">
+                        <p class="mb-1 text-muted small">
+                            Submitted @Model.CreatedAt.ToString("MMMM d, yyyy")
+                            @if (!string.IsNullOrWhiteSpace(Model.SubmittedBy))
+                            {
+                                <span>by <strong>@Model.SubmittedBy</strong></span>
+                            }
+                        </p>
+                        <hr />
+                        <p class="mb-0" style="white-space:pre-wrap;">@Model.RawText</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TAB 2  EVIDENCE
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tab-evidence" role="tabpanel"
+         aria-labelledby="evidence-tab">
+        @if (!premises.Any())
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-journal-text display-4 text-muted mb-3 d-block"></i>
+                <p class="text-muted">
+                    Run <a asp-action="Analyze" asp-route-id="@Model.Id">AI analysis</a> first to generate
+                    premises, then add evidence to each one.
+                </p>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-4">
+                Add peer-reviewed evidence to each premise. Higher-tier evidence improves confidence scores.
+                Enable <strong>Auto-classify</strong> to let AI determine tier and direction automatically.
+            </p>
+            @foreach (var p in premises)
+            {
+                var evCount = p.EvidenceItems.Count;
+                <div class="gc-card mb-4">
+                    <div class="gc-card-header d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1 me-3">
+                            <span class="fw-semibold">@p.Text</span>
+                            @if (evCount > 0)
+                            {
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <div class="progress" style="height:5px;width:120px;">
+                                        <div class="progress-bar bg-@ConfBadge(p.ConfidenceScore)"
+                                             style="width:@((p.ConfidenceScore * 100).ToString("F0"))%"></div>
+                                    </div>
+                                    <small class="text-@ConfBadge(p.ConfidenceScore) fw-semibold">@p.ConfidenceScore.ToString("P0")</small>
+                                    <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(p.ProvisionalAssessment))
+                            {
+                                <div class="mt-1 small text-muted">
+                                    <i class="bi bi-robot me-1 text-info"></i>
+                                    AI assessment (<span class="fw-semibold text-@ConfBadge(p.ProvisionalConfidence ?? 0.5)">@((p.ProvisionalConfidence ?? 0.5).ToString("P0"))</span>):
+                                    @p.ProvisionalAssessment
+                                </div>
+                            }
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm flex-shrink-0"
+                                type="button" data-bs-toggle="collapse"
+                                data-bs-target="#addEvForm-@p.Id">
+                            <i class="bi bi-plus me-1"></i> Add Evidence
+                        </button>
+                    </div>
+
+                    <div class="gc-card-body p-0">
+                        @if (evCount > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:30px;"></th>
+                                            <th>Citation</th>
+                                            <th>Tier</th>
+                                            <th>Year</th>
+                                            <th>n=</th>
+                                            <th>Replication</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var ev in p.EvidenceItems)
+                                        {
+                                            var dirIcon = ev.Direction switch
+                                            {
+                                                EvidenceDirection.Supports => "bi-arrow-up-circle-fill text-success",
+                                                EvidenceDirection.Opposes  => "bi-arrow-down-circle-fill text-danger",
+                                                _                          => "bi-dash-circle text-secondary"
+                                            };
+                                            <tr>
+                                                <td class="text-center"><i class="bi @dirIcon"></i></td>
+                                                <td>
+                                                    @if (!string.IsNullOrWhiteSpace(ev.SourceUri))
+                                                    {
+                                                        <a href="@ev.SourceUri" target="_blank" rel="noopener noreferrer nofollow">@ev.Citation</a>
+                                                    }
+                                                    else { @ev.Citation }
+                                                    @if (!string.IsNullOrWhiteSpace(ev.DOI))
+                                                    {
+                                                        <small class="text-muted d-block">DOI: @ev.DOI</small>
+                                                    }
+                                                </td>
+                                                <td><span class="badge bg-light text-dark border">@ev.Tier</span></td>
+                                                <td>@ev.PublicationYear</td>
+                                                <td>@ev.SampleSize?.ToString("N0")</td>
+                                                <td><small class="text-muted">@ev.ReplicationStatus</small></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-3 text-muted small">
+                                <i class="bi bi-exclamation-circle me-1"></i> No evidence yet for this premise.
+                            </div>
+                        }
+
+                        <!-- Add evidence form (collapsible) -->
+                        <div class="collapse px-3 pb-3 pt-2 border-top" id="addEvForm-@p.Id">
+                            <h6 class="mb-3"><i class="bi bi-journal-plus me-1"></i> Add Evidence</h6>
+                            <form asp-action="AddEvidence" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="ArgumentId" value="@Model.Id" />
+                                <input type="hidden" name="PropositionId" value="@p.Id" />
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-8">
+                                        <input type="text" name="Citation" class="form-control form-control-sm"
+                                               placeholder="Citation (author, title, journal, year)" required />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" name="PublicationYear" class="form-control form-control-sm"
+                                               placeholder="Year" min="1800" max="2030" />
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <input type="url" name="SourceUri" class="form-control form-control-sm"
+                                               placeholder="URL (optional)" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="DOI" class="form-control form-control-sm"
+                                               placeholder="DOI (optional)" />
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-4">
+                                        <select name="Tier" class="form-select form-select-sm">
+                                            <option value="T1_SystematicReview">T1 — Systematic review</option>
+                                            <option value="T2_RCT">T2 — RCT / experiment</option>
+                                            <option value="T3_Observational">T3 — Observational</option>
+                                            <option value="T4_ExpertConsensus">T4 — Expert consensus</option>
+                                            <option value="T5_CaseStudy" selected>T5 — Case study</option>
+                                            <option value="T6_AnecdoteOpinion">T6 — Anecdote / opinion</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select name="Direction" class="form-select form-select-sm">
+                                            <option value="Supports">Supports</option>
+                                            <option value="Opposes">Opposes</option>
+                                            <option value="Neutral">Neutral</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" name="SampleSize" class="form-control form-control-sm"
+                                               placeholder="n=" min="1" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select name="ReplicationStatus" class="form-select form-select-sm">
+                                            <option value="">Replication?</option>
+                                            <option value="unreplicated">Unreplicated</option>
+                                            <option value="partial">Partial</option>
+                                            <option value="replicated">Replicated</option>
+                                            <option value="contradicted">Contradicted</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="AutoClassify" id="autoClassify-@p.Id" value="true" />
+                                    <label class="form-check-label small" for="autoClassify-@p.Id">
+                                        Auto-classify tier &amp; direction using AI
+                                        <span class="text-muted">(overrides selections above)</span>
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-save me-1"></i> Save Evidence
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        data-bs-toggle="collapse" data-bs-target="#addEvForm-@p.Id">
+                                    Cancel
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TAB 3  STAKEHOLDERS
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tab-stakeholders" role="tabpanel"
+         aria-labelledby="stakeholders-tab">
+
+        @if (stakeholderConsensus != null && stakeholderConsensus.TotalResponses > 0)
+        {
+            var total = stakeholderConsensus.TotalResponses;
+            double suppPct = (double)stakeholderConsensus.SupportCount  / total * 100;
+            double oppPct  = (double)stakeholderConsensus.OpposeCount   / total * 100;
+            double undPct  = (double)stakeholderConsensus.UndecidedCount / total * 100;
+            <div class="gc-card mb-4">
+                <div class="gc-card-header"><i class="bi bi-bar-chart-horizontal me-1"></i> Stakeholder Consensus</div>
+                <div class="gc-card-body">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i>Support: @stakeholderConsensus.SupportCount</span>
+                        <span><i class="bi bi-hand-thumbs-down-fill text-danger me-1"></i>Oppose: @stakeholderConsensus.OpposeCount</span>
+                        <span><i class="bi bi-question-circle text-secondary me-1"></i>Undecided: @stakeholderConsensus.UndecidedCount</span>
+                    </div>
+                    <div class="progress mb-2" style="height:12px;">
+                        <div class="progress-bar bg-success" style="width:@suppPct.ToString("F0")%"></div>
+                        <div class="progress-bar bg-danger"  style="width:@oppPct.ToString("F0")%"></div>
+                        <div class="progress-bar bg-secondary" style="width:@undPct.ToString("F0")%"></div>
+                    </div>
+                    @if (stakeholderConsensus.HasConsensus)
+                    {
+                        <span class="badge bg-success">Consensus: @stakeholderConsensus.MajorityPosition</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">No consensus reached</span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (stakeholderPositions?.Any() == true)
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-person-lines-fill me-1"></i> Registered Positions
+                    <span class="badge bg-secondary ms-1">@stakeholderPositions.Count</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var pos in stakeholderPositions)
+                    {
+                        var pc = pos.Position switch
+                        {
+                            StakeholderPositionType.Support  => "success",
+                            StakeholderPositionType.Oppose   => "danger",
+                            _                                => "secondary"
+                        };
+                        <div class="list-group-item py-2">
+                            <div class="d-flex align-items-start gap-2">
+                                <span class="badge bg-@pc mt-1 flex-shrink-0">@pos.Position</span>
+                                <div>
+                                    <strong>
+                                        @if (pos.IsAnonymous || pos.StakeholderRef == null)
+                                        {
+                                            <span class="text-muted">Anonymous</span>
+                                        }
+                                        else
+                                        {
+                                            @pos.StakeholderRef.Name
+                                            if (!string.IsNullOrWhiteSpace(pos.StakeholderRef.Role))
+                                            {
+                                                <span class="fw-normal text-muted">, @pos.StakeholderRef.Role</span>
+                                            }
+                                            if (!string.IsNullOrWhiteSpace(pos.StakeholderRef.Organization))
+                                            {
+                                                <span class="fw-normal text-muted"> (@pos.StakeholderRef.Organization)</span>
+                                            }
+                                        }
+                                    </strong>
+                                    @if (!string.IsNullOrWhiteSpace(pos.Reasoning))
+                                    {
+                                        <p class="mb-0 text-muted small">@pos.Reasoning</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="gc-card">
+            <div class="gc-card-header"><i class="bi bi-person-plus me-1"></i> Register Your Position</div>
+            <div class="gc-card-body">
+                <form asp-action="RegisterPosition" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ArgumentId" value="@Model.Id" />
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <input type="text" name="StakeholderName" class="form-control form-control-sm"
+                                   placeholder="Your name" required />
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="Role" class="form-control form-control-sm"
+                                   placeholder="Role (optional)" />
+                        </div>
+                        <div class="col-md-5">
+                            <input type="text" name="Organization" class="form-control form-control-sm"
+                                   placeholder="Organization (optional)" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <select name="Position" class="form-select form-select-sm">
+                                <option value="Support">Support</option>
+                                <option value="Oppose">Oppose</option>
+                                <option value="Undecided" selected>Undecided</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <input type="text" name="Reasoning" class="form-control form-control-sm"
+                                   placeholder="Brief reasoning (optional)" maxlength="2000" />
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox"
+                               name="IsAnonymous" id="isAnonymous" value="true" />
+                        <label class="form-check-label small" for="isAnonymous">Submit anonymously</label>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-send me-1"></i> Record Position
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TAB 4  DECISION
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tab-decision" role="tabpanel"
+         aria-labelledby="decision-tab">
+        @if (ds != null)
+        {
+            <div class="gc-card mb-4 border-@RecClass(ds.FinalRecommendation) border-2">
+                <div class="gc-card-header bg-@RecClass(ds.FinalRecommendation) text-white fs-5">
+                    <i class="bi @RecIcon(ds.FinalRecommendation) me-2"></i>
+                    Recommendation: <strong>@ds.FinalRecommendation</strong>
+                    <span class="badge bg-white text-@RecClass(ds.FinalRecommendation) ms-2">@ds.ConfidenceLevel Confidence</span>
+                </div>
+                <div class="gc-card-body">
+                    <div class="row align-items-center mb-3">
+                        <div class="col-auto">
+                            <div class="text-center">
+                                <div class="display-4 fw-bold text-@ConfBadge(ds.BaseConfidence)">@ds.BaseConfidence.ToString("P0")</div>
+                                <div class="text-muted small">Evidence Confidence</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="progress mb-2" style="height:14px;">
+                                <div class="progress-bar bg-@ConfBadge(ds.BaseConfidence)"
+                                     style="width:@((ds.BaseConfidence * 100).ToString("F0"))%"></div>
+                            </div>
+                            <p class="text-muted small mb-0">@ds.ReasoningTrace</p>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(adjudication?.DetailedNarrative))
+                    {
+                        <div class="mt-3 pt-3 border-top">
+                            <h6 class="fw-semibold mb-2"><i class="bi bi-file-text me-1"></i>Detailed Analysis</h6>
+                            @foreach (var paragraph in adjudication.DetailedNarrative.Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <p class="small mb-2">@paragraph.Trim()</p>
+                            }
+                        </div>
+                    }
+
+                    <p class="text-muted small mb-0">
+                        Computed @ds.GeneratedAt.ToString("MMMM d, yyyy 'at' HH:mm UTC")
+                    </p>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    @if (stakeholderConsensus != null && stakeholderConsensus.TotalResponses > 0)
+                    {
+                        <div class="gc-card mb-4">
+                            <div class="gc-card-header"><i class="bi bi-people me-1"></i> Stakeholder Alignment</div>
+                            <div class="gc-card-body">
+                                <div class="row text-center">
+                                    <div class="col">
+                                        <div class="fw-bold fs-4 text-success">@stakeholderConsensus.SupportCount</div>
+                                        <div class="text-muted small">Support</div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="fw-bold fs-4 text-danger">@stakeholderConsensus.OpposeCount</div>
+                                        <div class="text-muted small">Oppose</div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="fw-bold fs-4 text-secondary">@stakeholderConsensus.UndecidedCount</div>
+                                        <div class="text-muted small">Undecided</div>
+                                    </div>
+                                </div>
+                                @if (stakeholderConsensus.HasConsensus)
+                                {
+                                    <div class="alert alert-success mb-0 mt-3 py-2 small">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Majority position: <strong>@stakeholderConsensus.MajorityPosition</strong>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (ds.ContestedPremises?.Any() == true)
+                    {
+                        <div class="gc-card mb-4">
+                            <div class="gc-card-header text-warning bg-warning bg-opacity-10">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Contested Premises
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                @foreach (var cp in ds.ContestedPremises)
+                                {
+                                    <li class="list-group-item small">
+                                        <i class="bi bi-dash-circle text-warning me-1"></i>@cp
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (ds.SuggestedDiscussionTopics?.Any() == true)
+                    {
+                        <div class="gc-card mb-4">
+                            <div class="gc-card-header"><i class="bi bi-chat-dots me-1"></i> Key Discussion Topics</div>
+                            <ul class="list-group list-group-flush">
+                                @foreach (var topic in ds.SuggestedDiscussionTopics)
+                                {
+                                    <li class="list-group-item small">
+                                        <i class="bi bi-arrow-right me-1 text-primary"></i>@topic
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="gc-card mb-3">
+                        <div class="gc-card-header"><i class="bi bi-lightning me-1"></i> Actions</div>
+                        <div class="gc-card-body d-grid gap-2">
+                            <a asp-action="DecisionSupport" asp-route-id="@Model.Id"
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-clipboard2-check me-1"></i> Full Decision Report
+                            </a>
+                            <a asp-action="Compare" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left-right me-1"></i> Compare with Another Argument
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="window.print()">
+                                <i class="bi bi-printer me-1"></i> Print / Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        <strong>Stakeholder disagreement?</strong> It may reflect differing underlying worldviews.
+                        <a asp-controller="Reference" asp-action="Index">Browse the Reference Library</a>
+                        to explore value-based perspectives.
+                    </div>
+                </div>
+            </div>
+        }
+        else if (adjudication != null)
+        {
+            <div class="gc-card border-@RecClass(adjudication.Recommendation) border-2">
+                <div class="gc-card-header bg-@RecClass(adjudication.Recommendation) text-white">
+                    <i class="bi @RecIcon(adjudication.Recommendation) me-1"></i>
+                    Decision Recommendation: @adjudication.Recommendation
+                </div>
+                <div class="gc-card-body">
+                    <div class="display-5 fw-bold text-@ConfBadge(adjudication.OverallConfidence)">
+                        @adjudication.OverallConfidence.ToString("P0")
+                    </div>
+                    <p class="text-muted small">@adjudication.ReasoningTrace</p>
+                    @if (!string.IsNullOrWhiteSpace(adjudication.DetailedNarrative))
+                    {
+                        <div class="mt-3 pt-3 border-top">
+                            <h6 class="fw-semibold mb-2"><i class="bi bi-file-text me-1"></i>Detailed Analysis</h6>
+                            @foreach (var paragraph in adjudication.DetailedNarrative.Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <p class="small mb-2">@paragraph.Trim()</p>
+                            }
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(adjudication.NextSteps))
+                    {
+                        <div class="alert alert-info mb-0 small">
+                            <strong>Next steps:</strong> @adjudication.NextSteps
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-clipboard2 display-4 text-muted mb-3 d-block"></i>
+                <p class="text-muted">
+                    Add evidence to the premises first, then come back here for a decision recommendation.
+                </p>
+                <button class="btn btn-outline-primary btn-sm"
+                        onclick="document.getElementById('evidence-tab').click()">
+                    <i class="bi bi-journal-plus me-1"></i> Go to Evidence tab
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TAB 5  HISTORY
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tab-history" role="tabpanel"
+         aria-labelledby="history-tab">
+        @if (!history.Any())
+        {
+            <p class="text-muted">No activity recorded yet.</p>
+        }
+        else
+        {
+            <div class="position-relative ms-3 ps-4"
+                 style="border-left:2px solid var(--gc-border-color, #dee2e6);">
+                @foreach (var (when, icon, color, title, detail) in history)
+                {
+                    var ago = DateTime.UtcNow - when;
+                    var agoStr = ago.TotalDays >= 1
+                        ? $"{(int)ago.TotalDays}d ago"
+                        : ago.TotalHours >= 1
+                            ? $"{(int)ago.TotalHours}h ago"
+                            : $"{Math.Max(1, (int)ago.TotalMinutes)}m ago";
+                    <div class="d-flex align-items-start gap-3 mb-4 position-relative"
+                         style="margin-left:-1.65rem;">
+                        <div class="rounded-circle bg-@color text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width:2rem;height:2rem;">
+                            <i class="bi @icon" style="font-size:.8rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="small">@title</strong>
+                                <span class="text-muted small ms-2 flex-shrink-0"
+                                      title="@when.ToString("u")">@agoStr</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(detail))
+                            {
+                                <p class="mb-0 text-muted small">@detail</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        // Restore active tab after evidence/stakeholder form submissions (page reload)
+        (function () {
+            const key = 'argTab-@Model.Id';
+            const stored = sessionStorage.getItem(key);
+            if (stored) {
+                const btn = document.querySelector('[data-bs-target="' + stored + '"]');
+                if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+            }
+            document.querySelectorAll('#argTabs button[data-bs-toggle="tab"]').forEach(btn => {
+                btn.addEventListener('shown.bs.tab', e => {
+                    sessionStorage.setItem(key, e.target.getAttribute('data-bs-target'));
+                });
+            });
+        })();
+    </script>
+}

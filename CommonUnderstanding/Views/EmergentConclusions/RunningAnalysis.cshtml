@@ -1,0 +1,140 @@
+@{
+    ViewData["Title"] = "Running Deep Analysis";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-lg-7 text-center">
+        <div class="gc-card py-5">
+            <div class="gc-card-body">
+
+                <!-- State icons -->
+                <div id="spinnerIcon" class="spinner-border text-primary mb-4"
+                     style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Running deep analysis…</span>
+                </div>
+                <div id="doneIcon" class="d-none mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                         fill="currentColor" class="text-success" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                    </svg>
+                </div>
+                <div id="errorIcon" class="d-none mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                         fill="currentColor" class="text-danger" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
+                    </svg>
+                </div>
+
+                <h3 id="mainHeading" class="mb-1">Deep Analysis Running</h3>
+                <p class="text-muted mb-4">
+                    <i class="bi bi-cpu me-1"></i>LLM-enhanced analysis — this may take 30–90 seconds
+                </p>
+
+                <!-- Progress bar -->
+                <div class="progress mt-2" style="height: 10px;">
+                    <div id="progressBar"
+                         class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                         role="progressbar" style="width: 2%; transition: width 0.4s ease;"></div>
+                </div>
+                <p id="statusLabel" class="text-muted small mt-3">Connecting to analysis engine…</p>
+
+                <!-- Step-by-step log -->
+                <div id="chainLog" class="text-start mt-4 small"
+                     style="max-height: 240px; overflow-y: auto; background: #f8f9fa;
+                            border: 1px solid #dee2e6; border-radius: 6px; padding: 12px;">
+                </div>
+
+                <!-- Error panel -->
+                <div id="errorPanel" class="alert alert-danger mt-4 d-none text-start">
+                    <strong>Error:</strong> <span id="errorMessage"></span>
+                    <div class="mt-3">
+                        <a href="@Url.Action("DeepAnalysis")" class="btn btn-outline-danger btn-sm">
+                            Retry Deep Analysis
+                        </a>
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm ms-2">
+                            View Standard Analysis
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <p class="text-muted small mt-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Deep analysis uses AI to detect silent contradictions, shared values, and cross-domain
+            reinforcements that graph-only analysis cannot surface.
+            Results will be saved automatically when complete.
+        </p>
+    </div>
+</div>
+
+<script>
+(function () {
+    const bar      = document.getElementById('progressBar');
+    const label    = document.getElementById('statusLabel');
+    const chainLog = document.getElementById('chainLog');
+    const spinner  = document.getElementById('spinnerIcon');
+    const doneIcon = document.getElementById('doneIcon');
+    const errorIcon = document.getElementById('errorIcon');
+    const errorPanel = document.getElementById('errorPanel');
+    const errorMsg  = document.getElementById('errorMessage');
+
+    function logStep(text, cssClass) {
+        const ts = new Date().toLocaleTimeString();
+        const el = document.createElement('div');
+        el.className = cssClass || 'text-muted';
+        el.innerHTML = `<span class="text-secondary">[${ts}]</span> ${text}`;
+        chainLog.appendChild(el);
+        chainLog.scrollTop = chainLog.scrollHeight;
+    }
+
+    logStep('Connecting to deep analysis stream…');
+
+    const evtSource = new EventSource('@Url.Action("DeepAnalyzeStream")');
+
+    evtSource.addEventListener('progress', function (e) {
+        const d = JSON.parse(e.data);
+        const pct = Math.max(5, Math.round((d.step / d.total) * 100));
+        bar.style.width = pct + '%';
+        label.textContent = d.label;
+        logStep(`<strong>Step ${d.step}/${d.total}:</strong> ${d.label}`);
+    });
+
+    evtSource.addEventListener('complete', function (e) {
+        const d = JSON.parse(e.data);
+        evtSource.close();
+
+        bar.style.width = '100%';
+        bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        bar.classList.add('bg-success');
+        label.textContent = 'Analysis complete — loading results…';
+        spinner.classList.add('d-none');
+        doneIcon.classList.remove('d-none');
+        document.getElementById('mainHeading').textContent = 'Analysis Complete';
+
+        logStep('<strong class="text-success">Deep analysis complete. Redirecting…</strong>', 'text-success');
+
+        setTimeout(() => { window.location.href = d.redirectUrl; }, 800);
+    });
+
+    evtSource.addEventListener('error', function (e) {
+        if (e.data) {
+            const d = JSON.parse(e.data);
+            evtSource.close();
+
+            bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            bar.classList.add('bg-danger');
+            label.textContent = 'Analysis failed.';
+            spinner.classList.add('d-none');
+            errorIcon.classList.remove('d-none');
+            errorPanel.classList.remove('d-none');
+            errorMsg.textContent = d.message;
+
+            logStep(`<strong class="text-danger">Error:</strong> ${d.message}`, 'text-danger');
+        } else {
+            logStep('Connection interrupted — retrying…', 'text-warning');
+        }
+    });
+})();
+</script>

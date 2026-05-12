@@ -59,26 +59,11 @@
                         </ul>
                     </div>
 
-                    <form asp-action="Start" method="post" class="mt-4">
-                        <div class="mb-4">
-                            <label for="userName" class="form-label">What should we call you?</label>
-                            <input type="text" class="form-control form-control-lg" 
-                                   id="userName" name="userName" 
-                                   placeholder="Enter your name" 
-                                   required autofocus />
-                            <div class="form-text">
-                                This helps personalize your experience. Your data stays private.
-                            </div>
-                        </div>
-
-                        @* <div asp-validation-summary="All" class="alert alert-danger"></div> *@
-
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-arrow-right-circle"></i> Begin Discovery
-                            </button>
-                        </div>
-                    </form>
+                    <div class="d-grid mt-4">
+                        <a href="@Url.Action("Start", "Discovery")" class="btn btn-primary btn-lg">
+                            <i class="bi bi-arrow-right-circle"></i> Begin Discovery
+                        </a>
+                    </div>
 
                     <div class="text-center mt-4 text-muted small">
                         <i class="bi bi-shield-check"></i> Privacy-focused • No judgment • Continual learning
@@ -103,7 +88,3 @@
         justify-content: center;
     }
 </style>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

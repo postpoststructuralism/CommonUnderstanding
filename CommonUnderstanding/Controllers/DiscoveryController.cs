@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
+using System.Security.Claims;
 
 namespace CommonUnderstanding.Controllers;
 
+[Authorize]
 public class DiscoveryController : Controller
 {
     private readonly BeliefDiscoveryOrchestrator _orchestrator;
@@ -30,80 +33,55 @@ public class DiscoveryController : Controller
     }
 
     // GET: Discovery/Start
-    public IActionResult Start()
+    public async Task<IActionResult> Start()
     {
-        return View();
-    }
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId)) return RedirectToAction("Login", "Account");
 
-    // POST: Discovery/Start
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Start(string userName)
-    {
-        if (string.IsNullOrWhiteSpace(userName))
+        if (_profileStore.ProfileExists(profileId))
         {
-            ModelState.AddModelError("", "Please enter your name");
-            return View();
+            // If a question is already queued, just continue; otherwise fall through to generate one.
+            if (_profileStore.GetPendingInteraction(profileId) != null)
+                return RedirectToAction(nameof(Question));
+
+            var existingProfile = _profileStore.GetProfile(profileId)!;
+            var resumeQuestion = await _orchestrator.StartDiscoveryAsync(existingProfile);
+            _profileStore.SetPendingInteraction(profileId, resumeQuestion);
+            return RedirectToAction(nameof(Question));
         }
 
-        // Create new user profile
-        var profile = new UserProfile
-        {
-            Name = userName,
-            Stage = DiscoveryStage.Initial
-        };
-
+        // Profile doesn't exist yet (returning user before profile was persisted) — create it
+        var displayName = User.FindFirstValue(ClaimTypes.Name) ?? "User";
+        var profile = new UserProfile { Id = profileId, Name = displayName, Stage = DiscoveryStage.Initial };
         _profileStore.AddProfile(profile);
 
-        // Generate first question - exceptions will bubble up naturally
         var firstQuestion = await _orchestrator.StartDiscoveryAsync(profile);
-        _profileStore.SetPendingInteraction(profile.Id, firstQuestion);
-
-        // Store profile ID in session/cookie for tracking
-        HttpContext.Response.Cookies.Append("ProfileId", profile.Id, new CookieOptions
-        {
-            Expires = DateTimeOffset.UtcNow.AddDays(30),
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict
-        });
+        _profileStore.SetPendingInteraction(profileId, firstQuestion);
 
         return RedirectToAction(nameof(Question));
     }
 
     // GET: Discovery/Question
-    public IActionResult Question()
+    public async Task<IActionResult> Question()
     {
-        string? profileId = null;
-        
-        try
-        {
-            profileId = HttpContext.Request.Cookies["ProfileId"];
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
-        
-        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
-        {
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId)) return RedirectToAction("Login", "Account");
+        if (!_profileStore.ProfileExists(profileId)) return RedirectToAction(nameof(Start));
 
         var profile = _profileStore.GetProfile(profileId);
         var question = _profileStore.GetPendingInteraction(profileId);
 
         if (question == null)
         {
-            return RedirectToAction(nameof(Profile));
+            // No pending question (e.g. after a server restart clears in-memory state).
+            // Generate one now so the user isn't stuck in a Profile ↔ Question redirect loop.
+            _logger.LogInformation("No pending question for {ProfileId}, generating one now", profileId);
+            question = await _orchestrator.GetNextQuestionAsync(profile!);
+            _profileStore.SetPendingInteraction(profileId, question);
         }
 
         ViewBag.Profile = profile;
         ViewBag.ProgressPercent = CalculateProgress(profile!);
-        
         return View(question);
     }
 
@@ -112,24 +90,9 @@ public class DiscoveryController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SubmitResponse(string? response, string? selectedOption, string? responseText, double? numericValue)
     {
-        string? profileId = null;
-        
-        try
-        {
-            profileId = HttpContext.Request.Cookies["ProfileId"];
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
-        
-        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
-        {
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId)) return RedirectToAction("Login", "Account");
+        if (!_profileStore.ProfileExists(profileId)) return RedirectToAction(nameof(Start));
 
         var profile = _profileStore.GetProfile(profileId);
         var interaction = _profileStore.GetPendingInteraction(profileId);
@@ -194,13 +157,15 @@ public class DiscoveryController : Controller
         }
         else
         {
-            // No prefetched questions available, generate one now (fallback)
+            // No prefetched questions available; generate exactly one question immediately.
+            // Using GetNextQuestionAsync avoids the bulk Ollama calls of StartDiscoveryAsync.
             _logger.LogWarning("No prefetched questions available for user {ProfileId}, generating synchronously", profileId);
-            nextQuestion = await _orchestrator.StartDiscoveryAsync(profile);
+            nextQuestion = await _orchestrator.GetNextQuestionAsync(profile);
         }
 
-        // Trigger background prefetch to keep queue full
-        _prefetchService.RequestPrefetch(profileId);
+        // NOTE: Prefetch is now triggered by ResponseProcessingQueue AFTER analysis completes
+        // This ensures questions are generated based on updated belief state
+        // See ResponseProcessingQueue.ProcessSingleResponse() and ProcessResponseBatch()
 
         // Store next question
         _profileStore.SetPendingInteraction(profileId, nextQuestion);
@@ -234,96 +199,46 @@ public class DiscoveryController : Controller
     // GET: Discovery/Profile
     public IActionResult Profile()
     {
-        string? profileId = null;
-        
-        try
-        {
-            profileId = HttpContext.Request.Cookies["ProfileId"];
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
-        
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
-        {
-            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
-        }
 
         var profile = _profileStore.GetProfile(profileId);
-        
-        // Calculate user's position in belief universe if they have enough data
-        if (profile != null && profile.CurrentBeliefSnapshot != null && profile.InteractionCount >= 5)
+        if (profile == null)
+            return RedirectToAction(nameof(Start));
+
+        if (profile.CurrentBeliefSnapshot != null && profile.InteractionCount >= 5)
         {
             var universePosition = _knowledgeBase.CalculateUniversePosition(profile.CurrentBeliefSnapshot);
             ViewBag.UniversePosition = universePosition;
             ViewBag.AllSystems = _knowledgeBase.AllSystems.ToList();
         }
-        
         return View(profile);
     }
 
     // GET: Discovery/History
     public IActionResult History()
     {
-        string? profileId = null;
-        
-        try
-        {
-            profileId = HttpContext.Request.Cookies["ProfileId"];
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
-        
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
-        {
-            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
-        }
-
-        var profile = _profileStore.GetProfile(profileId);
-        return View(profile);
+        return View(_profileStore.GetProfile(profileId));
     }
 
     // GET: Discovery/Evolution
     public IActionResult Evolution()
     {
-        string? profileId = null;
-        
-        try
-        {
-            profileId = HttpContext.Request.Cookies["ProfileId"];
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading ProfileId cookie, clearing it");
-            HttpContext.Response.Cookies.Delete("ProfileId");
-            return RedirectToAction(nameof(Start));
-        }
-        
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
-        {
-            HttpContext.Response.Cookies.Delete("ProfileId");
             return RedirectToAction(nameof(Start));
-        }
 
         var profile = _profileStore.GetProfile(profileId);
-        
-        // Show how the model has evolved over time
         var snapshots = new List<BeliefSnapshot>();
         if (profile!.CurrentBeliefSnapshot != null)
         {
             snapshots.AddRange(profile.HistoricalSnapshots);
             snapshots.Add(profile.CurrentBeliefSnapshot);
         }
-
         ViewBag.Profile = profile;
         return View(snapshots);
     }
@@ -369,6 +284,64 @@ public class DiscoveryController : Controller
             .ToList();
         
         return View(profiles);
+    }
+
+    // GET: Discovery/CompareToCanonical
+    public IActionResult CompareToCanonical()
+    {
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
+        {
+            TempData["Error"] = "No active profile found. Please start discovery first.";
+            return RedirectToAction(nameof(Start));
+        }
+
+        var profile = _profileStore.GetProfile(profileId);
+        
+        if (profile?.CurrentBeliefSnapshot == null || profile.InteractionCount < 5)
+        {
+            TempData["Error"] = "Please answer at least 5 questions before comparing your beliefs.";
+            return RedirectToAction(nameof(Question));
+        }
+
+        // Get top matches
+        var matches = _knowledgeBase.CompareUserToCanonicalSystems(profile.CurrentBeliefSnapshot, topN: 20);
+        
+        ViewBag.Profile = profile;
+        ViewBag.Snapshot = profile.CurrentBeliefSnapshot;
+        
+        return View(matches);
+    }
+
+    // GET: Discovery/Debug (for troubleshooting)
+    public IActionResult Debug()
+    {
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
+            return Json(new { error = "No active profile" });
+
+        var profile = _profileStore.GetProfile(profileId);
+        
+        return Json(new
+        {
+            profileId = profile.Id,
+            name = profile.Name,
+            stage = profile.Stage.ToString(),
+            interactionCount = profile.InteractionCount,
+            prefetchedQuestionsCount = profile.PrefetchedQuestions.Count,
+            askedQuestionHashes = profile.AskedQuestionHashes.Count,
+            confidence = profile.CurrentBeliefSnapshot?.OverallConfidence ?? 0,
+            entropy = profile.CurrentBeliefSnapshot?.Statistics.Entropy ?? 0,
+            pendingResponseQueue = _responseQueue.GetPendingCountForUser(profileId),
+            prefetchedQuestions = profile.PrefetchedQuestions.Select(q => new
+            {
+                type = q.Type.ToString(),
+                question = q.Content.Question.Length > 100 
+                    ? q.Content.Question.Substring(0, 97) + "..." 
+                    : q.Content.Question
+            }).ToList(),
+            lastInteraction = profile.Interactions.LastOrDefault()?.Content.Question
+        });
     }
 
     #region Helper Methods

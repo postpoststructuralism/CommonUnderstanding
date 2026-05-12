@@ -1,0 +1,202 @@
+@model CommonUnderstanding.Controllers.ConnectionsIndexViewModel
+@using CommonUnderstanding.Models
+@{
+    ViewData["Title"] = "Connections";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-people me-2"></i>Connections
+        </h1>
+        <p class="text-muted mb-0">Connect with other users to map shared understanding</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+
+    <!-- ── Active connections ─────────────────────────────────────────────── -->
+    <div class="col-12 col-lg-7">
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <h2 class="h5 mb-0"><i class="bi bi-person-check me-2"></i>Your Connections
+                    <span class="badge bg-primary ms-2">@Model.Connections.Count</span>
+                </h2>
+            </div>
+            <div class="gc-card-body">
+                @if (!Model.Connections.Any())
+                {
+                    <p class="text-muted fst-italic">No active connections yet. Invite someone below to get started.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var item in Model.Connections)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi bi-person-circle me-2 text-primary"></i>
+                                    <strong>@item.OtherUserName</strong>
+                                    <span class="badge bg-light text-secondary ms-2">@item.OtherUserStage</span>
+                                </div>
+                                <a asp-controller="Convergence" asp-action="Map"
+                                   asp-route-otherUserId="@item.OtherUserId"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-intersect me-1"></i>View Convergence
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <!-- Pending received invites -->
+        @if (Model.PendingInvites.Any())
+        {
+            <div class="gc-card mt-3">
+                <div class="gc-card-header">
+                    <h2 class="h5 mb-0"><i class="bi bi-envelope me-2"></i>Pending Invites
+                        <span class="badge bg-warning text-dark ms-2">@Model.PendingInvites.Count</span>
+                    </h2>
+                </div>
+                <div class="gc-card-body">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var item in Model.PendingInvites)
+                        {
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <i class="bi bi-person me-1 text-secondary"></i>
+                                        <strong>@item.OtherUserName</strong> wants to connect
+                                        @if (item.Connection.InitiatorMessage is { Length: > 0 } msg)
+                                        {
+                                            <p class="small text-muted mb-1 ms-3">"@msg"</p>
+                                        }
+                                        <small class="text-muted ms-3">@item.Connection.InitiatedAt.ToString("MMM d, yyyy")</small>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <form asp-action="Accept" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="connectionId" value="@item.Connection.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check-lg"></i> Accept
+                                            </button>
+                                        </form>
+                                        <form asp-action="Decline" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="connectionId" value="@item.Connection.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-x-lg"></i> Decline
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- Sent pending invites -->
+        @if (Model.SentInvites.Any())
+        {
+            <div class="gc-card mt-3">
+                <div class="gc-card-header">
+                    <h2 class="h5 mb-0"><i class="bi bi-send me-2"></i>Sent Invites</h2>
+                </div>
+                <div class="gc-card-body">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var item in Model.SentInvites)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi bi-person me-1 text-secondary"></i>
+                                    <strong>@item.OtherUserName</strong>
+                                </div>
+                                <span class="badge bg-secondary">Awaiting response</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ── Discover & Invite ──────────────────────────────────────────────── -->
+    <div class="col-12 col-lg-5">
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <h2 class="h5 mb-0"><i class="bi bi-person-plus me-2"></i>Invite Someone</h2>
+            </div>
+            <div class="gc-card-body">
+                <form asp-action="Invite" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label for="recipientUserId" class="form-label">User ID</label>
+                        <input type="text" id="recipientUserId" name="recipientUserId"
+                               class="form-control" placeholder="Paste a user's profile ID…" required />
+                        <div class="form-text">Other users can find their profile ID on the Discovery page.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Message <span class="text-muted">(optional)</span></label>
+                        <textarea id="message" name="message" class="form-control" rows="2"
+                                  maxlength="500" placeholder="Why do you want to connect?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-send me-1"></i> Send Invite
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Discoverable users -->
+        @if (Model.DiscoverableUsers.Any())
+        {
+            <div class="gc-card mt-3">
+                <div class="gc-card-header">
+                    <h2 class="h5 mb-0"><i class="bi bi-search me-2"></i>Other Users
+                        <span class="badge bg-light text-secondary ms-2">@Model.DiscoverableUsers.Count</span>
+                    </h2>
+                </div>
+                <div class="gc-card-body">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var user in Model.DiscoverableUsers.Take(10))
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi bi-person-circle me-2 text-secondary"></i>
+                                    <span>@user.Name</span>
+                                    <span class="badge bg-light text-secondary ms-1">@user.Stage</span>
+                                </div>
+                                <form asp-action="Invite" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="recipientUserId" value="@user.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-person-plus"></i> Invite
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,218 @@
+@model List<CommonUnderstanding.Services.UserBeliefSystemMatch>
+
+@{
+    ViewData["Title"] = "Compare Your Beliefs";
+    var profile = (CommonUnderstanding.Models.UserProfile)ViewBag.Profile;
+    var snapshot = (CommonUnderstanding.Models.BeliefSnapshot)ViewBag.Snapshot;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Question">Discovery</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Profile">Your Profile</a></li>
+                    <li class="breadcrumb-item active">Compare to Belief Systems</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-5">
+                    <i class="bi bi-diagram-3"></i> Your Belief System Matches
+                </h1>
+                <p class="lead text-muted">
+                    Comparing your discovered beliefs with @Model.Count belief systems from around the world
+                </p>
+            </div>
+
+            <!-- Your Profile Summary -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-badge"></i> Your Belief Profile Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Assessment Progress:</strong>
+                            <p class="mb-1">@snapshot.InteractionCount interactions completed</p>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-success" style="width: @((snapshot.OverallConfidence * 100).ToString("F0"))%;">
+                                    @snapshot.OverallConfidence.ToString("P0") confidence
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <strong>Top Values:</strong>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                @foreach (var value in snapshot.Values.OrderByDescending(v => v.ImportanceScore).Take(5))
+                                {
+                                    <span class="badge bg-info" style="font-size: 0.9rem;">
+                                        @value.Name (@value.ImportanceScore.ToString("F1"))
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Results -->
+            <div class="row">
+                @foreach (var match in Model)
+                {
+                    var matchClass = match.OverallMatchPercentage >= 70 ? "border-success" : 
+                                    match.OverallMatchPercentage >= 50 ? "border-warning" : 
+                                    "border-secondary";
+                    var badgeClass = match.OverallMatchPercentage >= 70 ? "bg-success" : 
+                                    match.OverallMatchPercentage >= 50 ? "bg-warning text-dark" : 
+                                    "bg-secondary";
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 @matchClass">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0">@match.SystemName</h5>
+                                    <small class="text-muted">
+                                        @match.SystemCategory • @match.SystemCulture
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <h3 class="mb-0">
+                                        <span class="badge @badgeClass">
+                                            @match.OverallMatchPercentage.ToString("F0")%
+                                        </span>
+                                    </h3>
+                                    <small class="text-muted">match</small>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Match Explanation -->
+                                <p class="mb-3">@match.MatchExplanation</p>
+
+                                <!-- Shared Values -->
+                                @if (match.SharedValues.Any())
+                                {
+                                    <div class="mb-3">
+                                        <strong class="text-success">
+                                            <i class="bi bi-check-circle"></i> Shared Values:
+                                        </strong>
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            @foreach (var value in match.SharedValues.Take(5))
+                                            {
+                                                <span class="badge bg-success-subtle text-success-emphasis">
+                                                    @value
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+
+                                <!-- Moral Foundation Alignment -->
+                                @if (match.MoralFoundationAlignment.Any())
+                                {
+                                    <div class="mb-3">
+                                        <strong>Moral Foundations Alignment:</strong>
+                                        @foreach (var (foundation, alignment) in match.MoralFoundationAlignment.OrderByDescending(kvp => kvp.Value).Take(3))
+                                        {
+                                            var alignmentPercent = alignment * 100;
+                                            var barClass = alignment >= 0.8 ? "bg-success" : 
+                                                          alignment >= 0.6 ? "bg-info" : 
+                                                          "bg-secondary";
+                                            
+                                            <div class="d-flex align-items-center mb-1">
+                                                <span class="small me-2" style="min-width: 80px;">@foundation:</span>
+                                                <div class="progress flex-grow-1" style="height: 16px;">
+                                                    <div class="progress-bar @barClass" 
+                                                         style="width: @alignmentPercent.ToString("F0")%;">
+                                                        @alignmentPercent.ToString("F0")%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <!-- Key Differences -->
+                                @if (match.KeyDifferences.Any())
+                                {
+                                    <div class="mb-2">
+                                        <strong class="text-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Key Differences:
+                                        </strong>
+                                        <ul class="small mb-0 mt-1">
+                                            @foreach (var diff in match.KeyDifferences.Take(3))
+                                            {
+                                                <li>@diff</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">@match.SystemEra</small>
+                                    <a asp-controller="Explore" asp-action="System" asp-route-slug="@match.SystemSlug" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-book"></i> Learn More
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Actions -->
+            <div class="row mb-4">
+                <div class="col-md-12 text-center">
+                    <a asp-action="Question" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-arrow-right-circle"></i> Continue Discovery
+                    </a>
+                    <a asp-action="Profile" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-person-badge"></i> Back to Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="alert alert-info">
+                <h6 class="alert-heading">
+                    <i class="bi bi-info-circle"></i> Understanding Your Matches
+                </h6>
+                <p class="mb-0">
+                    <strong>Match Percentage</strong> is calculated based on:
+                </p>
+                <ul class="mb-0">
+                    <li><strong>Shared Values</strong> (30%): Common principles and beliefs</li>
+                    <li><strong>Moral Foundations Alignment</strong> (40%): How closely your moral priorities match</li>
+                    <li><strong>Dimensional Alignment</strong> (30%): Similarity on specific belief dimensions</li>
+                </ul>
+                <hr />
+                <p class="mb-0">
+                    <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Answer more questions to improve match accuracy. 
+                    High matches (70%+) indicate strong philosophical alignment. Lower matches can still offer valuable insights into different worldviews.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .badge {
+        font-weight: 500;
+    }
+
+    .progress {
+        background-color: #e9ecef;
+    }
+</style>

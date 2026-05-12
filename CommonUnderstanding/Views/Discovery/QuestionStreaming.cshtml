@@ -81,11 +81,36 @@
                             CommonUnderstanding.Models.InteractionType.ScaleQuestion => "📊 Scale Question",
                             CommonUnderstanding.Models.InteractionType.ValueRanking => "🎯 Value Ranking",
                             CommonUnderstanding.Models.InteractionType.EmotionalPrompt => "❤️ Scenario",
+                            CommonUnderstanding.Models.InteractionType.Joke => "😄 Quick Break",
                             _ => "💭 Question"
                         })
                     </h4>
                 </div>
                 <div class="card-body p-4">
+                    @if (Model.Type == CommonUnderstanding.Models.InteractionType.Joke)
+                    {
+                        <div class="text-center py-5">
+                            <h2 class="mb-4">@Model.Content.Question</h2>
+                            <p class="text-muted mb-3">Quick poll - was this funny?</p>
+                            <div id="jokeButtons" class="d-flex justify-content-center gap-3 mb-3">
+                                <button type="button" class="btn btn-outline-success btn-lg" onclick="voteJoke('👍')">
+                                    <span style="font-size: 3rem;">👍</span>
+                                    <br>
+                                    <span>Funny!</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-lg" onclick="voteJoke('👎')">
+                                    <span style="font-size: 3rem;">👎</span>
+                                    <br>
+                                    <span>Not funny</span>
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-link text-muted" onclick="skipJoke()">
+                                Skip →
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
                         @if (!string.IsNullOrEmpty(Model.Content.Context))
                         {
                             <div class="alert alert-light border scenario-context mb-4">
@@ -103,7 +128,11 @@
                     </h5>
 
                     <form id="responseForm">
-                        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
+                        @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.ThumbsVote)
+                        {
+                            <!-- Handled by joke buttons above, skip form -->
+                        }
+                        else if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
                         {
                             <div class="mb-4">
                                 <div class="d-flex justify-content-between mb-2">
@@ -179,6 +208,7 @@
                             </div>
                         }
                     </form>
+                    }
                 </div>
             </div>
 
@@ -228,9 +258,32 @@
     <script>
         const profileId = '@profileId';
         let connection = null;
-        
-        // Expose connection globally for activity monitor
-        window.discoveryConnection = null;
+
+        // Joke voting (optional)
+        async function voteJoke(vote) {
+            document.getElementById('jokeButtons').innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+            
+            try {
+                await connection.invoke("ProcessResponseStreaming", profileId, vote, null, vote, null);
+            } catch (err) {
+                console.error("Error submitting vote:", err);
+                alert("Failed to submit vote. Please try again.");
+                location.reload();
+            }
+        }
+
+        // Skip joke (no vote)
+        async function skipJoke() {
+            document.getElementById('jokeButtons').innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+            
+            try {
+                await connection.invoke("ProcessResponseStreaming", profileId, "skipped", null, "skipped", null);
+            } catch (err) {
+                console.error("Error skipping:", err);
+                alert("Failed to skip. Please try again.");
+                location.reload();
+            }
+        }
 
         // Skip question (no answer)
         async function skipQuestion() {
@@ -268,6 +321,22 @@
                 // Reload page to show next question
                 window.location.reload();
             });
+            
+            // Handle activity updates
+            connection.on("ActivityQueued", (activity) => {
+                if (typeof addActivity === 'function') {
+                    addActivity(activity.Title, activity.Description, activity.Status);
+                }
+            });
+            
+            connection.on("ActivityUpdated", (activity) => {
+                if (typeof updateActivity === 'function') {
+                    updateActivity(activity.Id, { 
+                        status: activity.Status, 
+                        progress: activity.Progress 
+                    });
+                }
+            });
 
             // Handle errors
             connection.on("Error", (message) => {
@@ -276,13 +345,11 @@
             });
 
             try {
-                console.log("About to start SignalR connection...");
                 await connection.start();
-                console.log("SignalR connection.start() completed");
-                console.log("Setting window.discoveryConnection...");
-                window.discoveryConnection = connection; // Make available to activity monitor
-                console.log("SignalR connected successfully");
-                console.log("window.discoveryConnection set:", typeof window.discoveryConnection, window.discoveryConnection);
+                console.log("SignalR connected");
+                
+                // Assign to window so activity monitor can use it
+                window.discoveryConnection = connection;
             } catch (err) {
                 console.error("SignalR connection error:", err);
             }

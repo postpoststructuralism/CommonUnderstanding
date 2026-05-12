@@ -1,0 +1,344 @@
+@model IEnumerable<CommonUnderstanding.Models.Argument>
+@using CommonUnderstanding.Models
+@using CommonUnderstanding.Controllers
+
+@{
+    ViewData["Title"] = "Dashboard";
+    var graphStats    = ViewBag.GraphStats    as CommonUnderstanding.Services.GraphStatistics;
+    var attentionItems = ViewBag.AttentionItems  as List<AttentionItem> ?? new();
+    var recentActivity = ViewBag.RecentActivity  as List<ActivityEvent>  ?? new();
+    var stakeholderCounts = ViewBag.StakeholderCounts as Dictionary<int, int> ?? new();
+
+    string RecClass(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed     => "success",
+        DecisionRecommendation.Reject      => "danger",
+        DecisionRecommendation.Defer       => "warning",
+        _                                  => "info"
+    };
+    string RecIcon(DecisionRecommendation r) => r switch
+    {
+        DecisionRecommendation.Proceed     => "bi-check-circle-fill",
+        DecisionRecommendation.Reject      => "bi-x-circle-fill",
+        DecisionRecommendation.Defer       => "bi-pause-circle-fill",
+        _                                  => "bi-search"
+    };
+
+    var activeArgs    = Model.Where(a => a.Status == ArgumentStatus.Complete).ToList();
+    var draftArgs     = Model.Where(a => a.Status == ArgumentStatus.Draft).ToList();
+    var processingArgs = Model.Where(a => a.Status is ArgumentStatus.Decomposing or ArgumentStatus.Adjudicating).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </h1>
+        <p class="text-muted mb-0">Evidence-Based Decision Platform</p>
+    </div>
+    <a asp-controller="Argument" asp-action="Submit" class="btn btn-primary btn-lg px-4">
+        <i class="bi bi-plus-circle me-1"></i> New Argument
+    </a>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- ── STAT TILES ──────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="gc-card text-center py-3">
+            <div class="display-5 fw-bold text-primary">@Model.Count()</div>
+            <div class="text-muted small">Total Arguments</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="gc-card text-center py-3">
+            <div class="display-5 fw-bold text-success">@activeArgs.Count</div>
+            <div class="text-muted small">Analyzed</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="gc-card text-center py-3">
+            <div class="display-5 fw-bold text-@(graphStats != null ? (graphStats.AverageConfidence >= 0.70 ? "success" : graphStats.AverageConfidence >= 0.45 ? "warning" : "danger") : "muted")">
+                @(graphStats != null ? graphStats.AverageConfidence.ToString("P0") : "—")
+            </div>
+            <div class="text-muted small">Avg Confidence</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="gc-card text-center py-3">
+            <div class="display-5 fw-bold text-info">@(graphStats?.TotalNodes ?? 0)</div>
+            <div class="text-muted small">Knowledge Nodes</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- ── LEFT COLUMN: Active Decisions + Attention ─────────────────────── -->
+    <div class="col-lg-8">
+
+        <!-- Active Decisions -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard2-check me-1"></i> Active Decisions</span>
+                <a asp-controller="Argument" asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                    View all <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+
+            @if (!activeArgs.Any())
+            {
+                <div class="gc-card-body text-center py-4 text-muted">
+                    <i class="bi bi-diagram-3 display-4 mb-2 d-block"></i>
+                    No analyzed arguments yet.
+                    <a asp-controller="Argument" asp-action="Submit" class="d-block mt-2">Submit your first argument →</a>
+                </div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var arg in activeArgs.Take(6))
+                    {
+                        var adj = arg.AdjudicationSummary;
+                        var conf = adj?.OverallConfidence ?? 0.5;
+                        var confClass = conf >= 0.70 ? "success" : conf >= 0.45 ? "warning" : "danger";
+                        var sc = stakeholderCounts.GetValueOrDefault(arg.Id, 0);
+
+                        <a asp-controller="Argument" asp-action="View" asp-route-id="@arg.Id"
+                           class="list-group-item list-group-item-action py-3">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div class="flex-grow-1" style="min-width:0">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-semibold text-truncate" style="min-width:0">@arg.Title</span>
+                                        @if (adj != null)
+                                        {
+                                            <span class="badge bg-@RecClass(adj.Recommendation) flex-shrink-0">
+                                                <i class="bi @RecIcon(adj.Recommendation)"></i>
+                                                @adj.Recommendation
+                                            </span>
+                                        }
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3 small text-muted">
+                                        @if (adj != null)
+                                        {
+                                            <div class="d-flex align-items-center gap-2" style="min-width:140px">
+                                                <div class="progress flex-grow-1" style="height:5px;">
+                                                    <div class="progress-bar bg-@confClass"
+                                                         style="width:@((conf*100).ToString("F0"))%"></div>
+                                                </div>
+                                                <span class="text-@confClass fw-semibold flex-shrink-0">@conf.ToString("P0")</span>
+                                            </div>
+                                        }
+                                        @if (sc > 0)
+                                        {
+                                            <span><i class="bi bi-people me-1"></i>@sc</span>
+                                        }
+                                        <span><i class="bi bi-calendar me-1"></i>@arg.CreatedAt.ToString("MMM d")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+                @if (activeArgs.Count > 6)
+                {
+                    <div class="gc-card-body py-2 text-center">
+                        <a asp-controller="Argument" asp-action="Index" class="small">
+                            + @(activeArgs.Count - 6) more arguments
+                        </a>
+                    </div>
+                }
+            }
+
+            @if (processingArgs.Any())
+            {
+                <div class="gc-card-body border-top py-2">
+                    @foreach (var arg in processingArgs)
+                    {
+                        <div class="d-flex align-items-center gap-2 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm"></span>
+                            <span>@arg.Title — @arg.Status…</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Knowledge Graph Summary -->
+        @if (graphStats != null && graphStats.TotalNodes > 0)
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-diagram-2 me-1"></i> Common Understanding Graph</span>
+                    <a asp-controller="CommonUnderstanding" asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                        Explore <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="gc-card-body">
+                    <div class="row text-center g-0">
+                        <div class="col border-end">
+                            <div class="fw-bold fs-5 text-success">@graphStats.SettledCount</div>
+                            <div class="text-muted small">Settled</div>
+                        </div>
+                        <div class="col border-end">
+                            <div class="fw-bold fs-5 text-warning">@graphStats.ContestedCount</div>
+                            <div class="text-muted small">Contested</div>
+                        </div>
+                        <div class="col border-end">
+                            <div class="fw-bold fs-5 text-secondary">@graphStats.UnknownCount</div>
+                            <div class="text-muted small">Unknown</div>
+                        </div>
+                        <div class="col">
+                            <div class="fw-bold fs-5 text-muted">@graphStats.UnevaluatedCount</div>
+                            <div class="text-muted small">Unevaluated</div>
+                        </div>
+                    </div>
+                    @{
+                        int total = graphStats.TotalNodes;
+                        double settledPct   = total > 0 ? (double)graphStats.SettledCount / total   : 0;
+                        double contestedPct = total > 0 ? (double)graphStats.ContestedCount / total : 0;
+                        double unknownPct   = total > 0 ? (double)graphStats.UnknownCount / total   : 0;
+                        double unevPct      = total > 0 ? (double)graphStats.UnevaluatedCount / total : 0;
+                    }
+                    <div class="progress mt-3" style="height:8px;" title="@total propositions">
+                        <div class="progress-bar bg-success"   style="width:@((settledPct*100).ToString("F0"))%"></div>
+                        <div class="progress-bar bg-warning"   style="width:@((contestedPct*100).ToString("F0"))%"></div>
+                        <div class="progress-bar bg-secondary" style="width:@((unknownPct*100).ToString("F0"))%"></div>
+                        <div class="progress-bar bg-light border" style="width:@((unevPct*100).ToString("F0"))%"></div>
+                    </div>
+                    <div class="small text-muted mt-1">@total total propositions · @graphStats.TotalEvidenceItems evidence items</div>
+                </div>
+            </div>
+        }
+
+        <!-- Draft arguments -->
+        @if (draftArgs.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header">
+                    <i class="bi bi-pencil-square me-1"></i> Drafts — Ready to Analyze
+                    <span class="badge bg-secondary ms-1">@draftArgs.Count</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var arg in draftArgs)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                            <span class="text-muted">@arg.Title</span>
+                            <a asp-controller="Argument" asp-action="Analyze" asp-route-id="@arg.Id"
+                               class="btn btn-sm btn-success">
+                                <i class="bi bi-play-fill"></i> Analyze
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ── RIGHT COLUMN: Attention + Activity ────────────────────────────── -->
+    <div class="col-lg-4">
+
+        <!-- Needs Attention -->
+        @if (attentionItems.Any())
+        {
+            <div class="gc-card mb-4">
+                <div class="gc-card-header text-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Needs Attention
+                    <span class="badge bg-warning text-dark ms-1">@attentionItems.Count</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var item in attentionItems)
+                    {
+                        <a asp-controller="Argument" asp-action="View" asp-route-id="@item.ArgumentId"
+                           class="list-group-item list-group-item-action py-2 small">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi @item.Icon text-@item.Color mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <div class="fw-semibold text-truncate" style="max-width:200px">@item.ArgumentTitle</div>
+                                    <div class="text-muted">@item.Message</div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Recent Activity -->
+        <div class="gc-card mb-4">
+            <div class="gc-card-header">
+                <i class="bi bi-clock-history me-1"></i> Recent Activity
+            </div>
+            @if (!recentActivity.Any())
+            {
+                <div class="gc-card-body text-muted small text-center py-3">No activity yet.</div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var ev in recentActivity)
+                    {
+                        <div class="list-group-item py-2 small">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi @ev.Icon text-@ev.Color mt-1 flex-shrink-0"></i>
+                                <div class="flex-grow-1 min-width-0">
+                                    <div class="text-truncate">
+                                        @if (ev.ArgumentId.HasValue)
+                                        {
+                                            <a asp-controller="Argument" asp-action="View" asp-route-id="@ev.ArgumentId">
+                                                @ev.Description
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            @ev.Description
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(ev.Detail))
+                                    {
+                                        <div class="text-muted text-truncate">@ev.Detail</div>
+                                    }
+                                    <div class="text-muted" style="font-size:.75rem">
+                                        @{
+                                            var ago = DateTime.UtcNow - ev.Timestamp;
+                                            var agoText = ago.TotalDays >= 1
+                                                ? $"{(int)ago.TotalDays}d ago"
+                                                : ago.TotalHours >= 1
+                                                    ? $"{(int)ago.TotalHours}h ago"
+                                                    : $"{(int)ago.TotalMinutes}m ago";
+                                        }
+                                        @agoText
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Quick Links -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <i class="bi bi-lightning-fill me-1"></i> Quick Actions
+            </div>
+            <div class="gc-card-body d-grid gap-2">
+                <a asp-controller="Argument" asp-action="Submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Submit New Argument
+                </a>
+                <a asp-controller="CommonUnderstanding" asp-action="Index" class="btn btn-outline-info">
+                    <i class="bi bi-diagram-2 me-1"></i> Browse Knowledge Graph
+                </a>
+                <a asp-controller="Reference" asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-book me-1"></i> Reference Library
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,26 @@
+@using CommonUnderstanding.Models
+@using CommonUnderstanding.Controllers
+@{
+    ViewData["Title"] = "Collaborative Sessions";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-diagram-3-fill me-2"></i>Collaborative Sessions
+        </h1>
+        <p class="text-muted mb-0">Multi-user argument analysis and joint understanding</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>New Session
+    </a>
+</div>
+
+<div class="gc-card text-center py-5">
+    <i class="bi bi-diagram-3-fill display-3 text-muted mb-3 d-block"></i>
+    <h3>Start a Collaborative Session</h3>
+    <p class="text-muted">Invite connections to jointly analyse arguments,<br/>
+       discover shared propositions, and build a joint understanding.</p>
+    <a asp-action="Create" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-circle me-1"></i>Create Session
+    </a>
+</div>

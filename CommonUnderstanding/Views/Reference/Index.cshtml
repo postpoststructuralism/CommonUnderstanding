@@ -1,0 +1,164 @@
+@{
+    ViewData["Title"] = "Reference Library";
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="gc-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Reference Library</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-book"></i> Reference Library
+        </h1>
+        <p class="text-muted mb-0">
+            Belief frameworks and value systems that shape stakeholder perspectives.
+            Use these to understand <em>why</em> stakeholders take the positions they do on your arguments.
+        </p>
+    </div>
+</div>
+
+<!-- Context callout -->
+<div class="alert alert-info d-flex align-items-start gap-3 mb-4">
+    <i class="bi bi-lightbulb-fill fs-4 flex-shrink-0 mt-1"></i>
+    <div>
+        <strong>Why does this matter?</strong> When stakeholders disagree on an argument, the disagreement often
+        stems from different underlying worldviews, moral frameworks, or political philosophies. Exploring these
+        frameworks can help identify whether a dispute is about <em>facts</em> (solvable with evidence) or
+        <em>values</em> (requiring negotiation and compromise).
+    </div>
+</div>
+
+<!-- Framework cards -->
+<div class="row g-4 mb-5">
+
+    <div class="col-md-6 col-lg-3">
+        <div class="gc-card h-100">
+            <div class="gc-card-header">
+                <i class="bi bi-globe2 me-1"></i> World Religions
+            </div>
+            <div class="gc-card-body d-flex flex-column">
+                <p class="text-muted small flex-grow-1">
+                    Major religious traditions and their ethical frameworks — from Christianity and Islam
+                    to Hinduism, Buddhism, and Judaism.
+                </p>
+                <a asp-controller="Explore" asp-action="Index"
+                   class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Browse
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="gc-card h-100">
+            <div class="gc-card-header">
+                <i class="bi bi-tree me-1"></i> Indigenous Traditions
+            </div>
+            <div class="gc-card-body d-flex flex-column">
+                <p class="text-muted small flex-grow-1">
+                    Indigenous knowledge systems and value frameworks including First Nations, Métis,
+                    and Inuit perspectives.
+                </p>
+                <a asp-controller="Explore" asp-action="Index"
+                   class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Browse
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="gc-card h-100">
+            <div class="gc-card-header">
+                <i class="bi bi-columns-gap me-1"></i> Philosophy
+            </div>
+            <div class="gc-card-body d-flex flex-column">
+                <p class="text-muted small flex-grow-1">
+                    Ethical and epistemological traditions — utilitarianism, deontology, virtue ethics,
+                    existentialism, and more.
+                </p>
+                <a asp-controller="Explore" asp-action="Index"
+                   class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Browse
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="gc-card h-100">
+            <div class="gc-card-header">
+                <i class="bi bi-flag me-1"></i> Political Systems
+            </div>
+            <div class="gc-card-body d-flex flex-column">
+                <p class="text-muted small flex-grow-1">
+                    Political philosophies and governance ideologies that inform stakeholder views on
+                    policy, rights, and collective action.
+                </p>
+                <a asp-controller="Explore" asp-action="Index"
+                   class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Browse
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Tools -->
+<h2 class="h5 fw-semibold mb-3">
+    <i class="bi bi-tools me-1"></i> Exploration Tools
+</h2>
+<div class="row g-3 mb-4">
+
+    <div class="col-md-4">
+        <div class="d-flex align-items-start gap-3 gc-card p-3">
+            <i class="bi bi-search fs-3 text-primary flex-shrink-0"></i>
+            <div>
+                <h6 class="mb-1">Personal Discovery</h6>
+                <p class="text-muted small mb-2">
+                    Answer questions to map your own value framework and compare it to established systems.
+                </p>
+                <a asp-controller="Discovery" asp-action="Start" class="btn btn-sm btn-outline-secondary">
+                    Start →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="d-flex align-items-start gap-3 gc-card p-3">
+            <i class="bi bi-bar-chart-horizontal fs-3 text-primary flex-shrink-0"></i>
+            <div>
+                <h6 class="mb-1">Compare Systems</h6>
+                <p class="text-muted small mb-2">
+                    Side-by-side comparison of two belief systems across shared dimensions.
+                </p>
+                <a asp-controller="Explore" asp-action="Compare" class="btn btn-sm btn-outline-secondary">
+                    Compare →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="d-flex align-items-start gap-3 gc-card p-3">
+            <i class="bi bi-clock-history fs-3 text-primary flex-shrink-0"></i>
+            <div>
+                <h6 class="mb-1">Historical Timeline</h6>
+                <p class="text-muted small mb-2">
+                    Explore how these frameworks emerged and evolved over time.
+                </p>
+                <a asp-controller="Explore" asp-action="Timeline" class="btn btn-sm btn-outline-secondary">
+                    View →
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,123 @@
+@model CommonUnderstanding.Controllers.ExpansionSessionViewModel
+@using CommonUnderstanding.Models
+@{
+    ViewData["Title"] = "Expansion Session";
+}
+
+<div class="mb-4">
+    <h1 class="gc-page-heading mb-1">
+        <i class="bi bi-arrows-expand me-2"></i>Expansion Session
+    </h1>
+    <p class="text-muted mb-0">
+        Growing shared understanding with <strong>@Model.OtherUserName</strong>
+        &nbsp;·&nbsp;Current convergence: <strong>@Model.CurrentConvergenceScore.ToString("F1")/100</strong>
+    </p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- ── Question card ──────────────────────────────────────────────────── -->
+    <div class="col-12 col-lg-7">
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <h2 class="h5 mb-0"><i class="bi bi-chat-square-text me-2 text-primary"></i>Your Question</h2>
+            </div>
+            <div class="gc-card-body">
+                <div class="p-3 bg-primary bg-opacity-10 rounded mb-4">
+                    <p class="lead mb-0">@Model.Question.Content.Question</p>
+                    @if (!string.IsNullOrWhiteSpace(Model.Question.Content.Context))
+                    {
+                        <p class="small text-muted mt-2 mb-0 fst-italic">Context: @Model.Question.Content.Context</p>
+                    }
+                </div>
+
+                <form asp-action="SubmitExpansionResponse" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="mapId" value="@Model.MapId" />
+                    <input type="hidden" name="otherUserId" value="@Model.OtherUserId" />
+                    <input type="hidden" name="questionText" value="@Model.Question.Content.Question" />
+
+                    <div class="mb-3">
+                        <label for="responseText" class="form-label">Your response</label>
+                        <textarea id="responseText" name="responseText"
+                                  class="form-control" rows="5"
+                                  placeholder="Share your perspective openly…" required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send me-1"></i>Submit Response
+                        </button>
+                        <a asp-action="Map" asp-route-otherUserId="@Model.OtherUserId"
+                           class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Map
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Pathway context ────────────────────────────────────────────────── -->
+    <div class="col-12 col-lg-5">
+        <div class="gc-card mb-3">
+            <div class="gc-card-header">
+                <h2 class="h6 mb-0"><i class="bi bi-info-circle me-2"></i>Why this question?</h2>
+            </div>
+            <div class="gc-card-body small">
+                @{
+                    var activePathway = Model.Pathways
+                        .OrderByDescending(p => p.Priority)
+                        .ThenByDescending(p => p.EstimatedGain)
+                        .FirstOrDefault();
+                }
+                @if (activePathway is not null)
+                {
+                    <p><strong>Divergence:</strong> @activePathway.DivergenceDescription</p>
+                    <p><strong>Shared anchor:</strong>
+                        <span class="badge bg-success bg-opacity-25 text-dark">@activePathway.SharedValueAnchor</span>
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(activePathway.PotentialCommonFraming))
+                    {
+                        <p><strong>Potential common framing:</strong>
+                            <em>"@activePathway.PotentialCommonFraming"</em>
+                        </p>
+                    }
+                    <p class="text-muted mb-0">Estimated convergence gain: +@(activePathway.EstimatedGain * 100).ToString("F0") pts</p>
+                }
+            </div>
+        </div>
+
+        <!-- Progress indicator -->
+        <div class="gc-card">
+            <div class="gc-card-header">
+                <h2 class="h6 mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Convergence Progress</h2>
+            </div>
+            <div class="gc-card-body text-center">
+                <div class="display-6 fw-bold text-primary mb-1">@Model.CurrentConvergenceScore.ToString("F1")</div>
+                <div class="text-muted small mb-2">/ 100</div>
+                <div class="progress" style="height:10px;">
+                    <div class="progress-bar bg-primary"
+                         role="progressbar"
+                         style="width:@Model.CurrentConvergenceScore%;">
+                    </div>
+                </div>
+                <p class="small text-muted mt-2 mb-0">Your response will update this score.</p>
+            </div>
+        </div>
+    </div>
+</div>

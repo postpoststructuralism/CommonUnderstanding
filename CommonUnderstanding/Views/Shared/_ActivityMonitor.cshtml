@@ -203,6 +203,9 @@
             <div style="font-size: 11px; margin-top: 8px;">
                 Analysis happens here while you continue answering questions
             </div>
+            <div style="font-size: 10px; margin-top: 8px; color: #ef4444;">
+                Status: Not connected
+            </div>
         </div>
         <div id="activityList"></div>
     </div>
@@ -212,6 +215,7 @@
     let activityMinimized = true;
     let activities = [];
     let activityCounter = 0;
+    let connectionStatus = 'Not connected';
 
     // Toggle activity monitor
     function toggleActivityMonitor() {
@@ -230,6 +234,7 @@
 
     // Add activity
     function addActivity(title, description, status = 'queued') {
+        console.log('ADD ACTIVITY CALLED:', title, description, status);
         const id = ++activityCounter;
         const activity = {
             id,
@@ -249,6 +254,7 @@
 
     // Update activity
     function updateActivity(id, updates) {
+        console.log('UPDATE ACTIVITY CALLED:', id, updates);
         const activity = activities.find(a => a.id === id);
         if (activity) {
             Object.assign(activity, updates);
@@ -264,130 +270,109 @@
 
     // Render activities
     function renderActivities() {
-        const list = document.getElementById('activityList');
-        const emptyState = document.getElementById('emptyState');
-        const count = document.getElementById('activityCount');
-        
-        const activeCount = activities.filter(a => a.status !== 'completed').length;
-        count.textContent = activeCount;
-        
-        if (activities.length === 0) {
-            emptyState.style.display = 'block';
-            list.innerHTML = '';
-            return;
-        }
-        
-        emptyState.style.display = 'none';
-        
-        list.innerHTML = activities.map(activity => {
-            const elapsed = Math.round((Date.now() - activity.startTime) / 1000);
-            const timeText = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+        try {
+            const list = document.getElementById('activityList');
+            const emptyState = document.getElementById('emptyState');
+            const count = document.getElementById('activityCount');
             
-            return `
-                <div class="activity-item ${activity.status}">
-                    <div class="activity-title">${activity.title}</div>
-                    <div class="activity-description">${activity.description}</div>
-                    <div class="activity-meta">
-                        <span class="activity-status">
-                            <span class="status-dot ${activity.status}"></span>
-                            ${activity.status === 'processing' ? 'Processing' : 
-                              activity.status === 'completed' ? 'Completed' : 
-                              activity.status === 'error' ? 'Failed' : 'Queued'}
-                        </span>
-                        <span>${timeText}</span>
+            if (!list || !emptyState || !count) {
+                console.error('DOM elements not found!', { list, emptyState, count });
+                return;
+            }
+            
+            const activeCount = activities.filter(a => a.status !== 'completed').length;
+            count.textContent = activeCount;
+            
+            if (activities.length === 0) {
+                emptyState.style.display = 'block';
+                emptyState.innerHTML = `
+                    <i class="bi bi-inbox"></i>
+                    <div>No background tasks running</div>
+                    <div style="font-size: 11px; margin-top: 8px;">
+                        Analysis happens here while you continue answering questions
                     </div>
-                    ${activity.status === 'processing' ? `
-                        <div class="activity-progress">
-                            <div class="activity-progress-bar ${activity.progress > 0 ? '' : 'indeterminate'}" 
-                                 style="width: ${activity.progress || 0}%"></div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Simulate activity for demo (remove in production)
-    function simulateActivity() {
-        const titles = [
-            'Analyzing Response',
-            'Updating Belief Model',
-            'Computing Moral Foundations',
-            'Detecting Emotional Markers',
-            'Identifying Contradictions',
-            'Generating Next Question'
-        ];
-        
-        const descriptions = [
-            'Processing user response with AI',
-            'Bayesian inference on belief dimensions',
-            'Scoring Care, Fairness, Loyalty, Authority, Sanctity, Liberty',
-            'Analyzing sentiment and certainty',
-            'Checking for conflicting beliefs',
-            'Selecting adaptive question based on model gaps'
-        ];
-        
-        const idx = Math.floor(Math.random() * titles.length);
-        const id = addActivity(titles[idx], descriptions[idx], 'queued');
-        
-        setTimeout(() => {
-            updateActivity(id, { status: 'processing', progress: 0 });
+                    <div style="font-size: 10px; margin-top: 8px; color: ${connectionStatus === 'Connected' ? '#10b981' : '#ef4444'};">
+                        Status: ${connectionStatus}
+                    </div>
+                `;
+                list.innerHTML = '';
+                return;
+            }
             
-            // Simulate progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 20;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(progressInterval);
-                    updateActivity(id, { status: 'completed', progress: 100 });
-                    
-                    // Remove after 5 seconds
-                    setTimeout(() => removeActivity(id), 5000);
-                } else {
-                    updateActivity(id, { progress });
-                }
-            }, 300);
-        }, 500);
+            emptyState.style.display = 'none';
+            
+            list.innerHTML = activities.map(activity => {
+                const elapsed = Math.round((Date.now() - activity.startTime) / 1000);
+                const timeText = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+                
+                return `
+                    <div class="activity-item ${activity.status}">
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-description">${activity.description}</div>
+                        <div class="activity-meta">
+                            <span class="activity-status">
+                                <span class="status-dot ${activity.status}"></span>
+                                ${activity.status === 'processing' ? 'Processing' : 
+                                  activity.status === 'completed' ? 'Completed' : 
+                                  activity.status === 'error' ? 'Failed' : 'Queued'}
+                            </span>
+                            <span>${timeText}</span>
+                        </div>
+                        ${activity.status === 'processing' ? `
+                            <div class="activity-progress">
+                                <div class="activity-progress-bar ${activity.progress > 0 ? '' : 'indeterminate'}" 
+                                     style="width: ${activity.progress || 0}%"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('ERROR in renderActivities:', error);
+        }
     }
 
     // Hook into response processing via SignalR
-    let attachAttempts = 0;
-    const maxAttachAttempts = 20; // Try for ~4 seconds then give up
-    
-    function attachSignalRHandlers() {
-        attachAttempts++;
-        
-        if (typeof window.discoveryConnection !== 'undefined' && window.discoveryConnection !== null) {
-            console.log('✅ Activity Monitor: Attaching SignalR handlers to connection');
+    // Wait for SignalR connection to be established and assigned to window
+    var _signalRRetries = 0;
+    var _maxSignalRRetries = 10; // Stop after 5 seconds (10 × 500ms)
+    function initActivityMonitor() {
+        if (typeof window.discoveryConnection !== 'undefined' && window.discoveryConnection) {
+            console.log('✓ SignalR connection found — registering ActivityUpdated handler');
+            connectionStatus = 'Connected';
+            renderActivities();
             
-            // Listen for activityUpdated events from server (camelCase from SignalR)
-            window.discoveryConnection.on('activityUpdated', function(activity) {
-                console.log('📊 Activity update received:', activity);
+            // Listen for ActivityUpdated events from server
+            window.discoveryConnection.on('ActivityUpdated', function(activity) {
+                console.log('🎯 ActivityUpdated event received:', activity);
                 
-                const existingActivity = activities.find(a => a.id === activity.id);
+                // Use activity.id (lowercase from JSON) as string for lookup
+                const activityId = String(activity.id);
+                const existingActivity = activities.find(a => String(a.id) === activityId);
                 
                 if (existingActivity) {
-                    // Update existing activity
+                    console.log('Updating existing activity:', activityId);
+                    // Update existing activity - use lowercase property names from JSON
                     existingActivity.title = activity.title;
                     existingActivity.description = activity.description;
-                    existingActivity.status = activity.status;
-                    existingActivity.progress = activity.progress;
+                    existingActivity.status = activity.status.toLowerCase();
+                    existingActivity.progress = activity.progress || 0;
                     
                     // Auto-remove completed/error after 5 seconds
-                    if (activity.status === 'completed' || activity.status === 'error') {
+                    if (existingActivity.status === 'completed' || existingActivity.status === 'error') {
                         setTimeout(() => {
-                            activities = activities.filter(a => a.id !== activity.id);
+                            activities = activities.filter(a => String(a.id) !== activityId);
                             renderActivities();
                         }, 5000);
                     }
                 } else {
-                    // Add new activity
+                    console.log('Adding new activity:', activityId);
+                    // Add new activity - use lowercase property names from JSON
                     activities.unshift({
-                        id: activity.id,
+                        id: activityId,
                         title: activity.title,
                         description: activity.description,
-                        status: activity.status,
+                        status: activity.status.toLowerCase(),
                         progress: activity.progress || 0,
                         startTime: Date.now()
                     });
@@ -398,43 +383,26 @@
                 renderActivities();
             });
             
-            // Also listen for activityQueued
-            window.discoveryConnection.on('activityQueued', function(activity) {
-                console.log('📥 Activity queued:', activity);
-                
-                activities.unshift({
-                    id: activity.id,
-                    title: activity.title,
-                    description: activity.description,
-                    status: activity.status || 'queued',
-                    progress: 0,
-                    startTime: Date.now()
-                });
-                
-                if (activities.length > 10) activities.pop();
-                renderActivities();
-            });
-            
-            console.log('✅ Activity Monitor: Handlers attached successfully');
-            return true;
-        } else if (attachAttempts < maxAttachAttempts) {
-            console.log('⏳ Activity Monitor: Waiting for connection... (window.discoveryConnection = ' + typeof window.discoveryConnection + ')');
-            // Retry after a short delay
-            setTimeout(attachSignalRHandlers, 200);
-            return false;
+            console.log('✓ Activity monitor connected to SignalR');
         } else {
-            console.log('⏹️ Activity Monitor: No SignalR connection found after ' + maxAttachAttempts + ' attempts. Activity monitoring disabled for this page.');
-            return false;
+            _signalRRetries++;
+            if (_signalRRetries <= _maxSignalRRetries) {
+                connectionStatus = 'Connecting...';
+                setTimeout(initActivityMonitor, 500);
+            } else {
+                // No SignalR hub on this page — stop polling silently
+                connectionStatus = 'Standby';
+                renderActivities();
+            }
         }
     }
-    
-    // Try to attach handlers on load
-    console.log('🚀 Activity Monitor: Initializing');
-    attachSignalRHandlers();
 
     // Auto-update timestamps
     setInterval(renderActivities, 1000);
     
-    // Initial render
-    document.addEventListener('DOMContentLoaded', renderActivities);
+    // Initial render and connection setup
+    document.addEventListener('DOMContentLoaded', function() {
+        renderActivities();
+        initActivityMonitor();
+    });
 </script>

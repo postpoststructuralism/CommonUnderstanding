@@ -3,84 +3,263 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Common Understanding</title>
-    <script type="importmap"></script>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <title>@ViewData["Title"] - A Common Understanding</title>
+    
+    <!-- Bootstrap 5.3.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons 1.11.3 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- FontAwesome 6.4.2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Custom GC Design System CSS -->
+    <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/CommonUnderstanding.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
-                    <i class="bi bi-peace"></i> Common Understanding
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-house"></i> Home
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Explore" asp-action="Index">
-                                <i class="bi bi-globe"></i> Explore Canon
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Discovery" asp-action="Start">
-                                <i class="bi bi-compass"></i> Find Your Place
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Explore" asp-action="Compare">
-                                <i class="bi bi-arrows-angle-expand"></i> Compare
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Debate" asp-action="Monitor">
-                                <i class="bi bi-chat-dots"></i> Live Debate
-                            </a>
-                        </li>
-                    </ul>
+    <!-- GC HEADER -->
+    <header class="gc-header">
+        <div class="container-fluid">
+            <div class="gc-logo-section">
+                <img src="~/images/sig-blk-en.svg" alt="Government of Canada" class="gc-logo" />
+                <div class="gc-site-title">
+                    <h1>A Common Understanding</h1>
+                    <span class="subtitle">Evidence-Based Decision Platform</span>
                 </div>
             </div>
-        </nav>
+            <button class="gc-lang-toggle" onclick="toggleLanguage()" title="Français">
+                <i class="fas fa-globe"></i> FR
+            </button>
+        </div>
     </header>
-    <!-- AI Control Panel -->
-    @await Html.PartialAsync("_AIControlPanel")
-    
-    <!-- Background Processing Activity Monitor -->
-    @await Html.PartialAsync("_ActivityMonitor")
 
-    <div class="container">
-        <main role="main" class="pb-3">
+    <!-- GC NAVIGATION -->
+    <nav class="gc-nav navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#gcNavbarContent" 
+                    aria-controls="gcNavbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="gcNavbarContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" 
+                           asp-controller="Dashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Argument" ? "active" : "")"
+                           asp-controller="Argument" asp-action="Index">
+                            <i class="bi bi-diagram-3"></i> Arguments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CommonUnderstanding" ? "active" : "")"
+                           asp-controller="CommonUnderstanding" asp-action="Index">
+                            <i class="bi bi-diagram-2"></i> Common Understanding
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "EmergentConclusions" ? "active" : "")"
+                           asp-controller="EmergentConclusions" asp-action="Index">
+                            <i class="bi bi-lightbulb"></i> Emergent Conclusions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reference" ? "active" : "")"
+                           asp-controller="Reference" asp-action="Index">
+                            <i class="bi bi-book"></i> Reference
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Connections" ? "active" : "")"
+                           asp-controller="Connections" asp-action="Index">
+                            <i class="bi bi-people"></i> Connections
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Convergence" ? "active" : "")"
+                           asp-controller="Convergence" asp-action="Index">
+                            <i class="bi bi-intersect"></i> Convergence
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CollaborativeSession" ? "active" : "")"
+                           asp-controller="CollaborativeSession" asp-action="Index">
+                            <i class="bi bi-diagram-3-fill"></i> Sessions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Settings" ? "active" : "")"
+                           asp-controller="Settings" asp-action="Index">
+                            <i class="bi bi-gear"></i> Settings
+                            <span id="navAiStatusDot" title="AI Status"
+                                  style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6b7280;margin-left:4px;vertical-align:middle;"></span>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Identity nav (right side) -->
+                <ul class="navbar-nav ms-auto align-items-center">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        var displayName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "User";
+                        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#"
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i>
+                                <span>@displayName</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <div class="dropdown-item-text small text-muted">
+                                        <div class="fw-semibold mb-1">Your Profile ID</div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <code id="profileIdCode" class="small text-break" style="font-size:0.7rem">@userId</code>
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.7rem"
+                                                    onclick="navigator.clipboard.writeText('@userId');this.textContent='✓';setTimeout(()=>this.textContent='Copy',1500)"
+                                                    title="Copy your Profile ID to share with connections">Copy</button>
+                                        </div>
+                                        <div class="text-muted" style="font-size:0.65rem">Share this with others to connect</div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Discovery" asp-action="Profile">
+                                        <i class="bi bi-person me-1"></i>My Belief Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Connections" asp-action="Index">
+                                        <i class="bi bi-people me-1"></i>My Connections
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="Login">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="Register">
+                                <i class="bi bi-person-plus me-1"></i>Register
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="gc-main-content container-fluid">
+        <main role="main">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted mt-5">
-        <div class="container text-center py-3">
-            <p class="mb-1">
-                <i class="bi bi-heart-fill text-danger"></i> 
-                <strong>Common Understanding</strong> - Finding what binds us together
-            </p>
-            <p class="small mb-0">
-                Powered by Semantic Kernel & Ollama | &copy; @DateTime.Now.Year
-            </p>
+    <!-- GC FOOTER -->
+    <footer class="gc-footer">
+        <div class="container-fluid">
+            <div class="gc-footer-content">
+                <div class="gc-footer-logo">
+                    <img src="~/images/wmms-blk.svg" alt="Symbol of the Government of Canada" class="gc-wordmark" />
+                </div>
+                <div class="gc-footer-info">
+                    <p>
+                        <i class="bi bi-heart-fill text-danger"></i>
+                        <strong>Common Understanding</strong> - Finding what binds us together
+                    </p>
+                    <p class="small">
+                        &copy; @DateTime.Now.Year Government of Canada | 
+                        Powered by Semantic Kernel & Ollama | 
+                        Version 1.0.0
+                    </p>
+                </div>
+                <div class="gc-footer-links">
+                    <a asp-controller="Home" asp-action="Privacy">
+                        <i class="fas fa-shield-alt"></i> Privacy
+                    </a>
+                    <a href="#">
+                        <i class="fas fa-file-contract"></i> Terms
+                    </a>
+                    <a href="#">
+                        <i class="fas fa-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
         </div>
     </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        // AI status dot in nav — polls every 30s
+        (async function updateNavAiDot() {
+            try {
+                const r = await fetch('/api/AIStatus/status');
+                const d = await r.json();
+                const dot = document.getElementById('navAiStatusDot');
+                if (!dot) return;
+                if (d.ollamaConnected && d.modelLoaded) dot.style.background = '#198754';
+                else if (d.ollamaConnected)              dot.style.background = '#ffc107';
+                else                                     dot.style.background = '#dc3545';
+                dot.title = d.ollamaConnected ? (d.modelLoaded ? 'AI: Ready' : 'AI: Partial') : 'AI: Offline';
+            } catch { /* silent fail */ }
+            setTimeout(updateNavAiDot, 30000);
+        })();
+
+        // Language Toggle Function
+        function toggleLanguage() {
+            // Placeholder for future i18n implementation
+            const currentLang = document.documentElement.lang;
+            const newLang = currentLang === 'en' ? 'fr' : 'en';
+            
+            // Update button text
+            const langBtn = document.querySelector('.gc-lang-toggle');
+            langBtn.innerHTML = newLang === 'en' ? '<i class="fas fa-globe"></i> FR' : '<i class="fas fa-globe"></i> EN';
+            
+            // This would typically trigger a language switch
+            console.log('Language toggle clicked. Future implementation will switch to: ' + newLang);
+            
+            // Show notification
+            alert('Language toggle functionality will be implemented with full i18n support.');
+        }
+
+        // Add active state to current navigation item
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.gc-nav .nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+    
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

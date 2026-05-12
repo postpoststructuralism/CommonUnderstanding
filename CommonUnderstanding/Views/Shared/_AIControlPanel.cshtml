@@ -5,7 +5,7 @@
 <style>
     .control-panel {
         position: fixed;
-        top: 60px;
+        top: 140px;  /* Adjusted to clear GC header (~80px) + navbar (~60px) */
         right: 20px;
         width: 400px;
         background: white;
@@ -39,12 +39,8 @@
 
     .control-panel-body {
         padding: 20px;
-        max-height: 600px;
+        max-height: calc(100vh - 160px);  /* Adjusted to account for header offset */
         overflow-y: auto;
-    }
-
-    .control-panel.collapsed .control-panel-body {
-        display: none;
     }
 
     .status-indicator {

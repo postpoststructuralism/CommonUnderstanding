@@ -329,4 +329,327 @@ public class BeliefSystemKnowledgeBase
             HistoricalInteractions = new List<string>()
         };
     }
+
+    /// <summary>
+    /// Compare a user's discovered belief profile with all canonical belief systems
+    /// Returns ranked list of matching systems with detailed comparison
+    /// </summary>
+    public List<UserBeliefSystemMatch> CompareUserToCanonicalSystems(BeliefSnapshot userProfile, int topN = 10)
+    {
+        var matches = new List<UserBeliefSystemMatch>();
+
+        foreach (var system in _allSystems)
+        {
+            var match = CompareUserToSystem(userProfile, system);
+            matches.Add(match);
+        }
+
+        // Return top N matches sorted by overall similarity
+        return matches
+            .OrderByDescending(m => m.OverallMatchPercentage)
+            .Take(topN)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Compare a user's profile with a specific canonical belief system
+    /// </summary>
+    private UserBeliefSystemMatch CompareUserToSystem(BeliefSnapshot userProfile, CanonicalBeliefSystem system)
+    {
+        var match = new UserBeliefSystemMatch
+        {
+            SystemId = system.Id,
+            SystemName = system.Name,
+            SystemSlug = system.Slug,
+            SystemCategory = system.Category,
+            SystemCulture = system.Culture,
+            SystemEra = system.Era
+        };
+
+        // Compare values
+        var userValues = userProfile.Values.Select(v => v.Name.ToLowerInvariant()).ToHashSet();
+        var systemValueKeywords = ExtractValueKeywords(system);
+        
+        var sharedValues = userValues.Intersect(systemValueKeywords, StringComparer.OrdinalIgnoreCase).ToList();
+        match.SharedValues = sharedValues;
+
+        // Compare moral foundations
+        var moralFoundationAlignment = CompareMoralFoundations(userProfile.MoralFoundations, system);
+        match.MoralFoundationAlignment = moralFoundationAlignment;
+
+        // Calculate dimensional similarities (if system has dimensional profile)
+        if (system.Profile?.Dimensions != null && system.Profile.Dimensions.Any())
+        {
+            match.DimensionalAlignment = CompareDimensions(userProfile.Dimensions, system.Profile.Dimensions);
+        }
+
+        // Calculate overall match percentage
+        match.OverallMatchPercentage = CalculateOverallMatch(
+            sharedValues.Count,
+            moralFoundationAlignment,
+            match.DimensionalAlignment
+        );
+
+        // Identify key differences
+        match.KeyDifferences = IdentifyKeyDifferences(userProfile, system, moralFoundationAlignment);
+
+        // Generate explanation
+        match.MatchExplanation = GenerateMatchExplanation(match, userProfile, system);
+
+        return match;
+    }
+
+    private HashSet<string> ExtractValueKeywords(CanonicalBeliefSystem system)
+    {
+        var keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        // Extract from core principles
+        foreach (var principle in system.CorePrinciples)
+        {
+            var words = principle.ToLowerInvariant()
+                .Split(new[] { ' ', ',', '.', ':', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var word in words.Where(w => w.Length > 4)) // Filter short words
+            {
+                keywords.Add(word);
+            }
+        }
+
+        // Common value mappings
+        var valueMappings = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["compassion"] = new() { "kindness", "empathy", "caring", "mercy" },
+            ["justice"] = new() { "fairness", "equality", "rights", "equity" },
+            ["freedom"] = new() { "liberty", "autonomy", "independence" },
+            ["wisdom"] = new() { "knowledge", "understanding", "insight" },
+            ["community"] = new() { "solidarity", "togetherness", "collective" },
+            ["duty"] = new() { "responsibility", "obligation", "honor" },
+            ["harmony"] = new() { "balance", "peace", "equilibrium" }
+        };
+
+        foreach (var (value, synonyms) in valueMappings)
+        {
+            if (system.CorePrinciples.Any(p => synonyms.Any(s => p.Contains(s, StringComparison.OrdinalIgnoreCase))))
+            {
+                keywords.Add(value);
+            }
+        }
+
+        return keywords;
+    }
+
+    private Dictionary<string, double> CompareMoralFoundations(
+        MoralFoundationsProfile userMF,
+        CanonicalBeliefSystem system)
+    {
+        var alignment = new Dictionary<string, double>();
+
+        // If system doesn't have moral foundations profile, use heuristics
+        var systemMF = system.Profile?.MoralFoundations ?? InferMoralFoundations(system);
+
+        alignment["Care"] = 1.0 - Math.Abs(userMF.Care.Score - systemMF.Care.Score) / 10.0;
+        alignment["Fairness"] = 1.0 - Math.Abs(userMF.Fairness.Score - systemMF.Fairness.Score) / 10.0;
+        alignment["Loyalty"] = 1.0 - Math.Abs(userMF.Loyalty.Score - systemMF.Loyalty.Score) / 10.0;
+        alignment["Authority"] = 1.0 - Math.Abs(userMF.Authority.Score - systemMF.Authority.Score) / 10.0;
+        alignment["Sanctity"] = 1.0 - Math.Abs(userMF.Sanctity.Score - systemMF.Sanctity.Score) / 10.0;
+        alignment["Liberty"] = 1.0 - Math.Abs(userMF.Liberty.Score - systemMF.Liberty.Score) / 10.0;
+
+        return alignment;
+    }
+
+    private MoralFoundationsProfile InferMoralFoundations(CanonicalBeliefSystem system)
+    {
+        // Simple heuristic-based inference
+        var profile = new MoralFoundationsProfile();
+
+        var text = (system.Description + " " + string.Join(" ", system.CorePrinciples)).ToLowerInvariant();
+
+        // Care/Harm
+        profile.Care = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "compassion", "kindness", "caring", "love", "mercy", "empathy" }) * 2.0
+        };
+
+        // Fairness/Cheating
+        profile.Fairness = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "justice", "fairness", "equality", "rights", "equity" }) * 2.0
+        };
+
+        // Loyalty/Betrayal
+        profile.Loyalty = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "loyalty", "community", "solidarity", "collective", "tradition" }) * 2.0
+        };
+
+        // Authority/Subversion
+        profile.Authority = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "authority", "hierarchy", "order", "discipline", "obedience" }) * 2.0
+        };
+
+        // Sanctity/Degradation
+        profile.Sanctity = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "sacred", "holy", "pure", "divine", "spiritual", "sanctity" }) * 2.0
+        };
+
+        // Liberty/Oppression
+        profile.Liberty = new Foundation
+        {
+            Score = CountKeywords(text, new[] { "freedom", "liberty", "autonomy", "independence", "choice" }) * 2.0
+        };
+
+        return profile;
+    }
+
+    private double CountKeywords(string text, string[] keywords)
+    {
+        return Math.Min(keywords.Count(kw => text.Contains(kw)), 5); // Cap at 5
+    }
+
+    private Dictionary<string, double> CompareDimensions(
+        List<BeliefDimension> userDimensions,
+        List<BeliefDimension> systemDimensions)
+    {
+        var alignment = new Dictionary<string, double>();
+
+        foreach (var userDim in userDimensions.Where(d => d.Position.HasValue && d.Confidence > 0.5))
+        {
+            var systemDim = systemDimensions.FirstOrDefault(d => 
+                d.Name.Equals(userDim.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (systemDim?.Position.HasValue == true)
+            {
+                // Calculate alignment (1.0 = perfect match, 0.0 = opposite)
+                var distance = Math.Abs(userDim.Position.Value - systemDim.Position.Value);
+                var similarity = 1.0 - (distance / 2.0); // Normalize to 0-1
+                alignment[userDim.Name] = similarity;
+            }
+        }
+
+        return alignment;
+    }
+
+    private double CalculateOverallMatch(
+        int sharedValuesCount,
+        Dictionary<string, double> moralFoundationAlignment,
+        Dictionary<string, double> dimensionalAlignment)
+    {
+        var scores = new List<double>();
+
+        // Values match (0-30 points)
+        scores.Add(Math.Min(sharedValuesCount * 6, 30));
+
+        // Moral foundations match (0-40 points)
+        if (moralFoundationAlignment.Any())
+        {
+            var avgMFAlignment = moralFoundationAlignment.Values.Average();
+            scores.Add(avgMFAlignment * 40);
+        }
+
+        // Dimensional match (0-30 points)
+        if (dimensionalAlignment.Any())
+        {
+            var avgDimAlignment = dimensionalAlignment.Values.Average();
+            scores.Add(avgDimAlignment * 30);
+        }
+
+        return scores.Sum();
+    }
+
+    private List<string> IdentifyKeyDifferences(
+        BeliefSnapshot userProfile,
+        CanonicalBeliefSystem system,
+        Dictionary<string, double> moralFoundationAlignment)
+    {
+        var differences = new List<string>();
+
+        // Find moral foundations with low alignment
+        foreach (var (foundation, alignment) in moralFoundationAlignment.OrderBy(kvp => kvp.Value).Take(2))
+        {
+            if (alignment < 0.6)
+            {
+                differences.Add($"Different emphasis on {foundation}");
+            }
+        }
+
+        // Check for conflicting core values
+        var userTopValues = userProfile.Values
+            .OrderByDescending(v => v.ImportanceScore)
+            .Take(3)
+            .Select(v => v.Name)
+            .ToList();
+
+        var systemKeywords = ExtractValueKeywords(system);
+        var nonOverlapping = userTopValues.Where(v => !systemKeywords.Contains(v)).ToList();
+
+        if (nonOverlapping.Any())
+        {
+            differences.Add($"Your emphasis on {string.Join(", ", nonOverlapping)} differs from {system.Name}'s focus");
+        }
+
+        return differences;
+    }
+
+    private string GenerateMatchExplanation(
+        UserBeliefSystemMatch match,
+        BeliefSnapshot userProfile,
+        CanonicalBeliefSystem system)
+    {
+        var explanation = new List<string>();
+
+        if (match.OverallMatchPercentage >= 70)
+        {
+            explanation.Add($"Strong alignment with {system.Name}.");
+        }
+        else if (match.OverallMatchPercentage >= 50)
+        {
+            explanation.Add($"Moderate alignment with {system.Name}.");
+        }
+        else
+        {
+            explanation.Add($"Some alignment with {system.Name}, but significant differences exist.");
+        }
+
+        if (match.SharedValues.Any())
+        {
+            explanation.Add($"Shared values include: {string.Join(", ", match.SharedValues.Take(3))}.");
+        }
+
+        var strongMF = match.MoralFoundationAlignment
+            .Where(kvp => kvp.Value >= 0.8)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        if (strongMF.Any())
+        {
+            explanation.Add($"Strong alignment on {string.Join(" and ", strongMF)} foundations.");
+        }
+
+        return string.Join(" ", explanation);
+    }
+}
+
+/// <summary>
+/// Represents a match between a user's discovered beliefs and a canonical belief system
+/// </summary>
+public class UserBeliefSystemMatch
+{
+    public string SystemId { get; set; } = string.Empty;
+    public string SystemName { get; set; } = string.Empty;
+    public string SystemSlug { get; set; } = string.Empty;
+    public string SystemCategory { get; set; } = string.Empty;
+    public string SystemCulture { get; set; } = string.Empty;
+    public string SystemEra { get; set; } = string.Empty;
+    
+    public double OverallMatchPercentage { get; set; } // 0-100
+    
+    public List<string> SharedValues { get; set; } = new();
+    public List<string> KeyDifferences { get; set; } = new();
+    
+    public Dictionary<string, double> MoralFoundationAlignment { get; set; } = new(); // Foundation name -> alignment (0-1)
+    public Dictionary<string, double> DimensionalAlignment { get; set; } = new(); // Dimension name -> alignment (0-1)
+    
+    public string MatchExplanation { get; set; } = string.Empty;
 }

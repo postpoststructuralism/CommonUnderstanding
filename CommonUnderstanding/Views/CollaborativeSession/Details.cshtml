@@ -1,0 +1,166 @@
+@model CommonUnderstanding.Controllers.CollaborativeSessionViewModel
+@using CommonUnderstanding.Models
+@{
+    ViewData["Title"] = Model.Session.Title;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="gc-page-heading mb-1">
+            <i class="bi bi-diagram-3-fill me-2"></i>@Model.Session.Title
+        </h1>
+        <p class="text-muted mb-0">
+            @Model.Session.Status &nbsp;·&nbsp; Created @Model.Session.CreatedAt.ToString("MMM d, yyyy")
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (Model.Session.Status == SessionStatus.Active && Model.IsParticipant)
+        {
+            <form asp-action="Analyze" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sessionId" value="@Model.Session.Id" />
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-play-fill me-1"></i>Run Joint Analysis
+                </button>
+            </form>
+        }
+        @if (Model.Session.Status == SessionStatus.Concluded)
+        {
+            <a asp-action="Results" asp-route-id="@Model.Session.Id" class="btn btn-primary">
+                <i class="bi bi-bar-chart-steps me-1"></i>View Results
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+
+    <!-- Participants -->
+    <div class="col-12 col-md-4">
+        <div class="gc-card h-100">
+            <div class="gc-card-header">
+                <h2 class="h6 mb-0"><i class="bi bi-people me-2"></i>Participants</h2>
+            </div>
+            <div class="gc-card-body">
+                <ul class="list-group list-group-flush">
+                    @foreach (var p in Model.Participants)
+                    {
+                        var contributed = Model.Contributions.TryGetValue(p.Id, out var argIds) ? argIds.Count : 0;
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <i class="bi bi-person-circle me-1 @(p.Id == Model.CurrentUserId ? "text-primary" : "text-secondary")"></i>
+                                <strong>@p.Name</strong>
+                                @if (p.Id == Model.CurrentUserId) { <span class="badge bg-primary ms-1">You</span> }
+                            </div>
+                            <span class="badge bg-light text-muted border">@contributed args</span>
+                        </li>
+                    }
+                </ul>
+
+                @if (Model.MergedNodeCount > 0)
+                {
+                    <div class="mt-3 text-center p-2 bg-info bg-opacity-10 rounded">
+                        <div class="fw-bold text-info">@Model.MergedNodeCount</div>
+                        <div class="small text-muted">merged propositions</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Contribute arguments -->
+    @if (Model.Session.Status == SessionStatus.Active && Model.IsParticipant)
+    {
+        <div class="col-12 col-md-8">
+            <div class="gc-card">
+                <div class="gc-card-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-plus-square me-2"></i>Contribute Your Arguments</h2>
+                </div>
+                <div class="gc-card-body">
+                    <form asp-action="Contribute" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="sessionId" value="@Model.Session.Id" />
+
+                        <p class="small text-muted mb-3">
+                            Select arguments from your profile to contribute to this session.
+                            Enter the argument IDs (comma-separated) below, or use the Arguments list to find them.
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label">Argument IDs</label>
+                            <input type="text" name="argumentIdsCsv" class="form-control"
+                                   placeholder="e.g. 3, 7, 12"
+                                   id="argumentIdsCsvInput" />
+                            <div class="form-text">
+                                <a asp-controller="Argument" asp-action="Index" target="_blank">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Browse arguments
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Hidden multi-value argumentIds inputs populated by JS from CSV -->
+                        <div id="argumentIdsContainer"></div>
+
+                        <button type="submit" class="btn btn-primary" id="contributeBtn" disabled>
+                            <i class="bi bi-plus-circle me-1"></i>Contribute
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.Session.Status == SessionStatus.Concluded)
+    {
+        <div class="col-12 col-md-8">
+            <div class="gc-card text-center py-4">
+                <i class="bi bi-check-circle-fill display-4 text-success mb-2 d-block"></i>
+                <h3 class="h5">Analysis complete</h3>
+                <p class="text-muted">The joint analysis has been run. View the full results below.</p>
+                <a asp-action="Results" asp-route-id="@Model.Session.Id" class="btn btn-primary">
+                    <i class="bi bi-bar-chart-steps me-1"></i>View Results
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    const csvInput = document.getElementById('argumentIdsCsvInput');
+    const container = document.getElementById('argumentIdsContainer');
+    const btn = document.getElementById('contributeBtn');
+
+    if (csvInput) {
+        csvInput.addEventListener('input', function () {
+            container.innerHTML = '';
+            const ids = this.value.split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s));
+            ids.forEach(id => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'argumentIds';
+                inp.value = id;
+                container.appendChild(inp);
+            });
+            btn.disabled = ids.length === 0;
+        });
+    }
+</script>
+}
