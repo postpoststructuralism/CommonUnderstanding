@@ -158,7 +158,7 @@ public class DiscoveryController : Controller
         else
         {
             // No prefetched questions available; generate exactly one question immediately.
-            // Using GetNextQuestionAsync avoids the bulk Ollama calls of StartDiscoveryAsync.
+            // Using GetNextQuestionAsync avoids the bulk Gemini calls of StartDiscoveryAsync.
             _logger.LogWarning("No prefetched questions available for user {ProfileId}, generating synchronously", profileId);
             nextQuestion = await _orchestrator.GetNextQuestionAsync(profile);
         }

@@ -260,12 +260,12 @@
         <!-- Connection Status -->
         <div class="section-title">🔌 Connection</div>
         
-        <div class="status-row" id="ollamaStatus">
+        <div class="status-row" id="geminiStatus">
             <div>
-                <div class="status-label">Ollama Server</div>
-                <div class="status-value" id="ollamaEndpoint">...</div>
+                <div class="status-label">Gemini API</div>
+                <div class="status-value" id="geminiConfigured">...</div>
             </div>
-            <span class="status-indicator status-gray" id="ollamaIndicator"></span>
+            <span class="status-indicator status-gray" id="geminiIndicator"></span>
         </div>
 
         <!-- Model Status -->
@@ -297,7 +297,7 @@
         <div class="mb-2">
             <label class="small">Agent</label>
             <select class="model-selector" id="agentSelector">
-                <option value="ollama">Ollama (Local / Container)</option>
+                <option value="gemini">Gemini (Google AI)</option>
                 <option value="azureopenai">Azure OpenAI</option>
                 <option value="none">None / Disabled</option>
             </select>
@@ -393,12 +393,11 @@
         document.getElementById('responseTime').textContent = responseTime;
 
         // Update endpoint
-        document.getElementById('ollamaEndpoint').textContent = data.endpoint;
-
-        // Update Ollama connection status
-        const ollamaConnected = data.ollamaConnected;
-        updateStatusRow('ollamaStatus', 'ollamaIndicator', ollamaConnected, 
-            ollamaConnected ? 'Connected' : 'Disconnected');
+        // Update Gemini status
+        const geminiConfigured = data.geminiConfigured;
+        document.getElementById('geminiConfigured').textContent = geminiConfigured ? 'API key configured' : 'API key not set';
+        updateStatusRow('geminiStatus', 'geminiIndicator', geminiConfigured,
+            geminiConfigured ? 'Configured' : 'Not configured');
 
         // Update model status
         const modelAvailable = data.modelAvailable;
@@ -418,8 +417,8 @@
             case 'model-missing':
                 systemStatusText = '⚠ Model Not Available';
                 break;
-            case 'ollama-offline':
-                systemStatusText = '✗ Ollama Offline';
+            case 'api-key-missing':
+                systemStatusText = '✗ Gemini API Key Missing';
                 break;
             default:
                 systemStatusText = '? Unknown';
@@ -441,8 +440,8 @@
         // Show info or error message
         if (data.error) {
             showError(data.error);
-        } else if (!ollamaConnected) {
-            showInfo('Ollama is not connected. Please ensure Ollama is running and accessible at: ' + data.endpoint);
+        } else if (!geminiConfigured) {
+            showInfo('Gemini API key is not configured. Please add your API key to appsettings.json under Gemini:ApiKey.');
         } else if (!modelAvailable) {
             showInfo('The configured model "' + data.modelName + '" is not available. Please download it or select a different model.');
         } else {
@@ -542,10 +541,8 @@
     }
 
     function showDownloadInstructions() {
-        const model = document.getElementById('currentModel')?.textContent || 'llama3.2:3b';
-        const instructions = `Run on host with Ollama installed:\n\nollama pull ${model}\nollama serve\n`;
-        showInfo(instructions);
-        navigator.clipboard?.writeText(instructions).catch(() => {});
+        const model = document.getElementById('currentModel')?.textContent || 'gemini-2.0-flash';
+        showInfo(`Configure your Gemini API key at https://aistudio.google.com/app/apikey and add it to appsettings.json under Gemini:ApiKey.`);
     }
 
     // Start auto-refresh on page load

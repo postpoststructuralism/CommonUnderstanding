@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7f82ba31-b338-41b6-bf30-ee31df767f90</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +15,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.3" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.67.1" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.67.1-alpha" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.67.1-alpha" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.76.0" />
   </ItemGroup>
 
 </Project>

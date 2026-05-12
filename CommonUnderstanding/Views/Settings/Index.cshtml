@@ -27,10 +27,10 @@
                 <div id="aiStatusRows">
                     <div class="d-flex justify-content-between align-items-center border-start border-4 border-secondary rounded px-3 py-2 mb-2 bg-light">
                         <div>
-                            <div class="fw-semibold">Ollama Server</div>
-                            <div class="small text-muted" id="ollamaEndpoint">Loading…</div>
+                            <div class="fw-semibold">Gemini API</div>
+                            <div class="small text-muted" id="geminiConfigured">Loading…</div>
                         </div>
-                        <span id="ollamaIndicator" class="badge bg-secondary">—</span>
+                        <span id="geminiIndicator" class="badge bg-secondary">—</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center border-start border-4 border-secondary rounded px-3 py-2 mb-2 bg-light">
                         <div>
@@ -59,7 +59,7 @@
                     <label class="form-label fw-semibold">Agent Backend</label>
                     <div class="d-flex gap-2">
                         <select class="form-select" id="agentSelector">
-                            <option value="ollama">Ollama (Local / Container)</option>
+                            <option value="gemini">Gemini (Google AI)</option>
                             <option value="azureopenai">Azure OpenAI</option>
                             <option value="none">None / Disabled</option>
                         </select>
@@ -111,11 +111,11 @@
         <div class="gc-card mb-4">
             <div class="gc-card-header"><i class="bi bi-info-circle me-1"></i> Setup Help</div>
             <div class="gc-card-body small">
-                <p><strong>Ollama not connecting?</strong></p>
+                <p><strong>Gemini API not configured?</strong></p>
                 <ol class="ps-3">
-                    <li>Install Ollama from <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">ollama.ai</a></li>
-                    <li>Run <code>ollama pull llama3</code></li>
-                    <li>Ensure Ollama is running on <code>localhost:11434</code></li>
+                    <li>Get a free API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
+                    <li>Add the key to <code>appsettings.json</code> under <code>Gemini:ApiKey</code></li>
+                    <li>Set <code>Gemini:ModelName</code> to your preferred model (e.g. <code>gemini-2.0-flash</code>)</li>
                     <li>Click <em>Test Connection</em> above</li>
                 </ol>
                 <p class="mt-3"><strong>Using Azure OpenAI?</strong></p>
@@ -138,20 +138,20 @@
 
             document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
             document.getElementById('responseTime').textContent = ms;
-            document.getElementById('ollamaEndpoint').textContent = data.endpoint ?? '—';
+            document.getElementById('geminiConfigured').textContent = data.geminiConfigured ? 'API key configured' : 'API key not set';
             document.getElementById('currentModel').textContent = data.modelName ?? '—';
 
-            const ollamaOk = !!data.ollamaConnected;
+            const geminiOk = !!data.geminiConfigured;
             const modelOk  = !!data.modelAvailable;
 
-            setIndicator('ollamaIndicator', ollamaOk ? 'success' : 'danger', ollamaOk ? 'Connected' : 'Disconnected');
+            setIndicator('geminiIndicator', geminiOk ? 'success' : 'danger', geminiOk ? 'Configured' : 'Not configured');
             setIndicator('modelIndicator',  modelOk  ? 'success' : 'warning', modelOk  ? 'Loaded' : 'Not loaded');
 
             const dot = document.getElementById('aiStatusDot');
             const txt = document.getElementById('aiStatusText');
-            if (ollamaOk && modelOk) {
+            if (geminiOk && modelOk) {
                 dot.style.background = '#198754'; txt.textContent = 'Ready';
-            } else if (ollamaOk) {
+            } else if (geminiOk) {
                 dot.style.background = '#ffc107'; txt.textContent = 'Partial';
             } else {
                 dot.style.background = '#dc3545'; txt.textContent = 'Offline';
@@ -192,7 +192,7 @@
         await refreshStatus();
         const txt = document.getElementById('aiStatusText').textContent;
         if (txt === 'Ready') showSettingsMessage('success', '✓ Connection successful');
-        else showSettingsMessage('warning', '⚠ Connection issues detected. Check Ollama is running.');
+        else showSettingsMessage('warning', '⚠ Gemini API key is not configured. Add it to appsettings.json under Gemini:ApiKey.');
     }
 
     async function switchModel() {

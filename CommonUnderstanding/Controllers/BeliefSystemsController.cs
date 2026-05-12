@@ -55,7 +55,7 @@ public class BeliefSystemsController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating belief system");
-                ModelState.AddModelError("", "Error analyzing belief system. Make sure Ollama is running.");
+                ModelState.AddModelError("", "Error analyzing belief system. Make sure the Gemini API key is configured.");
             }
         }
         return View(beliefSystem);
@@ -103,7 +103,7 @@ public class BeliefSystemsController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error comparing belief systems");
-            TempData["Error"] = "Error comparing belief systems. Make sure Ollama is running.";
+            TempData["Error"] = "Error comparing belief systems. Make sure the Gemini API key is configured.";
             return RedirectToAction(nameof(Compare));
         }
     }
@@ -144,7 +144,7 @@ public class BeliefSystemsController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating dialogue suggestions");
-            TempData["Error"] = "Error generating suggestions. Make sure Ollama is running.";
+            TempData["Error"] = "Error generating suggestions. Make sure the Gemini API key is configured.";
             return RedirectToAction(nameof(ComparisonResult), new { id });
         }
     }
