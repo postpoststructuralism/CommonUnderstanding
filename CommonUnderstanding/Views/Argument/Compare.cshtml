@@ -1,4 +1,4 @@
-@model IEnumerable<CommonUnderstanding.Models.Argument>
+﻿@model IEnumerable<CommonUnderstanding.Models.Argument>
 @using CommonUnderstanding.Models
 
 @{
@@ -7,7 +7,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-controller="Argument" asp-action="Index">Arguments</a></li>
@@ -15,12 +15,12 @@
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-arrow-left-right"></i> Compare Arguments
 </h1>
 
-<div class="gc-card mb-4">
-    <div class="gc-card-body">
+<div class="cu-card mb-4">
+    <div class="cu-card-body">
         <p class="lead mb-1">Select two fully-analysed arguments to generate a head-to-head comparative analysis.</p>
         <p class="text-muted mb-0">The system will identify conflicting premises, shared ground, and the net epistemic direction between the two positions.</p>
     </div>
@@ -36,8 +36,8 @@
 
 @if (!Model.Any())
 {
-    <div class="gc-card">
-        <div class="gc-card-body text-center py-5">
+    <div class="cu-card">
+        <div class="cu-card-body text-center py-5">
             <i class="bi bi-inbox display-4 text-muted"></i>
             <p class="mt-3 text-muted">No fully-analysed arguments are available yet.</p>
             <a asp-action="Submit" class="btn btn-primary">Submit the first argument</a>

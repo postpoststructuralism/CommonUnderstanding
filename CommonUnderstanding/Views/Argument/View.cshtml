@@ -66,7 +66,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
@@ -77,7 +77,7 @@
 <!-- ── Page Header ──────────────────────────────────────────────────────────── -->
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div class="flex-grow-1 me-3">
-        <h1 class="gc-page-heading mb-1">@Model.Title</h1>
+        <h1 class="cu-page-heading mb-1">@Model.Title</h1>
         @if (!string.IsNullOrWhiteSpace(claim?.ClaimType))
         {
             <span class="badge bg-secondary me-1">@claim.ClaimType claim</span>
@@ -162,15 +162,15 @@
         else
         {
             <!-- Central claim -->
-            <div class="gc-card mb-4 border-primary border-2">
-                <div class="gc-card-header bg-primary text-white">
+            <div class="cu-card mb-4 border-primary border-2">
+                <div class="cu-card-header bg-primary text-white">
                     <i class="bi bi-bullseye me-1"></i> Central Claim
                     @if (!string.IsNullOrWhiteSpace(claim.ClaimType))
                     {
                         <span class="badge bg-light text-dark ms-2">@claim.ClaimType</span>
                     }
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <p class="lead mb-0">@claim.Text</p>
                 </div>
             </div>
@@ -178,8 +178,8 @@
             <!-- Premises summary (read-only) -->
             @if (premises.Any())
             {
-                <div class="gc-card mb-4">
-                    <div class="gc-card-header">
+                <div class="cu-card mb-4">
+                    <div class="cu-card-header">
                         <i class="bi bi-list-check me-1"></i> Premises
                         <span class="badge bg-secondary ms-1">@premises.Count</span>
                         <small class="text-muted ms-2 fw-normal">
@@ -230,12 +230,12 @@
             <!-- Syllogisms -->
             @if (syllogisms.Any())
             {
-                <div class="gc-card mb-4">
-                    <div class="gc-card-header">
+                <div class="cu-card mb-4">
+                    <div class="cu-card-header">
                         <i class="bi bi-arrow-down-right-square me-1"></i> Logical Structure
                         <span class="badge bg-secondary ms-1">@syllogisms.Count</span>
                     </div>
-                    <div class="gc-card-body">
+                    <div class="cu-card-body">
                         <div class="row">
                             @foreach (var (s, idx) in syllogisms.Select((s, i) => (s, i + 1)))
                             {
@@ -281,8 +281,8 @@
                     @if (assumptions.Any())
                     {
                         <div class="col-lg-4 mb-3">
-                            <div class="gc-card h-100">
-                                <div class="gc-card-header">
+                            <div class="cu-card h-100">
+                                <div class="cu-card-header">
                                     <i class="bi bi-eye-slash me-1"></i> Hidden Assumptions
                                     <span class="badge bg-secondary ms-1">@assumptions.Count</span>
                                 </div>
@@ -301,8 +301,8 @@
                     @if (qualifiers.Any())
                     {
                         <div class="col-lg-4 mb-3">
-                            <div class="gc-card h-100">
-                                <div class="gc-card-header">
+                            <div class="cu-card h-100">
+                                <div class="cu-card-header">
                                     <i class="bi bi-funnel me-1"></i> Qualifiers &amp; Scope
                                     <span class="badge bg-secondary ms-1">@qualifiers.Count</span>
                                 </div>
@@ -321,8 +321,8 @@
                     @if (rebuttals.Any())
                     {
                         <div class="col-lg-4 mb-3">
-                            <div class="gc-card h-100">
-                                <div class="gc-card-header">
+                            <div class="cu-card h-100">
+                                <div class="cu-card-header">
                                     <i class="bi bi-shield-exclamation me-1"></i> Rebuttals &amp; Defeaters
                                     <span class="badge bg-secondary ms-1">@rebuttals.Count</span>
                                 </div>
@@ -343,8 +343,8 @@
             }
 
             <!-- Original text (collapsed) -->
-            <div class="gc-card">
-                <div class="gc-card-header d-flex justify-content-between">
+            <div class="cu-card">
+                <div class="cu-card-header d-flex justify-content-between">
                     <span><i class="bi bi-file-text me-1"></i> Original Argument Text</span>
                     <button class="btn btn-sm btn-outline-secondary"
                             data-bs-toggle="collapse" data-bs-target="#originalText">
@@ -352,7 +352,7 @@
                     </button>
                 </div>
                 <div class="collapse" id="originalText">
-                    <div class="gc-card-body">
+                    <div class="cu-card-body">
                         <p class="mb-1 text-muted small">
                             Submitted @Model.CreatedAt.ToString("MMMM d, yyyy")
                             @if (!string.IsNullOrWhiteSpace(Model.SubmittedBy))
@@ -392,8 +392,8 @@
             @foreach (var p in premises)
             {
                 var evCount = p.EvidenceItems.Count;
-                <div class="gc-card mb-4">
-                    <div class="gc-card-header d-flex justify-content-between align-items-center">
+                <div class="cu-card mb-4">
+                    <div class="cu-card-header d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1 me-3">
                             <span class="fw-semibold">@p.Text</span>
                             @if (evCount > 0)
@@ -423,7 +423,7 @@
                         </button>
                     </div>
 
-                    <div class="gc-card-body p-0">
+                    <div class="cu-card-body p-0">
                         @if (evCount > 0)
                         {
                             <div class="table-responsive">
@@ -571,9 +571,9 @@
             double suppPct = (double)stakeholderConsensus.SupportCount  / total * 100;
             double oppPct  = (double)stakeholderConsensus.OpposeCount   / total * 100;
             double undPct  = (double)stakeholderConsensus.UndecidedCount / total * 100;
-            <div class="gc-card mb-4">
-                <div class="gc-card-header"><i class="bi bi-bar-chart-horizontal me-1"></i> Stakeholder Consensus</div>
-                <div class="gc-card-body">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header"><i class="bi bi-bar-chart-horizontal me-1"></i> Stakeholder Consensus</div>
+                <div class="cu-card-body">
                     <div class="d-flex justify-content-between small mb-1">
                         <span><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i>Support: @stakeholderConsensus.SupportCount</span>
                         <span><i class="bi bi-hand-thumbs-down-fill text-danger me-1"></i>Oppose: @stakeholderConsensus.OpposeCount</span>
@@ -598,8 +598,8 @@
 
         @if (stakeholderPositions?.Any() == true)
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-person-lines-fill me-1"></i> Registered Positions
                     <span class="badge bg-secondary ms-1">@stakeholderPositions.Count</span>
                 </div>
@@ -646,9 +646,9 @@
             </div>
         }
 
-        <div class="gc-card">
-            <div class="gc-card-header"><i class="bi bi-person-plus me-1"></i> Register Your Position</div>
-            <div class="gc-card-body">
+        <div class="cu-card">
+            <div class="cu-card-header"><i class="bi bi-person-plus me-1"></i> Register Your Position</div>
+            <div class="cu-card-body">
                 <form asp-action="RegisterPosition" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="ArgumentId" value="@Model.Id" />
@@ -699,13 +699,13 @@
          aria-labelledby="decision-tab">
         @if (ds != null)
         {
-            <div class="gc-card mb-4 border-@RecClass(ds.FinalRecommendation) border-2">
-                <div class="gc-card-header bg-@RecClass(ds.FinalRecommendation) text-white fs-5">
+            <div class="cu-card mb-4 border-@RecClass(ds.FinalRecommendation) border-2">
+                <div class="cu-card-header bg-@RecClass(ds.FinalRecommendation) text-white fs-5">
                     <i class="bi @RecIcon(ds.FinalRecommendation) me-2"></i>
                     Recommendation: <strong>@ds.FinalRecommendation</strong>
                     <span class="badge bg-white text-@RecClass(ds.FinalRecommendation) ms-2">@ds.ConfidenceLevel Confidence</span>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <div class="row align-items-center mb-3">
                         <div class="col-auto">
                             <div class="text-center">
@@ -743,9 +743,9 @@
                 <div class="col-lg-7">
                     @if (stakeholderConsensus != null && stakeholderConsensus.TotalResponses > 0)
                     {
-                        <div class="gc-card mb-4">
-                            <div class="gc-card-header"><i class="bi bi-people me-1"></i> Stakeholder Alignment</div>
-                            <div class="gc-card-body">
+                        <div class="cu-card mb-4">
+                            <div class="cu-card-header"><i class="bi bi-people me-1"></i> Stakeholder Alignment</div>
+                            <div class="cu-card-body">
                                 <div class="row text-center">
                                     <div class="col">
                                         <div class="fw-bold fs-4 text-success">@stakeholderConsensus.SupportCount</div>
@@ -773,8 +773,8 @@
 
                     @if (ds.ContestedPremises?.Any() == true)
                     {
-                        <div class="gc-card mb-4">
-                            <div class="gc-card-header text-warning bg-warning bg-opacity-10">
+                        <div class="cu-card mb-4">
+                            <div class="cu-card-header text-warning bg-warning bg-opacity-10">
                                 <i class="bi bi-exclamation-triangle me-1"></i> Contested Premises
                             </div>
                             <ul class="list-group list-group-flush">
@@ -790,8 +790,8 @@
 
                     @if (ds.SuggestedDiscussionTopics?.Any() == true)
                     {
-                        <div class="gc-card mb-4">
-                            <div class="gc-card-header"><i class="bi bi-chat-dots me-1"></i> Key Discussion Topics</div>
+                        <div class="cu-card mb-4">
+                            <div class="cu-card-header"><i class="bi bi-chat-dots me-1"></i> Key Discussion Topics</div>
                             <ul class="list-group list-group-flush">
                                 @foreach (var topic in ds.SuggestedDiscussionTopics)
                                 {
@@ -805,9 +805,9 @@
                 </div>
 
                 <div class="col-lg-5">
-                    <div class="gc-card mb-3">
-                        <div class="gc-card-header"><i class="bi bi-lightning me-1"></i> Actions</div>
-                        <div class="gc-card-body d-grid gap-2">
+                    <div class="cu-card mb-3">
+                        <div class="cu-card-header"><i class="bi bi-lightning me-1"></i> Actions</div>
+                        <div class="cu-card-body d-grid gap-2">
                             <a asp-action="DecisionSupport" asp-route-id="@Model.Id"
                                class="btn btn-outline-primary">
                                 <i class="bi bi-clipboard2-check me-1"></i> Full Decision Report
@@ -832,12 +832,12 @@
         }
         else if (adjudication != null)
         {
-            <div class="gc-card border-@RecClass(adjudication.Recommendation) border-2">
-                <div class="gc-card-header bg-@RecClass(adjudication.Recommendation) text-white">
+            <div class="cu-card border-@RecClass(adjudication.Recommendation) border-2">
+                <div class="cu-card-header bg-@RecClass(adjudication.Recommendation) text-white">
                     <i class="bi @RecIcon(adjudication.Recommendation) me-1"></i>
                     Decision Recommendation: @adjudication.Recommendation
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <div class="display-5 fw-bold text-@ConfBadge(adjudication.OverallConfidence)">
                         @adjudication.OverallConfidence.ToString("P0")
                     </div>
@@ -888,7 +888,7 @@
         else
         {
             <div class="position-relative ms-3 ps-4"
-                 style="border-left:2px solid var(--gc-border-color, #dee2e6);">
+                 style="border-left:2px solid var(--cu-border-color, #dee2e6);">
                 @foreach (var (when, icon, color, title, detail) in history)
                 {
                     var ago = DateTime.UtcNow - when;

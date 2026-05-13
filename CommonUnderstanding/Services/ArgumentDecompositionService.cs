@@ -1,6 +1,6 @@
 using Microsoft.SemanticKernel;
 using CommonUnderstanding.Models;
-using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CommonUnderstanding.Services;
 
@@ -30,20 +30,26 @@ public class ArgumentDecompositionService
         Func<string, int, int, Task>? onProgress = null,
         CancellationToken cancellationToken = default)
     {
+        // ── Pre-processing: normalise text before any AI call ─────────────────
+        argumentText = PreprocessText(argumentText);
+
         _logger.LogInformation("Beginning argument decomposition ({Length} chars)", argumentText.Length);
 
         var kernel = _kernelService.GetKernel();
 
-        // ── Step 1: Extract the central claim (fast, needed for title update) ──
+        // ── Step 1: Extract the central claim ────────────────────────────────
+        // Try heuristics first (free); fall back to an LLM call only when needed.
         if (onProgress != null) await onProgress("Extracting central claim…", 1, 2);
-        var claimText = await ExtractClaimAsync(kernel, argumentText, cancellationToken);
+        var claimText = TryExtractClaimHeuristically(argumentText)
+            ?? await ExtractClaimAsync(kernel, argumentText, cancellationToken);
 
-        // ── Step 2: Full structural decomposition (single consolidated prompt) ──
+        // ── Step 2: Parallel structural decomposition ─────────────────────────
+        // Two focused prompts run concurrently on different providers (round-robin).
         if (onProgress != null) await onProgress("Decomposing argument structure & assessing premises…", 2, 2);
-        var rawAnalysis = await FullDecompositionAsync(kernel, argumentText, claimText, cancellationToken);
+        var (premisesRaw, structureRaw) = await ParallelDecompositionAsync(kernel, argumentText, claimText, cancellationToken);
 
         // ── Parse ────────────────────────────────────────────────────────────
-        var result = ParseFullDecomposition(claimText, rawAnalysis);
+        var result = ParseFullDecomposition(claimText, premisesRaw + "\n" + structureRaw);
 
         _logger.LogInformation(
             "Decomposition complete: {Premises} premises, {Syllogisms} syllogisms, {Assumptions} assumptions, {Assessments} assessments",
@@ -53,7 +59,91 @@ public class ArgumentDecompositionService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  LLM calls (only 2 total)
+    //  Pre-AI processing helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Normalises argument text before sending it to any AI provider:
+    /// collapses whitespace, strips HTML artefacts, and hard-caps length.
+    /// </summary>
+    private static string PreprocessText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+
+        // Normalise line endings, then collapse runs of blank lines
+        text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+        text = Regex.Replace(text, @"\n{3,}", "\n\n");
+        // Collapse horizontal whitespace runs (but preserve single newlines)
+        text = Regex.Replace(text, @"[ \t]{2,}", " ");
+
+        // Strip HTML tags if the text came from a rich-text editor
+        text = Regex.Replace(text, @"<[^>]{0,200}>", " ");
+        text = Regex.Replace(text, @"&amp;",  "&")
+                    .Replace("&lt;",   "<")
+                    .Replace("&gt;",   ">")
+                    .Replace("&quot;", "\"")
+                    .Replace("&#39;",  "'")
+                    .Replace("&nbsp;", " ");
+        // Re-collapse any whitespace introduced by tag removal
+        text = Regex.Replace(text, @"[ \t]{2,}", " ");
+
+        // Hard cap: ~3 500 chars keeps most models well inside their input window.
+        // Truncate at the nearest sentence boundary to avoid cutting mid-thought.
+        const int MaxChars = 3_500;
+        if (text.Length > MaxChars)
+        {
+            var boundary = text.LastIndexOfAny(['.', '!', '?'], MaxChars);
+            text = boundary > MaxChars - 500
+                ? text[..(boundary + 1)] + "\n[…argument truncated for analysis]"
+                : text[..MaxChars]       + "\n[…argument truncated for analysis]";
+        }
+
+        return text.Trim();
+    }
+
+    /// <summary>
+    /// Returns the central claim without an LLM call when the text structure
+    /// makes it unambiguous.  Returns <c>null</c> when a model is needed.
+    /// </summary>
+    private static string? TryExtractClaimHeuristically(string text)
+    {
+        var sentences = SplitIntoSentences(text);
+        if (sentences.Count == 0) return null;
+
+        // Single sentence or two-sentence arguments: the last sentence is the claim.
+        if (sentences.Count <= 2) return sentences[^1].Trim();
+
+        // Explicit conclusion markers at the start of a sentence.
+        ReadOnlySpan<string> markers =
+        [
+            "therefore", "thus,", "hence,", "hence ", "consequently,", "consequently ",
+            "in conclusion,", "in summary,", "to conclude,", "it follows that",
+            "this proves", "this shows", "this means", "as a result,",
+            "my claim is", "the conclusion is", "i argue that", "i contend that",
+            "i submit that", "in short,", "to summarise,", "to summarize,"
+        ];
+
+        foreach (var sentence in sentences)
+        {
+            var lower = sentence.TrimStart().ToLowerInvariant();
+            foreach (var marker in markers)
+                if (lower.StartsWith(marker, StringComparison.Ordinal))
+                    return sentence.Trim();
+        }
+
+        return null; // Structure is ambiguous — let the LLM decide
+    }
+
+    private static List<string> SplitIntoSentences(string text)
+    {
+        // Split on terminal punctuation followed by whitespace.
+        var parts = Regex.Split(text.Trim(), @"(?<=[.!?])\s+");
+        // Filter out very short fragments (abbreviations, initials, etc.)
+        return [.. parts.Where(s => s.Trim().Length > 12)];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  LLM calls
     // ─────────────────────────────────────────────────────────────────────────
 
     private async Task<string> ExtractClaimAsync(Kernel kernel, string argumentText, CancellationToken ct)
@@ -77,14 +167,16 @@ public class ArgumentDecompositionService
     }
 
     /// <summary>
-    /// Single consolidated prompt that extracts premises, syllogisms, assumptions,
-    /// qualifiers, rebuttals, AND provisional truth-value assessments in one pass.
-    /// Replaces five+ separate LLM calls.
+    /// Fires two focused prompts in parallel on different providers (via the
+    /// round-robin service).  One extracts premises + confidence assessments;
+    /// the other extracts syllogisms, assumptions, qualifiers, and rebuttals.
+    /// Splitting the mega-prompt this way roughly halves latency.
     /// </summary>
-    private async Task<string> FullDecompositionAsync(Kernel kernel, string argumentText, string claimText, CancellationToken ct)
+    private async Task<(string PremisesRaw, string StructureRaw)> ParallelDecompositionAsync(
+        Kernel kernel, string argumentText, string claimText, CancellationToken ct)
     {
-        var prompt = $$$"""
-        You are an expert in argument analysis, formal logic, and epistemology.
+        var premisesPrompt = $$$"""
+        You are an expert in argument analysis and epistemology.
 
         CENTRAL CLAIM: {{{claimText}}}
 
@@ -93,40 +185,52 @@ public class ArgumentDecompositionService
         {{{argumentText}}}
         ---
 
-        Perform a COMPLETE structured analysis. Output ALL sections below using the EXACT formats shown.
-        Do NOT add any commentary, preamble, or explanation outside the tagged lines.
-
-        ═══ SECTION 1: PREMISES ═══
         List every distinct supporting proposition (explicit or strongly implied).
-        For each premise also provide a provisional truth-value assessment from your knowledge base.
-        Format — one per line:
-        PREMISE: [premise text] | CONFIDENCE: [0.0-1.0] | ASSESSMENT: [brief explanation citing evidence/knowledge]
+        For each premise provide a provisional truth-value assessment from your knowledge base.
+        Output ONLY lines in this exact format — no preamble or explanation:
+
+        PREMISE: [premise text] | CONFIDENCE: [0.0-1.0] | ASSESSMENT: [brief explanation]
 
         Confidence guide: 0.9-1.0 = established fact; 0.7-0.89 = strong evidence; 0.5-0.69 = plausible but debated; 0.3-0.49 = weak evidence; 0.0-0.29 = dubious/contradicted.
+        """;
 
-        ═══ SECTION 2: SYLLOGISMS ═══
-        Arrange the premises into formal syllogistic chains. Format each as a block:
+        var structurePrompt = $$$"""
+        You are an expert in formal logic and argument structure.
+
+        CENTRAL CLAIM: {{{claimText}}}
+
+        ARGUMENT TEXT:
+        ---
+        {{{argumentText}}}
+        ---
+
+        Output ONLY the sections below — no preamble, no commentary.
+
+        ═══ SYLLOGISMS ═══
         SYLLOGISM:
         MAJOR: [general rule or principle]
         MINOR: [specific case]
         CONCLUSION: [what follows]
         TYPE: [deductive | inductive | abductive | analogical]
 
-        ═══ SECTION 3: ASSUMPTIONS ═══
-        Identify unstated premises the argument depends on. Up to 5 most important.
-        Format — one per line:
+        ═══ ASSUMPTIONS ═══
         ASSUMPTION: [text] | CRITICAL: yes/no
 
-        ═══ SECTION 4: QUALIFIERS AND REBUTTALS ═══
-        Qualifiers — scope limits on the claim:
+        ═══ QUALIFIERS ═══
         QUALIFIER: [text]
 
-        Rebuttals — conditions or counter-arguments that could defeat the conclusion:
+        ═══ REBUTTALS ═══
         REBUTTAL: [text] | STRENGTH: [low/medium/high]
         """;
 
-        var result = await kernel.InvokePromptAsync(prompt, cancellationToken: ct);
-        return result.ToString().Trim();
+        // Fire both prompts concurrently — the round-robin service routes each
+        // to a different provider automatically.
+        var premisesTask  = kernel.InvokePromptAsync(premisesPrompt,  cancellationToken: ct);
+        var structureTask = kernel.InvokePromptAsync(structurePrompt, cancellationToken: ct);
+        await Task.WhenAll(premisesTask, structureTask);
+
+        return (premisesTask.Result.ToString().Trim(),
+                structureTask.Result.ToString().Trim());
     }
 
     // ─────────────────────────────────────────────────────────────────────────

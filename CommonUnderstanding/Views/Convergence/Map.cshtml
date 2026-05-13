@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Controllers.ConvergenceMapViewModel
+﻿@model CommonUnderstanding.Controllers.ConvergenceMapViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = $"Convergence: {Model.CurrentUserName} ↔ {Model.OtherUserName}";
@@ -7,7 +7,7 @@
 <!-- Header -->
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-intersect me-2"></i>Convergence Map
         </h1>
         <p class="text-muted mb-0">
@@ -32,8 +32,8 @@
 </div>
 
 <!-- Score banner -->
-<div class="gc-card mb-4">
-    <div class="gc-card-body">
+<div class="cu-card mb-4">
+    <div class="cu-card-body">
         <div class="row align-items-center">
             <div class="col-12 col-md-4 text-center mb-3 mb-md-0">
                 <div class="display-4 fw-bold
@@ -78,11 +78,11 @@
 
     <!-- ── Profile Overlap ────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-6">
-        <div class="gc-card h-100">
-            <div class="gc-card-header">
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-heart me-2 text-success"></i>Areas of Overlap</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (Model.ProfileOverlap?.AreasOfOverlap.Any() == true)
                 {
                     @foreach (var area in Model.ProfileOverlap.AreasOfOverlap)
@@ -123,11 +123,11 @@
 
     <!-- ── Divergence Dimensions ──────────────────────────────────────────── -->
     <div class="col-12 col-lg-6">
-        <div class="gc-card h-100">
-            <div class="gc-card-header">
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-arrows-collapse me-2 text-warning"></i>Divergence Points</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (Model.DivergencePoints.Any())
                 {
                     @foreach (var dim in Model.DivergencePoints.Take(6))
@@ -166,15 +166,15 @@
 
     <!-- ── Expansion Pathways ─────────────────────────────────────────────── -->
     <div class="col-12">
-        <div class="gc-card">
-            <div class="gc-card-header d-flex justify-content-between align-items-center">
+        <div class="cu-card">
+            <div class="cu-card-header d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0"><i class="bi bi-signpost-split me-2 text-primary"></i>Expansion Pathways</h2>
                 <a asp-action="Expand" asp-route-otherUserId="@Model.OtherUserId"
                    class="btn btn-success btn-sm">
                     <i class="bi bi-play-fill me-1"></i>Start Session
                 </a>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (Model.ExpansionPathways.Any())
                 {
                     <div class="row g-3">
@@ -222,11 +222,11 @@
     @if (Model.EvolutionHistory.Count > 1)
     {
         <div class="col-12">
-            <div class="gc-card">
-                <div class="gc-card-header">
+            <div class="cu-card">
+                <div class="cu-card-header">
                     <h2 class="h5 mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Convergence Over Time</h2>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <div class="d-flex align-items-end gap-1" style="height:80px;">
                         @foreach (var snap in Model.EvolutionHistory.TakeLast(20))
                         {

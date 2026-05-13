@@ -1,4 +1,4 @@
-@model IEnumerable<CommonUnderstanding.Models.CommonUnderstandingNode>
+﻿@model IEnumerable<CommonUnderstanding.Models.CommonUnderstandingNode>
 @using CommonUnderstanding.Models
 
 @{
@@ -25,14 +25,14 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item active" aria-current="page">Common Understanding</li>
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-diagram-2"></i> Common Understanding
 </h1>
 
@@ -104,8 +104,8 @@
 {
     <div class="row mb-4">
         <div class="col-lg-10">
-            <div class="gc-card">
-                <div class="gc-card-body py-3">
+            <div class="cu-card">
+                <div class="cu-card-body py-3">
                     <div class="row text-center g-0">
                         <div class="col">
                             <div class="display-6 fw-bold">@stats.TotalNodes</div>
@@ -144,7 +144,7 @@
 
 @if (!Model.Any())
 {
-    <div class="gc-card text-center py-5">
+    <div class="cu-card text-center py-5">
         <i class="bi bi-diagram-2 display-3 text-muted mb-3 d-block"></i>
         <h4 class="text-muted">
             @(isSearch ? $"No propositions matched \"{query}\"" : "No propositions in the graph yet")

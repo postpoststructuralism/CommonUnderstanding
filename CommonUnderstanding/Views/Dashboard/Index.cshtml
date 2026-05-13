@@ -1,4 +1,4 @@
-@model IEnumerable<CommonUnderstanding.Models.Argument>
+﻿@model IEnumerable<CommonUnderstanding.Models.Argument>
 @using CommonUnderstanding.Models
 @using CommonUnderstanding.Controllers
 
@@ -31,7 +31,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-speedometer2 me-2"></i>Dashboard
         </h1>
         <p class="text-muted mb-0">Evidence-Based Decision Platform</p>
@@ -52,19 +52,19 @@
 <!-- ── STAT TILES ──────────────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
-        <div class="gc-card text-center py-3">
+        <div class="cu-card text-center py-3">
             <div class="display-5 fw-bold text-primary">@Model.Count()</div>
             <div class="text-muted small">Total Arguments</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="gc-card text-center py-3">
+        <div class="cu-card text-center py-3">
             <div class="display-5 fw-bold text-success">@activeArgs.Count</div>
             <div class="text-muted small">Analyzed</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="gc-card text-center py-3">
+        <div class="cu-card text-center py-3">
             <div class="display-5 fw-bold text-@(graphStats != null ? (graphStats.AverageConfidence >= 0.70 ? "success" : graphStats.AverageConfidence >= 0.45 ? "warning" : "danger") : "muted")">
                 @(graphStats != null ? graphStats.AverageConfidence.ToString("P0") : "—")
             </div>
@@ -72,7 +72,7 @@
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="gc-card text-center py-3">
+        <div class="cu-card text-center py-3">
             <div class="display-5 fw-bold text-info">@(graphStats?.TotalNodes ?? 0)</div>
             <div class="text-muted small">Knowledge Nodes</div>
         </div>
@@ -84,8 +84,8 @@
     <div class="col-lg-8">
 
         <!-- Active Decisions -->
-        <div class="gc-card mb-4">
-            <div class="gc-card-header d-flex justify-content-between align-items-center">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-clipboard2-check me-1"></i> Active Decisions</span>
                 <a asp-controller="Argument" asp-action="Index" class="btn btn-sm btn-outline-secondary">
                     View all <i class="bi bi-arrow-right ms-1"></i>
@@ -94,7 +94,7 @@
 
             @if (!activeArgs.Any())
             {
-                <div class="gc-card-body text-center py-4 text-muted">
+                <div class="cu-card-body text-center py-4 text-muted">
                     <i class="bi bi-diagram-3 display-4 mb-2 d-block"></i>
                     No analyzed arguments yet.
                     <a asp-controller="Argument" asp-action="Submit" class="d-block mt-2">Submit your first argument →</a>
@@ -148,7 +148,7 @@
                 </div>
                 @if (activeArgs.Count > 6)
                 {
-                    <div class="gc-card-body py-2 text-center">
+                    <div class="cu-card-body py-2 text-center">
                         <a asp-controller="Argument" asp-action="Index" class="small">
                             + @(activeArgs.Count - 6) more arguments
                         </a>
@@ -158,7 +158,7 @@
 
             @if (processingArgs.Any())
             {
-                <div class="gc-card-body border-top py-2">
+                <div class="cu-card-body border-top py-2">
                     @foreach (var arg in processingArgs)
                     {
                         <div class="d-flex align-items-center gap-2 text-muted small py-1">
@@ -173,14 +173,14 @@
         <!-- Knowledge Graph Summary -->
         @if (graphStats != null && graphStats.TotalNodes > 0)
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header d-flex justify-content-between align-items-center">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-diagram-2 me-1"></i> Common Understanding Graph</span>
                     <a asp-controller="CommonUnderstanding" asp-action="Index" class="btn btn-sm btn-outline-secondary">
                         Explore <i class="bi bi-arrow-right ms-1"></i>
                     </a>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <div class="row text-center g-0">
                         <div class="col border-end">
                             <div class="fw-bold fs-5 text-success">@graphStats.SettledCount</div>
@@ -220,8 +220,8 @@
         <!-- Draft arguments -->
         @if (draftArgs.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-pencil-square me-1"></i> Drafts — Ready to Analyze
                     <span class="badge bg-secondary ms-1">@draftArgs.Count</span>
                 </div>
@@ -247,8 +247,8 @@
         <!-- Needs Attention -->
         @if (attentionItems.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header text-warning">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header text-warning">
                     <i class="bi bi-exclamation-triangle-fill me-1"></i> Needs Attention
                     <span class="badge bg-warning text-dark ms-1">@attentionItems.Count</span>
                 </div>
@@ -271,13 +271,13 @@
         }
 
         <!-- Recent Activity -->
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <i class="bi bi-clock-history me-1"></i> Recent Activity
             </div>
             @if (!recentActivity.Any())
             {
-                <div class="gc-card-body text-muted small text-center py-3">No activity yet.</div>
+                <div class="cu-card-body text-muted small text-center py-3">No activity yet.</div>
             }
             else
             {
@@ -324,11 +324,11 @@
         </div>
 
         <!-- Quick Links -->
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <i class="bi bi-lightning-fill me-1"></i> Quick Actions
             </div>
-            <div class="gc-card-body d-grid gap-2">
+            <div class="cu-card-body d-grid gap-2">
                 <a asp-controller="Argument" asp-action="Submit" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-1"></i> Submit New Argument
                 </a>

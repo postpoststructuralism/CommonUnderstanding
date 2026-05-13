@@ -12,7 +12,7 @@ function toggleLanguage() {
     document.documentElement.lang = newLang;
     
     // Update button text
-    const langBtn = document.querySelector('.gc-lang-toggle');
+    const langBtn = document.querySelector('.cu-lang-toggle');
     if (langBtn) {
         langBtn.innerHTML = newLang === 'en' 
             ? '<i class="fas fa-globe"></i> FR' 
@@ -33,14 +33,14 @@ function toggleLanguage() {
 // Show Notification Toast
 function showNotification(message, type = 'info') {
     // Remove existing notification if present
-    const existing = document.querySelector('.gc-notification');
+    const existing = document.querySelector('.cu-notification');
     if (existing) {
         existing.remove();
     }
     
     // Create notification element
     const notification = document.createElement('div');
-    notification.className = `gc-notification alert alert-${type}`;
+    notification.className = `cu-notification alert alert-${type}`;
     notification.style.cssText = `
         position: fixed;
         top: 100px;
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedLang = localStorage.getItem('preferred-language');
     if (savedLang && savedLang !== document.documentElement.lang) {
         document.documentElement.lang = savedLang;
-        const langBtn = document.querySelector('.gc-lang-toggle');
+        const langBtn = document.querySelector('.cu-lang-toggle');
         if (langBtn) {
             langBtn.innerHTML = savedLang === 'en' 
                 ? '<i class="fas fa-globe"></i> FR' 
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Highlight Active Navigation Item
 function highlightActiveNav() {
     const currentPath = window.location.pathname.toLowerCase();
-    const navLinks = document.querySelectorAll('.gc-nav .nav-link');
+    const navLinks = document.querySelectorAll('.cu-nav .nav-link');
     
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
@@ -120,7 +120,7 @@ function highlightActiveNav() {
 
 // Initialize Collapsible Sections
 function initCollapsibleSections() {
-    const collapsibleHeaders = document.querySelectorAll('.gc-collapsible-header');
+    const collapsibleHeaders = document.querySelectorAll('.cu-collapsible-header');
     
     collapsibleHeaders.forEach(header => {
         // Add click event if not using Bootstrap collapse
@@ -181,11 +181,11 @@ function showLoadingOverlay(message = 'Loading...') {
     hideLoadingOverlay();
     
     const overlay = document.createElement('div');
-    overlay.className = 'gc-loading-overlay';
+    overlay.className = 'cu-loading-overlay';
     overlay.id = 'gcLoadingOverlay';
     overlay.innerHTML = `
         <div class="text-center">
-            <div class="gc-loading-spinner"></div>
+            <div class="cu-loading-spinner"></div>
             <p class="text-white mt-3">${message}</p>
         </div>
     `;
@@ -237,7 +237,7 @@ function validateGCForm(formId) {
 
 // Remove Badge (for removable badges)
 function removeBadge(badgeElement) {
-    if (badgeElement && badgeElement.classList.contains('gc-badge-removable')) {
+    if (badgeElement && badgeElement.classList.contains('cu-badge-removable')) {
         badgeElement.style.animation = 'fadeOut 0.2s ease-out';
         setTimeout(() => badgeElement.remove(), 200);
     }
@@ -282,7 +282,7 @@ function addBackToTop() {
     if (!backToTopBtn) {
         backToTopBtn = document.createElement('button');
         backToTopBtn.id = 'backToTopBtn';
-        backToTopBtn.className = 'gc-btn-primary';
+        backToTopBtn.className = 'cu-btn-primary';
         backToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
         backToTopBtn.setAttribute('aria-label', 'Back to top');
         backToTopBtn.style.cssText = `

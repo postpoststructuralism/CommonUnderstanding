@@ -1,11 +1,11 @@
-@using CommonUnderstanding.Models
+﻿@using CommonUnderstanding.Models
 @{
     ViewData["Title"] = "Create Collaborative Session";
     var connectedUsers = ViewBag.ConnectedUsers as List<CommonUnderstanding.Models.UserProfile> ?? new();
 }
 
 <div class="mb-4">
-    <h1 class="gc-page-heading mb-1">
+    <h1 class="cu-page-heading mb-1">
         <i class="bi bi-plus-circle me-2"></i>New Collaborative Session
     </h1>
     <p class="text-muted mb-0">Invite connected users to contribute arguments and analyse them together</p>
@@ -13,8 +13,8 @@
 
 <div class="row g-4">
     <div class="col-12 col-lg-7">
-        <div class="gc-card">
-            <div class="gc-card-body">
+        <div class="cu-card">
+            <div class="cu-card-body">
                 <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
 
@@ -70,9 +70,9 @@
     </div>
 
     <div class="col-12 col-lg-5">
-        <div class="gc-card">
-            <div class="gc-card-header"><h2 class="h6 mb-0"><i class="bi bi-info-circle me-1"></i>How it works</h2></div>
-            <div class="gc-card-body small text-muted">
+        <div class="cu-card">
+            <div class="cu-card-header"><h2 class="h6 mb-0"><i class="bi bi-info-circle me-1"></i>How it works</h2></div>
+            <div class="cu-card-body small text-muted">
                 <ol class="ps-3">
                     <li class="mb-2">Create the session and invite connections.</li>
                     <li class="mb-2">Each participant selects arguments to contribute.</li>

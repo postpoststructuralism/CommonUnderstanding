@@ -1,4 +1,4 @@
-@model IEnumerable<CommonUnderstanding.Models.Argument>
+﻿@model IEnumerable<CommonUnderstanding.Models.Argument>
 @using CommonUnderstanding.Models
 
 @{
@@ -6,21 +6,21 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item active" aria-current="page">Arguments</li>
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-diagram-3"></i> Argument Analysis
 </h1>
 
 <div class="row mb-4">
     <div class="col-lg-8">
-        <div class="gc-card mb-4">
-            <div class="gc-card-body">
+        <div class="cu-card mb-4">
+            <div class="cu-card-body">
                 <p class="lead mb-3">
                     Submit an argument or proposal for objective, evidence-based decomposition and adjudication.
                 </p>
@@ -90,7 +90,7 @@
 
 @if (!Model.Any())
 {
-    <div class="gc-card text-center py-5">
+    <div class="cu-card text-center py-5">
         <i class="bi bi-diagram-3 display-3 text-muted mb-3 d-block"></i>
         <h4 class="text-muted">No arguments submitted yet</h4>
         <p class="text-muted">Submit an argument to get started.</p>
@@ -120,8 +120,8 @@ else
             };
 
             <div class="col-lg-6 mb-4">
-                <div class="gc-card h-100">
-                    <div class="gc-card-body">
+                <div class="cu-card h-100">
+                    <div class="cu-card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="mb-0">@arg.Title</h5>
                             <span class="badge bg-@statusClass">

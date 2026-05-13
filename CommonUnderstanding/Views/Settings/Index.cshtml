@@ -1,29 +1,29 @@
-@{
+﻿@{
     ViewData["Title"] = "Settings";
 }
 
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item active" aria-current="page">Settings</li>
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-gear me-1"></i> Settings
 </h1>
 
 <div class="row g-4">
     <div class="col-lg-8">
         <!-- AI Provider Status (moved from floating panel) -->
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <i class="fas fa-robot me-1"></i> AI Provider
                 <span id="aiStatusDot" class="ms-2"
                       style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;"></span>
                 <span id="aiStatusText" class="ms-1 small text-muted">Checking…</span>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div id="aiStatusRows">
                     <div class="d-flex justify-content-between align-items-center border-start border-4 border-secondary rounded px-3 py-2 mb-2 bg-light">
                         <div>
@@ -87,11 +87,11 @@
         </div>
 
         <!-- Performance Metrics -->
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <i class="bi bi-bar-chart me-1"></i> Performance
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="row text-center">
                     <div class="col-6 col-md-3 mb-3">
                         <div class="fw-bold fs-4" id="responseTime">—</div>
@@ -108,9 +108,9 @@
 
     <!-- Right sidebar: Help -->
     <div class="col-lg-4">
-        <div class="gc-card mb-4">
-            <div class="gc-card-header"><i class="bi bi-info-circle me-1"></i> Setup Help</div>
-            <div class="gc-card-body small">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header"><i class="bi bi-info-circle me-1"></i> Setup Help</div>
+            <div class="cu-card-body small">
                 <p><strong>Gemini API not configured?</strong></p>
                 <ol class="ps-3">
                     <li>Get a free API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>

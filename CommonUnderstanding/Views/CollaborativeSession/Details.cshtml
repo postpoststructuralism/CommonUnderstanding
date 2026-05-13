@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Controllers.CollaborativeSessionViewModel
+﻿@model CommonUnderstanding.Controllers.CollaborativeSessionViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = Model.Session.Title;
@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-diagram-3-fill me-2"></i>@Model.Session.Title
         </h1>
         <p class="text-muted mb-0">
@@ -55,11 +55,11 @@
 
     <!-- Participants -->
     <div class="col-12 col-md-4">
-        <div class="gc-card h-100">
-            <div class="gc-card-header">
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
                 <h2 class="h6 mb-0"><i class="bi bi-people me-2"></i>Participants</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <ul class="list-group list-group-flush">
                     @foreach (var p in Model.Participants)
                     {
@@ -90,11 +90,11 @@
     @if (Model.Session.Status == SessionStatus.Active && Model.IsParticipant)
     {
         <div class="col-12 col-md-8">
-            <div class="gc-card">
-                <div class="gc-card-header">
+            <div class="cu-card">
+                <div class="cu-card-header">
                     <h2 class="h6 mb-0"><i class="bi bi-plus-square me-2"></i>Contribute Your Arguments</h2>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <form asp-action="Contribute" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="sessionId" value="@Model.Session.Id" />
@@ -130,7 +130,7 @@
     else if (Model.Session.Status == SessionStatus.Concluded)
     {
         <div class="col-12 col-md-8">
-            <div class="gc-card text-center py-4">
+            <div class="cu-card text-center py-4">
                 <i class="bi bi-check-circle-fill display-4 text-success mb-2 d-block"></i>
                 <h3 class="h5">Analysis complete</h3>
                 <p class="text-muted">The joint analysis has been run. View the full results below.</p>

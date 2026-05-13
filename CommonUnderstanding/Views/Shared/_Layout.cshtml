@@ -14,37 +14,37 @@
     <!-- FontAwesome 6.4.2 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     
-    <!-- Custom GC Design System CSS -->
+    <!-- Custom Design System CSS -->
     <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/CommonUnderstanding.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <!-- GC HEADER -->
-    <header class="gc-header">
+    <!-- HEADER -->
+    <header class="cu-header">
         <div class="container-fluid">
-            <div class="gc-logo-section">
-                <img src="~/images/sig-blk-en.svg" alt="Government of Canada" class="gc-logo" />
-                <div class="gc-site-title">
+            <div class="cu-logo-section">
+                <img src="~/images/app-logo.svg" alt="A Common Understanding" class="cu-logo" />
+                <div class="cu-site-title">
                     <h1>A Common Understanding</h1>
                     <span class="subtitle">Evidence-Based Decision Platform</span>
                 </div>
             </div>
-            <button class="gc-lang-toggle" onclick="toggleLanguage()" title="Français">
+            <button class="cu-lang-toggle" onclick="toggleLanguage()" title="Français">
                 <i class="fas fa-globe"></i> FR
             </button>
         </div>
     </header>
 
-    <!-- GC NAVIGATION -->
-    <nav class="gc-nav navbar navbar-expand-lg navbar-dark">
+    <!-- NAVIGATION -->
+    <nav class="cu-nav navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#gcNavbarContent" 
-                    aria-controls="gcNavbarContent" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cuNavbarContent" 
+                    aria-controls="cuNavbarContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="gcNavbarContent">
+            <div class="collapse navbar-collapse" id="cuNavbarContent">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" 
@@ -171,31 +171,31 @@
     </nav>
 
     <!-- MAIN CONTENT -->
-    <div class="gc-main-content container-fluid">
+    <div class="cu-main-content container-fluid">
         <main role="main">
             @RenderBody()
         </main>
     </div>
 
-    <!-- GC FOOTER -->
-    <footer class="gc-footer">
+    <!-- FOOTER -->
+    <footer class="cu-footer">
         <div class="container-fluid">
-            <div class="gc-footer-content">
-                <div class="gc-footer-logo">
-                    <img src="~/images/wmms-blk.svg" alt="Symbol of the Government of Canada" class="gc-wordmark" />
+            <div class="cu-footer-content">
+                <div class="cu-footer-logo">
+                    <img src="~/images/app-logo.svg" alt="A Common Understanding" class="cu-wordmark" />
                 </div>
-                <div class="gc-footer-info">
+                <div class="cu-footer-info">
                     <p>
                         <i class="bi bi-heart-fill text-danger"></i>
                         <strong>Common Understanding</strong> - Finding what binds us together
                     </p>
                     <p class="small">
-                        &copy; @DateTime.Now.Year Government of Canada | 
+                        &copy; @DateTime.Now.Year A Common Understanding | 
                         Powered by Semantic Kernel & Ollama | 
                         Version 1.0.0
                     </p>
                 </div>
-                <div class="gc-footer-links">
+                <div class="cu-footer-links">
                     <a asp-controller="Home" asp-action="Privacy">
                         <i class="fas fa-shield-alt"></i> Privacy
                     </a>
@@ -217,6 +217,41 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     
     <script>
+        (function attachAiFetchTracing() {
+            const nativeFetch = window.fetch;
+            if (!nativeFetch) return;
+
+            window.fetch = async function (...args) {
+                const response = await nativeFetch.apply(this, args);
+                const encodedTrace = response.headers.get('X-AI-Trace');
+
+                if (encodedTrace) {
+                    try {
+                        const trace = JSON.parse(atob(encodedTrace));
+                        const requestUrl = typeof args[0] === 'string'
+                            ? args[0]
+                            : args[0]?.url || '(unknown url)';
+
+                        console.groupCollapsed(`[AI Trace] ${requestUrl}`);
+                        trace.forEach((entry, index) => {
+                            console.log(`#${index + 1}`, {
+                                provider: entry.provider,
+                                model: entry.model,
+                                streaming: entry.isStreaming,
+                                prompt: entry.promptPreview,
+                                timestampUtc: entry.timestampUtc
+                            });
+                        });
+                        console.groupEnd();
+                    } catch (error) {
+                        console.warn('Failed to parse AI trace header.', error);
+                    }
+                }
+
+                return response;
+            };
+        })();
+
         // AI status dot in nav — polls every 30s
         (async function updateNavAiDot() {
             try {
@@ -239,7 +274,7 @@
             const newLang = currentLang === 'en' ? 'fr' : 'en';
             
             // Update button text
-            const langBtn = document.querySelector('.gc-lang-toggle');
+            const langBtn = document.querySelector('.cu-lang-toggle');
             langBtn.innerHTML = newLang === 'en' ? '<i class="fas fa-globe"></i> FR' : '<i class="fas fa-globe"></i> EN';
             
             // This would typically trigger a language switch
@@ -252,7 +287,7 @@
         // Add active state to current navigation item
         document.addEventListener('DOMContentLoaded', function() {
             const currentPath = window.location.pathname;
-            document.querySelectorAll('.gc-nav .nav-link').forEach(link => {
+            document.querySelectorAll('.cu-nav .nav-link').forEach(link => {
                 if (link.getAttribute('href') === currentPath) {
                     link.classList.add('active');
                 }

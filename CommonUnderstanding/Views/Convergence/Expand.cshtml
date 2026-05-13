@@ -1,11 +1,11 @@
-@model CommonUnderstanding.Controllers.ExpansionSessionViewModel
+﻿@model CommonUnderstanding.Controllers.ExpansionSessionViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = "Expansion Session";
 }
 
 <div class="mb-4">
-    <h1 class="gc-page-heading mb-1">
+    <h1 class="cu-page-heading mb-1">
         <i class="bi bi-arrows-expand me-2"></i>Expansion Session
     </h1>
     <p class="text-muted mb-0">
@@ -32,11 +32,11 @@
 <div class="row g-4">
     <!-- ── Question card ──────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-7">
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-chat-square-text me-2 text-primary"></i>Your Question</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="p-3 bg-primary bg-opacity-10 rounded mb-4">
                     <p class="lead mb-0">@Model.Question.Content.Question</p>
                     @if (!string.IsNullOrWhiteSpace(Model.Question.Content.Context))
@@ -74,11 +74,11 @@
 
     <!-- ── Pathway context ────────────────────────────────────────────────── -->
     <div class="col-12 col-lg-5">
-        <div class="gc-card mb-3">
-            <div class="gc-card-header">
+        <div class="cu-card mb-3">
+            <div class="cu-card-header">
                 <h2 class="h6 mb-0"><i class="bi bi-info-circle me-2"></i>Why this question?</h2>
             </div>
-            <div class="gc-card-body small">
+            <div class="cu-card-body small">
                 @{
                     var activePathway = Model.Pathways
                         .OrderByDescending(p => p.Priority)
@@ -103,11 +103,11 @@
         </div>
 
         <!-- Progress indicator -->
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <h2 class="h6 mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Convergence Progress</h2>
             </div>
-            <div class="gc-card-body text-center">
+            <div class="cu-card-body text-center">
                 <div class="display-6 fw-bold text-primary mb-1">@Model.CurrentConvergenceScore.ToString("F1")</div>
                 <div class="text-muted small mb-2">/ 100</div>
                 <div class="progress" style="height:10px;">

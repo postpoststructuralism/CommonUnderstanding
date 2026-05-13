@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Controllers.SharedItemListViewModel
+﻿@model CommonUnderstanding.Controllers.SharedItemListViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = "Shared With Me";
@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-inbox me-2"></i>Shared With Me
         </h1>
         <p class="text-muted mb-0">Content your connections have shared with you</p>
@@ -18,7 +18,7 @@
 
 @if (!Model.Items.Any())
 {
-    <div class="gc-card text-center py-5">
+    <div class="cu-card text-center py-5">
         <i class="bi bi-inbox display-3 text-muted mb-3 d-block"></i>
         <h3>Nothing shared yet</h3>
         <p class="text-muted">When connections share arguments or analyses with you, they'll appear here.</p>
@@ -41,14 +41,14 @@ else
                 _                              => "bi-file-earmark"
             };
             <div class="col-12 col-md-6 col-xl-4">
-                <div class="gc-card h-100">
-                    <div class="gc-card-header d-flex justify-content-between align-items-center">
+                <div class="cu-card h-100">
+                    <div class="cu-card-header d-flex justify-content-between align-items-center">
                         <span class="small text-muted">
                             <i class="bi @typeIcon me-1"></i>@vm.Item.ItemType
                         </span>
                         <span class="small text-muted">@vm.Item.SharedAt.ToString("MMM d, yyyy")</span>
                     </div>
-                    <div class="gc-card-body">
+                    <div class="cu-card-body">
                         <h3 class="h6 mb-1">@vm.Item.ItemTitle</h3>
                         <p class="small text-muted mb-2">
                             Shared by <strong>@vm.SharingUserName</strong>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" width="160" height="40">
+  <rect width="160" height="40" rx="6" fill="#26374a"/>
+  <text x="12" y="26" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="18" font-weight="700" fill="#ffffff" letter-spacing="0.5">CU</text>
+  <line x1="40" y1="8" x2="40" y2="32" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="48" y="22" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="11" font-weight="500" fill="#ffffff" fill-opacity="0.85">Common</text>
+  <text x="48" y="34" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="11" font-weight="500" fill="#ffffff" fill-opacity="0.85">Understanding</text>
+</svg>

@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Models.ArgumentComparison
+﻿@model CommonUnderstanding.Models.ArgumentComparison
 @using CommonUnderstanding.Models
 @using System.Text.Json
 
@@ -52,7 +52,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-controller="Argument" asp-action="Index">Arguments</a></li>
@@ -64,8 +64,8 @@
 <!-- Header: two argument titles -->
 <div class="row g-3 align-items-center mb-4">
     <div class="col-md-5">
-        <div class="gc-card border-primary border-2 h-100">
-            <div class="gc-card-body">
+        <div class="cu-card border-primary border-2 h-100">
+            <div class="cu-card-body">
                 <div class="d-flex align-items-center mb-1">
                     <span class="badge bg-primary me-2">A</span>
                     <small class="text-muted">
@@ -82,8 +82,8 @@
         <span class="display-6 text-muted fw-bold">vs.</span>
     </div>
     <div class="col-md-5">
-        <div class="gc-card border-danger border-2 h-100">
-            <div class="gc-card-body">
+        <div class="cu-card border-danger border-2 h-100">
+            <div class="cu-card-body">
                 <div class="d-flex align-items-center mb-1">
                     <span class="badge bg-danger me-2">B</span>
                     <small class="text-muted">
@@ -99,8 +99,8 @@
 </div>
 
 <!-- Net Assessment -->
-<div class="gc-card mb-4 border-@directionClass border-2">
-    <div class="gc-card-body">
+<div class="cu-card mb-4 border-@directionClass border-2">
+    <div class="cu-card-body">
         <h2 class="h5 mb-3"><i class="bi bi-balance-scale"></i> Net Assessment</h2>
         <div class="d-flex align-items-center gap-3 mb-3">
             <i class="bi @directionIcon text-@directionClass fs-2"></i>
@@ -171,8 +171,8 @@
     <div class="tab-pane fade show active" id="tab-conflicts" role="tabpanel">
         @if (!conflictingPremises.Any())
         {
-            <div class="gc-card">
-                <div class="gc-card-body text-center py-4">
+            <div class="cu-card">
+                <div class="cu-card-body text-center py-4">
                     <i class="bi bi-check-circle text-success fs-3"></i>
                     <p class="mt-2 text-muted">No directly conflicting premises were identified.</p>
                 </div>
@@ -211,8 +211,8 @@
     <div class="tab-pane fade" id="tab-shared" role="tabpanel">
         @if (!sharedGround.Any())
         {
-            <div class="gc-card">
-                <div class="gc-card-body text-center py-4">
+            <div class="cu-card">
+                <div class="cu-card-body text-center py-4">
                     <i class="bi bi-dash-circle text-muted fs-3"></i>
                     <p class="mt-2 text-muted">No shared premises or assumptions were identified.</p>
                 </div>

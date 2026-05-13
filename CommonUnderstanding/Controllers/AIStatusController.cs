@@ -9,74 +9,94 @@ namespace CommonUnderstanding.Controllers
     public class AIStatusController : ControllerBase
     {
         private readonly SemanticKernelService _semanticKernelService;
+        private readonly OpenRouterModelCatalogService _openRouterModelCatalog;
         private readonly IConfiguration _configuration;
         private readonly RuntimeAiConfigService _runtimeConfig;
 
         public AIStatusController(
             SemanticKernelService semanticKernelService,
+            OpenRouterModelCatalogService openRouterModelCatalog,
             IConfiguration configuration,
             RuntimeAiConfigService runtimeConfig)
         {
             _semanticKernelService = semanticKernelService;
+            _openRouterModelCatalog = openRouterModelCatalog;
             _configuration = configuration;
             _runtimeConfig = runtimeConfig;
         }
 
         [HttpGet("status")]
-        public IActionResult GetStatus()
+        public async Task<IActionResult> GetStatus()
         {
-            var modelName = OpenRouterModelCatalog.IsValid(_runtimeConfig.Model)
-                ? _runtimeConfig.Model!
-                : (_configuration["OpenRouter:ModelId"] ?? OpenRouterModelCatalog.DefaultModelId);
-            var agent = _runtimeConfig.Agent ?? _configuration["AIAgent"] ?? "openrouter";
-            var geminiConfigured = !string.IsNullOrWhiteSpace(_configuration["OpenRouter:ApiKey"]);
-            var modelAvailable = OpenRouterModelCatalog.IsValid(modelName);
+            var openRouterModel = _semanticKernelService.ResolveOpenRouterModel();
+            var openRouterConfigured = !string.IsNullOrWhiteSpace(_configuration["OpenRouter:ApiKey"]);
+            var geminiConfigured    = !string.IsNullOrWhiteSpace(_configuration["Gemini:ApiKey"]);
+            var geminiModel         = _configuration["Gemini:ModelName"] ?? GeminiModelCatalog.DefaultModelId;
+            var ollamaEndpoint      = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+            var ollamaModel         = _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId;
+            var openRouterModels    = openRouterConfigured
+                ? await _openRouterModelCatalog.GetAvailableModelsAsync()
+                : [];
+
+            var activeProviders = new List<string>();
+            if (openRouterConfigured) activeProviders.Add("OpenRouter");
+            if (geminiConfigured)    activeProviders.Add("Gemini");
+            activeProviders.Add("Ollama"); // always listed (may not be running)
+
+            var systemStatus = activeProviders.Count > 1 ? "ready"
+                             : openRouterConfigured || geminiConfigured ? "ready"
+                             : "no-cloud-keys";
 
             try
             {
                 return Ok(new
                 {
                     Timestamp = DateTime.UtcNow,
-                    ModelName = modelName,
-                    GeminiConfigured = geminiConfigured,
-                    ModelAvailable = modelAvailable,
-                    AvailableModels = OpenRouterModelCatalog.AvailableModels,
-                    SystemStatus = geminiConfigured ? (modelAvailable ? "ready" : "ready") : "api-key-missing",
-                    Agent = agent
+                    SystemStatus = systemStatus,
+                    FallbackChain = activeProviders,
+                    OpenRouter = new
+                    {
+                        Configured     = openRouterConfigured,
+                        Model          = openRouterModel,
+                        AvailableModels = openRouterModels
+                    },
+                    Gemini = new
+                    {
+                        Configured     = geminiConfigured,
+                        Model          = geminiModel,
+                        AvailableModels = GeminiModelCatalog.AvailableModels
+                    },
+                    Ollama = new
+                    {
+                        Endpoint       = ollamaEndpoint,
+                        Model          = ollamaModel,
+                        AvailableModels = OllamaModelCatalog.AvailableModels
+                    }
                 });
             }
             catch (Exception ex)
             {
-                return Ok(new
-                {
-                    Timestamp = DateTime.UtcNow,
-                    ModelName = modelName,
-                    GeminiConfigured = false,
-                    ModelAvailable = false,
-                    AvailableModels = new List<string>(),
-                    SystemStatus = "error",
-                    Error = ex.Message,
-                    Agent = agent
-                });
+                return Ok(new { Timestamp = DateTime.UtcNow, SystemStatus = "error", Error = ex.Message });
             }
         }
 
         [HttpPost("switch-model")]
-        public IActionResult SwitchModel([FromBody] SwitchModelRequest request)
+        public async Task<IActionResult> SwitchModel([FromBody] SwitchModelRequest request)
         {
             if (string.IsNullOrEmpty(request.ModelName))
             {
                 return BadRequest(new { Success = false, Message = "ModelName is required" });
             }
 
-            if (!OpenRouterModelCatalog.IsValid(request.ModelName))
+            var openRouterModels = await _openRouterModelCatalog.GetAvailableModelsAsync();
+            if (!openRouterModels.Contains(request.ModelName, StringComparer.Ordinal))
             {
                 _runtimeConfig.Model = null;
                 return BadRequest(new
                 {
                     Success = false,
                     Message = $"Unsupported OpenRouter model: {request.ModelName}",
-                    AvailableModels = OpenRouterModelCatalog.AvailableModels
+                    AvailableModels = openRouterModels
                 });
             }
 

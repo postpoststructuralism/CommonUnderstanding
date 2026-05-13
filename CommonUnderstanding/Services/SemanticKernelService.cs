@@ -1,142 +1,266 @@
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using OpenAI;
 using System.ClientModel;
+
+#pragma warning disable SKEXP0010  // OpenAIChatCompletionService (experimental)
+#pragma warning disable SKEXP0070  // GoogleAIGeminiChatCompletionService (experimental)
 
 namespace CommonUnderstanding.Services;
 
 /// <summary>
-/// Configuration and factory for Semantic Kernel with OpenRouter integration
+/// Builds a Semantic Kernel backed by a three-tier provider fallback chain:
+///   1. OpenRouter (free-tier models, with auto-cycling and retry)
+///   2. Gemini     (Google AI Studio — fast free tier)
+///   3. Ollama     (local, always-available fallback)
+///
+/// Whichever providers are configured/reachable are included automatically.
+/// All call-sites continue to use <c>kernel.InvokePromptAsync()</c> unchanged.
 /// </summary>
 public class SemanticKernelService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<SemanticKernelService> _logger;
     private Kernel? _kernel;
-    private string? _currentModel;
+    private string? _configFingerprint;
     private readonly RuntimeAiConfigService _runtimeConfig;
+    private readonly AiRequestTraceRecorder _traceRecorder;
+    private readonly OpenRouterModelCatalogService _openRouterModelCatalog;
 
     public SemanticKernelService(
         IConfiguration configuration,
         ILogger<SemanticKernelService> logger,
-        RuntimeAiConfigService runtimeConfig)
+        RuntimeAiConfigService runtimeConfig,
+        AiRequestTraceRecorder traceRecorder,
+        OpenRouterModelCatalogService openRouterModelCatalog)
     {
         _configuration = configuration;
         _logger = logger;
         _runtimeConfig = runtimeConfig;
+        _traceRecorder = traceRecorder;
+        _openRouterModelCatalog = openRouterModelCatalog;
     }
 
     public Kernel GetKernel()
     {
-        // Rebuild kernel if runtime model has changed
-        var runtimeModel = ResolveModelId();
+        var fingerprint = BuildFingerprint();
 
-        if (_kernel != null && _currentModel != runtimeModel)
-        {
-            _logger.LogInformation("Runtime AI configuration changed. Rebuilding kernel.");
-            _kernel = null;
-        }
-
-        if (_kernel != null)
+        if (_kernel != null && _configFingerprint == fingerprint)
             return _kernel;
 
-        var openRouterModel = ResolveModelId();
-        var apiKey = _configuration["OpenRouter:ApiKey"]
-            ?? throw new InvalidOperationException("OpenRouter:ApiKey is not configured.");
+        if (_kernel != null)
+            _logger.LogInformation("AI configuration changed. Rebuilding kernel.");
 
-        _logger.LogInformation("Initializing Semantic Kernel with OpenRouter model {Model}", openRouterModel);
+        _kernel = null;
 
         try
         {
+            var providers = BuildProviders();
+
+            if (providers.Count == 0)
+                throw new InvalidOperationException(
+                    "No AI providers are configured. " +
+                    "Set OpenRouter:ApiKey, Gemini:ApiKey, or ensure Ollama is running.");
+
+            _logger.LogInformation("Building kernel with {Count} provider(s): {Names}",
+                providers.Count, string.Join(" → ", providers.Select(p => p.Name)));
+
+            var fallback = new FallbackChatCompletionService(providers, _logger, _traceRecorder);
+
             var builder = Kernel.CreateBuilder();
-
-            var retryHandler = new RateLimitRetryHandler(_logger, model =>
-            {
-                // A 404 auto-fallback fired: record the working model so future
-                // GetKernel() calls rebuild with it instead of the unavailable one.
-                _logger.LogInformation("Auto-switched to OpenRouter model {Model}. Kernel will rebuild on next request.", model);
-                _runtimeConfig.Model = model;
-                _kernel = null;
-            })
-            {
-                InnerHandler = new HttpClientHandler()
-            };
-            var httpClient = new HttpClient(retryHandler)
-            {
-                // Free-tier inference can be slow; give each individual attempt up to 5 minutes.
-                Timeout = TimeSpan.FromMinutes(5)
-            };
-
-            var openAIClientOptions = new OpenAIClientOptions 
-            { 
-                Endpoint = new Uri("https://openrouter.ai/api/v1"),
-                Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(httpClient)
-            };
-            var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), openAIClientOptions);
-
-            builder.AddOpenAIChatCompletion(
-                modelId: openRouterModel,
-                openAIClient: openAIClient);
-
-            _currentModel = openRouterModel;
+            builder.Services.AddSingleton<IChatCompletionService>(fallback);
             _kernel = builder.Build();
+            _configFingerprint = fingerprint;
 
-            _logger.LogInformation("Kernel built successfully");
+            _logger.LogInformation("Kernel built successfully.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error building kernel: {Message}", ex.Message);
+            _logger.LogError(ex, "Failed to build kernel: {Message}", ex.Message);
             throw;
         }
 
         return _kernel;
     }
 
-    private string ResolveModelId()
+    // ── Provider builders ────────────────────────────────────────────────────
+
+    private List<(string Name, Func<string> ModelResolver, IChatCompletionService Service)> BuildProviders()
     {
-        if (OpenRouterModelCatalog.IsValid(_runtimeConfig.Model))
-            return _runtimeConfig.Model!;
+        var providers = new List<(string Name, Func<string> ModelResolver, IChatCompletionService Service)>();
+
+        // 1. OpenRouter ──────────────────────────────────────────────────────
+        var openRouterKey = _configuration["OpenRouter:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(openRouterKey))
+        {
+            try
+            {
+                var openRouterModels = _openRouterModelCatalog
+                    .GetAvailableModelsAsync()
+                    .GetAwaiter()
+                    .GetResult();
+
+                if (openRouterModels.Count == 0)
+                {
+                    _logger.LogWarning("OpenRouter live catalog returned no free models. OpenRouter provider skipped.");
+                }
+                else
+                {
+                    var model = ResolveOpenRouterModel(openRouterModels);
+                    providers.Add(("OpenRouter", ResolveOpenRouterModel, BuildOpenRouterService(model, openRouterKey)));
+                    _logger.LogInformation("OpenRouter provider configured (model: {Model}).", model);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not configure OpenRouter provider — skipping.");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("OpenRouter:ApiKey not set — OpenRouter provider skipped.");
+        }
+
+        // 2. Gemini ──────────────────────────────────────────────────────────
+        var geminiKey = _configuration["Gemini:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(geminiKey))
+        {
+            try
+            {
+                var geminiModel = _configuration["Gemini:ModelName"]
+                                  ?? GeminiModelCatalog.DefaultModelId;
+                providers.Add(("Gemini", () => geminiModel, BuildGeminiService(geminiModel, geminiKey)));
+                _logger.LogInformation("Gemini provider configured (model: {Model}).", geminiModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not configure Gemini provider — skipping.");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("Gemini:ApiKey not set — Gemini provider skipped.");
+        }
+
+        // 3. Ollama ──────────────────────────────────────────────────────────
+        var ollamaEndpoint = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+        var ollamaModel    = _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId;
+        try
+        {
+            providers.Add(("Ollama", () => ollamaModel, BuildOllamaService(ollamaModel, ollamaEndpoint)));
+            _logger.LogInformation("Ollama provider configured (endpoint: {Ep}, model: {Model}).",
+                ollamaEndpoint, ollamaModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not configure Ollama provider — skipping.");
+        }
+
+        return providers;
+    }
+
+    private IChatCompletionService BuildOpenRouterService(string model, string apiKey)
+    {
+        var retryHandler = new RateLimitRetryHandler(_logger, _openRouterModelCatalog, newModel =>
+        {
+            _logger.LogInformation(
+                "OpenRouter auto-switched to model {Model}. Kernel will rebuild on next request.", newModel);
+            _runtimeConfig.Model = newModel;
+            _kernel = null;
+            _configFingerprint = null;
+        })
+        {
+            InnerHandler = new HttpClientHandler()
+        };
+
+        var httpClient = new HttpClient(retryHandler)
+        {
+            Timeout = TimeSpan.FromSeconds(45)
+        };
+
+        var clientOptions = new OpenAIClientOptions
+        {
+            Endpoint  = new Uri("https://openrouter.ai/api/v1"),
+            Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(httpClient)
+        };
+        var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
+
+        return new Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIChatCompletionService(
+            model, openAIClient);
+    }
+
+    private static IChatCompletionService BuildGeminiService(string modelId, string apiKey)
+    {
+        return new Microsoft.SemanticKernel.Connectors.Google.GoogleAIGeminiChatCompletionService(
+            modelId: modelId,
+            apiKey:  apiKey);
+    }
+
+    private static IChatCompletionService BuildOllamaService(string modelId, string endpoint)
+    {
+        // Ollama exposes an OpenAI-compatible API at <endpoint>/v1
+        var clientOptions = new OpenAIClientOptions
+        {
+            Endpoint = new Uri(endpoint.TrimEnd('/') + "/v1")
+        };
+        var ollamaClient = new OpenAIClient(new ApiKeyCredential("ollama"), clientOptions);
+
+        return new Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIChatCompletionService(
+            modelId, ollamaClient);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private string BuildFingerprint()
+    {
+        return string.Join("|",
+            ResolveOpenRouterModel(),
+            _configuration["Gemini:ApiKey"]  ?? "",
+            _configuration["Gemini:ModelName"] ?? GeminiModelCatalog.DefaultModelId,
+            _configuration["Ollama:Endpoint"] ?? "http://localhost:11434",
+            _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId);
+    }
+
+    internal string ResolveOpenRouterModel()
+    {
+        var cachedModels = _openRouterModelCatalog.GetCachedModels();
+        return ResolveOpenRouterModel(cachedModels);
+    }
+
+    private string ResolveOpenRouterModel(IReadOnlyList<string> availableModels)
+    {
+        if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model) &&
+            availableModels.Contains(_runtimeConfig.Model, StringComparer.Ordinal))
+            return _runtimeConfig.Model;
 
         if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model))
         {
-            _logger.LogWarning(
-                "Ignoring invalid runtime OpenRouter model override {Model}. Resetting to configured/default model.",
-                _runtimeConfig.Model);
+            _logger.LogWarning("Discarding invalid runtime OpenRouter model override: {Model}", _runtimeConfig.Model);
             _runtimeConfig.Model = null;
         }
 
-        var configuredModel = _configuration["OpenRouter:ModelId"];
-        if (OpenRouterModelCatalog.IsValid(configuredModel))
-            return configuredModel!;
+        var configured = _configuration["OpenRouter:ModelId"];
+        if (!string.IsNullOrWhiteSpace(configured) &&
+            availableModels.Contains(configured, StringComparer.Ordinal))
+            return configured;
 
-        if (!string.IsNullOrWhiteSpace(configuredModel))
-        {
-            _logger.LogWarning(
-                "Configured OpenRouter model {Model} is not in the supported allow-list. Falling back to {Fallback}.",
-                configuredModel,
-                OpenRouterModelCatalog.DefaultModelId);
-        }
+        if (availableModels.Count > 0)
+            return availableModels[0];
 
-        return OpenRouterModelCatalog.DefaultModelId;
+        return configured ?? OpenRouterModelCatalog.DefaultModelId;
     }
 
     public async Task<bool> TestConnectionAsync()
     {
-        try
-        {
-            _logger.LogInformation("Testing Gemini connection");
-
-            var kernel = GetKernel();
-            var response = await kernel.InvokePromptAsync("Say 'OK'");
-            _logger.LogInformation("Gemini connection test successful: {Response}", response);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to connect to Gemini. Error: {Message}", ex.Message);
-            throw;
-        }
+        var kernel = GetKernel();
+        var response = await kernel.InvokePromptAsync("Reply with only the word: OK");
+        _logger.LogInformation("AI connection test successful: {Response}", response);
+        return true;
     }
 }
+
+#pragma warning restore SKEXP0070
+#pragma warning restore SKEXP0010
 
 /// <summary>
 /// DelegatingHandler that:
@@ -148,22 +272,25 @@ public class SemanticKernelService
 internal sealed class RateLimitRetryHandler : DelegatingHandler
 {
     private readonly ILogger _logger;
+    private readonly OpenRouterModelCatalogService _openRouterModelCatalog;
     private readonly Action<string>? _onModelFallback;
 
-    private const int MaxRetries = 4;
+    private const int MaxRetries = 2;
     private static readonly TimeSpan[] Delays =
     [
+        TimeSpan.FromSeconds(2),
         TimeSpan.FromSeconds(5),
-        TimeSpan.FromSeconds(15),
-        TimeSpan.FromSeconds(30),
-        TimeSpan.FromSeconds(60),
     ];
 
     private const int MaxTokensCap = 8192;
 
-    public RateLimitRetryHandler(ILogger logger, Action<string>? onModelFallback = null)
+    public RateLimitRetryHandler(
+        ILogger logger,
+        OpenRouterModelCatalogService openRouterModelCatalog,
+        Action<string>? onModelFallback = null)
     {
         _logger = logger;
+        _openRouterModelCatalog = openRouterModelCatalog;
         _onModelFallback = onModelFallback;
     }
 
@@ -239,6 +366,10 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
 
         while (true)
         {
+            // Stop immediately if the caller has already cancelled — avoids attempting a new
+            // HTTP request with a dead token which would throw an uncaught TaskCanceledException.
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var clone = BuildClone(request, currentBody, contentType);
             HttpResponseMessage response;
 
@@ -246,15 +377,21 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
             {
                 response = await base.SendAsync(clone, cancellationToken);
             }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            catch (TaskCanceledException ex) when (
+                !cancellationToken.IsCancellationRequested ||
+                ex.InnerException is System.IO.IOException)
             {
+                // A socket abort (IOException inner) can cancel the outer token as a side-effect.
+                // If the *caller* genuinely cancelled, don't retry — propagate cleanly.
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (++retryCount > MaxRetries)
                     throw new InvalidOperationException(
-                        $"OpenRouter request timed out after {MaxRetries + 1} attempts. " +
-                        "The free-tier provider may be overloaded — try again shortly.", ex);
+                        $"OpenRouter request timed out or connection was aborted after {MaxRetries + 1} attempts. " +
+                        "The remote AI provider may be overloaded — try again shortly.", ex);
                 var d = Delays[Math.Min(retryCount - 1, Delays.Length - 1)];
-                _logger.LogWarning("OpenRouter timed out. Retry {R}/{Max} after {D}s.", retryCount, MaxRetries, d.TotalSeconds);
-                await Task.Delay(d, cancellationToken);
+                _logger.LogWarning("OpenRouter timed out or connection aborted. Retry {R}/{Max} after {D}s.", retryCount, MaxRetries, d.TotalSeconds);
+                await LinkedDelay(d, cancellationToken);
                 continue;
             }
             catch (HttpRequestException ex) when (
@@ -267,7 +404,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
                         "The free-tier provider may be overloaded — try again shortly.", ex);
                 var d = Delays[Math.Min(retryCount - 1, Delays.Length - 1)];
                 _logger.LogWarning("OpenRouter socket error. Retry {R}/{Max} after {D}s: {Msg}", retryCount, MaxRetries, d.TotalSeconds, ex.Message);
-                await Task.Delay(d, cancellationToken);
+                await LinkedDelay(d, cancellationToken);
                 continue;
             }
 
@@ -291,7 +428,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
                     var badModel400 = ExtractModel(currentBody);
                     if (badModel400 is not null) triedModels.Add(badModel400);
 
-                    var nextModel400 = OpenRouterModelCatalog.GetNextModel(triedModels);
+                    var nextModel400 = await _openRouterModelCatalog.GetNextModelAsync(triedModels, cancellationToken);
                     if (nextModel400 is not null)
                     {
                         var patched400 = PatchModel(currentBody, nextModel400);
@@ -324,7 +461,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
                 var badModel = ExtractModel(currentBody);
                 if (badModel is not null) triedModels.Add(badModel);
 
-                var nextModel = OpenRouterModelCatalog.GetNextModel(triedModels);
+                var nextModel = await _openRouterModelCatalog.GetNextModelAsync(triedModels, cancellationToken);
                 if (nextModel is not null && currentBody is not null)
                 {
                     var patched = PatchModel(currentBody, nextModel);
@@ -362,8 +499,21 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
             var rateLimitDelay = GetDelay(response, retryCount - 1);
             response.Dispose();
             _logger.LogWarning("OpenRouter 429. Retry {R}/{Max} after {D}s.", retryCount, MaxRetries, rateLimitDelay.TotalSeconds);
-            await Task.Delay(rateLimitDelay, cancellationToken);
+            await LinkedDelay(rateLimitDelay, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Delays using a <em>linked</em> CancellationTokenSource so that if the caller's token
+    /// fires during the wait, the resulting <see cref="TaskCanceledException"/> carries the
+    /// linked token — not the caller's token. This lets <see cref="FallbackChatCompletionService"/>
+    /// distinguish "provider delay was interrupted" (try next provider) from "caller cancelled"
+    /// (stop the chain immediately).
+    /// </summary>
+    private static async Task LinkedDelay(TimeSpan delay, CancellationToken callerToken)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
+        await Task.Delay(delay, cts.Token);
     }
 
     private static HttpRequestMessage BuildClone(HttpRequestMessage original, string? body, string contentType)

@@ -3,7 +3,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item active" aria-current="page">
             <i class="fas fa-home"></i> Home
@@ -12,18 +12,18 @@
 </nav>
 
 <!-- Page Heading -->
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-peace"></i> Common Understanding
 </h1>
 
 <div class="row mb-4">
     <div class="col-lg-8">
         <!-- Welcome Section -->
-        <div class="gc-card mb-4">
-         @*    <div class="gc-card-header">
+        <div class="cu-card mb-4">
+         @*    <div class="cu-card-header">
                 <i class="fas fa-info-circle"></i> Welcome to A Common Understanding
             </div> *@
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <p class="lead mb-3">
                     An AI-powered journey to discover your belief system and find common ground with others
                 </p>
@@ -38,34 +38,34 @@
         <!-- Feature Cards -->
         <div class="row mb-4">
             <div class="col-md-6 mb-3">
-                <div class="gc-card h-100">
+                <div class="cu-card h-100">
                     <div class="text-center mb-3">
-                        <i class="fas fa-compass fa-3x" style="color: var(--gc-primary-blue);"></i>
+                        <i class="fas fa-compass fa-3x" style="color: var(--cu-primary-blue);"></i>
                     </div>
-                    <h3 class="gc-section-heading text-center">Discover Yourself</h3>
+                    <h3 class="cu-section-heading text-center">Discover Yourself</h3>
                     <p class="text-muted">
                         Interactive AI conversation to map your unique values and worldview through 
                         adaptive questioning and statistical modeling.
                     </p>
                     <div class="text-center mt-3">
-                        <a asp-controller="Discovery" asp-action="Start" class="gc-btn-primary">
+                        <a asp-controller="Discovery" asp-action="Start" class="cu-btn-primary">
                             <i class="fas fa-play-circle"></i> Begin Journey
                         </a>
                     </div>
                 </div>
             </div>
             <div class="col-md-6 mb-3">
-                <div class="gc-card h-100">
+                <div class="cu-card h-100">
                     <div class="text-center mb-3">
-                        <i class="fas fa-globe fa-3x" style="color: var(--gc-secondary-blue);"></i>
+                        <i class="fas fa-globe fa-3x" style="color: var(--cu-secondary-blue);"></i>
                     </div>
-                    <h3 class="gc-section-heading text-center">Explore Beliefs</h3>
+                    <h3 class="cu-section-heading text-center">Explore Beliefs</h3>
                     <p class="text-muted">
                         Browse canonical belief systems from across cultures and history, understanding 
                         their core principles and teachings.
                     </p>
                     <div class="text-center mt-3">
-                        <a asp-controller="Explore" asp-action="Index" class="gc-btn-secondary">
+                        <a asp-controller="Explore" asp-action="Index" class="cu-btn-secondary">
                             <i class="fas fa-book"></i> Explore Canon
                         </a>
                     </div>
@@ -74,15 +74,15 @@
         </div>
 
         <!-- How It Works -->
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <i class="fas fa-diagram-project"></i> How It Works
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <div class="text-center">
-                            <div class="gc-badge mb-2">Step 1</div>
+                            <div class="cu-badge mb-2">Step 1</div>
                         </div>
                         <strong>Interactive Discovery</strong>
                         <p class="text-muted small">
@@ -91,7 +91,7 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="text-center">
-                            <div class="gc-badge mb-2">Step 2</div>
+                            <div class="cu-badge mb-2">Step 2</div>
                         </div>
                         <strong>Statistical Modeling</strong>
                         <p class="text-muted small">
@@ -100,7 +100,7 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="text-center">
-                            <div class="gc-badge mb-2">Step 3</div>
+                            <div class="cu-badge mb-2">Step 3</div>
                         </div>
                         <strong>Find Common Ground</strong>
                         <p class="text-muted small">
@@ -115,29 +115,29 @@
     <!-- Sidebar -->
     <div class="col-lg-4">
         <!-- Quick Links -->
-        <div class="gc-filter-panel mb-4">
-            <h3 class="gc-section-heading">
+        <div class="cu-filter-panel mb-4">
+            <h3 class="cu-section-heading">
                 <i class="fas fa-bolt"></i> Quick Actions
             </h3>
             <div class="d-grid gap-2">
-                <a asp-controller="Discovery" asp-action="Start" class="gc-btn-primary">
+                <a asp-controller="Discovery" asp-action="Start" class="cu-btn-primary">
                     <i class="fas fa-compass"></i> Start Discovery
                 </a>
-                <a asp-controller="Explore" asp-action="Compare" class="gc-btn-secondary">
+                <a asp-controller="Explore" asp-action="Compare" class="cu-btn-secondary">
                     <i class="fas fa-arrows-left-right"></i> Compare Systems
                 </a>
-                <a asp-controller="BeliefSystems" asp-action="Index" class="gc-btn-secondary">
+                <a asp-controller="BeliefSystems" asp-action="Index" class="cu-btn-secondary">
                     <i class="fas fa-list"></i> View All Systems
                 </a>
             </div>
         </div>
 
         <!-- Key Features -->
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <i class="fas fa-star"></i> Key Features
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <ul class="list-unstyled">
                     <li class="mb-2">
                         <i class="fas fa-check-circle text-success"></i>
@@ -182,7 +182,7 @@
                     </p>
                 </div>
                 <div class="col-md-4 text-center">
-                    <a asp-controller="Explore" asp-action="Index" class="gc-btn-primary">
+                    <a asp-controller="Explore" asp-action="Index" class="cu-btn-primary">
                         <i class="fas fa-arrow-right"></i> Learn More
                     </a>
                 </div>
@@ -194,10 +194,10 @@
 <!-- Demo Table (GC Design System) -->
 <div class="row mt-4">
     <div class="col-12">
-        <h2 class="gc-section-heading">
+        <h2 class="cu-section-heading">
             <i class="fas fa-table"></i> Recent Activity
         </h2>
-        <table class="gc-table">
+        <table class="cu-table">
             <thead>
                 <tr>
                     <th>Category</th>
@@ -211,19 +211,19 @@
                     <td>Philosophy</td>
                     <td>Stoicism</td>
                     <td>125 users</td>
-                    <td><span class="gc-badge">Active</span></td>
+                    <td><span class="cu-badge">Active</span></td>
                 </tr>
                 <tr>
                     <td>Religion</td>
                     <td>Buddhism</td>
                     <td>98 users</td>
-                    <td><span class="gc-badge">Active</span></td>
+                    <td><span class="cu-badge">Active</span></td>
                 </tr>
                 <tr>
                     <td>Political</td>
                     <td>Liberalism</td>
                     <td>87 users</td>
-                    <td><span class="gc-badge">Active</span></td>
+                    <td><span class="cu-badge">Active</span></td>
                 </tr>
             </tbody>
         </table>
@@ -233,7 +233,7 @@
 <style>
     /* Page-specific enhancements */
     .alert {
-        border-radius: var(--gc-border-radius);
+        border-radius: var(--cu-border-radius);
     }
     
     .list-unstyled li {

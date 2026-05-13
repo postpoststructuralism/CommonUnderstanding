@@ -1,4 +1,4 @@
-@model IEnumerable<CommonUnderstanding.Models.PersistedEmergentReport>
+﻿@model IEnumerable<CommonUnderstanding.Models.PersistedEmergentReport>
 
 @{
     ViewData["Title"] = "Emergent Conclusions History";
@@ -8,7 +8,7 @@
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-clock-history me-2"></i>Analysis History
         </h1>
         <p class="text-muted mb-0">
@@ -27,7 +27,7 @@
 
 @if (!reports.Any())
 {
-    <div class="gc-card text-center py-5">
+    <div class="cu-card text-center py-5">
         <i class="bi bi-clock display-3 text-muted mb-3 d-block"></i>
         <h3 class="text-muted">No Snapshots Yet</h3>
         <p class="text-muted mb-4">
@@ -40,7 +40,7 @@
 }
 else
 {
-    <div class="gc-card p-0">
+    <div class="cu-card p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-light">

@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Controllers.CollaborativeSessionResultsViewModel
+﻿@model CommonUnderstanding.Controllers.CollaborativeSessionResultsViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = $"Results: {Model.Session.Title}";
@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-bar-chart-steps me-2"></i>Session Results
         </h1>
         <p class="text-muted mb-0">@Model.Session.Title</p>
@@ -26,11 +26,11 @@
 
 @if (!string.IsNullOrWhiteSpace(Model.Session.ExecutiveSummary))
 {
-    <div class="gc-card mb-4 border-primary border-opacity-50">
-        <div class="gc-card-header">
+    <div class="cu-card mb-4 border-primary border-opacity-50">
+        <div class="cu-card-header">
             <h2 class="h5 mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>Executive Summary</h2>
         </div>
-        <div class="gc-card-body">
+        <div class="cu-card-body">
             <p class="mb-0">@Model.Session.ExecutiveSummary</p>
         </div>
     </div>
@@ -41,14 +41,14 @@
     <!-- Harmonies -->
     @if (Model.Report.Harmonies.Any())
     {
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0">
                     <i class="bi bi-heart-fill me-2 text-success"></i>Harmonies Found
                     <span class="badge bg-success ms-2">@Model.Report.Harmonies.Count</span>
                 </h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="row g-3">
                     @foreach (var h in Model.Report.Harmonies)
                     {
@@ -76,14 +76,14 @@
     <!-- Blindspots -->
     @if (Model.Report.Blindspots.Any())
     {
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0">
                     <i class="bi bi-eye-slash me-2 text-warning"></i>Shared Blindspots
                     <span class="badge bg-warning text-dark ms-2">@Model.Report.Blindspots.Count</span>
                 </h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="row g-3">
                     @foreach (var b in Model.Report.Blindspots)
                     {
@@ -112,11 +112,11 @@
     @if (Model.Report.GraphHealth is not null)
     {
         var health = Model.Report.GraphHealth;
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-heart-pulse me-2 text-info"></i>Joint Graph Health</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <div class="row text-center g-3">
                     <div class="col-6 col-md-3">
                         <div class="fw-bold display-6 text-primary">@health.TotalArguments</div>

@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Models.CommonUnderstandingNode
+﻿@model CommonUnderstanding.Models.CommonUnderstandingNode
 @using CommonUnderstanding.Models
 
 @{
@@ -24,7 +24,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-controller="CommonUnderstanding" asp-action="Index">Common Understanding</a></li>
@@ -32,21 +32,21 @@
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-card-text"></i> Proposition
 </h1>
 
 <div class="row g-4">
     <!-- Left: main details -->
     <div class="col-lg-8">
-        <div class="gc-card mb-4">
-            <div class="gc-card-header d-flex justify-content-between align-items-center">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-quote me-1"></i> Full Text</span>
                 <span class="badge bg-@StatusColor(Model.Status)">
                     <i class="bi @StatusIcon(Model.Status)"></i> @Model.Status
                 </span>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <p class="lead mb-0">@Model.Text</p>
             </div>
         </div>
@@ -54,8 +54,8 @@
         <!-- Outbound edges -->
         @if (outEdges.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-arrow-right-circle me-1"></i> Supports / Relates To
                     <span class="badge bg-secondary ms-1">@outEdges.Count</span>
                 </div>
@@ -97,8 +97,8 @@
         <!-- Inbound edges -->
         @if (inEdges.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-arrow-left-circle me-1"></i> Referenced By
                     <span class="badge bg-secondary ms-1">@inEdges.Count</span>
                 </div>
@@ -140,8 +140,8 @@
 
     <!-- Right: metadata panel -->
     <div class="col-lg-4">
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <i class="bi bi-info-circle me-1"></i> Metadata
             </div>
             <div class="list-group list-group-flush">
@@ -191,8 +191,8 @@
         <!-- Contributing arguments -->
         @if (argIds.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-journals me-1"></i> Contributing Arguments
                 </div>
                 <div class="list-group list-group-flush">

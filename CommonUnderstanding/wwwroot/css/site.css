@@ -20,7 +20,7 @@ body {
 }
 
 /* ========================================
-   FOCUS STATES - GC ACCESSIBILITY
+   FOCUS STATES - ACCESSIBILITY
    ======================================== */
 .btn:focus, 
 .btn:active:focus, 
@@ -46,7 +46,7 @@ body {
   text-align: start;
 }
 
-/* GC Form Controls */
+/* Form Controls */
 .form-control,
 .form-select {
   border-color: #e5e7eb;
@@ -60,7 +60,7 @@ body {
 }
 
 /* ========================================
-   BOOTSTRAP OVERRIDES FOR GC THEME
+   BOOTSTRAP OVERRIDES FOR APP THEME
    ======================================== */
 .btn-primary {
   background-color: #26374a;
@@ -274,23 +274,23 @@ body {
 /* ========================================
    UTILITY CLASSES
    ======================================== */
-.text-muted-gc {
+.text-muted-cu {
   color: #6b7280 !important;
 }
 
-.border-gc {
+.border-cu {
   border-color: #e5e7eb !important;
 }
 
-.bg-gc-light {
+.bg-cu-light {
   background-color: #f8fafc !important;
 }
 
-.shadow-gc {
+.shadow-cu {
   box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08) !important;
 }
 
-.shadow-gc-sm {
+.shadow-cu-sm {
   box-shadow: 0 2px 8px rgba(38, 55, 74, 0.1) !important;
 }
 

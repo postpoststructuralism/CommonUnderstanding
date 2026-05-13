@@ -1,17 +1,17 @@
-@{
+﻿@{
     ViewData["Title"] = "Register";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="row justify-content-center mt-5">
     <div class="col-12 col-sm-9 col-md-6 col-lg-4">
-        <div class="gc-card">
-            <div class="gc-card-header text-center">
+        <div class="cu-card">
+            <div class="cu-card-header text-center">
                 <i class="bi bi-person-plus display-6 d-block mb-2 text-primary"></i>
                 <h2 class="h4 mb-0">Create Account</h2>
                 <p class="text-muted small mb-0">A Common Understanding</p>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="alert alert-danger py-2">
@@ -58,7 +58,7 @@
                     </button>
                 </form>
             </div>
-            <div class="gc-card-footer text-center small text-muted">
+            <div class="cu-card-footer text-center small text-muted">
                 Already have an account?
                 <a asp-action="Login" class="text-decoration-none fw-semibold">Sign in</a>
             </div>

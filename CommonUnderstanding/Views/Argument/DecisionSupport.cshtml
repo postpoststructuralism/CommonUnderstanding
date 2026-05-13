@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Services.DecisionSupportResult
+﻿@model CommonUnderstanding.Services.DecisionSupportResult
 @using CommonUnderstanding.Models
 
 @{
@@ -22,7 +22,7 @@
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
@@ -31,21 +31,21 @@
     </ol>
 </nav>
 
-<h1 class="gc-page-heading">
+<h1 class="cu-page-heading">
     <i class="bi bi-clipboard2-check"></i> Decision Support Report
 </h1>
 <p class="lead text-muted mb-4">@argument?.Title</p>
 
 <!-- ── Final Recommendation ─────────────────────────────────────────────── -->
-<div class="gc-card mb-4 border-@RecClass(Model.FinalRecommendation) border-3">
-    <div class="gc-card-header bg-@RecClass(Model.FinalRecommendation) text-white fs-5">
+<div class="cu-card mb-4 border-@RecClass(Model.FinalRecommendation) border-3">
+    <div class="cu-card-header bg-@RecClass(Model.FinalRecommendation) text-white fs-5">
         <i class="bi @RecIcon(Model.FinalRecommendation) me-2"></i>
         Recommendation: <strong>@Model.FinalRecommendation</strong>
         <span class="badge bg-white text-@RecClass(Model.FinalRecommendation) ms-2 fs-6">
             @Model.ConfidenceLevel Confidence
         </span>
     </div>
-    <div class="gc-card-body">
+    <div class="cu-card-body">
         <div class="row align-items-center mb-3">
             <div class="col-auto">
                 <div class="text-center">
@@ -75,12 +75,12 @@
     <div class="col-lg-7">
 
         <!-- Stakeholder consensus -->
-        <div class="gc-card mb-4">
-            <div class="gc-card-header">
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
                 <i class="bi bi-people me-1"></i> Stakeholder Consensus
                 <span class="badge bg-secondary ms-1">@Model.StakeholderConsensus.TotalResponses response(s)</span>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (Model.StakeholderConsensus.TotalResponses == 0)
                 {
                     <p class="text-muted mb-0">No stakeholder positions have been recorded yet.</p>
@@ -124,8 +124,8 @@
         <!-- Contested premises -->
         @if (Model.ContestedPremises.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header text-warning">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header text-warning">
                     <i class="bi bi-exclamation-triangle me-1"></i> Contested Premises
                     <span class="badge bg-warning text-dark ms-1">@Model.ContestedPremises.Count</span>
                 </div>
@@ -164,8 +164,8 @@
         <!-- Discussion topics -->
         @if (Model.SuggestedDiscussionTopics.Any())
         {
-            <div class="gc-card mb-4">
-                <div class="gc-card-header">
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
                     <i class="bi bi-chat-dots me-1"></i> Suggested Discussion Topics
                 </div>
                 <ul class="list-group list-group-flush">

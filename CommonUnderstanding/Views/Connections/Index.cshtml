@@ -1,4 +1,4 @@
-@model CommonUnderstanding.Controllers.ConnectionsIndexViewModel
+﻿@model CommonUnderstanding.Controllers.ConnectionsIndexViewModel
 @using CommonUnderstanding.Models
 @{
     ViewData["Title"] = "Connections";
@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="gc-page-heading mb-1">
+        <h1 class="cu-page-heading mb-1">
             <i class="bi bi-people me-2"></i>Connections
         </h1>
         <p class="text-muted mb-0">Connect with other users to map shared understanding</p>
@@ -32,13 +32,13 @@
 
     <!-- ── Active connections ─────────────────────────────────────────────── -->
     <div class="col-12 col-lg-7">
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-person-check me-2"></i>Your Connections
                     <span class="badge bg-primary ms-2">@Model.Connections.Count</span>
                 </h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 @if (!Model.Connections.Any())
                 {
                     <p class="text-muted fst-italic">No active connections yet. Invite someone below to get started.</p>
@@ -69,13 +69,13 @@
         <!-- Pending received invites -->
         @if (Model.PendingInvites.Any())
         {
-            <div class="gc-card mt-3">
-                <div class="gc-card-header">
+            <div class="cu-card mt-3">
+                <div class="cu-card-header">
                     <h2 class="h5 mb-0"><i class="bi bi-envelope me-2"></i>Pending Invites
                         <span class="badge bg-warning text-dark ms-2">@Model.PendingInvites.Count</span>
                     </h2>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <ul class="list-group list-group-flush">
                         @foreach (var item in Model.PendingInvites)
                         {
@@ -117,11 +117,11 @@
         <!-- Sent pending invites -->
         @if (Model.SentInvites.Any())
         {
-            <div class="gc-card mt-3">
-                <div class="gc-card-header">
+            <div class="cu-card mt-3">
+                <div class="cu-card-header">
                     <h2 class="h5 mb-0"><i class="bi bi-send me-2"></i>Sent Invites</h2>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <ul class="list-group list-group-flush">
                         @foreach (var item in Model.SentInvites)
                         {
@@ -141,11 +141,11 @@
 
     <!-- ── Discover & Invite ──────────────────────────────────────────────── -->
     <div class="col-12 col-lg-5">
-        <div class="gc-card">
-            <div class="gc-card-header">
+        <div class="cu-card">
+            <div class="cu-card-header">
                 <h2 class="h5 mb-0"><i class="bi bi-person-plus me-2"></i>Invite Someone</h2>
             </div>
-            <div class="gc-card-body">
+            <div class="cu-card-body">
                 <form asp-action="Invite" method="post">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
@@ -169,13 +169,13 @@
         <!-- Discoverable users -->
         @if (Model.DiscoverableUsers.Any())
         {
-            <div class="gc-card mt-3">
-                <div class="gc-card-header">
+            <div class="cu-card mt-3">
+                <div class="cu-card-header">
                     <h2 class="h5 mb-0"><i class="bi bi-search me-2"></i>Other Users
                         <span class="badge bg-light text-secondary ms-2">@Model.DiscoverableUsers.Count</span>
                     </h2>
                 </div>
-                <div class="gc-card-body">
+                <div class="cu-card-body">
                     <ul class="list-group list-group-flush">
                         @foreach (var user in Model.DiscoverableUsers.Take(10))
                         {

@@ -1,11 +1,11 @@
-@{
+﻿@{
     ViewData["Title"] = "Analyzing Argument";
     var argumentId = ViewBag.ArgumentId;
     var argumentTitle = ViewBag.ArgumentTitle;
 }
 
 <!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="gc-breadcrumb">
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
@@ -15,8 +15,8 @@
 
 <div class="row justify-content-center mt-5">
     <div class="col-lg-7 text-center">
-        <div class="gc-card py-5">
-            <div class="gc-card-body">
+        <div class="cu-card py-5">
+            <div class="cu-card-body">
                 <div id="spinnerIcon" class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status">
                     <span class="visually-hidden">Analyzing…</span>
                 </div>

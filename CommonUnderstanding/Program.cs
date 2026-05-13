@@ -32,6 +32,8 @@ builder.Services.AddSingleton<BeliefSystemKnowledgeBase>();
 
 // Register runtime AI config (overrides for endpoint, model, agent)
 builder.Services.AddSingleton<RuntimeAiConfigService>();
+builder.Services.AddSingleton<AiRequestTraceRecorder>();
+builder.Services.AddSingleton<OpenRouterModelCatalogService>();
 
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
@@ -114,6 +116,18 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    var traceRecorder = context.RequestServices.GetRequiredService<AiRequestTraceRecorder>();
+    context.Response.OnStarting(() =>
+    {
+        traceRecorder.WriteResponseHeaders(context);
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
 
 app.UseSession();
 app.UseAuthentication();
