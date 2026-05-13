@@ -143,17 +143,27 @@ public class SemanticKernelService
         }
 
         // 3. Ollama ──────────────────────────────────────────────────────────
+        // Only include Ollama if the endpoint is actually reachable.
+        // This prevents the provider from being added in production when Ollama
+        // is not deployed (e.g. pointing at a non-existent host).
         var ollamaEndpoint = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         var ollamaModel    = _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId;
-        try
+        if (IsOllamaReachable(ollamaEndpoint))
         {
-            providers.Add(("Ollama", () => ollamaModel, BuildOllamaService(ollamaModel, ollamaEndpoint)));
-            _logger.LogInformation("Ollama provider configured (endpoint: {Ep}, model: {Model}).",
-                ollamaEndpoint, ollamaModel);
+            try
+            {
+                providers.Add(("Ollama", () => ollamaModel, BuildOllamaService(ollamaModel, ollamaEndpoint)));
+                _logger.LogInformation("Ollama provider configured (endpoint: {Ep}, model: {Model}).",
+                    ollamaEndpoint, ollamaModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not configure Ollama provider — skipping.");
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogWarning(ex, "Could not configure Ollama provider — skipping.");
+            _logger.LogInformation("Ollama endpoint {Ep} is not reachable — Ollama provider skipped.", ollamaEndpoint);
         }
 
         return providers;
@@ -210,6 +220,30 @@ public class SemanticKernelService
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Performs a fast TCP probe to see whether the Ollama endpoint is reachable
+    /// before wiring it up as a provider.  Times out after 2 seconds so it doesn't
+    /// stall kernel construction in cloud environments where Ollama is not deployed.
+    /// </summary>
+    private static bool IsOllamaReachable(string endpoint)
+    {
+        try
+        {
+            var uri = new Uri(endpoint.TrimEnd('/'));
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : (uri.Scheme == "https" ? 443 : 80);
+
+            using var client = new System.Net.Sockets.TcpClient();
+            var connected = client.ConnectAsync(host, port)
+                .Wait(TimeSpan.FromSeconds(2));
+            return connected && client.Connected;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private string BuildFingerprint()
     {

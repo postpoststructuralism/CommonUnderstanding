@@ -41,6 +41,17 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Configure app settings
+      run: |
+        az webapp config appsettings set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --settings \
+            ASPNETCORE_ENVIRONMENT=Production \
+            OpenRouter__ApiKey="${{ secrets.OPENROUTER_API_KEY }}" \
+            Gemini__ApiKey="${{ secrets.GEMINI_API_KEY }}" \
+            Ollama__Endpoint="http://localhost:11434"
+
     - name: Deploy to Azure Web App
       run: |
         cd publish
