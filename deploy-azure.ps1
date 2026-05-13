@@ -43,24 +43,19 @@ Write-Host ""
 Write-Host "Checking resource group: $ResourceGroup..." -ForegroundColor Yellow
 $rgExists = az group exists --name $ResourceGroup
 if ($rgExists -eq "false") {
-    Write-Host "Creating resource group: $ResourceGroup in $Location..." -ForegroundColor Yellow
-    az group create --name $ResourceGroup --location $Location
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create resource group" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "[OK] Resource group created" -ForegroundColor Green
-} else {
-    Write-Host "[OK] Resource group exists" -ForegroundColor Green
+    Write-Host "ERROR: Resource group '$ResourceGroup' does not exist." -ForegroundColor Red
+    Write-Host "Please verify the resource group name and your Azure subscription." -ForegroundColor Yellow
+    exit 1
 }
+Write-Host "[OK] Resource group exists" -ForegroundColor Green
 Write-Host ""
 
 # Check if App Service Plan exists
 Write-Host "Checking App Service Plan: $PlanName..." -ForegroundColor Yellow
 $planExists = az appservice plan show --name $PlanName --resource-group $ResourceGroup 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Creating App Service Plan: $PlanName (Basic tier)..." -ForegroundColor Yellow
-    az appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux
+    Write-Host "Creating App Service Plan: $PlanName (Free tier F1)..." -ForegroundColor Yellow
+    az appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku F1 --is-linux
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERROR: Failed to create App Service Plan" -ForegroundColor Red

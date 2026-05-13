@@ -1,0 +1,55 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: common-understanding
+  AZURE_RESOURCE_GROUP: freedom-ledger_group
+  DOTNET_VERSION: '9.0.x'
+
+# Never retain artifacts — clean up immediately after deployment
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore CommonUnderstanding/CommonUnderstanding.csproj
+
+    - name: Build
+      run: dotnet build CommonUnderstanding/CommonUnderstanding.csproj --configuration Release --no-restore
+
+    - name: Publish
+      run: dotnet publish CommonUnderstanding/CommonUnderstanding.csproj -c Release -o ./publish --no-build
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Web App
+      run: |
+        cd publish
+        zip -r ../deploy.zip .
+        cd ..
+        az webapp deploy --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_WEBAPP_NAME }} --src-path deploy.zip --type zip
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f deploy.zip
+        rm -rf publish
