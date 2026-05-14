@@ -38,6 +38,7 @@ public class EvidenceClassificationService
             : $"\n\nAbstract/summary:\n{abstractOrSummary}";
 
         var prompt = $$$"""
+        Always respond in English.
         You are an expert in research methodology and evidence evaluation.
 
         Proposition being evaluated:

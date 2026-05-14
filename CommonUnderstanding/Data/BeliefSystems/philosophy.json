@@ -247,5 +247,472 @@
       "Germany",
       "France"
     ]
+  },
+  {
+    "Name": "Platonism",
+    "Category": "Philosophy",
+    "Culture": "Ancient Greek",
+    "Era": "4th century BCE - Present",
+    "Description": "Philosophy founded by Plato positing that abstract Forms or Ideas are the most real things, and the material world is merely an imperfect reflection of these eternal archetypes.",
+    "Sources": [
+      "Republic (Plato)",
+      "Phaedo (Plato)",
+      "Timaeus (Plato)",
+      "Symposium (Plato)"
+    ],
+    "CorePrinciples": [
+      "Theory of Forms: Abstract ideals are more real than material objects",
+      "Allegory of the Cave: Most people mistake shadows for reality",
+      "Philosopher-kings: The wise should govern society",
+      "Anamnesis: Knowledge is recollection of the Forms from before birth",
+      "Immortality of the soul",
+      "The Good as the highest Form, source of being and truth",
+      "Mathematics as bridge between material and ideal worlds",
+      "Tripartite soul: reason, spirit, appetite"
+    ],
+    "NotableFigures": [
+      "Plato",
+      "Socrates (as portrayed by Plato)",
+      "Plotinus (Neoplatonism)",
+      "Augustine of Hippo",
+      "Alfred North Whitehead"
+    ],
+    "Regions": [
+      "Ancient Athens",
+      "Roman Empire (Neoplatonism)",
+      "Global philosophical tradition"
+    ]
+  },
+  {
+    "Name": "Epicureanism",
+    "Category": "Philosophy",
+    "Culture": "Ancient Greek/Hellenistic",
+    "Era": "4th century BCE - Present",
+    "Description": "Hellenistic philosophy teaching that pleasure (specifically ataraxia — tranquility — and aponia — freedom from pain) is the highest good, achieved through simple living, friendship, and philosophical reflection.",
+    "Sources": [
+      "Letter to Menoeceus (Epicurus)",
+      "Principal Doctrines (Epicurus)",
+      "On the Nature of Things (Lucretius)",
+      "Vatican Sayings"
+    ],
+    "CorePrinciples": [
+      "Ataraxia: Tranquility and freedom from mental disturbance as the highest good",
+      "Aponia: Absence of bodily pain",
+      "Hedonism: Pleasure is good, pain is bad, but prudence guides choices",
+      "Friendship is the greatest external good",
+      "Death is nothing to fear: 'When death is, I am not; when I am, death is not'",
+      "Atoms and void: materialist cosmology",
+      "Withdrawal from politics for the serene life",
+      "Simple pleasures over intense but risky ones"
+    ],
+    "NotableFigures": [
+      "Epicurus",
+      "Lucretius",
+      "Metrodorus of Lampsacus",
+      "Thomas Jefferson (admirer)"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Roman Empire",
+      "Modern global revival"
+    ]
+  },
+  {
+    "Name": "Cynicism",
+    "Category": "Philosophy",
+    "Culture": "Ancient Greek",
+    "Era": "5th century BCE - 4th century CE",
+    "Description": "Radical ancient Greek philosophy rejecting social conventions, wealth, and power in favor of virtue alone and living in agreement with nature.",
+    "Sources": [
+      "Lives and Opinions of Eminent Philosophers (Diogenes Laërtius)",
+      "Fragments attributed to Diogenes of Sinope",
+      "Works of Crates and Hipparchia"
+    ],
+    "CorePrinciples": [
+      "Virtue is the only true good; conventional goods (wealth, power, honor) are worthless",
+      "Live according to nature and reason, not social convention",
+      "Anaideia: Shamelessness; rejection of social norms that are contrary to virtue",
+      "Askesis: Rigorous training and self-discipline",
+      "Cosmopolitanism: Citizen of the world, not of a city-state",
+      "Freedom from desire and attachment",
+      "Critique of power, luxury, and civilization"
+    ],
+    "NotableFigures": [
+      "Antisthenes (founder)",
+      "Diogenes of Sinope",
+      "Crates of Thebes",
+      "Hipparchia"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Roman Empire"
+    ]
+  },
+  {
+    "Name": "Skepticism (Pyrrhonian)",
+    "Category": "Philosophy",
+    "Culture": "Ancient Greek/Hellenistic",
+    "Era": "3rd century BCE - 3rd century CE; modern revival",
+    "Description": "Philosophical tradition advocating suspension of judgment on all matters of fact, leading to ataraxia (tranquility) through freedom from the anxiety of unresolvable beliefs.",
+    "Sources": [
+      "Outlines of Pyrrhonism (Sextus Empiricus)",
+      "Against the Professors (Sextus Empiricus)",
+      "Fragments of Pyrrho and Timon"
+    ],
+    "CorePrinciples": [
+      "Epoché: Suspension of judgment about all claims",
+      "No proposition can be proven with certainty",
+      "For every argument, an equal and opposite argument exists (isostheneia)",
+      "Appearances are all we have; the nature of things is hidden",
+      "Suspension of judgment leads to ataraxia (peace of mind)",
+      "Conformity with custom and appearances allows practical life",
+      "Radical questioning of all certainty"
+    ],
+    "NotableFigures": [
+      "Pyrrho of Elis (founder)",
+      "Timon of Phlius",
+      "Aenesidemus",
+      "Sextus Empiricus",
+      "David Hume (modern heir)"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Alexandria"
+    ]
+  },
+  {
+    "Name": "Scholasticism",
+    "Category": "Philosophy",
+    "Culture": "Medieval European/Christian",
+    "Era": "9th-17th century CE",
+    "Description": "Medieval philosophical and theological method combining Aristotelian logic with Christian doctrine, attempting to reconcile faith and reason through systematic argumentation.",
+    "Sources": [
+      "Summa Theologica (Thomas Aquinas)",
+      "Sic et Non (Peter Abelard)",
+      "Sentences (Peter Lombard)",
+      "Works of Duns Scotus and William of Ockham"
+    ],
+    "CorePrinciples": [
+      "Faith and reason are complementary, not contradictory",
+      "Aristotelian logic as tool for theological inquiry",
+      "Natural theology: reason can demonstrate some truths about God",
+      "Universal concepts are real (realism) or merely names (nominalism)",
+      "Hierarchical reality: God, angels, humans, nature",
+      "Teleological universe: everything has a divinely appointed purpose",
+      "Synthesis of Greek philosophy with Christian revelation"
+    ],
+    "NotableFigures": [
+      "Thomas Aquinas",
+      "Anselm of Canterbury",
+      "Peter Abelard",
+      "Duns Scotus",
+      "William of Ockham"
+    ],
+    "Regions": [
+      "Medieval Europe",
+      "Universities of Paris, Oxford, Bologna"
+    ]
+  },
+  {
+    "Name": "Social Contract Theory",
+    "Category": "Philosophy",
+    "Culture": "Western European",
+    "Era": "17th-18th century - Present",
+    "Description": "Political philosophy proposing that legitimate political authority arises from an agreement among individuals to form a society and submit to governance in exchange for protection of their rights.",
+    "Sources": [
+      "Leviathan (Thomas Hobbes)",
+      "Two Treatises of Government (John Locke)",
+      "The Social Contract (Jean-Jacques Rousseau)",
+      "A Theory of Justice (John Rawls)"
+    ],
+    "CorePrinciples": [
+      "Natural state of humans before society (state of nature)",
+      "Social contract as the foundation of legitimate authority",
+      "Consent of the governed as the basis of political obligation",
+      "Rights precede and constrain government power",
+      "Veil of ignorance (Rawls): justice principles chosen without knowing one's position",
+      "Original position: fair principles arise when self-interest is removed",
+      "Government accountability to the people it governs"
+    ],
+    "NotableFigures": [
+      "Thomas Hobbes",
+      "John Locke",
+      "Jean-Jacques Rousseau",
+      "Immanuel Kant",
+      "John Rawls"
+    ],
+    "Regions": [
+      "England",
+      "France",
+      "Global influence on constitutional government"
+    ]
+  },
+  {
+    "Name": "Postmodernism",
+    "Category": "Philosophy",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Philosophical and cultural movement skeptical of grand narratives, objective truth, and foundational claims, emphasizing language, power, and the constructed nature of reality.",
+    "Sources": [
+      "The Postmodern Condition (Jean-François Lyotard)",
+      "Discipline and Punish (Michel Foucault)",
+      "Of Grammatology (Jacques Derrida)",
+      "Simulacra and Simulation (Jean Baudrillard)"
+    ],
+    "CorePrinciples": [
+      "Incredulity toward metanarratives: no single story explains everything",
+      "Truth is constructed, not discovered; context-dependent",
+      "Deconstruction: texts contain multiple conflicting meanings",
+      "Power/knowledge: truth claims serve power structures",
+      "No fixed meaning in texts; reader creates meaning",
+      "Identity is fluid and culturally constructed",
+      "Simulation and hyperreality: copies replace originals",
+      "Critique of Enlightenment rationalism and progress"
+    ],
+    "NotableFigures": [
+      "Jean-François Lyotard",
+      "Michel Foucault",
+      "Jacques Derrida",
+      "Jean Baudrillard",
+      "Judith Butler"
+    ],
+    "Regions": [
+      "France",
+      "United States",
+      "Global academic influence"
+    ]
+  },
+  {
+    "Name": "Analytic Philosophy",
+    "Category": "Philosophy",
+    "Culture": "Anglo-American",
+    "Era": "Early 20th century - Present",
+    "Description": "Philosophical tradition emphasizing logical analysis, clarity of language, and rigorous argumentation as the primary tools for resolving philosophical problems.",
+    "Sources": [
+      "Principia Mathematica (Russell and Whitehead)",
+      "Tractatus Logico-Philosophicus (Wittgenstein)",
+      "Philosophical Investigations (Wittgenstein)",
+      "Word and Object (W.V.O. Quine)"
+    ],
+    "CorePrinciples": [
+      "Clarity and precision in language as philosophical method",
+      "Logical analysis of propositions and arguments",
+      "Philosophy continuous with science, not opposed to it",
+      "Metaphysical claims must be verifiable or logically necessary (early positivism)",
+      "Ordinary language philosophy: problems dissolve under analysis",
+      "Reductionism: complex phenomena explained by simpler components",
+      "Formal logic as core tool for philosophy"
+    ],
+    "NotableFigures": [
+      "Bertrand Russell",
+      "G.E. Moore",
+      "Ludwig Wittgenstein",
+      "W.V.O. Quine",
+      "Saul Kripke"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Australia"
+    ]
+  },
+  {
+    "Name": "Marxist Philosophy (Dialectical Materialism)",
+    "Category": "Philosophy",
+    "Culture": "German/Global",
+    "Era": "19th century - Present",
+    "Description": "Philosophical framework combining Hegelian dialectics with materialism, positing that history is driven by class struggle and material conditions, not ideas.",
+    "Sources": [
+      "Economic and Philosophic Manuscripts of 1844 (Marx)",
+      "Capital (Karl Marx)",
+      "The German Ideology (Marx and Engels)",
+      "Anti-Dühring (Engels)"
+    ],
+    "CorePrinciples": [
+      "Material conditions determine consciousness ('being determines consciousness')",
+      "Dialectical process: thesis-antithesis-synthesis drives change",
+      "Class struggle as the engine of historical change",
+      "Alienation: workers estranged from labor, products, species-being",
+      "Base and superstructure: economic base shapes cultural/political institutions",
+      "Ideology serves ruling class interests",
+      "Communism as the resolution of historical contradictions",
+      "Praxis: unity of theory and practice"
+    ],
+    "NotableFigures": [
+      "Karl Marx",
+      "Friedrich Engels",
+      "Georg Wilhelm Friedrich Hegel (precursor)",
+      "Antonio Gramsci",
+      "Louis Althusser"
+    ],
+    "Regions": [
+      "Germany",
+      "Global influence (Soviet Union, China, Latin America, academia)"
+    ]
+  },
+  {
+    "Name": "Feminist Philosophy",
+    "Category": "Philosophy",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Philosophical tradition examining gender, power, and oppression, arguing that philosophical frameworks have historically excluded and marginalized women and other groups.",
+    "Sources": [
+      "A Vindication of the Rights of Woman (Mary Wollstonecraft)",
+      "The Second Sex (Simone de Beauvoir)",
+      "The Feminine Mystique (Betty Friedan)",
+      "Gender Trouble (Judith Butler)"
+    ],
+    "CorePrinciples": [
+      "Patriarchy as a systemic structure of power, not natural order",
+      "Gender is socially constructed, not biologically determined",
+      "Standpoint epistemology: perspective shapes knowledge",
+      "Intersectionality: multiple systems of oppression interact",
+      "Care ethics: relationships and context in moral reasoning",
+      "Feminist critique of objectivity as disguised male perspective",
+      "Liberation requires structural transformation, not just individual change"
+    ],
+    "NotableFigures": [
+      "Mary Wollstonecraft",
+      "Simone de Beauvoir",
+      "Betty Friedan",
+      "bell hooks",
+      "Judith Butler",
+      "Kimberlé Crenshaw"
+    ],
+    "Regions": [
+      "France",
+      "United States",
+      "United Kingdom",
+      "Global women's movements"
+    ]
+  },
+  {
+    "Name": "Nietzschean Philosophy",
+    "Category": "Philosophy",
+    "Culture": "German",
+    "Era": "Late 19th century - Present",
+    "Description": "Philosophy of Friedrich Nietzsche critiquing conventional morality, championing life-affirmation, the will to power, and the creation of new values beyond traditional good and evil.",
+    "Sources": [
+      "Thus Spoke Zarathustra (Friedrich Nietzsche)",
+      "Beyond Good and Evil (Friedrich Nietzsche)",
+      "On the Genealogy of Morality (Friedrich Nietzsche)",
+      "The Will to Power (posthumous compilation)"
+    ],
+    "CorePrinciples": [
+      "Death of God: traditional religious and moral frameworks have collapsed",
+      "Will to Power: fundamental drive of all life to expand and overcome",
+      "Übermensch: the ideal of self-overcoming and value creation",
+      "Eternal Recurrence: live as if every moment repeats infinitely",
+      "Slave morality vs. master morality: resentment vs. self-affirmation",
+      "Perspectivism: no objective facts, only interpretations",
+      "Amor fati: love of fate, embracing all of life",
+      "Critique of nihilism while recognizing its danger"
+    ],
+    "NotableFigures": [
+      "Friedrich Nietzsche",
+      "Martin Heidegger (interpreter)",
+      "Gilles Deleuze (interpreter)"
+    ],
+    "Regions": [
+      "Germany",
+      "Global philosophical influence"
+    ]
+  },
+  {
+    "Name": "Process Philosophy",
+    "Category": "Philosophy",
+    "Culture": "Western",
+    "Era": "Early 20th century - Present",
+    "Description": "Philosophical tradition holding that reality is fundamentally dynamic, relational, and processual rather than static and substance-based.",
+    "Sources": [
+      "Process and Reality (Alfred North Whitehead)",
+      "Adventures of Ideas (Alfred North Whitehead)",
+      "The Philosophy of Loyalty (Josiah Royce)"
+    ],
+    "CorePrinciples": [
+      "Reality is constituted by events and processes, not static substances",
+      "All actualities are 'occasions of experience'",
+      "God is not omnipotent but persuasive, luring the world toward beauty",
+      "Panpsychism: experience is a fundamental feature of all reality",
+      "Creativity as the ultimate metaphysical category",
+      "Interdependence and relationality of all things",
+      "Becoming is more fundamental than being"
+    ],
+    "NotableFigures": [
+      "Alfred North Whitehead",
+      "Charles Hartshorne",
+      "John B. Cobb Jr."
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States"
+    ]
+  },
+  {
+    "Name": "Philosophy of Mind (Functionalism/Physicalism)",
+    "Category": "Philosophy",
+    "Culture": "Western/Global",
+    "Era": "20th century - Present",
+    "Description": "Philosophical inquiry into the nature of consciousness, mental states, and the relationship between mind and body, with major positions including functionalism, physicalism, and dualism.",
+    "Sources": [
+      "The Concept of Mind (Gilbert Ryle)",
+      "Consciousness Explained (Daniel Dennett)",
+      "The Conscious Mind (David Chalmers)",
+      "Naming and Necessity (Saul Kripke)"
+    ],
+    "CorePrinciples": [
+      "Mind-body problem: how does consciousness relate to physical brain?",
+      "Physicalism: mental states are identical to brain states",
+      "Functionalism: mental states defined by causal roles, not substance",
+      "Qualia and the 'hard problem': explaining subjective experience",
+      "Eliminative materialism: folk psychology is a failed theory",
+      "Dualism: mind and body are distinct substances (minority view)",
+      "Emergentism: consciousness emerges from physical complexity"
+    ],
+    "NotableFigures": [
+      "René Descartes (dualism)",
+      "Daniel Dennett",
+      "David Chalmers",
+      "Patricia Churchland",
+      "John Searle"
+    ],
+    "Regions": [
+      "United States",
+      "United Kingdom",
+      "Australia"
+    ]
+  },
+  {
+    "Name": "Environmental Ethics",
+    "Category": "Philosophy",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Branch of ethics examining the moral relationship between humans and the natural environment, including questions of animal rights, biodiversity, and obligations to future generations.",
+    "Sources": [
+      "A Sand County Almanac (Aldo Leopold)",
+      "Animal Liberation (Peter Singer)",
+      "The Case for Animal Rights (Tom Regan)",
+      "The Morality of Freedom (Joseph Raz)"
+    ],
+    "CorePrinciples": [
+      "Intrinsic value of nature beyond utility to humans",
+      "Moral considerability extends to animals, species, ecosystems",
+      "Land ethic: Humans are members of the biotic community, not masters",
+      "Obligations to future generations",
+      "Animal rights: sentient beings have rights not to be harmed",
+      "Anthropocentrism vs. ecocentrism as competing frameworks",
+      "Sustainability and intergenerational justice"
+    ],
+    "NotableFigures": [
+      "Aldo Leopold",
+      "Peter Singer",
+      "Tom Regan",
+      "Holmes Rolston III",
+      "Paul Taylor"
+    ],
+    "Regions": [
+      "United States",
+      "Global environmental movement"
+    ]
   }
 ]

@@ -342,6 +342,7 @@ public class AdjudicationEngine
                 .Select(p => $"- {p.Text}");
 
             var prompt = $$$"""
+            Always respond in English.
             You are a senior analyst writing a detailed adjudication report.
 
             ARGUMENT: "{{{argument.Title}}}"

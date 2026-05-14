@@ -132,6 +132,7 @@ public class ComparativeAnalysisService
         var confB = argB.AdjudicationSummary?.OverallConfidence;
 
         var prompt = $$$"""
+        Always respond in English.
         You are a senior epistemologist conducting a comparative analysis of two opposing arguments.
 
         ══════════════════════════════════════════

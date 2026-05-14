@@ -51,7 +51,7 @@ public class ResponseAnalysisEngine
     {
         var kernel = _kernelService.GetKernel();
 
-        var prompt = $"What emotions are present in this text? '{responseText}' List them.";
+        var prompt = $"Always respond in English. What emotions are present in this text? '{responseText}' List them.";
 
         _logger.LogInformation("Analyzing emotional content");
         
@@ -69,6 +69,7 @@ public class ResponseAnalysisEngine
         var kernel = _kernelService.GetKernel();
 
         var prompt = $$$"""
+        Always respond in English.
         Analyze this response through the lens of Moral Foundations Theory (Haidt).
         
         Question: {{{questionText}}}
@@ -99,6 +100,7 @@ public class ResponseAnalysisEngine
     {
         // SIMPLIFIED for smaller models
         return $$$"""
+        Always respond in English.
         Question: {{{interaction.Content.Question}}}
         Response: {{{interaction.Response.RawText}}}
         

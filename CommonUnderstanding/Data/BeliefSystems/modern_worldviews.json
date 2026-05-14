@@ -185,5 +185,239 @@
       "United States",
       "Global integral community"
     ]
+  },
+  {
+    "Name": "Postmodern Relativism",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Worldview holding that truth, morality, and meaning are culturally constructed, context-dependent, and not objectively determined; all perspectives deserve equal consideration.",
+    "Sources": [
+      "The Postmodern Condition (Jean-François Lyotard)",
+      "Relativism (Maria Baghramian)",
+      "Truth and Truthfulness (Bernard Williams)",
+      "The Social Construction of Reality (Berger and Luckmann)"
+    ],
+    "CorePrinciples": [
+      "No absolute truths; all knowledge is perspective-dependent",
+      "Culture shapes what counts as real, true, or good",
+      "All grand narratives are suspect and should be questioned",
+      "Tolerance of diversity: no culture's values are universally valid",
+      "Power structures define what gets called 'truth'",
+      "Scientific knowledge is one narrative among many",
+      "Identity and meaning are constructed, not discovered"
+    ],
+    "NotableFigures": [
+      "Jean-François Lyotard",
+      "Richard Rorty",
+      "Paul Feyerabend",
+      "Stanley Fish"
+    ],
+    "Regions": [
+      "France",
+      "United States",
+      "Global academic influence"
+    ]
+  },
+  {
+    "Name": "New Age Spirituality",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "1970s - Present",
+    "Description": "Eclectic spiritual movement drawing from diverse traditions, emphasizing personal transformation, holistic health, spiritual self-development, and the dawning of a new era of human consciousness.",
+    "Sources": [
+      "A Course in Miracles (Helen Schucman)",
+      "The Aquarian Conspiracy (Marilyn Ferguson)",
+      "The Power of Now (Eckhart Tolle)",
+      "The Secret (Rhonda Byrne)"
+    ],
+    "CorePrinciples": [
+      "All is one: the universe is fundamentally unified consciousness",
+      "Personal spiritual experience is primary over institutional religion",
+      "Spiritual evolution: humanity is evolving to higher consciousness",
+      "Law of Attraction: thoughts shape reality",
+      "Holistic health: body, mind, spirit are inseparable",
+      "Syncretic spirituality: drawing from multiple traditions",
+      "Intuition and direct experience over doctrine or dogma",
+      "Earth as living being (Gaia consciousness)"
+    ],
+    "NotableFigures": [
+      "Eckhart Tolle",
+      "Deepak Chopra",
+      "Wayne Dyer",
+      "Marilyn Ferguson",
+      "Rhonda Byrne"
+    ],
+    "Regions": [
+      "United States",
+      "United Kingdom",
+      "Global online communities"
+    ]
+  },
+  {
+    "Name": "Rationalism and Skeptical Inquiry",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Enlightenment - Present",
+    "Description": "Worldview applying scientific reasoning, critical thinking, and evidence-based inquiry to all claims, with organized skepticism actively examining paranormal, pseudoscientific, and supernatural claims.",
+    "Sources": [
+      "The Demon-Haunted World (Carl Sagan)",
+      "The Skeptic's Dictionary (Robert Carroll)",
+      "Flim-Flam! (James Randi)",
+      "How to Think Straight About Psychology (Keith Stanovich)"
+    ],
+    "CorePrinciples": [
+      "Extraordinary claims require extraordinary evidence",
+      "Scientific method as the best tool for determining truth",
+      "Cognitive biases systematically distort thinking; must be actively countered",
+      "Peer review and replication as foundations of reliable knowledge",
+      "Naturalistic explanations preferred over supernatural ones",
+      "Pseudoscience and paranormal claims don't meet evidence standards",
+      "Open-minded but skeptical examination of all claims"
+    ],
+    "NotableFigures": [
+      "Carl Sagan",
+      "James Randi",
+      "Michael Shermer",
+      "Daniel Dennett",
+      "Richard Feynman"
+    ],
+    "Regions": [
+      "United States",
+      "Global science community"
+    ]
+  },
+  {
+    "Name": "Cosmopolitanism",
+    "Category": "Worldview",
+    "Culture": "Global",
+    "Era": "Ancient (Stoic origin) - Present",
+    "Description": "Worldview holding that all human beings belong to a single moral community, and that global justice, rights, and responsibilities transcend national borders.",
+    "Sources": [
+      "Perpetual Peace (Immanuel Kant)",
+      "The Law of Peoples (John Rawls)",
+      "Cosmopolitanism (Kwame Anthony Appiah)",
+      "Sovereignty as Responsibility (Francis Deng)"
+    ],
+    "CorePrinciples": [
+      "All humans have equal moral worth regardless of nationality",
+      "Global justice: obligations extend to all people, not just co-citizens",
+      "Cultural diversity is valuable but not morally decisive",
+      "International institutions and laws necessary for global order",
+      "Rights are universal, not merely cultural conventions",
+      "Shared global challenges (climate, pandemics) require global solutions",
+      "Identity is layered and multiple, not fixed to one community"
+    ],
+    "NotableFigures": [
+      "Diogenes of Sinope (coined 'citizen of the world')",
+      "Immanuel Kant",
+      "Martha Nussbaum",
+      "Kwame Anthony Appiah",
+      "Peter Singer"
+    ],
+    "Regions": [
+      "Ancient Stoics",
+      "Enlightenment Europe",
+      "Global human rights community"
+    ]
+  },
+  {
+    "Name": "Minimalism and Voluntary Simplicity",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Lifestyle and philosophical movement rejecting excessive consumption and materialism in favor of intentional simplicity, focusing on what genuinely contributes to wellbeing.",
+    "Sources": [
+      "Walden (Henry David Thoreau — precursor)",
+      "Your Money or Your Life (Vicki Robin)",
+      "The Minimalists (Joshua Fields Millburn and Ryan Nicodemus)",
+      "Essentialism (Greg McKeown)"
+    ],
+    "CorePrinciples": [
+      "Owning fewer possessions creates greater freedom and happiness",
+      "Consumption does not equal meaning or identity",
+      "Intentional living: deliberately choosing what to keep",
+      "Financial independence through reduced spending",
+      "Environmental benefit: consuming less reduces ecological impact",
+      "Time and attention are more valuable than things",
+      "Quality over quantity in relationships, possessions, and commitments"
+    ],
+    "NotableFigures": [
+      "Henry David Thoreau",
+      "Vicki Robin",
+      "Joshua Fields Millburn",
+      "Ryan Nicodemus",
+      "Marie Kondo (adjacent)"
+    ],
+    "Regions": [
+      "United States",
+      "Japan (influenced by Zen aesthetics)",
+      "Global online communities"
+    ]
+  },
+  {
+    "Name": "Accelerationism",
+    "Category": "Worldview",
+    "Culture": "Western/Global",
+    "Era": "Early 21st century - Present",
+    "Description": "Diverse political-philosophical tendency arguing that the contradictions of capitalism or technology should be accelerated rather than resisted, to force rapid transformation of society.",
+    "Sources": [
+      "#Accelerate: The Accelerationist Reader (various)",
+      "Inventing the Future (Srnicek and Williams — Left Accelerationism)",
+      "Unconditional Accelerationism (Nick Land — Right variant)",
+      "Xenofeminism (Laboria Cuboniks)"
+    ],
+    "CorePrinciples": [
+      "Technology and capitalism's internal dynamics should be accelerated, not slowed",
+      "Left Accelerationism (L/ACC): harness technology for post-scarcity and liberation",
+      "Universal basic income, automation, and reduced work as goals",
+      "Rejection of folk politics and localism as too slow for global problems",
+      "Right Accelerationism: civilization's collapse will produce stronger order",
+      "E/ACC (Effective Accelerationism): AI and technological growth are net positive unconditionally",
+      "Futures must be actively constructed, not just reacted to"
+    ],
+    "NotableFigures": [
+      "Nick Land (right variant)",
+      "Nick Srnicek and Alex Williams (left variant)",
+      "Mark Fisher (adjacent left politics)",
+      "Beff Jezos / Guillaume Verdon (e/acc)"
+    ],
+    "Regions": [
+      "United Kingdom (origin)",
+      "Silicon Valley (e/acc)",
+      "Global online communities"
+    ]
+  },
+  {
+    "Name": "Perennial Philosophy",
+    "Category": "Worldview",
+    "Culture": "Global/Syncretic",
+    "Era": "16th century (named) - Present; ancient roots",
+    "Description": "Philosophical and spiritual perspective arguing that all major world religions and wisdom traditions share a common core of universal truths about the nature of consciousness, reality, and the divine.",
+    "Sources": [
+      "The Perennial Philosophy (Aldous Huxley)",
+      "Philosophia Perennis (Agostino Steuco)",
+      "The Transcendent Unity of Religions (Frithjof Schuon)",
+      "Works of Rene Guénon"
+    ],
+    "CorePrinciples": [
+      "All religions share a common metaphysical core beneath their surface differences",
+      "Ultimate reality is a single divine ground from which all arises",
+      "Human beings have both outer (ego) and inner (divine spark) natures",
+      "The purpose of life is to realize one's ultimate identity with the divine ground",
+      "Mystical experience across traditions points to the same reality",
+      "Different religions are valid paths to the same summit",
+      "The inner, esoteric dimension of religion contains the universal truth"
+    ],
+    "NotableFigures": [
+      "Aldous Huxley",
+      "Frithjof Schuon",
+      "René Guénon",
+      "Ananda Coomaraswamy",
+      "Huston Smith"
+    ],
+    "Regions": [
+      "Global — drawing from all traditions"
+    ]
   }
 ]

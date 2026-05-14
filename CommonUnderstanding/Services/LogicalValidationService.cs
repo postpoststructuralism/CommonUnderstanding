@@ -123,6 +123,7 @@ public class LogicalValidationService
         var fallacyList = string.Join(", ", CommonFallacies);
 
         var prompt = $$$"""
+        Always respond in English.
         You are an expert in informal logic and critical thinking.
 
         Central claim: {{{claimText}}}

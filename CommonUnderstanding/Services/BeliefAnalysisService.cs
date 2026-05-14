@@ -28,6 +28,7 @@ public class BeliefAnalysisService
         var kernel = _kernelService.GetKernel();
 
         var prompt = $$$"""
+        Always respond in English.
         You are an expert at analyzing belief systems, philosophies, and worldviews.
         
         Analyze the following belief system and extract:
@@ -77,6 +78,7 @@ public class BeliefAnalysisService
         var kernel = _kernelService.GetKernel();
 
         var prompt = $$$"""
+        Always respond in English.
         You are an expert mediator and analyst of belief systems. Your goal is to find common ground
         and identify opportunities for mutual understanding and collaboration.
         
@@ -146,6 +148,7 @@ public class BeliefAnalysisService
         var kernel = _kernelService.GetKernel();
 
         var prompt = $$$"""
+        Always respond in English.
         Based on this comparison of {{{comparison.BeliefSystem1Name}}} and {{{comparison.BeliefSystem2Name}}}:
         
         {{{comparison.SynthesisSummary}}}

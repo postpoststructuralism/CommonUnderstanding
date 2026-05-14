@@ -404,6 +404,7 @@ public class BlindspotDetector
         {
             var kernel = _kernelService.GetKernel();
             var prompt = $"""
+            Always respond in English.
             You are an expert logician examining proposition pairs for logical contradiction.
             For each pair, determine whether the two propositions logically CONTRADICT each other
             (i.e., both cannot be true at the same time in the same context).

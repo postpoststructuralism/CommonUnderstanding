@@ -353,6 +353,7 @@ public class ConvergenceMapService
         var topDivergences = divergencePoints.Take(3).ToList();
 
         var prompt = $"""
+        Always respond in English.
         You are a dialogue facilitator helping two people build shared understanding.
 
         USER 1: {user1.Name}
@@ -459,6 +460,7 @@ public class ConvergenceMapService
         CancellationToken cancellationToken)
     {
         var prompt = $"""
+        Always respond in English.
         You are a neutral analyst describing the convergence landscape between two people.
 
         {user1.Name} and {user2.Name} have an overall convergence score of {map.OverallConvergenceScore:F1}/100.

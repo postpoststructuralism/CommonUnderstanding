@@ -383,6 +383,7 @@ public class HarmonyDetector
         {
             var kernel = _kernelService.GetKernel();
             var prompt = $"""
+            Always respond in English.
             You are an analyst examining what core values underpin a community's reasoning.
 
             Below are excerpts from stakeholder reasoning and decision analyses.
@@ -489,6 +490,7 @@ public class HarmonyDetector
         {
             var kernel = _kernelService.GetKernel();
             var prompt = $"""
+            Always respond in English.
             You are an analyst looking for reinforcing relationships between arguments from different domains.
 
             Below is a list of arguments with their conclusions.

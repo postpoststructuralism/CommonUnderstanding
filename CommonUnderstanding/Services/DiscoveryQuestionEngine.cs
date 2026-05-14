@@ -60,6 +60,7 @@ public class DiscoveryQuestionEngine
         var kernel = _kernelService.GetKernel();
 
         var prompt = $$$"""
+        Always respond in English.
         You are a moral psychologist designing dilemmas to understand someone's ethical framework.
         
         Create a compelling moral dilemma that will reveal beliefs about: {{{string.Join(", ", targetDimensions)}}}

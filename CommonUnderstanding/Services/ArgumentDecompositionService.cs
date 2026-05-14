@@ -149,6 +149,7 @@ public class ArgumentDecompositionService
     private async Task<string> ExtractClaimAsync(Kernel kernel, string argumentText, CancellationToken ct)
     {
         var prompt = $$$"""
+        Always respond in English.
         You are an expert in argument analysis and formal logic.
 
         Read the following argument and identify the SINGLE central claim it is making.
@@ -176,6 +177,7 @@ public class ArgumentDecompositionService
         Kernel kernel, string argumentText, string claimText, CancellationToken ct)
     {
         var premisesPrompt = $$$"""
+        Always respond in English.
         You are an expert in argument analysis and epistemology.
 
         CENTRAL CLAIM: {{{claimText}}}
@@ -195,6 +197,7 @@ public class ArgumentDecompositionService
         """;
 
         var structurePrompt = $$$"""
+        Always respond in English.
         You are an expert in formal logic and argument structure.
 
         CENTRAL CLAIM: {{{claimText}}}

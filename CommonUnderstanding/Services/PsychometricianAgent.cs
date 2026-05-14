@@ -37,6 +37,7 @@ public class PsychometricianAgent
         var psychometricContext = BuildPsychometricContext(profile);
         
         var prompt = $$$"""
+        Always respond in English.
         You are an expert psychometrician specializing in adaptive belief assessment. You have deep knowledge of:
         
         **Core Psychometric Principles:**
