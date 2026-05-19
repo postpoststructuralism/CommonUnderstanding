@@ -1,110 +1,174 @@
 ﻿@{
-    ViewData["Title"] = "Commmon Understanding";
+    ViewData["Title"] = "A Common Understanding";
 }
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="cu-breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">
-            <i class="fas fa-home"></i> Home
-        </li>
-    </ol>
-</nav>
+<section class="cu-home-hero mb-4">
+    <div class="row g-4 align-items-stretch">
+        <div class="col-xl-7">
+            <span class="cu-home-kicker">
+                <i class="bi bi-stars"></i>
+                Belief Intelligence Platform
+            </span>
+            <h1>Find common ground without flattening what makes people different.</h1>
+            <p>
+                Map values, compare worldviews, and surface where alignment is real. A Common Understanding
+                turns complex belief data into clearer, more actionable insight for individuals, facilitators,
+                and teams.
+            </p>
 
-<!-- Page Heading -->
-<h1 class="cu-page-heading">
-    <i class="bi bi-peace"></i> Common Understanding
-</h1>
+            <div class="cu-home-meta">
+                <span><i class="bi bi-shield-check"></i> Private by design</span>
+                <span><i class="bi bi-diagram-3"></i> Structured comparison</span>
+                <span><i class="bi bi-lightning-charge"></i> AI-guided discovery</span>
+            </div>
 
-<div class="row mb-4">
-    <div class="col-lg-8">
-        <!-- Welcome Section -->
-        <div class="cu-card mb-4">
-         @*    <div class="cu-card-header">
-                <i class="fas fa-info-circle"></i> Welcome to A Common Understanding
-            </div> *@
-            <div class="cu-card-body">
-                <p class="lead mb-3">
-                    An AI-powered journey to discover your belief system and find common ground with others
-                </p>
+            <div class="cu-home-actions">
+                <a asp-controller="Discovery" asp-action="Start" class="cu-btn-primary">
+                    <i class="fas fa-play-circle"></i> Start Discovery
+                </a>
+                <a asp-controller="Explore" asp-action="Index" class="cu-btn-secondary">
+                    <i class="fas fa-book"></i> Explore Knowledge Base
+                </a>
+            </div>
+
+            <div class="cu-home-stats">
+                <div class="cu-stat-card">
+                    <strong>Adaptive</strong>
+                    <span>Question paths adjust in real time to the nuance of each response.</span>
+                </div>
+                <div class="cu-stat-card">
+                    <strong>Comparative</strong>
+                    <span>See where perspectives converge, conflict, or still need exploration.</span>
+                </div>
+                <div class="cu-stat-card">
+                    <strong>Actionable</strong>
+                    <span>Turn worldview analysis into better facilitation and stronger decisions.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="cu-home-panel h-100">
+                <div class="cu-home-panel-label">Platform Snapshot</div>
+                <h2>Built for insight, not noise.</h2>
                 <p>
-                    This platform helps you explore personal beliefs, canonical worldviews, and connections 
-                    between different systems of understanding. Our knowledge base includes creation myths, 
-                    core principles, and historical context from religions, philosophies, and political systems worldwide.
+                    Use one system to understand individual belief profiles, explore canonical traditions,
+                    and evaluate where meaningful consensus is actually possible.
                 </p>
-            </div>
-        </div>
 
-        <!-- Feature Cards -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="cu-card h-100">
-                    <div class="text-center mb-3">
-                        <i class="fas fa-compass fa-3x" style="color: var(--cu-primary-blue);"></i>
+                <div class="cu-home-stack">
+                    <div class="cu-home-stack-item">
+                        <span class="cu-home-stack-icon"><i class="bi bi-person-vcard"></i></span>
+                        <div>
+                            <strong>Profile discovery</strong>
+                            <p class="mb-0 text-muted small">Generate a nuanced map of values, priorities, and worldview structure.</p>
+                        </div>
                     </div>
-                    <h3 class="cu-section-heading text-center">Discover Yourself</h3>
-                    <p class="text-muted">
-                        Interactive AI conversation to map your unique values and worldview through 
-                        adaptive questioning and statistical modeling.
-                    </p>
-                    <div class="text-center mt-3">
-                        <a asp-controller="Discovery" asp-action="Start" class="cu-btn-primary">
-                            <i class="fas fa-play-circle"></i> Begin Journey
-                        </a>
+                    <div class="cu-home-stack-item">
+                        <span class="cu-home-stack-icon"><i class="bi bi-globe-americas"></i></span>
+                        <div>
+                            <strong>Canonical comparison</strong>
+                            <p class="mb-0 text-muted small">Benchmark against established systems from religion, philosophy, and politics.</p>
+                        </div>
+                    </div>
+                    <div class="cu-home-stack-item">
+                        <span class="cu-home-stack-icon"><i class="bi bi-people"></i></span>
+                        <div>
+                            <strong>Shared-ground analysis</strong>
+                            <p class="mb-0 text-muted small">Reveal overlaps between users, groups, and live collaborative sessions.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <div class="cu-card h-100">
-                    <div class="text-center mb-3">
-                        <i class="fas fa-globe fa-3x" style="color: var(--cu-secondary-blue);"></i>
-                    </div>
-                    <h3 class="cu-section-heading text-center">Explore Beliefs</h3>
-                    <p class="text-muted">
-                        Browse canonical belief systems from across cultures and history, understanding 
-                        their core principles and teachings.
-                    </p>
-                    <div class="text-center mt-3">
-                        <a asp-controller="Explore" asp-action="Index" class="cu-btn-secondary">
-                            <i class="fas fa-book"></i> Explore Canon
-                        </a>
-                    </div>
+
+                <div class="cu-home-proof">
+                    <span class="cu-badge"><i class="bi bi-lock"></i> Private Sessions</span>
+                    <span class="cu-badge"><i class="bi bi-intersect"></i> Semantic Comparison</span>
+                    <span class="cu-badge"><i class="bi bi-broadcast"></i> Live Collaboration</span>
                 </div>
             </div>
         </div>
+    </div>
+</section>
 
-        <!-- How It Works -->
-        <div class="cu-card">
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="cu-card h-100">
+            <div class="cu-home-feature-icon"><i class="bi bi-compass"></i></div>
+            <h2 class="cu-section-heading">Discover belief profiles</h2>
+            <p class="text-muted mb-0">
+                Guide users through adaptive conversations that surface priorities, beliefs, and hidden tradeoffs.
+            </p>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="cu-card h-100">
+            <div class="cu-home-feature-icon"><i class="bi bi-diagram-2"></i></div>
+            <h2 class="cu-section-heading">Compare systems clearly</h2>
+            <p class="text-muted mb-0">
+                Move beyond vague similarities with structured analysis across canonical and user-generated worldviews.
+            </p>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="cu-card h-100">
+            <div class="cu-home-feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <h2 class="cu-section-heading">Support better decisions</h2>
+            <p class="text-muted mb-0">
+                Turn insight into action for facilitation, research, debate prep, and consensus-building work.
+            </p>
+        </div>
+    </div>
+</div>
+
+<section class="cu-home-insight-bar mb-4">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-8">
+            <div class="cu-home-panel-label">How Teams Use It</div>
+            <h2 class="cu-section-heading mb-2">Move from assumptions to grounded comparisons.</h2>
+            <p class="mb-0 text-muted">
+                Instead of debating from abstractions, teams can inspect real patterns of agreement, tension,
+                and unexplored territory before making high-stakes decisions.
+            </p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a asp-controller="Explore" asp-action="Compare" class="cu-btn-primary">
+                <i class="fas fa-arrows-left-right"></i> Compare Systems
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="cu-card h-100">
             <div class="cu-card-header">
-                <i class="fas fa-diagram-project"></i> How It Works
+                <i class="bi bi-diagram-3"></i> How It Works
             </div>
-            <div class="cu-card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="text-center">
-                            <div class="cu-badge mb-2">Step 1</div>
-                        </div>
-                        <strong>Interactive Discovery</strong>
-                        <p class="text-muted small">
-                            AI asks adaptive questions tailored to your responses using Semantic Kernel
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="cu-home-step">
+                        <span class="cu-home-step-number">1</span>
+                        <strong>Adaptive discovery</strong>
+                        <p class="text-muted small mb-0">
+                            AI-led questioning follows the structure of each answer rather than forcing a static survey.
                         </p>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="text-center">
-                            <div class="cu-badge mb-2">Step 2</div>
-                        </div>
-                        <strong>Statistical Modeling</strong>
-                        <p class="text-muted small">
-                            Bayesian inference builds a probabilistic model of your beliefs
+                </div>
+                <div class="col-md-4">
+                    <div class="cu-home-step">
+                        <span class="cu-home-step-number">2</span>
+                        <strong>Probabilistic modeling</strong>
+                        <p class="text-muted small mb-0">
+                            Statistical inference builds a more complete picture of underlying beliefs and tradeoffs.
                         </p>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="text-center">
-                            <div class="cu-badge mb-2">Step 3</div>
-                        </div>
-                        <strong>Find Common Ground</strong>
-                        <p class="text-muted small">
-                            Compare your profile with canonical systems and other users
+                </div>
+                <div class="col-md-4">
+                    <div class="cu-home-step">
+                        <span class="cu-home-step-number">3</span>
+                        <strong>Common-ground analysis</strong>
+                        <p class="text-muted small mb-0">
+                            Compare people and systems to identify durable overlap, friction points, and useful next steps.
                         </p>
                     </div>
                 </div>
@@ -112,131 +176,94 @@
         </div>
     </div>
 
-    <!-- Sidebar -->
     <div class="col-lg-4">
-        <!-- Quick Links -->
-        <div class="cu-filter-panel mb-4">
-            <h3 class="cu-section-heading">
-                <i class="fas fa-bolt"></i> Quick Actions
-            </h3>
-            <div class="d-grid gap-2">
-                <a asp-controller="Discovery" asp-action="Start" class="cu-btn-primary">
-                    <i class="fas fa-compass"></i> Start Discovery
-                </a>
-                <a asp-controller="Explore" asp-action="Compare" class="cu-btn-secondary">
-                    <i class="fas fa-arrows-left-right"></i> Compare Systems
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
+                <i class="bi bi-shield-check"></i> Why Organizations Choose It
+            </div>
+            <ul class="cu-home-trust-list">
+                <li>
+                    <i class="bi bi-check2-circle"></i>
+                    <div>
+                        <strong>Private by design</strong>
+                        <p class="mb-0 text-muted small">Sensitive comparisons stay controlled and contextual.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="bi bi-check2-circle"></i>
+                    <div>
+                        <strong>Transparent knowledge base</strong>
+                        <p class="mb-0 text-muted small">Reference the traditions, principles, and systems behind each comparison.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="bi bi-check2-circle"></i>
+                    <div>
+                        <strong>Built for collaboration</strong>
+                        <p class="mb-0 text-muted small">Support shared sessions, connection graphs, and live debate workflows.</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start">
+    <div class="col-xl-7">
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
+                <i class="bi bi-activity"></i> Recent Activity
+            </div>
+            <table class="cu-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>System</th>
+                        <th>Engagement</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Philosophy</td>
+                        <td>Stoicism</td>
+                        <td>125 users</td>
+                        <td><span class="cu-badge">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td>Religion</td>
+                        <td>Buddhism</td>
+                        <td>98 users</td>
+                        <td><span class="cu-badge">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td>Political</td>
+                        <td>Liberalism</td>
+                        <td>87 users</td>
+                        <td><span class="cu-badge">Active</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="cu-card h-100">
+            <div class="cu-card-header">
+                <i class="bi bi-lightbulb"></i> Why Build on Existing Knowledge?
+            </div>
+            <p class="text-muted">
+                Humanity has already built rich systems of meaning, ethics, and governance. Instead of starting from
+                a blank page, compare personal beliefs against that accumulated knowledge and identify where it still applies.
+            </p>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <a asp-controller="Explore" asp-action="Index" class="cu-btn-primary">
+                    <i class="fas fa-arrow-right"></i> Explore Canonical Systems
                 </a>
                 <a asp-controller="BeliefSystems" asp-action="Index" class="cu-btn-secondary">
                     <i class="fas fa-list"></i> View All Systems
                 </a>
             </div>
         </div>
-
-        <!-- Key Features -->
-        <div class="cu-card">
-            <div class="cu-card-header">
-                <i class="fas fa-star"></i> Key Features
-            </div>
-            <div class="cu-card-body">
-                <ul class="list-unstyled">
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle text-success"></i>
-                        <strong>Privacy-focused</strong><br/>
-                        <small class="text-muted">Your data stays secure</small>
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle text-success"></i>
-                        <strong>Locally processed</strong><br/>
-                        <small class="text-muted">Powered by Ollama</small>
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle text-success"></i>
-                        <strong>Open source</strong><br/>
-                        <small class="text-muted">Transparent algorithms</small>
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle text-success"></i>
-                        <strong>Adaptive AI</strong><br/>
-                        <small class="text-muted">Questions tailored to you</small>
-                    </li>
-                </ul>
-            </div>
-        </div>
     </div>
 </div>
-
-<!-- Information Banner -->
-<div class="row">
-    <div class="col-12">
-        <div class="alert alert-light border-gc shadow-gc-sm">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h5 class="mb-2">
-                        <i class="fas fa-lightbulb text-warning"></i> 
-                        Why Build on Existing Knowledge?
-                    </h5>
-                    <p class="mb-0 text-muted">
-                        <strong>Don't reinvent the wheel.</strong> Humanity has spent millennia developing rich 
-                        belief systems, philosophies, and worldviews. Instead of starting from scratch, discover 
-                        how your personal beliefs align with established traditions.
-                    </p>
-                </div>
-                <div class="col-md-4 text-center">
-                    <a asp-controller="Explore" asp-action="Index" class="cu-btn-primary">
-                        <i class="fas fa-arrow-right"></i> Learn More
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Demo Table (GC Design System) -->
-<div class="row mt-4">
-    <div class="col-12">
-        <h2 class="cu-section-heading">
-            <i class="fas fa-table"></i> Recent Activity
-        </h2>
-        <table class="cu-table">
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th>System</th>
-                    <th>Engagement</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Philosophy</td>
-                    <td>Stoicism</td>
-                    <td>125 users</td>
-                    <td><span class="cu-badge">Active</span></td>
-                </tr>
-                <tr>
-                    <td>Religion</td>
-                    <td>Buddhism</td>
-                    <td>98 users</td>
-                    <td><span class="cu-badge">Active</span></td>
-                </tr>
-                <tr>
-                    <td>Political</td>
-                    <td>Liberalism</td>
-                    <td>87 users</td>
-                    <td><span class="cu-badge">Active</span></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<style>
-    /* Page-specific enhancements */
-    .alert {
-        border-radius: var(--cu-border-radius);
-    }
-    
-    .list-unstyled li {
-        padding-left: 0.5rem;
-    }
-</style>

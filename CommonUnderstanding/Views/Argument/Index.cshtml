@@ -13,31 +13,26 @@
     </ol>
 </nav>
 
-<h1 class="cu-page-heading">
-    <i class="bi bi-diagram-3"></i> Argument Analysis
-</h1>
-
-<div class="row mb-4">
-    <div class="col-lg-8">
-        <div class="cu-card mb-4">
-            <div class="cu-card-body">
-                <p class="lead mb-3">
-                    Submit an argument or proposal for objective, evidence-based decomposition and adjudication.
-                </p>
-                <p class="text-muted mb-0">
-                    The system breaks arguments into their component propositions and logical structure,
-                    then adjudicates each claim against relevant evidence.
-                </p>
-            </div>
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag">
+                <i class="bi bi-diagram-3"></i>
+                Decision Analysis
+            </span>
+            <h1 class="cu-page-heading mt-3 mb-2">Argument Analysis</h1>
+            <p class="cu-workspace-lead mb-0">
+                Submit proposals for structured decomposition, evidence-based adjudication, and side-by-side comparison.
+            </p>
         </div>
-    </div>
-    <div class="col-lg-4 d-flex align-items-start justify-content-end gap-2 flex-wrap">
-        <a asp-action="Compare" class="btn btn-outline-secondary btn-lg">
-            <i class="bi bi-arrow-left-right"></i> Compare Arguments
-        </a>
-        <a asp-action="Submit" class="btn btn-primary btn-lg">
-            <i class="bi bi-plus-circle"></i> Submit New Argument
-        </a>
+        <div class="cu-workspace-actions">
+            <a asp-action="Compare" class="cu-btn-secondary">
+                <i class="bi bi-arrow-left-right"></i> Compare Arguments
+            </a>
+            <a asp-action="Submit" class="cu-btn-primary">
+                <i class="bi bi-plus-circle"></i> Submit New Argument
+            </a>
+        </div>
     </div>
 </div>
 
@@ -50,43 +45,45 @@
 }
 
 <!-- Filter bar -->
-<form method="get" asp-action="Index" class="row g-2 mb-4 align-items-end">
-    <div class="col-md-3">
-        <label class="form-label small fw-semibold mb-1">Status</label>
-        <select name="status" class="form-select form-select-sm">
-            <option value="">All statuses</option>
-            <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
-            <option value="Complete" selected="@(ViewBag.Status == "Complete")">Complete</option>
-            <option value="Decomposing" selected="@(ViewBag.Status == "Decomposing")">Decomposing</option>
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label small fw-semibold mb-1">Recommendation</label>
-        <select name="recommendation" class="form-select form-select-sm">
-            <option value="">All recommendations</option>
-            <option value="Proceed" selected="@(ViewBag.Recommendation == "Proceed")">Proceed</option>
-            <option value="Investigate" selected="@(ViewBag.Recommendation == "Investigate")">Investigate</option>
-            <option value="Defer" selected="@(ViewBag.Recommendation == "Defer")">Defer</option>
-            <option value="Reject" selected="@(ViewBag.Recommendation == "Reject")">Reject</option>
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label small fw-semibold mb-1">Sort by</label>
-        <select name="sort" class="form-select form-select-sm">
-            <option value="" selected="@(string.IsNullOrEmpty(ViewBag.Sort as string))">Date (newest first)</option>
-            <option value="confidence" selected="@(ViewBag.Sort == "confidence")">Confidence (highest first)</option>
-        </select>
-    </div>
-    <div class="col-md-3 d-flex gap-2">
-        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
-            <i class="bi bi-funnel me-1"></i> Filter
-        </button>
-        @if (!string.IsNullOrEmpty(ViewBag.Status as string) || !string.IsNullOrEmpty(ViewBag.Recommendation as string) || !string.IsNullOrEmpty(ViewBag.Sort as string))
-        {
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
-        }
-    </div>
-</form>
+<div class="cu-filter-bar mb-4">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end mb-0">
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold mb-1">Status</label>
+            <select name="status" class="form-select form-select-sm">
+                <option value="">All statuses</option>
+                <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
+                <option value="Complete" selected="@(ViewBag.Status == "Complete")">Complete</option>
+                <option value="Decomposing" selected="@(ViewBag.Status == "Decomposing")">Decomposing</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold mb-1">Recommendation</label>
+            <select name="recommendation" class="form-select form-select-sm">
+                <option value="">All recommendations</option>
+                <option value="Proceed" selected="@(ViewBag.Recommendation == "Proceed")">Proceed</option>
+                <option value="Investigate" selected="@(ViewBag.Recommendation == "Investigate")">Investigate</option>
+                <option value="Defer" selected="@(ViewBag.Recommendation == "Defer")">Defer</option>
+                <option value="Reject" selected="@(ViewBag.Recommendation == "Reject")">Reject</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold mb-1">Sort by</label>
+            <select name="sort" class="form-select form-select-sm">
+                <option value="" selected="@(string.IsNullOrEmpty(ViewBag.Sort as string))">Date (newest first)</option>
+                <option value="confidence" selected="@(ViewBag.Sort == "confidence")">Confidence (highest first)</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+            @if (!string.IsNullOrEmpty(ViewBag.Status as string) || !string.IsNullOrEmpty(ViewBag.Recommendation as string) || !string.IsNullOrEmpty(ViewBag.Sort as string))
+            {
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+            }
+        </div>
+    </form>
+</div>
 
 @if (!Model.Any())
 {
@@ -120,7 +117,7 @@ else
             };
 
             <div class="col-lg-6 mb-4">
-                <div class="cu-card h-100">
+                <div class="cu-card cu-panel-card cu-argument-card h-100">
                     <div class="cu-card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="mb-0">@arg.Title</h5>

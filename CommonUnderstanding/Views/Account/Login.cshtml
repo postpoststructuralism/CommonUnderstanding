@@ -3,13 +3,51 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="row justify-content-center mt-5">
-    <div class="col-12 col-sm-8 col-md-5 col-lg-4">
-        <div class="cu-card">
-            <div class="cu-card-header text-center">
-                <i class="bi bi-person-lock display-6 d-block mb-2 text-primary"></i>
-                <h2 class="h4 mb-0">Sign In</h2>
-                <p class="text-muted small mb-0">A Common Understanding</p>
+<div class="cu-auth-shell row g-4 align-items-stretch">
+    <div class="col-lg-6">
+        <section class="cu-auth-brand h-100">
+            <span class="cu-home-kicker">
+                <i class="bi bi-box-arrow-in-right"></i>
+                Welcome Back
+            </span>
+            <h1>Continue the work of finding durable common ground.</h1>
+            <p>
+                Sign in to resume profile discovery, compare belief systems, and run collaborative sessions
+                from a cleaner, more focused workspace.
+            </p>
+
+            <div class="cu-auth-points">
+                <div class="cu-auth-point">
+                    <span class="cu-auth-point-icon"><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <strong>Structured comparisons</strong>
+                        <p>Track where users and systems align instead of relying on intuition alone.</p>
+                    </div>
+                </div>
+                <div class="cu-auth-point">
+                    <span class="cu-auth-point-icon"><i class="bi bi-broadcast"></i></span>
+                    <div>
+                        <strong>Live collaborative sessions</strong>
+                        <p>Bring multiple participants into one decision space and surface shared ground faster.</p>
+                    </div>
+                </div>
+                <div class="cu-auth-point">
+                    <span class="cu-auth-point-icon"><i class="bi bi-shield-check"></i></span>
+                    <div>
+                        <strong>Private by default</strong>
+                        <p>Keep sensitive worldview work inside a platform designed for controlled analysis.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-lg-6 col-xl-5 ms-xl-auto">
+        <div class="cu-card cu-auth-card h-100">
+            <div class="cu-card-header">
+                <span class="cu-home-panel-label">Sign In</span>
+                <h2>Access your workspace</h2>
+                <p class="text-muted mb-0">Continue your sessions, saved comparisons, and personal belief profile.</p>
             </div>
             <div class="cu-card-body">
                 @if (!ViewData.ModelState.IsValid)
@@ -28,13 +66,13 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold" for="username">Username</label>
                         <input id="username" name="username" type="text" class="form-control"
-                               autocomplete="username" autofocus required />
+                               autocomplete="username" autofocus required placeholder="Enter your username" />
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-semibold" for="password">Password</label>
                         <input id="password" name="password" type="password" class="form-control"
-                               autocomplete="current-password" required />
+                               autocomplete="current-password" required placeholder="Enter your password" />
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">
@@ -44,7 +82,7 @@
             </div>
             <div class="cu-card-footer text-center small text-muted">
                 Don't have an account?
-                <a asp-action="Register" class="text-decoration-none fw-semibold">Register</a>
+                <a asp-action="Register" class="text-decoration-none fw-semibold">Create one</a>
             </div>
         </div>
     </div>

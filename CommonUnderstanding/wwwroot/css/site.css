@@ -27,8 +27,8 @@ body {
 .btn-link.nav-link:focus, 
 .form-control:focus, 
 .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #335075;
-  outline: 2px solid #335075;
+  box-shadow: 0 0 0 0.1rem var(--cu-background-strong), 0 0 0 0.3rem rgba(var(--cu-secondary-rgb), 0.22);
+  outline: 2px solid rgba(var(--cu-secondary-rgb), 0.45);
   outline-offset: 2px;
 }
 
@@ -49,91 +49,108 @@ body {
 /* Form Controls */
 .form-control,
 .form-select {
-  border-color: #e5e7eb;
+  border-color: var(--cu-border-light);
+  border-radius: 0.95rem;
+  background-color: rgba(255, 255, 255, 0.78);
   transition: all 0.2s ease;
 }
 
 .form-control:focus,
 .form-select:focus {
-  border-color: #26374a;
-  box-shadow: 0 0 0 3px rgba(38, 55, 74, 0.1);
+  border-color: rgba(var(--cu-secondary-rgb), 0.35);
+  background-color: var(--cu-white);
+  box-shadow: 0 0 0 4px rgba(var(--cu-secondary-rgb), 0.12);
 }
 
 /* ========================================
    BOOTSTRAP OVERRIDES FOR APP THEME
    ======================================== */
 .btn-primary {
-  background-color: #26374a;
-  border-color: #26374a;
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
+  box-shadow: 0 12px 20px rgba(var(--cu-primary-rgb), 0.16);
 }
 
 .btn-primary:hover {
-  background-color: #335075;
-  border-color: #335075;
+  background-color: var(--cu-primary-strong);
+  border-color: var(--cu-primary-strong);
+  transform: translateY(-1px);
 }
 
 .btn-outline-primary {
-  color: #26374a;
-  border-color: #26374a;
+  color: var(--cu-primary-blue);
+  border-color: var(--cu-border-mid);
+  background-color: rgba(255, 255, 255, 0.72);
 }
 
 .btn-outline-primary:hover {
-  background-color: #26374a;
-  border-color: #26374a;
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
 }
 
 .alert-primary {
-  background-color: rgba(38, 55, 74, 0.1);
-  border-color: #26374a;
-  color: #26374a;
+  background-color: rgba(var(--cu-secondary-rgb), 0.1);
+  border-color: rgba(var(--cu-secondary-rgb), 0.22);
+  color: var(--cu-primary-blue);
 }
 
 .text-primary {
-  color: #26374a !important;
+  color: var(--cu-primary-blue) !important;
 }
 
 .bg-primary {
-  background-color: #26374a !important;
+  background-color: var(--cu-primary-blue) !important;
 }
 
 /* ========================================
    CARD ENHANCEMENTS
    ======================================== */
 .card {
-  border-color: #e5e7eb;
-  box-shadow: 0 1px 3px rgba(38, 55, 74, 0.05);
+  border-color: var(--cu-border-light);
+  border-radius: 1.3rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.88));
+  box-shadow: var(--cu-shadow-xs);
   transition: all 0.2s ease;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08);
+  box-shadow: var(--cu-shadow-sm);
+  transform: translateY(-2px);
 }
 
 .card-header {
-  background-color: #f8fafc;
-  border-bottom-color: #e5e7eb;
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-bottom-color: var(--cu-border-light);
   font-weight: 600;
-  color: #26374a;
+  color: var(--cu-primary-blue);
 }
 
 /* ========================================
    TABLE ENHANCEMENTS
    ======================================== */
 .table {
-  color: #1f2937;
+  color: var(--cu-text-dark);
 }
 
 .table thead {
-  background-color: #26374a;
-  color: white;
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  color: var(--cu-text-muted);
+}
+
+.table thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--cu-border-light);
 }
 
 .table-striped > tbody > tr:nth-of-type(odd) > * {
-  background-color: rgba(248, 250, 252, 0.5);
+  background-color: rgba(var(--cu-primary-rgb), 0.02);
 }
 
 .table-hover > tbody > tr:hover > * {
-  background-color: #f7f8fa;
+  background-color: rgba(var(--cu-secondary-rgb), 0.05);
 }
 
 /* ========================================
@@ -142,10 +159,11 @@ body {
 .badge {
   font-weight: 600;
   padding: 0.375em 0.75em;
+  border-radius: 999px;
 }
 
 .badge-primary {
-  background-color: #26374a;
+  background-color: var(--cu-secondary-blue);
 }
 
 /* ========================================
@@ -161,7 +179,7 @@ body {
 }
 
 .breadcrumb-item.active {
-  color: #26374a;
+  color: var(--cu-primary-blue);
   font-weight: 600;
 }
 
@@ -169,7 +187,7 @@ body {
    MODAL ENHANCEMENTS
    ======================================== */
 .modal-header {
-  background: linear-gradient(135deg, #26374a 0%, #335075 100%);
+  background: linear-gradient(135deg, var(--cu-primary-strong) 0%, var(--cu-primary-blue) 70%, var(--cu-secondary-blue) 100%);
   color: white;
   border-bottom: none;
 }
@@ -179,88 +197,90 @@ body {
 }
 
 .modal-footer {
-  background-color: #f8fafc;
-  border-top-color: #e5e7eb;
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-top-color: var(--cu-border-light);
 }
 
 /* ========================================
    PAGINATION
    ======================================== */
 .pagination .page-link {
-  color: #26374a;
-  border-color: #e5e7eb;
+  color: var(--cu-primary-blue);
+  border-color: var(--cu-border-light);
 }
 
 .pagination .page-link:hover {
-  background-color: #f8fafc;
-  border-color: #26374a;
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-color: var(--cu-primary-blue);
 }
 
 .pagination .page-item.active .page-link {
-  background-color: #26374a;
-  border-color: #26374a;
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
 }
 
 /* ========================================
    DROPDOWN MENUS
    ======================================== */
 .dropdown-menu {
-  border-color: #e5e7eb;
-  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08);
+  border-color: var(--cu-border-light);
+  box-shadow: var(--cu-shadow-sm);
+  border-radius: 1.15rem;
+  background-color: rgba(255, 255, 255, 0.96);
 }
 
 .dropdown-item:hover {
-  background-color: #f7f8fa;
-  color: #26374a;
+  background-color: rgba(var(--cu-secondary-rgb), 0.05);
+  color: var(--cu-primary-blue);
 }
 
 .dropdown-item.active {
-  background-color: #26374a;
+  background-color: var(--cu-primary-blue);
 }
 
 /* ========================================
    PROGRESS BARS
    ======================================== */
 .progress {
-  background-color: #e5e7eb;
+  background-color: rgba(var(--cu-primary-rgb), 0.08);
   border-radius: 0.375rem;
 }
 
 .progress-bar {
-  background-color: #26374a;
+  background-color: var(--cu-primary-blue);
 }
 
 /* ========================================
    ACCORDION
    ======================================== */
 .accordion-button {
-  background-color: #f8fafc;
-  color: #26374a;
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  color: var(--cu-primary-blue);
   font-weight: 600;
 }
 
 .accordion-button:not(.collapsed) {
-  background-color: #26374a;
+  background-color: var(--cu-primary-blue);
   color: white;
 }
 
 .accordion-button:focus {
-  box-shadow: 0 0 0 0.25rem rgba(38, 55, 74, 0.25);
+  box-shadow: 0 0 0 0.25rem rgba(var(--cu-secondary-rgb), 0.2);
 }
 
 /* ========================================
    TOOLTIPS & POPOVERS
    ======================================== */
 .tooltip-inner {
-  background-color: #26374a;
+  background-color: var(--cu-primary-blue);
 }
 
 .popover {
-  border-color: #e5e7eb;
+  border-color: var(--cu-border-light);
 }
 
 .popover-header {
-  background-color: #26374a;
+  background-color: var(--cu-primary-blue);
   color: white;
 }
 
@@ -268,30 +288,30 @@ body {
    SPINNER/LOADING STATES
    ======================================== */
 .spinner-border-primary {
-  color: #26374a;
+  color: var(--cu-primary-blue);
 }
 
 /* ========================================
    UTILITY CLASSES
    ======================================== */
 .text-muted-cu {
-  color: #6b7280 !important;
+  color: var(--cu-text-muted) !important;
 }
 
 .border-cu {
-  border-color: #e5e7eb !important;
+  border-color: var(--cu-border-light) !important;
 }
 
 .bg-cu-light {
-  background-color: #f8fafc !important;
+  background-color: rgba(var(--cu-primary-rgb), 0.03) !important;
 }
 
 .shadow-cu {
-  box-shadow: 0 4px 12px rgba(38, 55, 74, 0.08) !important;
+  box-shadow: var(--cu-shadow) !important;
 }
 
 .shadow-cu-sm {
-  box-shadow: 0 2px 8px rgba(38, 55, 74, 0.1) !important;
+  box-shadow: var(--cu-shadow-sm) !important;
 }
 
 /* ========================================
