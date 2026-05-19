@@ -17,6 +17,16 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
     private readonly AiRequestTraceRecorder _traceRecorder;
     private int _callIndex = -1;
 
+    // Per-provider rate-limit cooldown: tracks when each provider becomes available again.
+    private readonly DateTimeOffset[] _availableAt;
+    private static readonly TimeSpan RateLimitCooldown = TimeSpan.FromSeconds(60);
+
+    // Global concurrency gate: caps the number of simultaneous in-flight AI requests across
+    // ALL service instances (foreground + background). Without this, a burst of parallel calls
+    // (decomposition + prefetch + response processing) all hit the same free-tier model at once
+    // and trigger 429s even when the overall request rate is low.
+    private static readonly SemaphoreSlim _globalConcurrency = new(2, 2);
+
     public FallbackChatCompletionService(
         IReadOnlyList<(string Name, Func<string> ModelResolver, IChatCompletionService Service)> providers,
         ILogger logger,
@@ -28,6 +38,7 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         _providers = providers;
         _logger = logger;
         _traceRecorder = traceRecorder;
+        _availableAt = new DateTimeOffset[providers.Count];
     }
 
     // Expose the first provider's attributes as the service attributes.
@@ -44,34 +55,68 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         var promptPreview = ExtractPromptPreview(chatHistory);
         var startIdx = NextProviderIndex();
 
-        Exception? lastEx = null;
-        for (int i = 0; i < _providers.Count; i++)
+        await _globalConcurrency.WaitAsync(cancellationToken);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var provider = _providers[(startIdx + i) % _providers.Count];
-            var model = provider.ModelResolver();
-            try
+            Exception? lastEx = null;
+            TimeSpan? shortestCooldown = null;
+            for (int i = 0; i < _providers.Count; i++)
             {
-                return await ExecuteNonStreamingAsync(
-                    provider.Name, model, provider.Service,
-                    chatHistory, executionSettings, kernel,
-                    promptPreview, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "AI provider [{Name}] model [{Model}] failed; trying next provider. Reason: {Msg}",
-                    provider.Name, model, ex.Message);
-                lastEx = ex;
-            }
-        }
+                cancellationToken.ThrowIfCancellationRequested();
+                int idx = (startIdx + i) % _providers.Count;
+                var provider = _providers[idx];
+                if (TryGetProviderCooldown(idx, out var wait))
+                {
+                    shortestCooldown = shortestCooldown is null || wait < shortestCooldown
+                        ? wait
+                        : shortestCooldown;
 
-        throw new InvalidOperationException(
-            $"All AI providers failed. Last error: {lastEx?.Message}", lastEx);
+                    _logger.LogInformation(
+                        "AI provider [{Name}] is rate-limited; skipping for this pass ({Ms}ms remaining).",
+                        provider.Name,
+                        (int)wait.TotalMilliseconds);
+                    continue;
+                }
+
+                var model = provider.ModelResolver();
+                try
+                {
+                    return await ExecuteNonStreamingAsync(
+                        provider.Name, model, provider.Service,
+                        chatHistory, executionSettings, kernel,
+                        promptPreview, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (IsRateLimitException(ex))
+                {
+                    MarkRateLimited(idx, provider.Name, model);
+                    lastEx = ex;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "AI provider [{Name}] model [{Model}] failed; trying next provider. Reason: {Msg}",
+                        provider.Name, model, ex.Message);
+                    lastEx = ex;
+                }
+            }
+
+            if (lastEx is null && shortestCooldown is not null)
+            {
+                throw new InvalidOperationException(
+                    $"All AI providers are cooling down after rate limits. Earliest retry in {Math.Ceiling(shortestCooldown.Value.TotalSeconds)} second(s).");
+            }
+
+            throw new InvalidOperationException(
+                $"All AI providers failed. Last error: {lastEx?.Message}", lastEx);
+        }
+        finally
+        {
+            _globalConcurrency.Release();
+        }
     }
 
     // ── Streaming ────────────────────────────────────────────────────────────
@@ -98,40 +143,94 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         var promptPreview = ExtractPromptPreview(chatHistory);
         var startIdx = NextProviderIndex();
 
-        Exception? lastEx = null;
-        for (int i = 0; i < _providers.Count; i++)
+        await _globalConcurrency.WaitAsync(cancellationToken);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var provider = _providers[(startIdx + i) % _providers.Count];
-            var model = provider.ModelResolver();
-            try
+            Exception? lastEx = null;
+            TimeSpan? shortestCooldown = null;
+            for (int i = 0; i < _providers.Count; i++)
             {
-                return await ExecuteStreamingAsync(
-                    provider.Name, model, provider.Service,
-                    chatHistory, executionSettings, kernel,
-                    promptPreview, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "AI provider [{Name}] model [{Model}] failed (streaming); trying next provider. Reason: {Msg}",
-                    provider.Name, model, ex.Message);
-                lastEx = ex;
-            }
-        }
+                cancellationToken.ThrowIfCancellationRequested();
+                int idx = (startIdx + i) % _providers.Count;
+                var provider = _providers[idx];
+                if (TryGetProviderCooldown(idx, out var wait))
+                {
+                    shortestCooldown = shortestCooldown is null || wait < shortestCooldown
+                        ? wait
+                        : shortestCooldown;
 
-        throw new InvalidOperationException(
-            $"All AI providers failed (streaming). Last error: {lastEx?.Message}", lastEx);
+                    _logger.LogInformation(
+                        "AI provider [{Name}] is rate-limited; skipping for this pass ({Ms}ms remaining).",
+                        provider.Name,
+                        (int)wait.TotalMilliseconds);
+                    continue;
+                }
+
+                var model = provider.ModelResolver();
+                try
+                {
+                    return await ExecuteStreamingAsync(
+                        provider.Name, model, provider.Service,
+                        chatHistory, executionSettings, kernel,
+                        promptPreview, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (IsRateLimitException(ex))
+                {
+                    MarkRateLimited(idx, provider.Name, model);
+                    lastEx = ex;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "AI provider [{Name}] model [{Model}] failed (streaming); trying next provider. Reason: {Msg}",
+                        provider.Name, model, ex.Message);
+                    lastEx = ex;
+                }
+            }
+
+            if (lastEx is null && shortestCooldown is not null)
+            {
+                throw new InvalidOperationException(
+                    $"All AI providers are cooling down after rate limits. Earliest retry in {Math.Ceiling(shortestCooldown.Value.TotalSeconds)} second(s).");
+            }
+
+            throw new InvalidOperationException(
+                $"All AI providers failed (streaming). Last error: {lastEx?.Message}", lastEx);
+        }
+        finally
+        {
+            _globalConcurrency.Release();
+        }
     }
 
     private int NextProviderIndex()
     {
         var raw = Interlocked.Increment(ref _callIndex);
         return (int)((uint)raw % (uint)_providers.Count);
+    }
+
+    private void MarkRateLimited(int idx, string name, string model)
+    {
+        _availableAt[idx] = DateTimeOffset.UtcNow + RateLimitCooldown;
+        _logger.LogWarning(
+            "AI provider [{Name}] model [{Model}] rate-limited (429); cooling down for {Seconds}s.",
+            name, model, RateLimitCooldown.TotalSeconds);
+    }
+
+    private bool TryGetProviderCooldown(int idx, out TimeSpan wait)
+    {
+        wait = _availableAt[idx] - DateTimeOffset.UtcNow;
+        return wait > TimeSpan.Zero;
+    }
+
+    private static bool IsRateLimitException(Exception ex)
+    {
+        return ex.Message.Contains("429") ||
+               ex.InnerException?.Message.Contains("429") == true;
     }
 
     private async Task<IReadOnlyList<ChatMessageContent>> ExecuteNonStreamingAsync(

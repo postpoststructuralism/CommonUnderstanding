@@ -145,7 +145,7 @@ public class CollaborativeSessionService
                 if (arg is not null && arg.Status == ArgumentStatus.Draft && !string.IsNullOrWhiteSpace(arg.RawText))
                 {
                     _logger.LogInformation("Decomposing argument {Id} for joint session", argId);
-                    await _decompositionService.DecomposeAsync(arg.RawText, null, cancellationToken);
+                    await _decompositionService.DecomposeAsync(arg.RawText, onProgress: null, cancellationToken: cancellationToken);
                 }
             }
 

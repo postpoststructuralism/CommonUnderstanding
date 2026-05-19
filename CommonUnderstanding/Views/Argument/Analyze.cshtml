@@ -44,6 +44,11 @@
                 </div>
                 <p id="statusLabel" class="text-muted small mt-3">Connecting to AI engine…</p>
 
+                <div id="fallbackPanel" class="alert alert-warning mt-3 d-none text-start small">
+                    <strong>Partial fallback in use.</strong>
+                    <span id="fallbackMessage">One or more AI stages timed out or hit rate limits, so the analysis is continuing with reduced-detail fallback logic.</span>
+                </div>
+
                 <!-- Chain-of-thought log -->
                 <div id="chainLog" class="text-start mt-4 small" style="max-height: 220px; overflow-y: auto;">
                 </div>
@@ -71,6 +76,68 @@
     const errorIcon = document.getElementById('errorIcon');
     const errorPanel = document.getElementById('errorPanel');
     const errorMsg  = document.getElementById('errorMessage');
+    const fallbackPanel = document.getElementById('fallbackPanel');
+    const fallbackMessage = document.getElementById('fallbackMessage');
+    const streamUrl = '@Url.Action("AnalyzeStream", new { id = argumentId, force = (bool)(ViewBag.ForceReanalyze ?? false) })';
+    const tracePrefix = '[ArgumentAnalyzeStream]';
+
+    let lastEventAt = Date.now();
+    let lastEventName = 'init';
+    let watchdogHandle = null;
+    const fallbackWarnings = new Set();
+
+    function trace(message, details) {
+        if (details !== undefined) {
+            console.debug(tracePrefix, message, details);
+        } else {
+            console.debug(tracePrefix, message);
+        }
+    }
+
+    function traceError(message, details) {
+        if (details !== undefined) {
+            console.error(tracePrefix, message, details);
+        } else {
+            console.error(tracePrefix, message);
+        }
+    }
+
+    function markEvent(name, payload) {
+        lastEventAt = Date.now();
+        lastEventName = name;
+        trace(`event=${name}`, payload);
+    }
+
+    function startWatchdog(evtSource) {
+        watchdogHandle = window.setInterval(() => {
+            const stalledForMs = Date.now() - lastEventAt;
+            if (stalledForMs >= 15000) {
+                trace('no SSE activity for 15s', {
+                    lastEventName,
+                    stalledForMs,
+                    readyState: evtSource.readyState,
+                    statusLabel: label.textContent
+                });
+            }
+        }, 5000);
+    }
+
+    function stopWatchdog() {
+        if (watchdogHandle !== null) {
+            window.clearInterval(watchdogHandle);
+            watchdogHandle = null;
+        }
+    }
+
+    function showFallbackWarning(message) {
+        if (fallbackWarnings.has(message)) return;
+        fallbackWarnings.add(message);
+
+        fallbackPanel.classList.remove('d-none');
+        fallbackMessage.textContent = message;
+        logStep(`<strong class="text-warning">Fallback:</strong> ${message}`, 'text-warning');
+        trace('fallback-warning', { message });
+    }
 
     function logStep(text, cssClass) {
         const ts = new Date().toLocaleTimeString();
@@ -82,24 +149,66 @@
     }
 
     logStep('Connecting to streaming analysis endpoint…');
+    trace('opening EventSource', { streamUrl });
 
-    const evtSource = new EventSource('@Url.Action("AnalyzeStream", new { id = argumentId, force = (bool)(ViewBag.ForceReanalyze ?? false) })');
+    const evtSource = new EventSource(streamUrl);
+    startWatchdog(evtSource);
+
+    evtSource.onopen = function () {
+        markEvent('open', { readyState: evtSource.readyState });
+    };
+
+    evtSource.addEventListener('debug', function (e) {
+        try {
+            const d = JSON.parse(e.data);
+            markEvent('debug', d);
+
+            const message = d.message || '';
+            const details = d.details || {};
+            const fallbackApplied = !!details.fallbackApplied;
+            const timeoutEvent = message.toLowerCase().includes('timed out');
+
+            if (fallbackApplied || timeoutEvent) {
+                showFallbackWarning(
+                    message === 'structure decomposition timed out'
+                        ? 'Structure extraction hit a provider timeout. The analysis is continuing without full syllogism/assumption detail.'
+                        : message === 'Adjudication narrative timed out'
+                            ? 'Narrative generation hit a provider timeout. A rule-based adjudication summary is being used instead.'
+                            : 'An AI stage timed out or failed. The pipeline is continuing with fallback logic.'
+                );
+            }
+        } catch (err) {
+            traceError('failed to parse debug event payload', { raw: e.data, err });
+        }
+    });
 
     evtSource.addEventListener('title', function (e) {
-        const d = JSON.parse(e.data);
-        document.querySelector('h3.mb-1').textContent = d.title;
+        try {
+            const d = JSON.parse(e.data);
+            markEvent('title', d);
+            document.querySelector('h3.mb-1').textContent = d.title;
+        } catch (err) {
+            traceError('failed to parse title event payload', { raw: e.data, err });
+        }
     });
 
     evtSource.addEventListener('progress', function (e) {
-        const d = JSON.parse(e.data);
-        const pct = Math.max(5, Math.round((d.step / d.total) * 100));
-        bar.style.width = pct + '%';
-        label.textContent = d.label;
-        logStep(`<strong>Step ${d.step}/${d.total}:</strong> ${d.label}`);
+        try {
+            const d = JSON.parse(e.data);
+            markEvent('progress', d);
+            const pct = Math.max(5, Math.round((d.step / d.total) * 100));
+            bar.style.width = pct + '%';
+            label.textContent = d.label;
+            logStep(`<strong>Step ${d.step}/${d.total}:</strong> ${d.label}`);
+        } catch (err) {
+            traceError('failed to parse progress event payload', { raw: e.data, err });
+        }
     });
 
     evtSource.addEventListener('complete', function (e) {
+        stopWatchdog();
         const d = JSON.parse(e.data);
+        markEvent('complete', d);
         evtSource.close();
 
         bar.style.width = '100%';
@@ -115,8 +224,15 @@
     });
 
     evtSource.addEventListener('error', function (e) {
+        markEvent('error', {
+            hasData: !!e.data,
+            readyState: evtSource.readyState,
+            statusLabel: label.textContent
+        });
+
         // Check if it's a custom error event (with data) or a connection error
         if (e.data) {
+            stopWatchdog();
             const d = JSON.parse(e.data);
             evtSource.close();
 
@@ -131,8 +247,14 @@
             logStep(`<strong class="text-danger">Error:</strong> ${d.message}`, 'text-danger');
         } else {
             // EventSource connection error (e.g., network issue) — it will retry automatically
+            trace('connection-level EventSource error; browser may retry automatically', {
+                readyState: evtSource.readyState,
+                lastEventName
+            });
             logStep('Connection interrupted — retrying…', 'text-warning');
         }
     });
+
+    window.addEventListener('beforeunload', stopWatchdog);
 })();
 </script>

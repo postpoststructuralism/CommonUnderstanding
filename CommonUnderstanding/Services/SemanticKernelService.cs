@@ -317,6 +317,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
     ];
 
     private const int MaxTokensCap = 8192;
+    private const int MaxRouteFallbackModels = 3;
 
     public RateLimitRetryHandler(
         ILogger logger,
@@ -331,8 +332,25 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        await ApplyNativeFallbackRoutingAsync(request, cancellationToken);
         await CapMaxTokensAsync(request, cancellationToken);
         return await SendWithRetryAsync(request, cancellationToken);
+    }
+
+    private async Task ApplyNativeFallbackRoutingAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.Content is null)
+            return;
+
+        var body = await request.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(body))
+            return;
+
+        var patchedBody = await PatchModelRoutingAsync(body, primaryModelOverride: null, cancellationToken);
+        if (patchedBody is null || string.Equals(patchedBody, body, StringComparison.Ordinal))
+            return;
+
+        request.Content = new StringContent(patchedBody, System.Text.Encoding.UTF8, "application/json");
     }
 
     private static async Task CapMaxTokensAsync(HttpRequestMessage request, CancellationToken ct)
@@ -397,6 +415,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
 
         var triedModels = new HashSet<string>(StringComparer.Ordinal);
         int retryCount = 0;
+        const int MaxModelCycles = 5; // max models to try on 429 before handing off to next provider
 
         while (true)
         {
@@ -465,7 +484,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
                     var nextModel400 = await _openRouterModelCatalog.GetNextModelAsync(triedModels, cancellationToken);
                     if (nextModel400 is not null)
                     {
-                        var patched400 = PatchModel(currentBody, nextModel400);
+                        var patched400 = await PatchModelRoutingAsync(currentBody, nextModel400, cancellationToken);
                         if (patched400 is not null)
                         {
                             currentBody = patched400;
@@ -498,7 +517,7 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
                 var nextModel = await _openRouterModelCatalog.GetNextModelAsync(triedModels, cancellationToken);
                 if (nextModel is not null && currentBody is not null)
                 {
-                    var patched = PatchModel(currentBody, nextModel);
+                    var patched = await PatchModelRoutingAsync(currentBody, nextModel, cancellationToken);
                     if (patched is not null)
                     {
                         currentBody = patched;
@@ -522,18 +541,39 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
 
             // ── 429 Rate Limit ───────────────────────────────────────────────
             var body429 = await response.Content.ReadAsStringAsync(cancellationToken);
+            response.Dispose();
+
             if (body429.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
                     "OpenRouter daily quota exhausted. Add credits or switch to a different model.");
 
-            if (++retryCount > MaxRetries)
-                throw new InvalidOperationException(
-                    $"OpenRouter rate-limited after {MaxRetries + 1} attempts. Body: {body429[..Math.Min(body429.Length, 200)]}");
+            // Try cycling to the next free model, but only up to MaxModelCycles attempts.
+            // Exceeding the cap throws immediately so FallbackChatCompletionService can
+            // hand off to Gemini rather than spending minutes trying every catalog model.
+            if (currentBody is not null && triedModels.Count < MaxModelCycles)
+            {
+                var saturatedModel = ExtractModel(currentBody);
+                if (saturatedModel is not null) triedModels.Add(saturatedModel);
 
-            var rateLimitDelay = GetDelay(response, retryCount - 1);
-            response.Dispose();
-            _logger.LogWarning("OpenRouter 429. Retry {R}/{Max} after {D}s.", retryCount, MaxRetries, rateLimitDelay.TotalSeconds);
-            await LinkedDelay(rateLimitDelay, cancellationToken);
+                var nextModel429 = await _openRouterModelCatalog.GetNextModelAsync(triedModels, cancellationToken);
+                if (nextModel429 is not null)
+                {
+                    var patched429 = await PatchModelRoutingAsync(currentBody, nextModel429, cancellationToken);
+                    if (patched429 is not null)
+                    {
+                        currentBody = patched429;
+                        _logger.LogWarning(
+                            "OpenRouter model {Bad} rate-limited (429). Auto-switching to {Next} ({Tried}/{Max} cycles).",
+                            saturatedModel, nextModel429, triedModels.Count, MaxModelCycles);
+                        _onModelFallback?.Invoke(nextModel429);
+                        continue; // does NOT consume a retry slot
+                    }
+                }
+            }
+
+            // All model cycles exhausted — throw so the next provider (Gemini) is tried.
+            throw new InvalidOperationException(
+                $"OpenRouter rate-limited on all attempted models ({string.Join(", ", triedModels)}). Body: {body429[..Math.Min(body429.Length, 200)]}");
         }
     }
 
@@ -584,26 +624,66 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
         return null;
     }
 
-    private static string? PatchModel(string body, string newModel)
+    private async Task<string?> PatchModelRoutingAsync(string body, string? primaryModelOverride, CancellationToken cancellationToken)
     {
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var primaryModel = primaryModelOverride ?? ExtractModel(body);
+            if (string.IsNullOrWhiteSpace(primaryModel))
+                return null;
+
+            var availableModels = _openRouterModelCatalog.GetCachedModels();
+            if (availableModels.Count == 0)
+                availableModels = await _openRouterModelCatalog.GetAvailableModelsAsync(cancellationToken: cancellationToken);
+
+            var routedModels = BuildRouteFallbackModels(primaryModel, availableModels);
+
             using var ms = new System.IO.MemoryStream();
             using var writer = new System.Text.Json.Utf8JsonWriter(ms);
             writer.WriteStartObject();
-            bool found = false;
+
+            writer.WriteString("model", primaryModel);
+            if (routedModels.Count > 1)
+            {
+                writer.WritePropertyName("models");
+                writer.WriteStartArray();
+                foreach (var model in routedModels)
+                    writer.WriteStringValue(model);
+                writer.WriteEndArray();
+                writer.WriteString("route", "fallback");
+            }
+
             foreach (var prop in doc.RootElement.EnumerateObject())
             {
-                if (prop.Name == "model") { writer.WriteString("model", newModel); found = true; }
-                else prop.WriteTo(writer);
+                if (prop.Name is "model" or "models" or "route")
+                    continue;
+
+                prop.WriteTo(writer);
             }
-            if (!found) writer.WriteString("model", newModel);
+
             writer.WriteEndObject();
             writer.Flush();
             return System.Text.Encoding.UTF8.GetString(ms.ToArray());
         }
         catch { return null; }
+    }
+
+    private static IReadOnlyList<string> BuildRouteFallbackModels(string primaryModel, IReadOnlyList<string> availableModels)
+    {
+        var models = new List<string>(MaxRouteFallbackModels) { primaryModel };
+
+        foreach (var candidate in availableModels)
+        {
+            if (string.Equals(candidate, primaryModel, StringComparison.Ordinal))
+                continue;
+
+            models.Add(candidate);
+            if (models.Count >= MaxRouteFallbackModels)
+                break;
+        }
+
+        return models;
     }
 
     private static TimeSpan GetDelay(HttpResponseMessage response, int attempt)

@@ -9,10 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Add EF Core with SQLite
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "arguments.db");
+// Add EF Core with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
 // Add HttpContextAccessor for views that need Request access
@@ -46,10 +45,9 @@ builder.Services.AddScoped<ResponseAnalysisEngine>();
 builder.Services.AddScoped<BayesianInferenceEngine>();
 builder.Services.AddScoped<BeliefDiscoveryOrchestrator>();
 
-// Register question prefetch background service as singleton
+// QuestionPrefetchService is on-demand only — called explicitly during Discovery.
+// It is NOT registered as a hosted service so it does not poll in the background.
 builder.Services.AddSingleton<QuestionPrefetchService>();
-// Register the singleton instance as the hosted service
-builder.Services.AddHostedService(sp => sp.GetRequiredService<QuestionPrefetchService>());
 
 // Register response processing queue background service as singleton
 builder.Services.AddSingleton<ResponseProcessingQueue>();
@@ -141,142 +139,11 @@ app.MapControllerRoute(
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");
 app.MapHub<CommonUnderstanding.Hubs.DebateHub>("/debatehub");
 
-// Ensure database is created / migrations applied at startup
+// Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
-
-    // EnsureCreated won't add new columns to existing tables.
-    // Apply lightweight schema additions for new nullable columns.
-    var conn = db.Database.GetDbConnection();
-    conn.Open();
-    using var cmd = conn.CreateCommand();
-    string[] alterStatements =
-    [
-        "ALTER TABLE Propositions ADD COLUMN ProvisionalAssessment TEXT NULL",
-        "ALTER TABLE Propositions ADD COLUMN ProvisionalConfidence REAL NULL",
-        "ALTER TABLE AdjudicationSummaries ADD COLUMN DetailedNarrative TEXT NULL",
-        @"CREATE TABLE IF NOT EXISTS ArgumentComparisons (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ArgumentAId INTEGER NOT NULL REFERENCES Arguments(Id),
-            ArgumentBId INTEGER NOT NULL REFERENCES Arguments(Id),
-            ConflictingPremisesJson TEXT NULL,
-            ComplementaryPremisesJson TEXT NULL,
-            UniqueToPremisesAJson TEXT NULL,
-            UniqueToPremisesBJson TEXT NULL,
-            SynthesisNarrative TEXT NULL,
-            NetDirection TEXT NOT NULL DEFAULT 'Insufficient',
-            NetConfidence REAL NOT NULL DEFAULT 0.0,
-            CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
-        )",
-        @"CREATE TABLE IF NOT EXISTS PersistedEmergentReports (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            GeneratedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            IsDeepAnalysis INTEGER NOT NULL DEFAULT 0,
-            TotalArguments INTEGER NOT NULL DEFAULT 0,
-            TotalPropositions INTEGER NOT NULL DEFAULT 0,
-            TotalEvidenceItems INTEGER NOT NULL DEFAULT 0,
-            AverageConfidence REAL NOT NULL DEFAULT 0.5,
-            SettledCount INTEGER NOT NULL DEFAULT 0,
-            ContestedCount INTEGER NOT NULL DEFAULT 0,
-            BlindspotCount INTEGER NOT NULL DEFAULT 0,
-            HarmonyCount INTEGER NOT NULL DEFAULT 0,
-            CriticalAssumptionsUntested INTEGER NOT NULL DEFAULT 0,
-            BlindspotsSummaryJson TEXT NULL,
-            HarmoniesSummaryJson TEXT NULL,
-            ExecutiveSummary TEXT NULL,
-            FullReportJson TEXT NULL
-        )",
-        "ALTER TABLE PersistedEmergentReports ADD COLUMN FullReportJson TEXT NULL",
-
-        // Phase 6 — Multi-User Convergence (new tables added after initial DB creation)
-        @"CREATE TABLE IF NOT EXISTS UserConnections (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            InitiatorUserId TEXT NOT NULL,
-            RecipientUserId TEXT NOT NULL,
-            Status TEXT NOT NULL DEFAULT 'Pending',
-            InitiatorMessage TEXT NULL,
-            InitiatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            RespondedAt TEXT NULL
-        )",
-        "CREATE INDEX IF NOT EXISTS IX_UserConnections_Pair ON UserConnections (InitiatorUserId, RecipientUserId)",
-
-        @"CREATE TABLE IF NOT EXISTS SharedItems (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ItemType TEXT NOT NULL,
-            ItemReferenceId TEXT NOT NULL,
-            ItemTitle TEXT NOT NULL DEFAULT '',
-            SharedByUserId TEXT NOT NULL,
-            SharedWithUserIdsJson TEXT NOT NULL DEFAULT '[]',
-            Visibility TEXT NOT NULL DEFAULT 'Connections',
-            Message TEXT NULL,
-            SharedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            ReactionsJson TEXT NOT NULL DEFAULT '[]'
-        )",
-        "CREATE INDEX IF NOT EXISTS IX_SharedItems_SharedBy ON SharedItems (SharedByUserId)",
-
-        @"CREATE TABLE IF NOT EXISTS ConvergenceMaps (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            User1Id TEXT NOT NULL,
-            User2Id TEXT NOT NULL,
-            GeneratedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            LastRefreshedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            OverallConvergenceScore REAL NOT NULL DEFAULT 0.0,
-            ProfileOverlapJson TEXT NULL,
-            SharedPropositionIdsJson TEXT NOT NULL DEFAULT '[]',
-            DisputedPropositionIdsJson TEXT NOT NULL DEFAULT '[]',
-            DivergencePointsJson TEXT NOT NULL DEFAULT '[]',
-            ExpansionPathwaysJson TEXT NOT NULL DEFAULT '[]',
-            EvolutionHistoryJson TEXT NOT NULL DEFAULT '[]',
-            NarrativeSummary TEXT NULL
-        )",
-        "CREATE INDEX IF NOT EXISTS IX_ConvergenceMaps_Users ON ConvergenceMaps (User1Id, User2Id)",
-
-        @"CREATE TABLE IF NOT EXISTS CollaborativeSessions (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Title TEXT NOT NULL DEFAULT '',
-            Description TEXT NULL,
-            ParticipantIdsJson TEXT NOT NULL DEFAULT '[]',
-            ContributedArgumentIdsJson TEXT NOT NULL DEFAULT '[]',
-            MergedNodeIdsJson TEXT NOT NULL DEFAULT '[]',
-            Status TEXT NOT NULL DEFAULT 'Active',
-            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            ConcludedAt TEXT NULL,
-            JointConvergenceMapId INTEGER NULL,
-            ConsolidatedReportJson TEXT NULL,
-            ExecutiveSummary TEXT NULL
-        )",
-
-        @"CREATE TABLE IF NOT EXISTS UserProfiles (
-            Id TEXT PRIMARY KEY,
-            Name TEXT NOT NULL DEFAULT '',
-            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            LastInteractionAt TEXT NOT NULL DEFAULT (datetime('now')),
-            Stage TEXT NOT NULL DEFAULT 'Initial',
-            CurrentBeliefSnapshotJson TEXT NULL,
-            HistoricalSnapshotsJson TEXT NOT NULL DEFAULT '[]',
-            InteractionsJson TEXT NOT NULL DEFAULT '[]',
-            AskedQuestionHashesJson TEXT NOT NULL DEFAULT '[]',
-            ExploredDimensionsJson TEXT NOT NULL DEFAULT '[]'
-        )",
-
-        @"CREATE TABLE IF NOT EXISTS UserAccounts (
-            Id TEXT PRIMARY KEY,
-            Username TEXT NOT NULL UNIQUE,
-            DisplayName TEXT NOT NULL DEFAULT '',
-            PasswordHash TEXT NOT NULL DEFAULT '',
-            CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-            IsActive INTEGER NOT NULL DEFAULT 1
-        )"
-    ];
-    foreach (var sql in alterStatements)
-    {
-        cmd.CommandText = sql;
-        try { cmd.ExecuteNonQuery(); }
-        catch { /* column already exists — ignore */ }
-    }
-    conn.Close();
+    db.Database.Migrate();
 }
 
 app.Run();

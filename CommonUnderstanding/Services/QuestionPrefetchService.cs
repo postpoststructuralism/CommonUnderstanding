@@ -1,19 +1,17 @@
 using CommonUnderstanding.Models;
-using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CommonUnderstanding.Services;
 
 /// <summary>
-/// Background service that pre-generates questions while AI is processing responses
-/// NOW ENHANCED: Uses PsychometricianAgent for optimized batch generation
+/// On-demand question pre-generation service. Call <see cref="RequestPrefetch"/> explicitly
+/// from Discovery flows — this service does NOT run continuously in the background.
 /// </summary>
-public class QuestionPrefetchService : BackgroundService
+public class QuestionPrefetchService
 {
     private readonly UserProfileStore _profileStore;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuestionPrefetchService> _logger;
-    private readonly ConcurrentQueue<string> _prefetchQueue = new();
 
     public QuestionPrefetchService(
         UserProfileStore profileStore,
@@ -26,43 +24,13 @@ public class QuestionPrefetchService : BackgroundService
     }
 
     /// <summary>
-    /// Request prefetch of questions for a user
+    /// Triggers question pre-generation for a user. Only call this from Discovery flows.
+    /// Fires as a background task so the caller is not blocked, but does NOT run
+    /// continuously — work happens once per explicit call.
     /// </summary>
     public void RequestPrefetch(string userId)
     {
-        _prefetchQueue.Enqueue(userId);
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation("Question Prefetch Service started (Psychometric Mode)");
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (_prefetchQueue.TryDequeue(out var userId))
-                {
-                    await PrefetchQuestionsForUser(userId, stoppingToken);
-                }
-                else
-                {
-                    // No work to do, wait a bit
-                    await Task.Delay(100, stoppingToken);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in question prefetch service");
-                await Task.Delay(1000, stoppingToken);
-            }
-        }
-
-        _logger.LogInformation("Question Prefetch Service stopped");
+        _ = Task.Run(() => PrefetchQuestionsForUser(userId, CancellationToken.None));
     }
 
     private async Task PrefetchQuestionsForUser(string userId, CancellationToken cancellationToken)

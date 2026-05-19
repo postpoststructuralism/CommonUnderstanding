@@ -12,6 +12,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class AdjudicationEngine
 {
+    private static readonly TimeSpan NarrativeTimeout = TimeSpan.FromSeconds(20);
+
     private readonly ApplicationDbContext _db;
     private readonly SemanticKernelService _kernelService;
     private readonly CommonUnderstandingService _cuService;
@@ -41,7 +43,10 @@ public class AdjudicationEngine
     /// 4. Generates a decision recommendation
     /// 5. Creates or updates the AdjudicationSummary
     /// </summary>
-    public async Task<AdjudicationSummary> AdjudicateAsync(int argumentId, CancellationToken cancellationToken = default)
+    public async Task<AdjudicationSummary> AdjudicateAsync(
+        int argumentId,
+        Func<string, object?, Task>? onDebug = null,
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Running adjudication for argument {ArgumentId}", argumentId);
 
@@ -134,6 +139,7 @@ public class AdjudicationEngine
             argument, allPropositions, overallConfidence, recommendation,
             evidenceGaps, conflictingPropositions,
             highStrengthRebuttals, criticalUnsupportedAssumptions,
+            onDebug,
             cancellationToken);
 
         // ── Step 7: Persist ───────────────────────────────────────────────────
@@ -307,6 +313,7 @@ public class AdjudicationEngine
         List<int> conflictingIds,
         bool highStrengthRebuttals,
         bool criticalUnsupportedAssumptions,
+        Func<string, object?, Task>? onDebug,
         CancellationToken cancellationToken)
     {
         try
@@ -383,7 +390,13 @@ public class AdjudicationEngine
             strengthen the analysis and move the decision forward.
             """;
 
-            var result = await kernel.InvokePromptAsync(prompt, cancellationToken: cancellationToken);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(NarrativeTimeout);
+
+            if (onDebug != null)
+                await onDebug("Starting adjudication narrative generation", new { timeoutMs = NarrativeTimeout.TotalMilliseconds });
+
+            var result = await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
             var raw = result.ToString().Trim();
 
             // Split on the NEXT STEPS section marker
@@ -401,13 +414,88 @@ public class AdjudicationEngine
                 narrative = CleanSectionText(raw);
             }
 
+            if (onDebug != null)
+            {
+                await onDebug("Adjudication narrative generation completed", new
+                {
+                    narrativeLength = narrative?.Length ?? 0,
+                    nextStepsLength = nextSteps?.Length ?? 0
+                });
+            }
+
             return (narrative, nextSteps);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Narrative+next-steps generation timed out for argument {Id} after {Seconds}s. Using rule-based fallback.",
+                argument.Id,
+                NarrativeTimeout.TotalSeconds);
+            if (onDebug != null)
+            {
+                await onDebug("Adjudication narrative timed out", new
+                {
+                    fallbackApplied = true,
+                    timeoutMs = NarrativeTimeout.TotalMilliseconds,
+                    argumentId = argument.Id
+                });
+            }
+            return BuildFallbackNarrativeAndNextSteps(
+                allPropositions,
+                overallConfidence,
+                recommendation,
+                evidenceGaps.Count,
+                conflictingIds.Count,
+                highStrengthRebuttals,
+                criticalUnsupportedAssumptions);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Narrative+next-steps generation failed for argument {Id}", argument.Id);
-            return (null, null);
+            if (onDebug != null)
+            {
+                await onDebug("Adjudication narrative generation failed", new
+                {
+                    fallbackApplied = true,
+                    argumentId = argument.Id,
+                    error = ex.Message
+                });
+            }
+            return BuildFallbackNarrativeAndNextSteps(
+                allPropositions,
+                overallConfidence,
+                recommendation,
+                evidenceGaps.Count,
+                conflictingIds.Count,
+                highStrengthRebuttals,
+                criticalUnsupportedAssumptions);
         }
+    }
+
+    private static (string? Narrative, string? NextSteps) BuildFallbackNarrativeAndNextSteps(
+        List<Proposition> propositions,
+        double overallConfidence,
+        DecisionRecommendation recommendation,
+        int evidenceGapCount,
+        int conflictingCount,
+        bool highStrengthRebuttals,
+        bool criticalUnsupportedAssumptions)
+    {
+        var supportedCount = propositions.Count(p => p.ConfidenceScore >= 0.70);
+        var weakCount = propositions.Count(p => p.ConfidenceScore <= 0.40);
+
+        var narrative =
+            $"This argument currently carries an overall confidence of {overallConfidence:P0}, which leads to a recommendation of {recommendation}. " +
+            $"Across {propositions.Count} premise(s), {supportedCount} appear comparatively strong while {weakCount} remain weak or insufficiently supported. " +
+            $"There are {evidenceGapCount} premise(s) without evidence and {conflictingCount} premise(s) with conflicting evidence. " +
+            $"High-strength rebuttals present: {(highStrengthRebuttals ? "yes" : "no")}. Unsupported critical assumptions present: {(criticalUnsupportedAssumptions ? "yes" : "no")}.";
+
+        var nextSteps =
+            evidenceGapCount > 0 || conflictingCount > 0
+                ? "Prioritize collecting direct evidence for unsupported premises and resolve the propositions where evidence currently conflicts. Strengthening or falsifying those points will most quickly improve the adjudication quality."
+                : "Prioritize stronger empirical support for the weakest premises and test the assumptions that most directly influence the recommendation. Additional corroborating evidence is the fastest way to improve confidence.";
+
+        return (narrative, nextSteps);
     }
 
     private static string? CleanSectionText(string text)

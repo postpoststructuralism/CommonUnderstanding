@@ -136,6 +136,22 @@ namespace CommonUnderstanding.Controllers
                 return Ok(new { Success = false, Error = ex.Message });
             }
         }
+
+        [HttpPost("test")]
+        public async Task<IActionResult> Test()
+        {
+            try
+            {
+                var kernel = _semanticKernelService.GetKernel();
+                var result = await kernel.InvokePromptAsync("Reply with only the word: OK");
+                var response = result.ToString().Trim();
+                return Ok(new { Success = true, Message = $"Connection successful — model responded: {response}" });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { Success = false, Message = ex.Message });
+            }
+        }
     }
 
     public class SwitchModelRequest

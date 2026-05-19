@@ -168,8 +168,18 @@ public class ArgumentController : Controller
             await Response.Body.FlushAsync(ct);
         }
 
+        Task SendDebugAsync(string message, object? details = null)
+            => SendEventAsync("debug", new
+            {
+                timestamp = DateTime.UtcNow,
+                message,
+                details
+            });
+
         try
         {
+            await SendDebugAsync("AnalyzeStream started", new { argumentId = id, force });
+
             var argument = await _db.Arguments
                 .Include(a => a.Claims)
                     .ThenInclude(c => c.Premises)
@@ -182,6 +192,8 @@ public class ArgumentController : Controller
                 .Include(a => a.Claims)
                     .ThenInclude(c => c.Rebuttals)
                 .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+            await SendDebugAsync("Argument query completed", new { found = argument is not null });
 
             if (argument == null)
             {
@@ -199,17 +211,32 @@ public class ArgumentController : Controller
             argument.Status = ArgumentStatus.Decomposing;
             argument.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+            await SendDebugAsync("Argument marked as decomposing", new { argumentId = argument.Id, status = argument.Status.ToString() });
 
             // ── Step 1-4: Decomposition with real-time progress ──────────────
             await SendEventAsync("progress", new { step = 0, total = 5, label = "Starting AI decomposition…" });
+            await SendDebugAsync("Starting decomposition service call", new { rawTextLength = argument.RawText?.Length ?? 0 });
 
             var decomposition = await _decompositionService.DecomposeAsync(
                 argument.RawText,
                 onProgress: async (label, step, total) =>
                 {
+                    await SendDebugAsync("Decomposition progress callback", new { step, total, label });
                     await SendEventAsync("progress", new { step, total = 5, label });
                 },
+                onDebug: async (message, details) =>
+                {
+                    await SendDebugAsync(message, details);
+                },
                 cancellationToken: ct);
+
+            await SendDebugAsync("Decomposition service call completed", new
+            {
+                claimLength = decomposition.ClaimText?.Length ?? 0,
+                premiseCount = decomposition.Premises.Count,
+                syllogismCount = decomposition.Syllogisms.Count,
+                assumptionCount = decomposition.Assumptions.Count
+            });
 
             // Update title from the extracted claim now that we have it
             if (!string.IsNullOrWhiteSpace(decomposition.ClaimText))
@@ -219,26 +246,45 @@ public class ArgumentController : Controller
                     : decomposition.ClaimText;
                 argument.Title = claimTitle;
                 await _db.SaveChangesAsync(ct);
+                await SendDebugAsync("Saved claim title", new { titleLength = claimTitle.Length });
                 await SendEventAsync("title", new { title = claimTitle });
             }
 
             // ── Step 3: Fallacy detection ────────────────────────────────────
             await SendEventAsync("progress", new { step = 3, total = 5, label = "Detecting logical fallacies…" });
+            await SendDebugAsync("Starting validation service call");
             var validation = await _validationService.ValidateAsync(decomposition, argument.RawText, ct);
+            await SendDebugAsync("Validation service call completed", new
+            {
+                fallacyCount = validation.FallaciesDetected.Count,
+                syllogismValidationCount = validation.SyllogismValidations.Count,
+                overallFormValid = validation.OverallFormValid
+            });
 
             // ── Step 4: Persisting results ───────────────────────────────────
             await SendEventAsync("progress", new { step = 4, total = 5, label = "Persisting results…" });
+            await SendDebugAsync("Persisting decomposition results");
             await PersistDecompositionAsync(argument, decomposition, validation);
 
             argument.Status = ArgumentStatus.Complete;
             argument.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+            await SendDebugAsync("Argument marked complete", new { argumentId = argument.Id });
 
             // ── Step 5: Adjudication + detailed narrative ────────────────────
             await SendEventAsync("progress", new { step = 5, total = 5, label = "Running adjudication & generating analysis…" });
-            await _adjudicationEngine.AdjudicateAsync(argument.Id, ct);
+            await SendDebugAsync("Starting adjudication service call");
+            await _adjudicationEngine.AdjudicateAsync(
+                argument.Id,
+                onDebug: async (message, details) =>
+                {
+                    await SendDebugAsync(message, details);
+                },
+                cancellationToken: ct);
+            await SendDebugAsync("Adjudication service call completed", new { argumentId = argument.Id });
 
             // ── Done ─────────────────────────────────────────────────────────
+            await SendDebugAsync("AnalyzeStream completed successfully", new { redirectId = id });
             await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(View), new { id }) });
         }
         catch (OperationCanceledException)
@@ -259,6 +305,7 @@ public class ArgumentController : Controller
 
             try
             {
+                await SendDebugAsync("AnalyzeStream failed", new { exception = ex.Message, argumentId = id });
                 await SendEventAsync("error", new { message = $"AI decomposition failed: {ex.Message}" });
             }
             catch { /* client already gone */ }

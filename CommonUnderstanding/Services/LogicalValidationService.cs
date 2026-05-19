@@ -8,6 +8,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class LogicalValidationService
 {
+    private static readonly TimeSpan FallacyDetectionTimeout = TimeSpan.FromSeconds(15);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<LogicalValidationService> _logger;
 
@@ -151,8 +153,21 @@ public class LogicalValidationService
         Do not invent fallacies. Only report clear instances.
         """;
 
-        var result = await kernel.InvokePromptAsync(prompt, cancellationToken: cancellationToken);
-        return ParseFallacyFindings(result.ToString());
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(FallacyDetectionTimeout);
+
+        try
+        {
+            var result = await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
+            return ParseFallacyFindings(result.ToString());
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Fallacy detection timed out after {Seconds}s. Continuing without fallacy findings.",
+                FallacyDetectionTimeout.TotalSeconds);
+            return [];
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -14,6 +14,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class PsychometricianAgent
 {
+    private static readonly TimeSpan BatchGenerationTimeout = TimeSpan.FromSeconds(20);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<PsychometricianAgent> _logger;
 
@@ -104,7 +106,20 @@ public class PsychometricianAgent
         _logger.LogInformation("Psychometrician Agent generating {BatchSize} optimal questions for user {UserId}", 
             batchSize, profile.Id);
 
-        var result = await kernel.InvokePromptAsync(prompt);
+        FunctionResult result;
+        try
+        {
+            using var timeoutCts = new CancellationTokenSource(BatchGenerationTimeout);
+            result = await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "Psychometric question batch generation timed out after {Seconds}s for user {UserId}",
+                BatchGenerationTimeout.TotalSeconds,
+                profile.Id);
+            return [];
+        }
         var questionBatchJson = result.ToString();
 
         _logger.LogInformation("Psychometrician Agent completed question generation for user {UserId}", profile.Id);

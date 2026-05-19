@@ -8,12 +8,16 @@ public sealed class OpenRouterModelCatalogService
 {
     private const string ModelsEndpoint = "https://openrouter.ai/api/v1/models";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan FailureBackoffMin = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan FailureBackoffMax = TimeSpan.FromMinutes(20);
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<OpenRouterModelCatalogService> _logger;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     private CatalogSnapshot _snapshot = CatalogSnapshot.Empty;
+    private int _consecutiveFailures;
+    private DateTimeOffset _nextRefreshAllowedAt = DateTimeOffset.MinValue;
 
     public OpenRouterModelCatalogService(
         IHttpClientFactory httpClientFactory,
@@ -29,34 +33,50 @@ public sealed class OpenRouterModelCatalogService
         bool forceRefresh = false,
         CancellationToken cancellationToken = default)
     {
+        var now = DateTimeOffset.UtcNow;
         if (!forceRefresh && _snapshot.IsFresh(CacheTtl))
+            return _snapshot.Models;
+
+        if (!forceRefresh && _snapshot.Models.Count > 0 && now < _nextRefreshAllowedAt)
             return _snapshot.Models;
 
         await _refreshLock.WaitAsync(cancellationToken);
         try
         {
+            now = DateTimeOffset.UtcNow;
             if (!forceRefresh && _snapshot.IsFresh(CacheTtl))
+                return _snapshot.Models;
+
+            if (!forceRefresh && _snapshot.Models.Count > 0 && now < _nextRefreshAllowedAt)
                 return _snapshot.Models;
 
             var models = await FetchModelsAsync(cancellationToken);
             _snapshot = new CatalogSnapshot(models, DateTimeOffset.UtcNow);
+            _consecutiveFailures = 0;
+            _nextRefreshAllowedAt = DateTimeOffset.MinValue;
 
             _logger.LogInformation("Loaded {Count} live free OpenRouter models.", models.Count);
             return models;
         }
         catch (Exception ex)
         {
+            _consecutiveFailures++;
+            var backoff = ComputeFailureBackoff(_consecutiveFailures);
+            _nextRefreshAllowedAt = DateTimeOffset.UtcNow + backoff;
+
             if (_snapshot.Models.Count > 0)
             {
                 _logger.LogWarning(ex,
-                    "Failed to refresh OpenRouter model catalog. Using cached list of {Count} models.",
-                    _snapshot.Models.Count);
+                    "Failed to refresh OpenRouter model catalog. Using cached list of {Count} models and backing off refreshes for {Minutes} minute(s).",
+                    _snapshot.Models.Count,
+                    Math.Round(backoff.TotalMinutes, 1));
                 return _snapshot.Models;
             }
 
             _logger.LogWarning(ex,
-                "Failed to load OpenRouter model catalog and no cached catalog is available.");
-            return [];
+                "Failed to load OpenRouter model catalog and no cached catalog is available. Falling back to bootstrap list for {Minutes} minute(s).",
+                Math.Round(backoff.TotalMinutes, 1));
+            return OpenRouterModelCatalog.AvailableModels;
         }
         finally
         {
@@ -92,14 +112,17 @@ public sealed class OpenRouterModelCatalogService
 
         var modelElements = EnumerateModelElements(doc.RootElement);
 
+        // Shuffle within each priority tier so concurrent requests from this server
+        // spread across different models rather than all hitting the same one first.
+        var rng = Random.Shared;
         var models = modelElements
             .Select(ToCandidate)
             .Where(candidate => candidate is not null)
             .Select(candidate => candidate!)
             .Where(candidate => candidate.IsFree)
-            .OrderBy(candidate => candidate.Priority)
-            .ThenBy(candidate => candidate.SizeBillions ?? double.MaxValue)
-            .ThenBy(candidate => candidate.Id, StringComparer.Ordinal)
+            .GroupBy(candidate => candidate.Priority)
+            .OrderBy(g => g.Key)
+            .SelectMany(g => g.OrderBy(_ => rng.Next()))  // shuffle within tier
             .Select(candidate => candidate.Id)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -185,6 +208,13 @@ public sealed class OpenRouterModelCatalogService
         if (sizeBillions is <= 8.5) return 5;
         if (sizeBillions is <= 14) return 6;
         return 10;
+    }
+
+    private static TimeSpan ComputeFailureBackoff(int consecutiveFailures)
+    {
+        var multiplier = Math.Min(6, Math.Max(0, consecutiveFailures - 1));
+        var minutes = FailureBackoffMin.TotalMinutes * Math.Pow(2, multiplier);
+        return TimeSpan.FromMinutes(Math.Min(FailureBackoffMax.TotalMinutes, minutes));
     }
 
     private sealed record OpenRouterModelCandidate(string Id, bool IsFree, int Priority, double? SizeBillions);

@@ -5,20 +5,21 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public static class OpenRouterModelCatalog
 {
-    public const string DefaultModelId = "meta-llama/llama-3.1-8b-instruct:free";
+    public const string DefaultModelId = "deepseek/deepseek-r1-distill-llama-8b:free";
 
     public static readonly string[] BootstrapModels =
     [
-        "meta-llama/llama-3.1-8b-instruct:free",   // fast 8B, very reliable
-        "qwen/qwen3-8b:free",                        // Qwen3 8B — fast + capable
-        "google/gemma-3-12b-it:free",                // Gemma 3 12B — Google, fast
-        "mistralai/mistral-7b-instruct:free",        // classic 7B, consistent
-        "microsoft/phi-3-mini-128k-instruct:free",   // 3.8B — smallest, fastest
-        "qwen/qwen-2.5-7b-instruct:free",            // Qwen 2.5 7B fallback
-        "google/gemma-2-9b-it:free",                 // Gemma 2 9B fallback
-        "nousresearch/hermes-3-llama-3.1-8b:free",  // instruction-tuned 8B
-        "openchat/openchat-7b:free",                 // OpenChat 7B
-        "meta-llama/llama-3.3-70b-instruct:free",   // 70B — most capable, slowest
+        // Less-congested models come first — they see far fewer free-tier users
+        "deepseek/deepseek-r1-distill-llama-8b:free",  // DeepSeek R1 distill — low traffic
+        "deepseek/deepseek-r1-distill-qwen-14b:free",  // 14B distill — quality + low traffic
+        "nvidia/llama-3.1-nemotron-nano-8b-v1:free",   // Nemotron — rarely hammered
+        "qwen/qwen3-8b:free",                           // Qwen3 8B — moderate traffic
+        "google/gemma-3-12b-it:free",                   // Gemma 3 12B — moderate traffic
+        "qwen/qwen-2.5-7b-instruct:free",               // Qwen 2.5 7B
+        "nousresearch/hermes-3-llama-3.1-8b:free",     // instruction-tuned 8B
+        "mistralai/mistral-7b-instruct:free",           // classic 7B — high traffic, last resort
+        "meta-llama/llama-3.1-8b-instruct:free",        // very popular, most likely 429'd
+        "meta-llama/llama-3.3-70b-instruct:free",       // 70B — most capable, slowest
     ];
 
     public static IReadOnlyList<string> AvailableModels => BootstrapModels;

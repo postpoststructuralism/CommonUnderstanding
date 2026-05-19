@@ -9,6 +9,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class EvidenceClassificationService
 {
+    private static readonly TimeSpan ClassificationTimeout = TimeSpan.FromSeconds(12);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<EvidenceClassificationService> _logger;
 
@@ -74,8 +76,19 @@ public class EvidenceClassificationService
 
         try
         {
-            var result = await kernel.InvokePromptAsync(prompt);
+            using var timeoutCts = new CancellationTokenSource(ClassificationTimeout);
+            var result = await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
             return ParseClassification(result.ToString());
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Evidence classification timed out after {Seconds}s; returning defaults", ClassificationTimeout.TotalSeconds);
+            return new EvidenceClassification
+            {
+                Tier = EvidenceTier.T5_CaseStudy,
+                Direction = EvidenceDirection.Neutral,
+                QualityConcerns = "Auto-classification timed out."
+            };
         }
         catch (Exception ex)
         {

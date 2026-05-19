@@ -9,6 +9,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class BeliefAnalysisService
 {
+    private static readonly TimeSpan AnalysisTimeout = TimeSpan.FromSeconds(20);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<BeliefAnalysisService> _logger;
 
@@ -48,7 +50,7 @@ public class BeliefAnalysisService
 
         try
         {
-            var result = await kernel.InvokePromptAsync(prompt);
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, AnalysisTimeout);
             var analysisText = result.ToString();
 
             _logger.LogInformation("Completed analysis of belief system: {Name}", name);
@@ -59,6 +61,15 @@ public class BeliefAnalysisService
             {
                 Name = name,
                 Description = description + "\n\nAI Analysis:\n" + analysisText
+            };
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("Belief system analysis timed out for {Name}; returning minimal fallback", name);
+            return new BeliefSystem
+            {
+                Name = name,
+                Description = description + "\n\nAI Analysis: Timed out. Showing original description only."
             };
         }
         catch (Exception ex)
@@ -116,7 +127,7 @@ public class BeliefAnalysisService
 
         try
         {
-            var result = await kernel.InvokePromptAsync(prompt);
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, AnalysisTimeout);
             var analysisText = result.ToString();
 
             _logger.LogInformation("Completed comparison of {BS1} and {BS2}", 
@@ -131,6 +142,19 @@ public class BeliefAnalysisService
                 BeliefSystem2Name = beliefSystem2.Name,
                 SynthesisSummary = analysisText,
                 OverlapScore = 0 // Would be extracted from AI response in production
+            };
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("Belief system comparison timed out for {BS1} and {BS2}", beliefSystem1.Name, beliefSystem2.Name);
+            return new BeliefComparison
+            {
+                BeliefSystem1Id = beliefSystem1.Id,
+                BeliefSystem2Id = beliefSystem2.Id,
+                BeliefSystem1Name = beliefSystem1.Name,
+                BeliefSystem2Name = beliefSystem2.Name,
+                SynthesisSummary = "Comparison timed out. Review the two belief systems manually for shared themes and differences.",
+                OverlapScore = 0
             };
         }
         catch (Exception ex)
@@ -164,13 +188,32 @@ public class BeliefAnalysisService
 
         try
         {
-            var result = await kernel.InvokePromptAsync(prompt);
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, AnalysisTimeout);
             return result.ToString();
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("Dialogue suggestion generation timed out for {BS1} and {BS2}", comparison.BeliefSystem1Name, comparison.BeliefSystem2Name);
+            return "Dialogue suggestions timed out. Start by identifying one shared value, one respectful question, and one small collaborative activity both sides can support.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating dialogue suggestions");
             throw;
+        }
+    }
+
+    private async Task<FunctionResult> InvokePromptWithTimeoutAsync(Kernel kernel, string prompt, TimeSpan timeout)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        try
+        {
+            return await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Belief analysis prompt timed out after {Seconds}s", timeout.TotalSeconds);
+            throw new TimeoutException($"Belief analysis timed out after {timeout.TotalSeconds} seconds.");
         }
     }
 }

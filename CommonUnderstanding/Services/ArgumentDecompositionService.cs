@@ -10,6 +10,9 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class ArgumentDecompositionService
 {
+    private static readonly TimeSpan ClaimTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ParallelPromptTimeout = TimeSpan.FromSeconds(20);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<ArgumentDecompositionService> _logger;
 
@@ -28,10 +31,20 @@ public class ArgumentDecompositionService
     public async Task<DecompositionResult> DecomposeAsync(
         string argumentText,
         Func<string, int, int, Task>? onProgress = null,
+        Func<string, object?, Task>? onDebug = null,
         CancellationToken cancellationToken = default)
     {
         // ── Pre-processing: normalise text before any AI call ─────────────────
         argumentText = PreprocessText(argumentText);
+
+        if (onDebug != null)
+        {
+            await onDebug("Decomposition text preprocessed", new
+            {
+                length = argumentText.Length,
+                preview = argumentText.Length > 160 ? argumentText[..160] + "..." : argumentText
+            });
+        }
 
         _logger.LogInformation("Beginning argument decomposition ({Length} chars)", argumentText.Length);
 
@@ -40,13 +53,40 @@ public class ArgumentDecompositionService
         // ── Step 1: Extract the central claim ────────────────────────────────
         // Try heuristics first (free); fall back to an LLM call only when needed.
         if (onProgress != null) await onProgress("Extracting central claim…", 1, 2);
-        var claimText = TryExtractClaimHeuristically(argumentText)
-            ?? await ExtractClaimAsync(kernel, argumentText, cancellationToken);
+        var claimStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var heuristicClaim = TryExtractClaimHeuristically(argumentText);
+        if (onDebug != null)
+            await onDebug("Claim extraction strategy selected", new { usedHeuristic = heuristicClaim is not null });
+
+        var claimText = heuristicClaim
+            ?? await InvokePromptWithTimeoutAsync(
+                operationName: "claim extraction",
+                timeout: ClaimTimeout,
+                promptAction: promptCt => ExtractClaimAsync(kernel, argumentText, promptCt),
+                fallbackValue: DeriveFallbackClaim(argumentText),
+                onDebug: onDebug,
+                cancellationToken: cancellationToken);
+        claimStopwatch.Stop();
+
+        if (onDebug != null)
+        {
+            await onDebug("Claim extraction completed", new
+            {
+                elapsedMs = claimStopwatch.ElapsedMilliseconds,
+                claimLength = claimText.Length,
+                claimPreview = claimText.Length > 160 ? claimText[..160] + "..." : claimText
+            });
+        }
 
         // ── Step 2: Parallel structural decomposition ─────────────────────────
         // Two focused prompts run concurrently on different providers (round-robin).
         if (onProgress != null) await onProgress("Decomposing argument structure & assessing premises…", 2, 2);
-        var (premisesRaw, structureRaw) = await ParallelDecompositionAsync(kernel, argumentText, claimText, cancellationToken);
+        var (premisesRaw, structureRaw) = await ParallelDecompositionAsync(
+            kernel,
+            argumentText,
+            claimText,
+            onDebug,
+            cancellationToken);
 
         // ── Parse ────────────────────────────────────────────────────────────
         var result = ParseFullDecomposition(claimText, premisesRaw + "\n" + structureRaw);
@@ -174,7 +214,11 @@ public class ArgumentDecompositionService
     /// Splitting the mega-prompt this way roughly halves latency.
     /// </summary>
     private async Task<(string PremisesRaw, string StructureRaw)> ParallelDecompositionAsync(
-        Kernel kernel, string argumentText, string claimText, CancellationToken ct)
+        Kernel kernel,
+        string argumentText,
+        string claimText,
+        Func<string, object?, Task>? onDebug,
+        CancellationToken ct)
     {
         var premisesPrompt = $$$"""
         Always respond in English.
@@ -228,12 +272,165 @@ public class ArgumentDecompositionService
 
         // Fire both prompts concurrently — the round-robin service routes each
         // to a different provider automatically.
-        var premisesTask  = kernel.InvokePromptAsync(premisesPrompt,  cancellationToken: ct);
-        var structureTask = kernel.InvokePromptAsync(structurePrompt, cancellationToken: ct);
+        if (onDebug != null)
+            await onDebug("Starting parallel decomposition prompts", new { claimLength = claimText.Length });
+
+        var premisesStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var structureStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        var premisesTask = InvokePromptWithTimeoutAsync(
+            operationName: "premises decomposition",
+            timeout: ParallelPromptTimeout,
+            promptAction: async promptCt =>
+            {
+                var result = await kernel.InvokePromptAsync(premisesPrompt, cancellationToken: promptCt);
+                return result.ToString().Trim();
+            },
+            fallbackValue: string.Empty,
+            onDebug: onDebug,
+            cancellationToken: ct);
+
+        var structureTask = InvokePromptWithTimeoutAsync(
+            operationName: "structure decomposition",
+            timeout: ParallelPromptTimeout,
+            promptAction: async promptCt =>
+            {
+                var result = await kernel.InvokePromptAsync(structurePrompt, cancellationToken: promptCt);
+                return result.ToString().Trim();
+            },
+            fallbackValue: string.Empty,
+            onDebug: onDebug,
+            cancellationToken: ct);
+
+        _ = premisesTask.ContinueWith(async task =>
+        {
+            premisesStopwatch.Stop();
+            if (onDebug == null) return;
+
+            if (task.IsCompletedSuccessfully)
+            {
+                var text = task.Result.ToString().Trim();
+                await onDebug("Premises prompt completed", new
+                {
+                    elapsedMs = premisesStopwatch.ElapsedMilliseconds,
+                    resultLength = text.Length,
+                    preview = text.Length > 160 ? text[..160] + "..." : text
+                });
+            }
+            else if (task.IsFaulted)
+            {
+                await onDebug("Premises prompt failed", new
+                {
+                    elapsedMs = premisesStopwatch.ElapsedMilliseconds,
+                    error = task.Exception?.GetBaseException().Message
+                });
+            }
+            else if (task.IsCanceled)
+            {
+                await onDebug("Premises prompt canceled", new { elapsedMs = premisesStopwatch.ElapsedMilliseconds });
+            }
+        }, TaskScheduler.Default).Unwrap();
+
+        _ = structureTask.ContinueWith(async task =>
+        {
+            structureStopwatch.Stop();
+            if (onDebug == null) return;
+
+            if (task.IsCompletedSuccessfully)
+            {
+                var text = task.Result.ToString().Trim();
+                await onDebug("Structure prompt completed", new
+                {
+                    elapsedMs = structureStopwatch.ElapsedMilliseconds,
+                    resultLength = text.Length,
+                    preview = text.Length > 160 ? text[..160] + "..." : text
+                });
+            }
+            else if (task.IsFaulted)
+            {
+                await onDebug("Structure prompt failed", new
+                {
+                    elapsedMs = structureStopwatch.ElapsedMilliseconds,
+                    error = task.Exception?.GetBaseException().Message
+                });
+            }
+            else if (task.IsCanceled)
+            {
+                await onDebug("Structure prompt canceled", new { elapsedMs = structureStopwatch.ElapsedMilliseconds });
+            }
+        }, TaskScheduler.Default).Unwrap();
+
         await Task.WhenAll(premisesTask, structureTask);
 
-        return (premisesTask.Result.ToString().Trim(),
-                structureTask.Result.ToString().Trim());
+        if (onDebug != null)
+        {
+            await onDebug("Parallel decomposition prompts completed", new
+            {
+                premisesElapsedMs = premisesStopwatch.ElapsedMilliseconds,
+                structureElapsedMs = structureStopwatch.ElapsedMilliseconds
+            });
+        }
+
+        return (premisesTask.Result,
+                structureTask.Result);
+    }
+
+    private async Task<string> InvokePromptWithTimeoutAsync(
+        string operationName,
+        TimeSpan timeout,
+        Func<CancellationToken, Task<string>> promptAction,
+        string fallbackValue,
+        Func<string, object?, Task>? onDebug,
+        CancellationToken cancellationToken)
+    {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeout);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var result = await promptAction(timeoutCts.Token);
+            stopwatch.Stop();
+
+            if (onDebug != null)
+            {
+                await onDebug($"{operationName} finished", new
+                {
+                    elapsedMs = stopwatch.ElapsedMilliseconds,
+                    resultLength = result.Length
+                });
+            }
+
+            return result;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                "Argument decomposition {Operation} timed out after {Seconds}s. Continuing with fallback.",
+                operationName, timeout.TotalSeconds);
+
+            if (onDebug != null)
+            {
+                await onDebug($"{operationName} timed out", new
+                {
+                    elapsedMs = stopwatch.ElapsedMilliseconds,
+                    timeoutMs = timeout.TotalMilliseconds,
+                    fallbackApplied = true
+                });
+            }
+
+            return fallbackValue;
+        }
+    }
+
+    private static string DeriveFallbackClaim(string text)
+    {
+        var sentences = SplitIntoSentences(text);
+        if (sentences.Count > 0)
+            return sentences[^1].Trim();
+
+        return text.Length > 240 ? text[..240].Trim() : text.Trim();
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -9,6 +9,8 @@ namespace CommonUnderstanding.Services;
 /// </summary>
 public class DiscoveryQuestionEngine
 {
+    private static readonly TimeSpan QuestionGenerationTimeout = TimeSpan.FromSeconds(15);
+
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<DiscoveryQuestionEngine> _logger;
 
@@ -41,9 +43,18 @@ public class DiscoveryQuestionEngine
         var prompt = BuildQuestionPrompt(stage, uncertainAreas, previousQuestions, profile);
 
         _logger.LogInformation("Generating question for user {UserId} at stage {Stage}", profile.Id, stage);
-        
-        var result = await kernel.InvokePromptAsync(prompt);
-        var questionData = result.ToString();
+
+        string questionData;
+        try
+        {
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, QuestionGenerationTimeout);
+            questionData = result.ToString();
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("GenerateNextQuestionAsync timed out for user {UserId}; using scale fallback", profile.Id);
+            return GenerateScaleQuestion(profile);
+        }
 
         _logger.LogInformation("Successfully generated question for user {UserId}", profile.Id);
 
@@ -83,8 +94,17 @@ public class DiscoveryQuestionEngine
 
         _logger.LogInformation("Generating moral dilemma for dimensions: {Dimensions}", string.Join(", ", targetDimensions));
         
-        var result = await kernel.InvokePromptAsync(prompt);
-        var dilemmaText = result.ToString();
+        string dilemmaText;
+        try
+        {
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, QuestionGenerationTimeout);
+            dilemmaText = result.ToString();
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("GenerateMoralDilemmaAsync timed out for user {UserId}; using fallback dilemma", profile.Id);
+            dilemmaText = "SCENARIO: A town can either preserve a long-standing local tradition or replace it with a policy that may improve fairness for newcomers.\nQUESTION: Which option should the town choose?\nFOLLOW_UP: What value mattered most in your choice?";
+        }
 
         return new UserInteraction
         {
@@ -118,7 +138,17 @@ public class DiscoveryQuestionEngine
 
         _logger.LogInformation("Generating emotional scenario targeting: {Emotion}", targetEmotion);
         
-        var result = await kernel.InvokePromptAsync(prompt);
+        string questionText;
+        try
+        {
+            var result = await InvokePromptWithTimeoutAsync(kernel, prompt, QuestionGenerationTimeout);
+            questionText = result.ToString();
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("GenerateEmotionalScenarioAsync timed out for user {UserId}; using fallback prompt", profile.Id);
+            questionText = $"Describe a situation that would make you feel {targetEmotion}. What would your reaction reveal about what you value most?";
+        }
         
         return new UserInteraction
         {
@@ -126,10 +156,24 @@ public class DiscoveryQuestionEngine
             Type = InteractionType.EmotionalPrompt,
             Content = new InteractionContent
             {
-                Question = result.ToString(),
+                Question = questionText,
                 Format = InteractionFormat.OpenText
             }
         };
+    }
+
+    private async Task<FunctionResult> InvokePromptWithTimeoutAsync(Kernel kernel, string prompt, TimeSpan timeout)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        try
+        {
+            return await kernel.InvokePromptAsync(prompt, cancellationToken: timeoutCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Discovery question prompt timed out after {Seconds}s", timeout.TotalSeconds);
+            throw new TimeoutException($"Discovery question generation timed out after {timeout.TotalSeconds} seconds.");
+        }
     }
 
     /// <summary>
