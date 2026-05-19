@@ -11,7 +11,7 @@ namespace CommonUnderstanding.Services;
 public class ArgumentDecompositionService
 {
     private static readonly TimeSpan ClaimTimeout = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan ParallelPromptTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan ParallelPromptTimeout = TimeSpan.FromSeconds(90);
 
     private readonly SemanticKernelService _kernelService;
     private readonly ILogger<ArgumentDecompositionService> _logger;
