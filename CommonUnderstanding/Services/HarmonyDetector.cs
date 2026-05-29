@@ -35,16 +35,9 @@ public class HarmonyDetector
     {
         var results = new List<EmergentConclusion>();
 
-        var tasks = new[]
-        {
-            DetectConvergentGroundAsync(ct),
-            DetectEmergentConsensusAsync(ct),
-            DetectComplementaryChainsAsync(ct)
-        };
-
-        var all = await Task.WhenAll(tasks);
-        foreach (var batch in all)
-            results.AddRange(batch);
+        results.AddRange(await DetectConvergentGroundAsync(ct));
+        results.AddRange(await DetectEmergentConsensusAsync(ct));
+        results.AddRange(await DetectComplementaryChainsAsync(ct));
 
         return results.OrderByDescending(r => r.Significance).ToList();
     }
@@ -55,12 +48,11 @@ public class HarmonyDetector
     public async Task<List<EmergentConclusion>> DetectAllDeepAsync(CancellationToken ct = default)
     {
         var phase1 = await DetectAllAsync(ct);
-        var sharedValueTask = ExtractSharedValueCoreAsync(ct);
-        var crossDomainTask = DetectCrossDomainReinforcementAsync(ct);
-        await Task.WhenAll(sharedValueTask, crossDomainTask);
+        var sharedValues = await ExtractSharedValueCoreAsync(ct);
+        var crossDomain = await DetectCrossDomainReinforcementAsync(ct);
         return phase1
-            .Concat(await sharedValueTask)
-            .Concat(await crossDomainTask)
+            .Concat(sharedValues)
+            .Concat(crossDomain)
             .OrderByDescending(r => r.Significance)
             .ToList();
     }

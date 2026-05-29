@@ -108,17 +108,13 @@ public class EmergentConclusionsEngine
         }
         else
         {
-            // ── Parallel path: maximum throughput ────────────────────────────
-            var blindspotTask = deep
-                ? _blindspotDetector.DetectAllDeepAsync(ct)
-                : _blindspotDetector.DetectAllAsync(ct);
-            var harmonyTask = deep
-                ? _harmonyDetector.DetectAllDeepAsync(ct)
-                : _harmonyDetector.DetectAllAsync(ct);
-
-            await Task.WhenAll(blindspotTask, harmonyTask);
-            blindspots = blindspotTask.Result;
-            harmonies  = harmonyTask.Result;
+            // ── Sequential path: avoids concurrent DbContext access ───────────
+            blindspots = deep
+                ? await _blindspotDetector.DetectAllDeepAsync(ct)
+                : await _blindspotDetector.DetectAllAsync(ct);
+            harmonies = deep
+                ? await _harmonyDetector.DetectAllDeepAsync(ct)
+                : await _harmonyDetector.DetectAllAsync(ct);
         }
 
         report.Blindspots = blindspots.OrderByDescending(b => b.Significance).ToList();

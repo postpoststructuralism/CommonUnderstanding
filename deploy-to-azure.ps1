@@ -2,7 +2,7 @@
 # This script deploys the application to Azure App Service in the freedom-ledger resource group
 
 param(
-    [string]$ResourceGroup = "freedom-ledger",
+    [string]$ResourceGroup = "freedom-ledger_group",
     [string]$AppName = "common-understanding",
     [string]$Location = "eastus",
     [string]$PlanName = "freedom-ledger-plan",
@@ -90,6 +90,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host ""
 
+# Always enforce .NET 9 runtime stack (fixes 500.30 if runtime was ever reset)
+Write-Host "Configuring runtime stack to .NET 9..." -ForegroundColor Yellow
+az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "DOTNETCORE|9.0"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "WARNING: Failed to set runtime stack. Check Azure portal manually." -ForegroundColor Yellow
+} else {
+    Write-Host "✓ Runtime stack set to DOTNETCORE|9.0" -ForegroundColor Green
+}
+Write-Host ""
+
 # Configure App Settings
 Write-Host "Configuring App Settings..." -ForegroundColor Yellow
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings ASPNETCORE_ENVIRONMENT="Production" Ollama__Endpoint="https://ollama-service.azurewebsites.net" Ollama__ModelName="llama3.2:3b"
@@ -109,7 +119,9 @@ if (Test-Path $publishPath) {
 }
 
 Push-Location ".\CommonUnderstanding"
-dotnet publish -c Release -o ..\$publishPath
+# Publish self-contained for linux-x64 so the app carries its own .NET runtime.
+# This prevents HTTP 500.30 errors caused by a missing/mismatched runtime on the server.
+dotnet publish -c Release -r linux-x64 --self-contained true -o ..\$publishPath
 $buildResult = $LASTEXITCODE
 Pop-Location
 

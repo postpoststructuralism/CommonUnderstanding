@@ -37,17 +37,10 @@ public class BlindspotDetector
 
         var totalArguments = await _db.Arguments.CountAsync(ct);
 
-        var tasks = new[]
-        {
-            DetectAssumptionCascadesAsync(totalArguments, ct),
-            DetectEvidenceDesertsAsync(ct),
-            DetectConfidenceIllusionsAsync(ct),
-            DetectUnaddressedRebuttalsAsync(ct)
-        };
-
-        var all = await Task.WhenAll(tasks);
-        foreach (var batch in all)
-            results.AddRange(batch);
+        results.AddRange(await DetectAssumptionCascadesAsync(totalArguments, ct));
+        results.AddRange(await DetectEvidenceDesertsAsync(ct));
+        results.AddRange(await DetectConfidenceIllusionsAsync(ct));
+        results.AddRange(await DetectUnaddressedRebuttalsAsync(ct));
 
         return results.OrderByDescending(r => r.Significance).ToList();
     }

@@ -185,7 +185,7 @@ public class SemanticKernelService
 
         var httpClient = new HttpClient(retryHandler)
         {
-            Timeout = TimeSpan.FromSeconds(45)
+            Timeout = TimeSpan.FromSeconds(120)
         };
 
         var clientOptions = new OpenAIClientOptions
