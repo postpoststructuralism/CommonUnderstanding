@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: common-understanding
-  AZURE_RESOURCE_GROUP: freedom-ledger_group
+  AZURE_WEBAPP_NAME: common-understanding-v2
+  AZURE_RESOURCE_GROUP: CommonUnderstanding
   DOTNET_VERSION: '9.0.x'
 
 # Never retain artifacts — clean up immediately after deployment

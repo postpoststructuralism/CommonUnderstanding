@@ -45,29 +45,29 @@ az group create --name $ResourceGroup --location $Location --output none
 Write-Host "[OK] Resource group ready: $ResourceGroup" -ForegroundColor Green
 
 Write-Host "Ensuring Log Analytics workspace exists..." -ForegroundColor Yellow
-$workspaceExists = az monitor log-analytics workspace show --resource-group $ResourceGroup --workspace-name $WorkspaceName --query name --output tsv 2>$null
+$workspaceExists = az monitor log-analytics workspace list --resource-group $ResourceGroup --query "[?name=='$WorkspaceName'].name" --output tsv 2>$null
 if ([string]::IsNullOrWhiteSpace($workspaceExists)) {
     az monitor log-analytics workspace create --resource-group $ResourceGroup --workspace-name $WorkspaceName --location $Location --output none
 }
 Write-Host "[OK] Log Analytics workspace ready: $WorkspaceName" -ForegroundColor Green
 
-Write-Host "Ensuring Application Insights exists..." -ForegroundColor Yellow
-$appiExists = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query name --output tsv 2>$null
-if ([string]::IsNullOrWhiteSpace($appiExists)) {
-    az monitor app-insights component create --app $AppInsightsName --location $Location --resource-group $ResourceGroup --workspace $WorkspaceName --kind web --application-type web --output none
-}
-$appInsightsConnectionString = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query connectionString --output tsv
-Write-Host "[OK] Application Insights ready: $AppInsightsName" -ForegroundColor Green
+#Write-Host "Ensuring Application Insights exists..." -ForegroundColor Yellow
+#$appiExists = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query name --output tsv 2>$null
+#if ([string]::IsNullOrWhiteSpace($appiExists)) {
+#    az monitor app-insights component create --app $AppInsightsName --location $Location --resource-group $ResourceGroup --workspace $WorkspaceName --kind web --application-type web --output none
+#}
+#$appInsightsConnectionString = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query connectionString --output tsv
+#Write-Host "[OK] Application Insights ready: $AppInsightsName" -ForegroundColor Green
 
 Write-Host "Ensuring App Service plan exists..." -ForegroundColor Yellow
-$planExists = az appservice plan show --name $PlanName --resource-group $ResourceGroup --query name --output tsv 2>$null
+$planExists = az appservice plan list --resource-group $ResourceGroup --query "[?name=='$PlanName'].name" --output tsv 2>$null
 if ([string]::IsNullOrWhiteSpace($planExists)) {
     az appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku $Sku --is-linux --output none
 }
 Write-Host "[OK] App Service plan ready: $PlanName" -ForegroundColor Green
 
 Write-Host "Ensuring Web App exists..." -ForegroundColor Yellow
-$appExists = az webapp show --name $AppName --resource-group $ResourceGroup --query name --output tsv 2>$null
+$appExists = az webapp list --resource-group $ResourceGroup --query "[?name=='$AppName'].name" --output tsv 2>$null
 if ([string]::IsNullOrWhiteSpace($appExists)) {
     az webapp create --name $AppName --resource-group $ResourceGroup --plan $PlanName --runtime $Runtime --output none
 }

@@ -2,10 +2,10 @@
 # This script deploys the application to Azure App Service in the freedom-ledger resource group
 
 param(
-    [string]$ResourceGroup = "freedom-ledger_group",
+    [string]$ResourceGroup = "CommonUnderstanding",
     [string]$AppName = "common-understanding",
     [string]$Location = "eastus",
-    [string]$PlanName = "freedom-ledger-plan",
+    [string]$PlanName = "common-understanding-v2-plan",
     [string]$Runtime = "DOTNETCORE:9.0",
     [string]$AzureFoundryEndpoint = "",
     [string]$AzureFoundryApiKey = "",
