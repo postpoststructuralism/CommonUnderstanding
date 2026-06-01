@@ -125,6 +125,9 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult AccessDenied() => View();
 
+    [HttpGet]
+    public IActionResult Paywall() => View();
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task SignInAsync(UserAccount account)

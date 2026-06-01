@@ -15,3 +15,14 @@ public class UserAccount
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
 }
+
+/// <summary>
+/// Persistent AI usage counter keyed by authenticated user id or anonymous key.
+/// </summary>
+public class AiUsageCounter
+{
+    public string CounterKey { get; set; } = string.Empty;
+    public int RequestCount { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastRequestAt { get; set; } = DateTime.UtcNow;
+}

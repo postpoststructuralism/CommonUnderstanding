@@ -9,42 +9,43 @@ namespace CommonUnderstanding.Controllers
     public class AIStatusController : ControllerBase
     {
         private readonly SemanticKernelService _semanticKernelService;
-        private readonly OpenRouterModelCatalogService _openRouterModelCatalog;
         private readonly IConfiguration _configuration;
         private readonly RuntimeAiConfigService _runtimeConfig;
 
         public AIStatusController(
             SemanticKernelService semanticKernelService,
-            OpenRouterModelCatalogService openRouterModelCatalog,
             IConfiguration configuration,
             RuntimeAiConfigService runtimeConfig)
         {
             _semanticKernelService = semanticKernelService;
-            _openRouterModelCatalog = openRouterModelCatalog;
             _configuration = configuration;
             _runtimeConfig = runtimeConfig;
         }
 
         [HttpGet("status")]
-        public async Task<IActionResult> GetStatus()
+        public IActionResult GetStatus()
         {
-            var openRouterModel = _semanticKernelService.ResolveOpenRouterModel();
-            var openRouterConfigured = !string.IsNullOrWhiteSpace(_configuration["OpenRouter:ApiKey"]);
-            var geminiConfigured    = !string.IsNullOrWhiteSpace(_configuration["Gemini:ApiKey"]);
-            var geminiModel         = _configuration["Gemini:ModelName"] ?? GeminiModelCatalog.DefaultModelId;
+            var azureEndpoint = _runtimeConfig.Endpoint ?? _configuration["AzureFoundry:Endpoint"];
+            var azureConfigured = !string.IsNullOrWhiteSpace(_configuration["AzureFoundry:ApiKey"]) &&
+                                  !string.IsNullOrWhiteSpace(azureEndpoint);
+            var azureModel = _semanticKernelService.ResolveAzurePrimaryModel();
+            var secondaryModel = _configuration["AzureFoundry:SecondaryModelId"] ?? string.Empty;
+            var useSecondaryFallback = bool.TryParse(_configuration["AzureFoundry:UseSecondaryFallback"], out var useSecondary)
+                ? useSecondary
+                : true;
             var ollamaEndpoint      = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
             var ollamaModel         = _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId;
-            var openRouterModels    = openRouterConfigured
-                ? await _openRouterModelCatalog.GetAvailableModelsAsync()
-                : [];
+            var ollamaFallbackEnabled = bool.TryParse(_configuration["Ollama:EnableFallback"], out var parsedEnableOllama)
+                ? parsedEnableOllama
+                : true;
 
             var activeProviders = new List<string>();
-            if (openRouterConfigured) activeProviders.Add("OpenRouter");
-            if (geminiConfigured)    activeProviders.Add("Gemini");
-            activeProviders.Add("Ollama"); // always listed (may not be running)
+            if (azureConfigured) activeProviders.Add("AzureFoundryPrimary");
+            if (azureConfigured && useSecondaryFallback && !string.IsNullOrWhiteSpace(secondaryModel))
+                activeProviders.Add("AzureFoundrySecondary");
+            if (ollamaFallbackEnabled) activeProviders.Add("Ollama");
 
-            var systemStatus = activeProviders.Count > 1 ? "ready"
-                             : openRouterConfigured || geminiConfigured ? "ready"
+            var systemStatus = activeProviders.Count > 0 ? "ready"
                              : "no-cloud-keys";
 
             try
@@ -54,20 +55,17 @@ namespace CommonUnderstanding.Controllers
                     Timestamp = DateTime.UtcNow,
                     SystemStatus = systemStatus,
                     FallbackChain = activeProviders,
-                    OpenRouter = new
+                    AzureFoundry = new
                     {
-                        Configured     = openRouterConfigured,
-                        Model          = openRouterModel,
-                        AvailableModels = openRouterModels
-                    },
-                    Gemini = new
-                    {
-                        Configured     = geminiConfigured,
-                        Model          = geminiModel,
-                        AvailableModels = GeminiModelCatalog.AvailableModels
+                        Configured = azureConfigured,
+                        Endpoint = azureEndpoint,
+                        Model = azureModel,
+                        SecondaryModel = secondaryModel,
+                        UseSecondaryFallback = useSecondaryFallback
                     },
                     Ollama = new
                     {
+                        Enabled = ollamaFallbackEnabled,
                         Endpoint       = ollamaEndpoint,
                         Model          = ollamaModel,
                         AvailableModels = OllamaModelCatalog.AvailableModels
@@ -81,23 +79,11 @@ namespace CommonUnderstanding.Controllers
         }
 
         [HttpPost("switch-model")]
-        public async Task<IActionResult> SwitchModel([FromBody] SwitchModelRequest request)
+        public IActionResult SwitchModel([FromBody] SwitchModelRequest request)
         {
             if (string.IsNullOrEmpty(request.ModelName))
             {
                 return BadRequest(new { Success = false, Message = "ModelName is required" });
-            }
-
-            var openRouterModels = await _openRouterModelCatalog.GetAvailableModelsAsync();
-            if (!openRouterModels.Contains(request.ModelName, StringComparer.Ordinal))
-            {
-                _runtimeConfig.Model = null;
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = $"Unsupported OpenRouter model: {request.ModelName}",
-                    AvailableModels = openRouterModels
-                });
             }
 
             _runtimeConfig.Model = request.ModelName;
@@ -106,7 +92,7 @@ namespace CommonUnderstanding.Controllers
             {
                 Success = true,
                 Message = "Runtime model override set",
-                CurrentModel = _configuration["OpenRouter:ModelId"],
+                CurrentModel = _configuration["AzureFoundry:ModelId"],
                 RuntimeModel = _runtimeConfig.Model
             });
         }

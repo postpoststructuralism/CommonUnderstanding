@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Upgrade Required";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5 text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-lock-fill text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <h1 class="h3 mb-3">You reached the free usage limit</h1>
+                    <p class="text-muted mb-4">
+                        Your account has used the included AI analysis quota. Upgrade to continue unlimited
+                        argument analysis, discovery sessions, and convergence workflows.
+                    </p>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">
+                            Return Home
+                        </a>
+                        <a class="btn btn-outline-secondary" href="mailto:billing@commonunderstanding.app?subject=CommonUnderstanding%20Upgrade%20Request">
+                            Contact for Upgrade
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

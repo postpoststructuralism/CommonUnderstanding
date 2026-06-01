@@ -92,7 +92,18 @@ Write-Host ""
 
 # Configure App Settings
 Write-Host "Configuring App Settings..." -ForegroundColor Yellow
-az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings ASPNETCORE_ENVIRONMENT="Production" Ollama__Endpoint="https://ollama-service.azurewebsites.net" Ollama__ModelName="llama3.2:3b"
+az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings `
+    ASPNETCORE_ENVIRONMENT="Production" `
+    AzureFoundry__Endpoint="" `
+    AzureFoundry__ApiKey="" `
+    AzureFoundry__ModelId="DeepSeek-V3-0324" `
+    AzureFoundry__SecondaryModelId="gpt-4o-mini" `
+    AzureFoundry__UseSecondaryFallback="true" `
+    AiAccessPolicy__Enabled="true" `
+    AiAccessPolicy__FreeAiRequestLimit="120" `
+    Ollama__EnableFallback="true" `
+    Ollama__Endpoint="https://ollama-service.azurewebsites.net" `
+    Ollama__Model="llama3.2:3b"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARNING: Failed to set app settings. You may need to configure manually." -ForegroundColor Yellow

@@ -6,7 +6,12 @@ param(
     [string]$AppName = "common-understanding",
     [string]$Location = "eastus",
     [string]$PlanName = "freedom-ledger-plan",
-    [string]$Runtime = "DOTNETCORE:9.0"
+    [string]$Runtime = "DOTNETCORE:9.0",
+    [string]$AzureFoundryEndpoint = "",
+    [string]$AzureFoundryApiKey = "",
+    [string]$AzureFoundryModelId = "DeepSeek-V3-0324",
+    [string]$AzureFoundrySecondaryModelId = "gpt-4o-mini",
+    [int]$FreeAiRequestLimit = 120
 )
 
 Write-Host "========================================" -ForegroundColor Cyan
@@ -102,7 +107,18 @@ Write-Host ""
 
 # Configure App Settings
 Write-Host "Configuring App Settings..." -ForegroundColor Yellow
-az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings ASPNETCORE_ENVIRONMENT="Production" Ollama__Endpoint="https://ollama-service.azurewebsites.net" Ollama__ModelName="llama3.2:3b"
+az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings `
+    ASPNETCORE_ENVIRONMENT="Production" `
+    AzureFoundry__Endpoint="$AzureFoundryEndpoint" `
+    AzureFoundry__ApiKey="$AzureFoundryApiKey" `
+    AzureFoundry__ModelId="$AzureFoundryModelId" `
+    AzureFoundry__SecondaryModelId="$AzureFoundrySecondaryModelId" `
+    AzureFoundry__UseSecondaryFallback="true" `
+    AiAccessPolicy__Enabled="true" `
+    AiAccessPolicy__FreeAiRequestLimit="$FreeAiRequestLimit" `
+    Ollama__EnableFallback="true" `
+    Ollama__Endpoint="https://ollama-service.azurewebsites.net" `
+    Ollama__Model="llama3.2:3b"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARNING: Failed to set app settings. You may need to configure manually." -ForegroundColor Yellow
@@ -169,16 +185,19 @@ Write-Host "Your application is available at:" -ForegroundColor Yellow
 Write-Host $appUrl -ForegroundColor Cyan
 Write-Host ""
 Write-Host "IMPORTANT NOTES:" -ForegroundColor Yellow
-Write-Host "1. The Ollama endpoint is configured to: https://ollama-service.azurewebsites.net" -ForegroundColor White
+Write-Host "1. Azure Foundry endpoint/model are configured from script parameters." -ForegroundColor White
+Write-Host "   If endpoint/key are empty, Azure AI calls will fail until configured." -ForegroundColor White
+Write-Host "" 
+Write-Host "2. The Ollama endpoint is configured to: https://ollama-service.azurewebsites.net" -ForegroundColor White
 Write-Host "   You'll need to either:" -ForegroundColor White
 Write-Host "   - Deploy Ollama to Azure (separate container/VM)" -ForegroundColor White
 Write-Host "   - Use a cloud-based LLM service (OpenAI, Azure OpenAI, etc.)" -ForegroundColor White
 Write-Host "   - Configure the app to use an external Ollama instance" -ForegroundColor White
 Write-Host ""
-Write-Host "2. To view logs:" -ForegroundColor White
+Write-Host "3. To view logs:" -ForegroundColor White
 Write-Host "   az webapp log tail --name $AppName --resource-group $ResourceGroup" -ForegroundColor Gray
 Write-Host ""
-Write-Host "3. To configure settings:" -ForegroundColor White
+Write-Host "4. To configure settings:" -ForegroundColor White
 Write-Host "   Visit: https://portal.azure.com and navigate to your Web App" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Clean up deployment files..." -ForegroundColor Yellow

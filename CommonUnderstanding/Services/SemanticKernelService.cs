@@ -9,12 +9,11 @@ using System.ClientModel;
 namespace CommonUnderstanding.Services;
 
 /// <summary>
-/// Builds a Semantic Kernel backed by a three-tier provider fallback chain:
-///   1. OpenRouter (free-tier models, with auto-cycling and retry)
-///   2. Gemini     (Google AI Studio — fast free tier)
-///   3. Ollama     (local, always-available fallback)
+/// Builds a Semantic Kernel backed by an Azure-first provider chain:
+///   1. Azure Foundry primary model
+///   2. Azure Foundry secondary model (optional)
+///   3. Ollama fallback (optional, typically for local/dev resiliency)
 ///
-/// Whichever providers are configured/reachable are included automatically.
 /// All call-sites continue to use <c>kernel.InvokePromptAsync()</c> unchanged.
 /// </summary>
 public class SemanticKernelService
@@ -25,20 +24,23 @@ public class SemanticKernelService
     private string? _configFingerprint;
     private readonly RuntimeAiConfigService _runtimeConfig;
     private readonly AiRequestTraceRecorder _traceRecorder;
-    private readonly OpenRouterModelCatalogService _openRouterModelCatalog;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public SemanticKernelService(
         IConfiguration configuration,
         ILogger<SemanticKernelService> logger,
         RuntimeAiConfigService runtimeConfig,
         AiRequestTraceRecorder traceRecorder,
-        OpenRouterModelCatalogService openRouterModelCatalog)
+        IServiceScopeFactory scopeFactory,
+        IHttpContextAccessor httpContextAccessor)
     {
         _configuration = configuration;
         _logger = logger;
         _runtimeConfig = runtimeConfig;
         _traceRecorder = traceRecorder;
-        _openRouterModelCatalog = openRouterModelCatalog;
+        _scopeFactory = scopeFactory;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public Kernel GetKernel()
@@ -60,12 +62,18 @@ public class SemanticKernelService
             if (providers.Count == 0)
                 throw new InvalidOperationException(
                     "No AI providers are configured. " +
-                    "Set OpenRouter:ApiKey, Gemini:ApiKey, or ensure Ollama is running.");
+                    "Set AzureFoundry:Endpoint + AzureFoundry:ApiKey, or enable reachable Ollama fallback.");
 
             _logger.LogInformation("Building kernel with {Count} provider(s): {Names}",
                 providers.Count, string.Join(" → ", providers.Select(p => p.Name)));
 
-            var fallback = new FallbackChatCompletionService(providers, _logger, _traceRecorder);
+            var fallback = new FallbackChatCompletionService(
+                providers,
+                _logger,
+                _traceRecorder,
+                _configuration,
+                _scopeFactory,
+                _httpContextAccessor);
 
             var builder = Kernel.CreateBuilder();
             builder.Services.AddSingleton<IChatCompletionService>(fallback);
@@ -89,66 +97,69 @@ public class SemanticKernelService
     {
         var providers = new List<(string Name, Func<string> ModelResolver, IChatCompletionService Service)>();
 
-        // 1. OpenRouter ──────────────────────────────────────────────────────
-        var openRouterKey = _configuration["OpenRouter:ApiKey"];
-        if (!string.IsNullOrWhiteSpace(openRouterKey))
+        // 1. Azure Foundry primary model ────────────────────────────────────
+        var azureEndpoint = _runtimeConfig.Endpoint ?? _configuration["AzureFoundry:Endpoint"];
+        var azureApiKey = _configuration["AzureFoundry:ApiKey"];
+        var azurePrimaryModel = ResolveAzurePrimaryModel();
+
+        if (!string.IsNullOrWhiteSpace(azureEndpoint) &&
+            !string.IsNullOrWhiteSpace(azureApiKey) &&
+            !string.IsNullOrWhiteSpace(azurePrimaryModel))
         {
             try
             {
-                var openRouterModels = _openRouterModelCatalog
-                    .GetAvailableModelsAsync()
-                    .GetAwaiter()
-                    .GetResult();
-
-                if (openRouterModels.Count == 0)
-                {
-                    _logger.LogWarning("OpenRouter live catalog returned no free models. OpenRouter provider skipped.");
-                }
-                else
-                {
-                    var model = ResolveOpenRouterModel(openRouterModels);
-                    providers.Add(("OpenRouter", ResolveOpenRouterModel, BuildOpenRouterService(model, openRouterKey)));
-                    _logger.LogInformation("OpenRouter provider configured (model: {Model}).", model);
-                }
+                providers.Add((
+                    "AzureFoundryPrimary",
+                    ResolveAzurePrimaryModel,
+                    BuildAzureFoundryService(azurePrimaryModel, azureEndpoint, azureApiKey)));
+                _logger.LogInformation("Azure Foundry primary provider configured (model: {Model}).", azurePrimaryModel);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not configure OpenRouter provider — skipping.");
+                _logger.LogWarning(ex, "Could not configure Azure Foundry primary provider — skipping.");
             }
         }
         else
         {
-            _logger.LogInformation("OpenRouter:ApiKey not set — OpenRouter provider skipped.");
+            _logger.LogInformation("AzureFoundry endpoint/key/model not fully configured — primary Azure provider skipped.");
         }
 
-        // 2. Gemini ──────────────────────────────────────────────────────────
-        var geminiKey = _configuration["Gemini:ApiKey"];
-        if (!string.IsNullOrWhiteSpace(geminiKey))
+        // 2. Azure Foundry secondary model (optional) ───────────────────────
+        var useSecondaryFallback = bool.TryParse(_configuration["AzureFoundry:UseSecondaryFallback"], out var parsedUseSecondary)
+            ? parsedUseSecondary
+            : true;
+        var secondaryModel = _configuration["AzureFoundry:SecondaryModelId"];
+
+        if (useSecondaryFallback &&
+            !string.IsNullOrWhiteSpace(azureEndpoint) &&
+            !string.IsNullOrWhiteSpace(azureApiKey) &&
+            !string.IsNullOrWhiteSpace(secondaryModel) &&
+            !string.Equals(secondaryModel, azurePrimaryModel, StringComparison.Ordinal))
         {
             try
             {
-                var geminiModel = _configuration["Gemini:ModelName"]
-                                  ?? GeminiModelCatalog.DefaultModelId;
-                providers.Add(("Gemini", () => geminiModel, BuildGeminiService(geminiModel, geminiKey)));
-                _logger.LogInformation("Gemini provider configured (model: {Model}).", geminiModel);
+                providers.Add((
+                    "AzureFoundrySecondary",
+                    () => secondaryModel,
+                    BuildAzureFoundryService(secondaryModel, azureEndpoint!, azureApiKey!)));
+                _logger.LogInformation("Azure Foundry secondary provider configured (model: {Model}).", secondaryModel);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not configure Gemini provider — skipping.");
+                _logger.LogWarning(ex, "Could not configure Azure Foundry secondary provider — skipping.");
             }
-        }
-        else
-        {
-            _logger.LogInformation("Gemini:ApiKey not set — Gemini provider skipped.");
         }
 
         // 3. Ollama ──────────────────────────────────────────────────────────
         // Only include Ollama if the endpoint is actually reachable.
         // This prevents the provider from being added in production when Ollama
         // is not deployed (e.g. pointing at a non-existent host).
+        var enableOllamaFallback = bool.TryParse(_configuration["Ollama:EnableFallback"], out var parsedEnableOllama)
+            ? parsedEnableOllama
+            : true;
         var ollamaEndpoint = _configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         var ollamaModel    = _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId;
-        if (IsOllamaReachable(ollamaEndpoint))
+        if (enableOllamaFallback && IsOllamaReachable(ollamaEndpoint))
         {
             try
             {
@@ -169,41 +180,16 @@ public class SemanticKernelService
         return providers;
     }
 
-    private IChatCompletionService BuildOpenRouterService(string model, string apiKey)
+    private static IChatCompletionService BuildAzureFoundryService(string model, string endpoint, string apiKey)
     {
-        var retryHandler = new RateLimitRetryHandler(_logger, _openRouterModelCatalog, newModel =>
-        {
-            _logger.LogInformation(
-                "OpenRouter auto-switched to model {Model}. Kernel will rebuild on next request.", newModel);
-            _runtimeConfig.Model = newModel;
-            _kernel = null;
-            _configFingerprint = null;
-        })
-        {
-            InnerHandler = new HttpClientHandler()
-        };
-
-        var httpClient = new HttpClient(retryHandler)
-        {
-            Timeout = TimeSpan.FromSeconds(120)
-        };
-
         var clientOptions = new OpenAIClientOptions
         {
-            Endpoint  = new Uri("https://openrouter.ai/api/v1"),
-            Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(httpClient)
+            Endpoint = new Uri(endpoint.TrimEnd('/'))
         };
         var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
 
         return new Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIChatCompletionService(
             model, openAIClient);
-    }
-
-    private static IChatCompletionService BuildGeminiService(string modelId, string apiKey)
-    {
-        return new Microsoft.SemanticKernel.Connectors.Google.GoogleAIGeminiChatCompletionService(
-            modelId: modelId,
-            apiKey:  apiKey);
     }
 
     private static IChatCompletionService BuildOllamaService(string modelId, string endpoint)
@@ -248,40 +234,22 @@ public class SemanticKernelService
     private string BuildFingerprint()
     {
         return string.Join("|",
-            ResolveOpenRouterModel(),
-            _configuration["Gemini:ApiKey"]  ?? "",
-            _configuration["Gemini:ModelName"] ?? GeminiModelCatalog.DefaultModelId,
+            _runtimeConfig.Endpoint ?? _configuration["AzureFoundry:Endpoint"] ?? "",
+            _configuration["AzureFoundry:ApiKey"] ?? "",
+            ResolveAzurePrimaryModel(),
+            _configuration["AzureFoundry:SecondaryModelId"] ?? "",
+            _configuration["AzureFoundry:UseSecondaryFallback"] ?? "true",
+            _configuration["Ollama:EnableFallback"] ?? "true",
             _configuration["Ollama:Endpoint"] ?? "http://localhost:11434",
             _configuration["Ollama:Model"]    ?? OllamaModelCatalog.DefaultModelId);
     }
 
-    internal string ResolveOpenRouterModel()
+    internal string ResolveAzurePrimaryModel()
     {
-        var cachedModels = _openRouterModelCatalog.GetCachedModels();
-        return ResolveOpenRouterModel(cachedModels);
-    }
-
-    private string ResolveOpenRouterModel(IReadOnlyList<string> availableModels)
-    {
-        if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model) &&
-            availableModels.Contains(_runtimeConfig.Model, StringComparer.Ordinal))
+        if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model))
             return _runtimeConfig.Model;
 
-        if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model))
-        {
-            _logger.LogWarning("Discarding invalid runtime OpenRouter model override: {Model}", _runtimeConfig.Model);
-            _runtimeConfig.Model = null;
-        }
-
-        var configured = _configuration["OpenRouter:ModelId"];
-        if (!string.IsNullOrWhiteSpace(configured) &&
-            availableModels.Contains(configured, StringComparer.Ordinal))
-            return configured;
-
-        if (availableModels.Count > 0)
-            return availableModels[0];
-
-        return configured ?? OpenRouterModelCatalog.DefaultModelId;
+        return _configuration["AzureFoundry:ModelId"] ?? "DeepSeek-V3-0324";
     }
 
     public async Task<bool> TestConnectionAsync()

@@ -32,7 +32,6 @@ builder.Services.AddSingleton<BeliefSystemKnowledgeBase>();
 // Register runtime AI config (overrides for endpoint, model, agent)
 builder.Services.AddSingleton<RuntimeAiConfigService>();
 builder.Services.AddSingleton<AiRequestTraceRecorder>();
-builder.Services.AddSingleton<OpenRouterModelCatalogService>();
 
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
@@ -114,6 +113,35 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AiAccessDeniedException ex)
+    {
+        var accept = context.Request.Headers.Accept.ToString();
+        var isApi = context.Request.Path.StartsWithSegments("/api") ||
+                    accept.Contains("application/json", StringComparison.OrdinalIgnoreCase);
+
+        if (isApi)
+        {
+            context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                success = false,
+                code = "PAYWALL_LIMIT_REACHED",
+                message = ex.Message
+            });
+            return;
+        }
+
+        context.Response.Redirect("/Account/Paywall");
+    }
+});
 
 app.Use(async (context, next) =>
 {

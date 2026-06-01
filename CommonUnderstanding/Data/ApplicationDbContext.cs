@@ -43,6 +43,7 @@ public class ApplicationDbContext : DbContext
 
     // Account system (manually-managed, ADFS-ready)
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<AiUsageCounter> AiUsageCounters => Set<AiUsageCounter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -227,6 +228,15 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.Username).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.Username).IsUnique();
             e.Property(x => x.DisplayName).HasMaxLength(200);
+        });
+
+        // AiUsageCounter
+        modelBuilder.Entity<AiUsageCounter>(e =>
+        {
+            e.HasKey(x => x.CounterKey);
+            e.Property(x => x.CounterKey).HasMaxLength(200).IsRequired();
+            e.Property(x => x.RequestCount).IsRequired();
+            e.HasIndex(x => x.LastRequestAt);
         });
     }
 }
