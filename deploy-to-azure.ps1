@@ -9,6 +9,7 @@ param(
     [string]$Runtime = "DOTNETCORE:9.0",
     [string]$AzureFoundryEndpoint = "",
     [string]$AzureFoundryApiKey = "",
+    [string]$AzureFoundryApiVersion = "2024-12-01-preview",
     [string]$AzureFoundryModelId = "DeepSeek-V3-0324",
     [string]$AzureFoundrySecondaryModelId = "gpt-4o-mini",
     [int]$FreeAiRequestLimit = 120
@@ -111,6 +112,7 @@ az webapp config appsettings set --name $AppName --resource-group $ResourceGroup
     ASPNETCORE_ENVIRONMENT="Production" `
     AzureFoundry__Endpoint="$AzureFoundryEndpoint" `
     AzureFoundry__ApiKey="$AzureFoundryApiKey" `
+    AzureFoundry__ApiVersion="$AzureFoundryApiVersion" `
     AzureFoundry__ModelId="$AzureFoundryModelId" `
     AzureFoundry__SecondaryModelId="$AzureFoundrySecondaryModelId" `
     AzureFoundry__UseSecondaryFallback="true" `
