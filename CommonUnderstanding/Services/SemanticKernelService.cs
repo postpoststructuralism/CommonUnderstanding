@@ -102,8 +102,6 @@ public class SemanticKernelService
         var azureApiKey = _configuration["AzureFoundry:ApiKey"];
         var azurePrimaryModel = ResolveAzurePrimaryModel();
 
-        var azureApiVersion = _configuration["AzureFoundry:ApiVersion"] ?? "2024-12-01-preview";
-
         if (!string.IsNullOrWhiteSpace(azureEndpoint) &&
             !string.IsNullOrWhiteSpace(azureApiKey) &&
             !string.IsNullOrWhiteSpace(azurePrimaryModel))
@@ -113,7 +111,7 @@ public class SemanticKernelService
                 providers.Add((
                     "AzureFoundryPrimary",
                     ResolveAzurePrimaryModel,
-                    BuildAzureFoundryService(azurePrimaryModel, azureEndpoint, azureApiKey, azureApiVersion)));
+                    BuildAzureFoundryService(azurePrimaryModel, azureEndpoint, azureApiKey)));
                 _logger.LogInformation("Azure Foundry primary provider configured (model: {Model}).", azurePrimaryModel);
             }
             catch (Exception ex)
@@ -143,7 +141,7 @@ public class SemanticKernelService
                 providers.Add((
                     "AzureFoundrySecondary",
                     () => secondaryModel,
-                    BuildAzureFoundryService(secondaryModel, azureEndpoint!, azureApiKey!, azureApiVersion)));
+                    BuildAzureFoundryService(secondaryModel, azureEndpoint!, azureApiKey!)));
                 _logger.LogInformation("Azure Foundry secondary provider configured (model: {Model}).", secondaryModel);
             }
             catch (Exception ex)
@@ -183,27 +181,18 @@ public class SemanticKernelService
     }
 
     private static IChatCompletionService BuildAzureFoundryService(
-        string model, string endpoint, string apiKey, string apiVersion)
+        string model, string endpoint, string apiKey)
     {
-        // Azure AI endpoints require ?api-version=... on every request.
-        // We inject it via a DelegatingHandler so the generic OpenAI client works
-        // with both Azure OpenAI Service and Azure AI Foundry inference endpoints.
-        var apiVersionHandler = new AzureApiVersionHandler(apiVersion)
-        {
-            InnerHandler = new HttpClientHandler()
-        };
-
-        var httpClient = new HttpClient(apiVersionHandler)
-        {
-            Timeout = TimeSpan.FromSeconds(120)
-        };
-
+        // Azure Foundry uses the OpenAI v1 endpoint style (e.g. /openai/v1/)
+        // No api-version query parameter is needed.
         var clientOptions = new OpenAIClientOptions
         {
-            Endpoint  = new Uri(endpoint.TrimEnd('/')),
-            Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(httpClient)
+            Endpoint = new Uri(endpoint.TrimEnd('/') + "/")
         };
-        var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
+
+        var openAIClient = new OpenAIClient(
+            credential: new ApiKeyCredential(apiKey),
+            options: clientOptions);
 
         return new Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIChatCompletionService(
             model, openAIClient);
@@ -687,36 +676,4 @@ internal sealed class RateLimitRetryHandler : DelegatingHandler
     }
 }
 
-/// <summary>
-/// Injects the Azure-required <c>api-version</c> query parameter into every
-/// outgoing HTTP request.  This is needed because the generic OpenAI client
-/// does not add it automatically, but Azure OpenAI Service and Azure AI Foundry
-/// inference endpoints both require it.
-/// </summary>
-internal sealed class AzureApiVersionHandler : DelegatingHandler
-{
-    private readonly string _apiVersion;
 
-    public AzureApiVersionHandler(string apiVersion)
-    {
-        _apiVersion = apiVersion;
-    }
-
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var uri = request.RequestUri;
-        if (uri is not null)
-        {
-            var uriBuilder = new UriBuilder(uri);
-            var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
-            if (string.IsNullOrEmpty(query["api-version"]))
-            {
-                query["api-version"] = _apiVersion;
-                uriBuilder.Query = query.ToString();
-                request.RequestUri = uriBuilder.Uri;
-            }
-        }
-        return base.SendAsync(request, cancellationToken);
-    }
-}
