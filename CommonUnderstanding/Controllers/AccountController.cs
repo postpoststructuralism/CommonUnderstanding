@@ -107,7 +107,7 @@ public class AccountController : Controller
         await SignInAsync(account);
         _logger.LogInformation("New account registered: {Username} ({Id})", account.Username, account.Id);
 
-        return RedirectToAction("Start", "Discovery");
+        return RedirectToAction("Submit", "Argument");
     }
 
     // ─── Logout ───────────────────────────────────────────────────────────────
