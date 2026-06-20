@@ -13,13 +13,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 // Add EF Core with PostgreSQL
+// Keep the DbContext as Scoped but register the DbContextOptions as Singleton so
+// singletons (like IDbContextFactory) that depend on options can be validated.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// EF Core DbContext factory for use in SignalR hubs and background workers (scoped lifetime is not thread-safe)
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
-    ServiceLifetime.Scoped);
+    ServiceLifetime.Scoped,
+    ServiceLifetime.Singleton);
+
+// EF Core DbContext factory for use in SignalR hubs and background workers.
+// Configure both the context lifetime and the options lifetime as Singleton so
+// the factory (a singleton) does not capture scoped options which would
+// cause DI validation errors when hosted services consume the factory.
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
 // Add HttpContextAccessor for views that need Request access
@@ -105,6 +111,9 @@ builder.Services.AddScoped<EmbeddingService>();
 
 // Voting
 builder.Services.AddScoped<VotingService>();
+
+// Feed aggregation
+builder.Services.AddScoped<FeedService>();
 
 // Argument chain and worldview logic
 builder.Services.AddScoped<ArgumentChainService>();

@@ -1,0 +1,402 @@
+@{
+    ViewData["Title"] = "Social Feed";
+}
+
+@section Styles {
+<style>
+    .argument-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        background: var(--bs-body-bg);
+        transition: box-shadow 0.15s ease;
+    }
+    .argument-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+    .argument-card .tags .badge { font-size: 0.72rem; }
+    .vote-bar { display: flex; align-items: center; gap: 0.5rem; }
+    .vote-bar .vote-count { font-weight: 600; min-width: 2.5rem; text-align: center; }
+    .validity-badge { font-size: 0.72rem; }
+    #feedSpinner { display: none; }
+    .sort-btn.active { font-weight: 700; }
+    .vote-modal-reason label { cursor: pointer; }
+    .wilson-bar { height: 4px; border-radius: 2px; background: var(--bs-secondary-bg); margin-top: 6px; }
+    .wilson-fill { height: 100%; border-radius: 2px; background: #198754; }
+</style>
+}
+
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag"><i class="bi bi-bar-chart-steps"></i> Social</span>
+            <h1 class="cu-page-heading mt-3 mb-2">Social Feed</h1>
+            <p class="cu-workspace-lead mb-0">Public arguments ranked by community consensus.</p>
+        </div>
+        <div class="cu-workspace-actions">
+            <button class="cu-btn-primary" data-bs-toggle="modal" data-bs-target="#createArgModal">
+                <i class="bi bi-plus-circle"></i> New Argument
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Sort + filter toolbar -->
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <span class="text-muted small me-1">Sort:</span>
+    <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="hot">
+        <i class="bi bi-fire"></i> Hot
+    </button>
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="wilson">
+        <i class="bi bi-graph-up"></i> Top
+    </button>
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="recent">
+        <i class="bi bi-clock"></i> New
+    </button>
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="controversial">
+        <i class="bi bi-lightning"></i> Controversial
+    </button>
+    <input id="tagFilter" class="form-control form-control-sm ms-auto" style="max-width:180px"
+           placeholder="Filter by tag…" />
+</div>
+
+<div id="feedSpinner" class="text-center py-4">
+    <div class="spinner-border text-primary" role="status"></div>
+</div>
+
+<div id="feedContainer"></div>
+
+<div class="text-center mt-3">
+    <button id="loadMoreBtn" class="btn btn-outline-secondary btn-sm" style="display:none">
+        Load more
+    </button>
+</div>
+
+<!-- ── Create Argument Modal ──────────────────────────────────────────────── -->
+<div class="modal fade" id="createArgModal" tabindex="-1" aria-labelledby="createArgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createArgModalLabel"><i class="bi bi-plus-circle me-2"></i>New Argument</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                    <input id="argTitle" class="form-control" maxlength="200" placeholder="Short descriptive title" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Claim <span class="text-danger">*</span></label>
+                    <textarea id="argClaim" class="form-control" rows="2" maxlength="1000"
+                              placeholder="State the claim you are arguing for…"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Warrant / Evidence</label>
+                    <textarea id="argWarrant" class="form-control" rows="3" maxlength="4000"
+                              placeholder="Why is the claim true? Cite evidence, logic, or examples."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tags</label>
+                    <input id="argTags" class="form-control" placeholder="comma-separated, e.g. climate,science" />
+                </div>
+                <div id="createArgError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="submitArgBtn" class="cu-btn-primary">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="submitArgSpinner"></span>
+                    Publish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Vote Modal ─────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="voteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="voteModalTitle">Cast Vote</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">Select your rationale:</p>
+                <div class="vote-modal-reason d-flex flex-column gap-2">
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="WellSourced" checked />
+                        <span>Well Sourced</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="LogicallySound" />
+                        <span>Logically Sound</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="Fallacious" />
+                        <span>Fallacious</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="Spam" />
+                        <span>Spam</span>
+                    </label>
+                </div>
+                <textarea id="voteComment" class="form-control mt-3" rows="2"
+                          placeholder="Optional comment…" maxlength="500"></textarea>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button id="submitDownvoteBtn" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-hand-thumbs-down"></i> Downvote
+                </button>
+                <button id="submitUpvoteBtn" class="btn btn-sm btn-success">
+                    <i class="bi bi-hand-thumbs-up"></i> Upvote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    let currentSort = 'hot';
+    let currentTag  = '';
+    let currentOffset = 0;
+    const PAGE_SIZE = 20;
+    let loadedIds = new Set();
+    let pendingVoteArgId = null;
+
+    // ── SignalR ───────────────────────────────────────────────────────────────
+    const hubConn = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/voting')
+        .withAutomaticReconnect()
+        .build();
+
+    hubConn.on('VoteScoreUpdated', tally => {
+        updateCardTally(tally.argumentId, tally);
+    });
+
+    async function startHub() {
+        try { await hubConn.start(); } catch (e) { console.warn('VotingHub unavailable:', e); }
+    }
+    startHub();
+
+    // ── Feed loading ──────────────────────────────────────────────────────────
+    async function loadFeed(reset = false) {
+        if (reset) {
+            currentOffset = 0;
+            loadedIds.clear();
+            document.getElementById('feedContainer').innerHTML = '';
+        }
+
+        document.getElementById('feedSpinner').style.display = 'block';
+        document.getElementById('loadMoreBtn').style.display = 'none';
+
+        const tags = currentTag ? `&tags=${encodeURIComponent(currentTag)}` : '';
+        const url  = `/api/feed?sort=${currentSort}&limit=${PAGE_SIZE}${tags}`;
+
+        try {
+            const res  = await fetch(url);
+            const data = await res.json();
+            const items = data.items || [];
+
+            const container = document.getElementById('feedContainer');
+            items.forEach(arg => {
+                if (loadedIds.has(arg.id)) return;
+                loadedIds.add(arg.id);
+                container.insertAdjacentHTML('beforeend', renderCard(arg));
+                // Subscribe for live updates
+                if (hubConn.state === 'Connected') {
+                    hubConn.invoke('SubscribeToArgument', arg.id).catch(() => {});
+                }
+            });
+
+            if (items.length === PAGE_SIZE)
+                document.getElementById('loadMoreBtn').style.display = '';
+        } catch (err) {
+            console.error('Feed load failed:', err);
+        }
+
+        document.getElementById('feedSpinner').style.display = 'none';
+    }
+
+    function renderCard(arg) {
+        const wilson = Math.round((arg.wilsonScore || 0) * 100);
+        const tagHtml = (arg.tags || []).map(t =>
+            `<span class="badge bg-secondary me-1">${escHtml(t)}</span>`).join('');
+        const aiLabel = arg.isAIValidated
+            ? `<span class="badge validity-badge ${arg.aiValidityScore >= 0.7 ? 'bg-success' : arg.aiValidityScore >= 0.4 ? 'bg-warning text-dark' : 'bg-danger'} ms-1" title="AI validity">
+                   <i class="bi bi-cpu"></i> ${Math.round((arg.aiValidityScore||0)*100)}%
+               </span>` : '';
+        return `
+        <div class="argument-card" id="arg-${arg.id}" data-id="${arg.id}">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <h5 class="mb-0">${escHtml(arg.title)}</h5>
+                <span class="text-muted small ms-2 text-nowrap">${timeAgo(arg.createdAt)}</span>
+            </div>
+            <p class="mb-1 fw-semibold">${escHtml(arg.claimText || '')}</p>
+            ${arg.warrantyText ? `<p class="text-muted small mb-2">${escHtml(truncate(arg.warrantyText, 200))}</p>` : ''}
+            <div class="tags mb-2">${tagHtml}${aiLabel}</div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="vote-bar">
+                    <button class="btn btn-sm btn-outline-success vote-trigger" data-id="${arg.id}" title="Vote">
+                        <i class="bi bi-hand-thumbs-up"></i>
+                        <span class="upvote-count vote-count">${arg.upvotes ?? 0}</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger vote-trigger" data-id="${arg.id}" title="Vote">
+                        <i class="bi bi-hand-thumbs-down"></i>
+                        <span class="downvote-count vote-count">${arg.downvotes ?? 0}</span>
+                    </button>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="wilson-bar">
+                        <div class="wilson-fill" style="width:${wilson}%"></div>
+                    </div>
+                </div>
+                <span class="text-muted small" title="Hot score">${(arg.hotScore||0).toFixed(2)} <i class="bi bi-fire"></i></span>
+            </div>
+        </div>`;
+    }
+
+    function updateCardTally(argId, tally) {
+        const card = document.getElementById(`arg-${argId}`);
+        if (!card) return;
+        const upEl   = card.querySelector('.upvote-count');
+        const downEl = card.querySelector('.downvote-count');
+        const fill   = card.querySelector('.wilson-fill');
+        if (upEl)   upEl.textContent   = tally.upvoteCount ?? 0;
+        if (downEl) downEl.textContent = tally.downvoteCount ?? 0;
+        if (fill)   fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%';
+    }
+
+    // ── Sort buttons ──────────────────────────────────────────────────────────
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSort = btn.dataset.sort;
+            loadFeed(true);
+        });
+    });
+
+    // ── Tag filter ────────────────────────────────────────────────────────────
+    let tagDebounce;
+    document.getElementById('tagFilter').addEventListener('input', e => {
+        clearTimeout(tagDebounce);
+        tagDebounce = setTimeout(() => {
+            currentTag = e.target.value.trim();
+            loadFeed(true);
+        }, 400);
+    });
+
+    // ── Load more ─────────────────────────────────────────────────────────────
+    document.getElementById('loadMoreBtn').addEventListener('click', loadFeed);
+
+    // ── Vote modal ────────────────────────────────────────────────────────────
+    document.getElementById('feedContainer').addEventListener('click', e => {
+        const trigger = e.target.closest('.vote-trigger');
+        if (!trigger) return;
+        pendingVoteArgId = trigger.dataset.id;
+        const modal = new bootstrap.Modal(document.getElementById('voteModal'));
+        modal.show();
+    });
+
+    async function castVote(voteValue) {
+        if (!pendingVoteArgId) return;
+        const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
+        const comment   = document.getElementById('voteComment').value.trim();
+
+        if (hubConn.state === 'Connected') {
+            try {
+                await hubConn.invoke('CastVote', pendingVoteArgId, voteValue, rationale, comment);
+            } catch (e) {
+                console.error('Vote failed:', e);
+            }
+        } else {
+            // Fallback: REST
+            const res = await fetch(`/api/arguments/${pendingVoteArgId}/votes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vote: voteValue, rationale, comment })
+            });
+            if (res.ok) loadFeed(true);
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
+        pendingVoteArgId = null;
+    }
+
+    document.getElementById('submitUpvoteBtn').addEventListener('click', () => castVote('Up'));
+    document.getElementById('submitDownvoteBtn').addEventListener('click', () => castVote('Down'));
+
+    // ── Create argument ───────────────────────────────────────────────────────
+    document.getElementById('submitArgBtn').addEventListener('click', async () => {
+        const title   = document.getElementById('argTitle').value.trim();
+        const claim   = document.getElementById('argClaim').value.trim();
+        const warrant = document.getElementById('argWarrant').value.trim();
+        const tags    = document.getElementById('argTags').value
+            .split(',').map(t => t.trim()).filter(Boolean);
+        const errEl   = document.getElementById('createArgError');
+        const spinner = document.getElementById('submitArgSpinner');
+
+        errEl.classList.add('d-none');
+
+        if (!title || !claim) {
+            errEl.textContent = 'Title and Claim are required.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+
+        spinner.classList.remove('d-none');
+        document.getElementById('submitArgBtn').disabled = true;
+
+        try {
+            const res = await fetch('/api/arguments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, claimText: claim, warrantText: warrant, tags })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.title || err.detail || `HTTP ${res.status}`);
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('createArgModal'))?.hide();
+            document.getElementById('argTitle').value   = '';
+            document.getElementById('argClaim').value   = '';
+            document.getElementById('argWarrant').value = '';
+            document.getElementById('argTags').value    = '';
+            loadFeed(true);
+        } catch (err) {
+            errEl.textContent = 'Could not publish: ' + err.message;
+            errEl.classList.remove('d-none');
+        }
+
+        spinner.classList.add('d-none');
+        document.getElementById('submitArgBtn').disabled = false;
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function truncate(str, n) {
+        return str.length > n ? str.slice(0, n) + '…' : str;
+    }
+    function timeAgo(iso) {
+        const ms = Date.now() - new Date(iso).getTime();
+        const mins = Math.floor(ms / 60000);
+        if (mins < 1)  return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24)  return `${hrs}h ago`;
+        return `${Math.floor(hrs/24)}d ago`;
+    }
+
+    // Initial load
+    loadFeed(true);
+})();
+</script>
+}

@@ -15,7 +15,7 @@ namespace CommonUnderstanding.Services.Social.Workers;
 public class EpistemicScoringWorker : BackgroundService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
-    private readonly EpistemicScoringService _scoringService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EpistemicScoringWorker> _logger;
 
     private static readonly TimeSpan WorkInterval = TimeSpan.FromMinutes(15);
@@ -23,11 +23,11 @@ public class EpistemicScoringWorker : BackgroundService
 
     public EpistemicScoringWorker(
         IDbContextFactory<ApplicationDbContext> dbFactory,
-        EpistemicScoringService scoringService,
+        IServiceScopeFactory scopeFactory,
         ILogger<EpistemicScoringWorker> logger)
     {
         _dbFactory = dbFactory;
-        _scoringService = scoringService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -74,7 +74,9 @@ public class EpistemicScoringWorker : BackgroundService
         {
             try
             {
-                await _scoringService.RecalculateAsync(profile.UserId, profile.TopicDomain, ct);
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var scoringService = scope.ServiceProvider.GetRequiredService<EpistemicScoringService>();
+                await scoringService.RecalculateAsync(profile.UserId, profile.TopicDomain, ct);
             }
             catch (Exception ex)
             {

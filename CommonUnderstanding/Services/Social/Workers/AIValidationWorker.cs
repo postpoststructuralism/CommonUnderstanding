@@ -15,7 +15,7 @@ namespace CommonUnderstanding.Services.Social.Workers;
 public class AIValidationWorker : BackgroundService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
-    private readonly FallacyDetectionPlugin _fallacyPlugin;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AIValidationWorker> _logger;
 
@@ -23,12 +23,12 @@ public class AIValidationWorker : BackgroundService
 
     public AIValidationWorker(
         IDbContextFactory<ApplicationDbContext> dbFactory,
-        FallacyDetectionPlugin fallacyPlugin,
+        IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
         ILogger<AIValidationWorker> logger)
     {
         _dbFactory = dbFactory;
-        _fallacyPlugin = fallacyPlugin;
+        _scopeFactory = scopeFactory;
         _configuration = configuration;
         _logger = logger;
     }
@@ -60,6 +60,8 @@ public class AIValidationWorker : BackgroundService
 
     private async Task ProcessPendingArgumentsAsync(CancellationToken ct)
     {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var fallacyPlugin = scope.ServiceProvider.GetRequiredService<FallacyDetectionPlugin>();
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         // Arguments that are public, not yet AI-validated, and published within the last 10 minutes
@@ -81,7 +83,7 @@ public class AIValidationWorker : BackgroundService
 
         foreach (var argument in pending)
         {
-            await ValidateArgumentAsync(argument, db, shadowBanThreshold, ct);
+            await ValidateArgumentAsync(argument, db, fallacyPlugin, shadowBanThreshold, ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -90,13 +92,14 @@ public class AIValidationWorker : BackgroundService
     private async Task ValidateArgumentAsync(
         SocialArgument argument,
         ApplicationDbContext db,
+        FallacyDetectionPlugin fallacyPlugin,
         double shadowBanThreshold,
         CancellationToken ct)
     {
         try
         {
             string text = BuildArgumentText(argument);
-            var result = await _fallacyPlugin.DetectFallaciesAsync(
+            var result = await fallacyPlugin.DetectFallaciesAsync(
                 text, string.Empty, string.Empty, ct);
 
             argument.AIValidityScore = result.ValidityScore;

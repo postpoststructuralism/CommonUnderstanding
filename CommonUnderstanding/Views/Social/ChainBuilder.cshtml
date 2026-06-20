@@ -1,0 +1,374 @@
+@{
+    ViewData["Title"] = "Chain Builder";
+}
+
+@section Styles {
+<link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" />
+<style>
+    #chainCanvas {
+        width: 100%;
+        height: 500px;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        background: var(--bs-body-bg);
+    }
+    .arg-search-item { cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.25rem; }
+    .arg-search-item:hover { background: var(--bs-secondary-bg); }
+    .link-type-badge { font-size: 0.72rem; }
+    .node-info-panel { min-height: 80px; }
+    #saveChainBtn:disabled { opacity: 0.6; }
+</style>
+}
+
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag"><i class="bi bi-diagram-3"></i> Social</span>
+            <h1 class="cu-page-heading mt-3 mb-2">Chain Builder</h1>
+            <p class="cu-workspace-lead mb-0">
+                Link arguments into directed acyclic graphs. Circular logic is automatically rejected.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left panel: chain metadata + argument search -->
+    <div class="col-lg-3">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column gap-3">
+                <div>
+                    <label class="form-label fw-semibold">Chain Title</label>
+                    <input id="chainTitle" class="form-control form-control-sm" placeholder="e.g. Climate policy arguments" />
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea id="chainDesc" class="form-control form-control-sm" rows="2" placeholder="Optional…"></textarea>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Tags</label>
+                    <input id="chainTags" class="form-control form-control-sm" placeholder="comma-separated" />
+                </div>
+
+                <hr class="my-0" />
+
+                <div>
+                    <label class="form-label fw-semibold">Add Argument to Chain</label>
+                    <div class="input-group input-group-sm">
+                        <input id="argSearchInput" class="form-control" placeholder="Search arguments…" />
+                        <button class="btn btn-outline-secondary" id="argSearchBtn">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                    <div id="argSearchResults" class="list-group mt-1" style="max-height:200px;overflow-y:auto;font-size:0.85rem;"></div>
+                </div>
+
+                <hr class="my-0" />
+
+                <!-- Link creation panel -->
+                <div>
+                    <label class="form-label fw-semibold">Add Link</label>
+                    <p class="text-muted small mb-1">Click two nodes in the graph, then choose link type.</p>
+                    <div id="linkSelectionStatus" class="small text-muted mb-2">No nodes selected.</div>
+                    <select id="linkType" class="form-select form-select-sm mb-2">
+                        <option value="Supports">Supports</option>
+                        <option value="Rebuts">Rebuts</option>
+                        <option value="Qualifies">Qualifies</option>
+                        <option value="Elaborates">Elaborates</option>
+                    </select>
+                    <button id="addLinkBtn" class="btn btn-sm btn-outline-primary w-100" disabled>
+                        <i class="bi bi-arrow-right-circle"></i> Add Link
+                    </button>
+                </div>
+
+                <div class="mt-auto">
+                    <div id="chainSaveError" class="alert alert-danger alert-sm d-none p-2 small"></div>
+                    <button id="saveChainBtn" class="btn btn-success w-100">
+                        <span class="spinner-border spinner-border-sm d-none me-1" id="saveChainSpinner"></span>
+                        <i class="bi bi-floppy"></i> Save Chain
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right panel: vis-network canvas -->
+    <div class="col-lg-9">
+        <div id="chainCanvas"></div>
+        <!-- Selected node info -->
+        <div class="card mt-2">
+            <div class="card-body node-info-panel py-2">
+                <div id="nodeInfo" class="text-muted small">Click a node to see argument details.</div>
+            </div>
+        </div>
+        <!-- Links table -->
+        <div class="mt-2">
+            <h6 class="text-muted mb-2"><i class="bi bi-link-45deg"></i> Links in this chain</h6>
+            <div id="linksTable" class="small">
+                <span class="text-muted">No links yet.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    const nodes     = new vis.DataSet();
+    const edges     = new vis.DataSet();
+    const argMap    = {};       // id → argument object
+    const linksData = [];       // { from, to, type }
+    let selectedNodes = [];     // up to 2 nodes for link creation
+    let existingChainId = null; // set when editing a saved chain
+
+    // ── vis-network ───────────────────────────────────────────────────────────
+    const container = document.getElementById('chainCanvas');
+    const network   = new vis.Network(container, { nodes, edges }, {
+        physics: { barnesHut: { gravitationalConstant: -3000 } },
+        edges: {
+            arrows: { to: { enabled: true, scaleFactor: 0.6 } },
+            smooth: { type: 'curvedCW', roundness: 0.2 }
+        },
+        nodes: { shape: 'box', font: { size: 13 }, widthConstraint: { maximum: 160 } },
+        interaction: { multiselect: true }
+    });
+
+    network.on('selectNode', params => {
+        const id = params.nodes[0];
+        selectedNodes = network.getSelectedNodes().slice(0, 2);
+        updateLinkSelection();
+        showNodeInfo(id);
+    });
+    network.on('deselectNode', () => {
+        selectedNodes = network.getSelectedNodes().slice(0, 2);
+        updateLinkSelection();
+    });
+
+    function updateLinkSelection() {
+        const status = document.getElementById('linkSelectionStatus');
+        const addBtn = document.getElementById('addLinkBtn');
+        if (selectedNodes.length === 2) {
+            status.textContent = `Source: ${truncate(argMap[selectedNodes[0]]?.title, 30)} → Target: ${truncate(argMap[selectedNodes[1]]?.title, 30)}`;
+            addBtn.disabled = false;
+        } else if (selectedNodes.length === 1) {
+            status.textContent = `Selected: ${truncate(argMap[selectedNodes[0]]?.title, 40)}. Click another node.`;
+            addBtn.disabled = true;
+        } else {
+            status.textContent = 'No nodes selected.';
+            addBtn.disabled = true;
+        }
+    }
+
+    function showNodeInfo(id) {
+        const arg = argMap[id];
+        if (!arg) return;
+        document.getElementById('nodeInfo').innerHTML = `
+            <strong>${escHtml(arg.title)}</strong><br/>
+            <span>${escHtml(truncate(arg.claimText || '', 200))}</span><br/>
+            <span class="text-muted">${(arg.tags || []).map(t => `<span class="badge bg-secondary me-1">${escHtml(t)}</span>`).join('')}</span>
+        `;
+    }
+
+    // ── Argument search ───────────────────────────────────────────────────────
+    document.getElementById('argSearchBtn').addEventListener('click', searchArguments);
+    document.getElementById('argSearchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchArguments();
+    });
+
+    async function searchArguments() {
+        const query = document.getElementById('argSearchInput').value.trim();
+        if (!query) return;
+
+        const res  = await fetch(`/api/arguments?limit=10&sort=hot&tags=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        renderSearchResults(data.items || []);
+    }
+
+    function renderSearchResults(items) {
+        const el = document.getElementById('argSearchResults');
+        if (items.length === 0) {
+            el.innerHTML = '<div class="list-group-item small text-muted">No results.</div>';
+            return;
+        }
+        el.innerHTML = items.map(a => `
+            <div class="list-group-item arg-search-item" data-id="${a.id}">
+                <strong>${escHtml(truncate(a.title, 50))}</strong><br/>
+                <small class="text-muted">${escHtml(truncate(a.claimText || '', 80))}</small>
+            </div>`).join('');
+
+        el.querySelectorAll('.arg-search-item').forEach(item => {
+            const arg = items.find(a => a.id === item.dataset.id);
+            item.addEventListener('click', () => addArgToGraph(arg));
+        });
+    }
+
+    function addArgToGraph(arg) {
+        if (nodes.get(arg.id)) return; // already in graph
+        argMap[arg.id] = arg;
+        nodes.add({
+            id: arg.id,
+            label: truncate(arg.title, 25),
+            title: arg.claimText || arg.title,
+            color: arg.isAIValidated ? { background: '#d4edda', border: '#28a745' } : undefined
+        });
+    }
+
+    // ── Add link ──────────────────────────────────────────────────────────────
+    document.getElementById('addLinkBtn').addEventListener('click', async () => {
+        const [from, to] = selectedNodes;
+        const type = document.getElementById('linkType').value;
+        if (from === to) return;
+
+        // Cycle check: does a path already exist from `to` back to `from`?
+        if (wouldCreateCycle(from, to)) {
+            alert('This link would create a circular argument chain. Please choose a different target.');
+            return;
+        }
+
+        const edgeId = `${from}→${to}`;
+        if (edges.get(edgeId)) return;
+
+        const colorMap = { Supports: '#198754', Rebuts: '#dc3545', Qualifies: '#fd7e14', Elaborates: '#0d6efd' };
+        edges.add({ id: edgeId, from, to, label: type, color: colorMap[type] || '#888', font: { size: 10 } });
+        linksData.push({ from, to, type, edgeId });
+        renderLinksTable();
+        network.unselectAll();
+    });
+
+    function wouldCreateCycle(from, to) {
+        // BFS: can we reach `from` starting from `to`?
+        const visited = new Set();
+        const queue   = [to];
+        while (queue.length) {
+            const cur = queue.shift();
+            if (cur === from) return true;
+            if (visited.has(cur)) continue;
+            visited.add(cur);
+            edges.get().filter(e => e.from === cur).forEach(e => queue.push(e.to));
+        }
+        return false;
+    }
+
+    function renderLinksTable() {
+        const el = document.getElementById('linksTable');
+        if (linksData.length === 0) {
+            el.innerHTML = '<span class="text-muted">No links yet.</span>';
+            return;
+        }
+        el.innerHTML = linksData.map(l => {
+            const colorMap = { Supports: 'success', Rebuts: 'danger', Qualifies: 'warning', Elaborates: 'primary' };
+            return `<div class="d-flex align-items-center gap-2 mb-1">
+                <span>${escHtml(truncate(argMap[l.from]?.title || l.from, 25))}</span>
+                <span class="badge bg-${colorMap[l.type]||'secondary'} link-type-badge">${l.type}</span>
+                <span>${escHtml(truncate(argMap[l.to]?.title || l.to, 25))}</span>
+                <button class="btn btn-link btn-sm text-danger p-0 ms-1 remove-link-btn" data-edge="${l.edgeId}">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>`;
+        }).join('');
+
+        el.querySelectorAll('.remove-link-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const edgeId = btn.dataset.edge;
+                edges.remove(edgeId);
+                const idx = linksData.findIndex(l => l.edgeId === edgeId);
+                if (idx !== -1) linksData.splice(idx, 1);
+                renderLinksTable();
+            });
+        });
+    }
+
+    // ── SignalR (live collaboration) ──────────────────────────────────────────
+    const hub = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/chains')
+        .withAutomaticReconnect()
+        .build();
+
+    hub.on('NodeAdded', ({ argumentId, title }) => {
+        if (!nodes.get(argumentId))
+            nodes.add({ id: argumentId, label: truncate(title, 25) });
+    });
+    hub.on('LinkAdded', ({ from, to, type }) => {
+        const edgeId = `${from}→${to}`;
+        if (!edges.get(edgeId)) {
+            edges.add({ id: edgeId, from, to, label: type });
+            linksData.push({ from, to, type, edgeId });
+            renderLinksTable();
+        }
+    });
+
+    hub.start().catch(() => {});
+
+    // ── Save chain ────────────────────────────────────────────────────────────
+    document.getElementById('saveChainBtn').addEventListener('click', saveChain);
+
+    async function saveChain() {
+        const title       = document.getElementById('chainTitle').value.trim();
+        const description = document.getElementById('chainDesc').value.trim();
+        const tags        = document.getElementById('chainTags').value.split(',').map(t => t.trim()).filter(Boolean);
+        const errEl       = document.getElementById('chainSaveError');
+        const spinner     = document.getElementById('saveChainSpinner');
+
+        errEl.classList.add('d-none');
+
+        if (!title) {
+            errEl.textContent = 'Chain title is required.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+        if (nodes.length === 0) {
+            errEl.textContent = 'Add at least one argument to the chain.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+
+        spinner.classList.remove('d-none');
+        document.getElementById('saveChainBtn').disabled = true;
+
+        try {
+            const body = {
+                title,
+                description,
+                tags,
+                argumentIds: nodes.getIds(),
+                links: linksData.map(l => ({ fromArgumentId: l.from, toArgumentId: l.to, linkType: l.type }))
+            };
+
+            const url    = existingChainId ? `/api/argumentchains/${existingChainId}` : '/api/argumentchains';
+            const method = existingChainId ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            existingChainId = data.id || existingChainId;
+            alert('Chain saved! ID: ' + existingChainId);
+        } catch (err) {
+            errEl.textContent = 'Save failed: ' + err.message;
+            errEl.classList.remove('d-none');
+        }
+
+        spinner.classList.add('d-none');
+        document.getElementById('saveChainBtn').disabled = false;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function truncate(str, n) {
+        str = String(str ?? '');
+        return str.length > n ? str.slice(0, n) + '…' : str;
+    }
+})();
+</script>
+}

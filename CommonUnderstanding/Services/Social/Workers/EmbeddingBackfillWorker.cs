@@ -13,18 +13,18 @@ namespace CommonUnderstanding.Services.Social.Workers;
 public class EmbeddingBackfillWorker : BackgroundService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
-    private readonly EmbeddingService _embeddingService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EmbeddingBackfillWorker> _logger;
 
     private static readonly TimeSpan PollingInterval = TimeSpan.FromMinutes(10);
 
     public EmbeddingBackfillWorker(
         IDbContextFactory<ApplicationDbContext> dbFactory,
-        EmbeddingService embeddingService,
+        IServiceScopeFactory scopeFactory,
         ILogger<EmbeddingBackfillWorker> logger)
     {
         _dbFactory = dbFactory;
-        _embeddingService = embeddingService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -59,6 +59,8 @@ public class EmbeddingBackfillWorker : BackgroundService
 
     private async Task<int> BackfillArgumentEmbeddingsAsync(CancellationToken ct)
     {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var embeddingService = scope.ServiceProvider.GetRequiredService<EmbeddingService>();
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var args = await db.SocialArguments
@@ -70,7 +72,7 @@ public class EmbeddingBackfillWorker : BackgroundService
         if (args.Count == 0) return 0;
 
         var texts = args.Select(a => $"{a.ClaimProposition?.Text ?? string.Empty} {a.WarrantText}".Trim()).ToList();
-        var embeddings = await _embeddingService.GenerateEmbeddingsAsync(texts, ct);
+        var embeddings = await embeddingService.GenerateEmbeddingsAsync(texts, ct);
 
         for (int i = 0; i < args.Count; i++)
         {

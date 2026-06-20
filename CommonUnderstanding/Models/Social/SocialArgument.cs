@@ -37,6 +37,7 @@ public class SocialArgument : BaseEntity
     public int DownvoteCount { get; set; } = 0;
     public double HotScore { get; set; } = 0.0;
     public double WilsonScore { get; set; } = 0.0;
+    public double ControversyScore { get; set; } = 0.0;
 
     // ── AI validation ──
     public bool IsAIValidated { get; set; } = false;

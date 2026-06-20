@@ -1,0 +1,464 @@
+@using CommonUnderstanding.Models.Social
+@{
+    ViewData["Title"] = "Debate Room";
+    var room = ViewBag.Room as DebateRoom;
+}
+
+@section Styles {
+<style>
+    .contribution-card { border-radius: 0.5rem; padding: 0.9rem 1rem; margin-bottom: 0.5rem; border: 1px solid var(--bs-border-color); }
+    .contribution-card.pro  { border-left: 4px solid #198754; }
+    .contribution-card.con  { border-left: 4px solid #dc3545; }
+    .contribution-card.judge { border-left: 4px solid #6f42c1; }
+    .fallacy-flag { font-size: 0.78rem; }
+    .score-badge { font-size: 1.4rem; font-weight: 700; }
+    #roomList .room-row { cursor: pointer; transition: background 0.1s; }
+    #roomList .room-row:hover { background: var(--bs-secondary-bg); }
+    #spectatorCount { font-size: 0.82rem; }
+    .validity-bar { height: 6px; border-radius: 3px; background: var(--bs-secondary-bg); }
+    .validity-fill { height: 100%; border-radius: 3px; }
+</style>
+}
+
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag"><i class="bi bi-mic"></i> Social</span>
+            <h1 class="cu-page-heading mt-3 mb-2">Debate Room</h1>
+            <p class="cu-workspace-lead mb-0">
+                Structured debates where every contribution is a linked argument.
+            </p>
+        </div>
+        <div class="cu-workspace-actions">
+            <button class="cu-btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal">
+                <i class="bi bi-plus-circle"></i> New Debate
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Room browser / active room -->
+<div id="roomBrowser">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="text-muted mb-0"><i class="bi bi-list-ul"></i> Open Debates</h6>
+        <button class="btn btn-sm btn-outline-secondary" id="refreshRoomsBtn">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+    <div id="roomList">
+        <div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>
+    </div>
+</div>
+
+<!-- Active debate panel (hidden until room selected) -->
+<div id="activeDebatePanel" style="display:none">
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+        <button class="btn btn-sm btn-outline-secondary" id="backToListBtn">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
+        <h5 id="debateTitle" class="mb-0 flex-grow-1"></h5>
+        <span id="spectatorCount" class="badge bg-secondary">
+            <i class="bi bi-eye"></i> <span id="spectatorNum">0</span> watching
+        </span>
+        <span id="debateStatusBadge" class="badge"></span>
+    </div>
+
+    <!-- Scores -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 text-center">
+            <div class="text-success score-badge" id="proScore">0.0</div>
+            <div class="text-muted small">Proponent</div>
+        </div>
+        <div class="col-6 text-center">
+            <div class="text-danger score-badge" id="conScore">0.0</div>
+            <div class="text-muted small">Opponent</div>
+        </div>
+    </div>
+
+    <!-- Contributions stream -->
+    <h6 class="text-muted mb-2"><i class="bi bi-chat-square-text"></i> Contributions</h6>
+    <div id="contributionsContainer" style="max-height:400px;overflow-y:auto;"></div>
+
+    <!-- Submit contribution -->
+    <div class="card mt-3" id="submitContributionPanel">
+        <div class="card-body">
+            <h6 class="card-title"><i class="bi bi-send"></i> Submit Argument</h6>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Argument</label>
+                <div class="input-group input-group-sm">
+                    <input id="contributionArgSearch" class="form-control" placeholder="Search your arguments…" />
+                    <button class="btn btn-outline-secondary" id="contributionArgSearchBtn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div id="contributionArgResults" class="list-group mt-1 small" style="max-height:150px;overflow-y:auto;"></div>
+                <div id="selectedArgDisplay" class="alert alert-info py-1 px-2 small mt-1 d-none"></div>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Role</label>
+                    <select id="contributionRole" class="form-select form-select-sm">
+                        <option value="Pro">Pro (Proponent)</option>
+                        <option value="Con">Con (Opponent)</option>
+                    </select>
+                </div>
+                <div class="col-md-8 d-flex align-items-end gap-2">
+                    <button id="submitContributionBtn" class="btn btn-primary btn-sm w-100" disabled>
+                        <i class="bi bi-send"></i> Submit
+                    </button>
+                    <button id="concludeDebateBtn" class="btn btn-outline-warning btn-sm" title="Conclude debate">
+                        <i class="bi bi-flag"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="contributionError" class="alert alert-danger alert-sm d-none mt-2 p-2 small"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Create Room Modal ───────────────────────────────────────────────────── -->
+<div class="modal fade" id="createRoomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Debate Room</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                    <input id="roomTitle" class="form-control" maxlength="200" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Topic / Motion <span class="text-danger">*</span></label>
+                    <input id="roomTopic" class="form-control" maxlength="200" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Motion Statement</label>
+                    <textarea id="roomMotion" class="form-control" rows="2" maxlength="1000"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Format</label>
+                    <select id="roomFormat" class="form-select">
+                        <option value="OpenFloor">Open Floor</option>
+                        <option value="Structured">Structured</option>
+                        <option value="OxfordStyle">Oxford Style</option>
+                    </select>
+                </div>
+                <div id="createRoomError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="createRoomBtn" class="btn btn-primary">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="createRoomSpinner"></span>
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    let activeRoomId = null;
+    let selectedArgId = null;
+    const contributionArgMap = {};
+
+    // ── SignalR ───────────────────────────────────────────────────────────────
+    const hub = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/debate')
+        .withAutomaticReconnect()
+        .build();
+
+    hub.on('ContributionAdded', contribution => appendContribution(contribution));
+    hub.on('ScoreUpdated', ({ userId, score }) => {
+        // We don't know role here without context; update both labels speculatively
+        // A real app would track userId → role mapping
+        console.log('ScoreUpdated', userId, score);
+    });
+    hub.on('AIRefereeFlag', flag => appendRefereeFlag(flag));
+    hub.on('DebateConcluded', result => showConclusionBanner(result));
+    hub.on('SpectatorCount', ({ count }) => {
+        document.getElementById('spectatorNum').textContent = count;
+    });
+
+    hub.start().catch(() => {});
+
+    // ── Room list ─────────────────────────────────────────────────────────────
+    async function loadRooms() {
+        const res  = await fetch('/api/debaterooms?limit=20');
+        const data = await res.json();
+        renderRoomList(data.items || []);
+    }
+
+    function renderRoomList(rooms) {
+        const el = document.getElementById('roomList');
+        if (rooms.length === 0) {
+            el.innerHTML = '<div class="text-muted small p-2">No open debates. Start one!</div>';
+            return;
+        }
+
+        const statusColor = { Open: 'success', Active: 'primary', Concluded: 'secondary', Cancelled: 'danger' };
+        el.innerHTML = `<table class="table table-sm table-hover mb-0">
+            <thead><tr><th>Title</th><th>Topic</th><th>Status</th><th>Contributions</th><th></th></tr></thead>
+            <tbody>
+            ${rooms.map(r => `
+                <tr class="room-row" data-id="${r.id}">
+                    <td>${escHtml(r.title)}</td>
+                    <td class="text-muted small">${escHtml(truncate(r.topic, 40))}</td>
+                    <td><span class="badge bg-${statusColor[r.status]||'secondary'}">${r.status}</span></td>
+                    <td>${r.contributionCount}</td>
+                    <td><button class="btn btn-sm btn-outline-primary join-btn" data-id="${r.id}">Join</button></td>
+                </tr>`).join('')}
+            </tbody></table>`;
+
+        el.querySelectorAll('.join-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                openRoom(btn.dataset.id, rooms.find(r => r.id === btn.dataset.id));
+            });
+        });
+    }
+
+    document.getElementById('refreshRoomsBtn').addEventListener('click', loadRooms);
+
+    // ── Open room ─────────────────────────────────────────────────────────────
+    async function openRoom(roomId, roomMeta) {
+        activeRoomId = roomId;
+        document.getElementById('roomBrowser').style.display = 'none';
+        document.getElementById('activeDebatePanel').style.display = 'block';
+
+        document.getElementById('debateTitle').textContent = roomMeta?.title || 'Debate';
+        const statusColor = { Open: 'bg-success', Active: 'bg-primary', Concluded: 'bg-secondary' };
+        const badge = document.getElementById('debateStatusBadge');
+        badge.textContent = roomMeta?.status || '';
+        badge.className = 'badge ' + (statusColor[roomMeta?.status] || 'bg-secondary');
+
+        // Load full room with contributions
+        const res  = await fetch(`/api/debaterooms/${roomId}`);
+        const room = await res.json();
+
+        document.getElementById('contributionsContainer').innerHTML = '';
+        (room.contributions || []).forEach(c => appendContribution(c));
+
+        // Join SignalR group
+        if (hub.state === 'Connected') {
+            hub.invoke('JoinDebate', roomId).catch(console.error);
+        }
+    }
+
+    document.getElementById('backToListBtn').addEventListener('click', async () => {
+        if (activeRoomId && hub.state === 'Connected') {
+            hub.invoke('LeaveDebate', activeRoomId).catch(() => {});
+        }
+        activeRoomId = null;
+        document.getElementById('activeDebatePanel').style.display = 'none';
+        document.getElementById('roomBrowser').style.display = 'block';
+        loadRooms();
+    });
+
+    // ── Contributions ─────────────────────────────────────────────────────────
+    function appendContribution(c) {
+        const role    = (c.role || 'pro').toLowerCase();
+        const isJudge = role === 'judge';
+        const colorCls = isJudge ? 'judge' : (role === 'pro' || role === 'proponent' ? 'pro' : 'con');
+        const icon     = isJudge ? 'bi-person-badge' : (colorCls === 'pro' ? 'bi-hand-thumbs-up' : 'bi-hand-thumbs-down');
+
+        const html = `
+        <div class="contribution-card ${colorCls}" id="contrib-${c.id}">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="badge ${isJudge ? 'bg-purple text-white' : colorCls === 'pro' ? 'bg-success' : 'bg-danger'}">
+                    <i class="bi ${icon}"></i> ${escHtml(c.role || role)}
+                </span>
+                <span class="text-muted small">${timeAgo(c.createdAt || new Date())}</span>
+            </div>
+            <p class="mb-1 fw-semibold small">${escHtml(c.argument?.claimText || c.argumentSummary || '')}</p>
+            ${c.argument?.warrantText ? `<p class="text-muted small mb-1">${escHtml(truncate(c.argument.warrantText, 180))}</p>` : ''}
+            <div class="d-flex gap-2 align-items-center mt-1">
+                ${c.argument?.aiValidityScore != null ? `
+                <div class="validity-bar flex-grow-1">
+                    <div class="validity-fill bg-${c.argument.aiValidityScore >= 0.7 ? 'success' : c.argument.aiValidityScore >= 0.4 ? 'warning' : 'danger'}"
+                         style="width:${Math.round(c.argument.aiValidityScore*100)}%"></div>
+                </div>
+                <span class="small text-muted">${Math.round(c.argument.aiValidityScore*100)}% valid</span>` : ''}
+                <button class="btn btn-link btn-sm p-0 ms-auto referee-btn text-warning"
+                        data-id="${c.id}" title="Ask AI Referee">
+                    <i class="bi bi-robot"></i>
+                </button>
+            </div>
+            <div class="fallacy-flags-${c.id}"></div>
+        </div>`;
+
+        const container = document.getElementById('contributionsContainer');
+        container.insertAdjacentHTML('beforeend', html);
+        container.scrollTop = container.scrollHeight;
+
+        container.querySelector(`#contrib-${c.id} .referee-btn`)
+            ?.addEventListener('click', async () => {
+                if (activeRoomId && hub.state === 'Connected') {
+                    await hub.invoke('RequestAIReferee', activeRoomId, c.id).catch(console.error);
+                }
+            });
+    }
+
+    function appendRefereeFlag(flag) {
+        const flagsEl = document.querySelector(`.fallacy-flags-${flag.contributionId}`);
+        if (!flagsEl) return;
+        const fallacyList = (flag.fallacies || []).map(f =>
+            `<span class="badge bg-warning text-dark me-1 fallacy-flag">${escHtml(f)}</span>`).join('');
+        flagsEl.innerHTML = `<div class="mt-1">${fallacyList}
+            ${flag.comment ? `<span class="small text-muted">${escHtml(flag.comment)}</span>` : ''}</div>`;
+    }
+
+    function showConclusionBanner(result) {
+        document.getElementById('contributionsContainer').insertAdjacentHTML('beforeend', `
+            <div class="alert alert-info text-center mt-2">
+                <strong>Debate Concluded</strong><br/>
+                Proponent: ${result.proponentScore?.toFixed(1) ?? '—'} |
+                Opponent: ${result.opponentScore?.toFixed(1) ?? '—'}<br/>
+                ${result.winner ? `<strong>Winner: ${escHtml(result.winner)}</strong>` : ''}
+            </div>`);
+        document.getElementById('submitContributionPanel').style.display = 'none';
+    }
+
+    // ── Search arguments for contribution ────────────────────────────────────
+    document.getElementById('contributionArgSearchBtn').addEventListener('click', searchContribArgs);
+    document.getElementById('contributionArgSearch').addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchContribArgs();
+    });
+
+    async function searchContribArgs() {
+        const query = document.getElementById('contributionArgSearch').value.trim();
+        const res   = await fetch(`/api/arguments?limit=10${query ? '&tags=' + encodeURIComponent(query) : ''}`);
+        const data  = await res.json();
+        const items = data.items || [];
+        const el    = document.getElementById('contributionArgResults');
+
+        if (items.length === 0) {
+            el.innerHTML = '<div class="list-group-item small text-muted">No results.</div>';
+            return;
+        }
+
+        el.innerHTML = items.map(a => `
+            <div class="list-group-item list-group-item-action py-1 small contrib-arg-item" data-id="${a.id}">
+                <strong>${escHtml(truncate(a.title, 50))}</strong>
+                <span class="text-muted ms-1">${escHtml(truncate(a.claimText || '', 60))}</span>
+            </div>`).join('');
+
+        el.querySelectorAll('.contrib-arg-item').forEach(item => {
+            const arg = items.find(a => a.id === item.dataset.id);
+            contributionArgMap[arg.id] = arg;
+            item.addEventListener('click', () => {
+                selectedArgId = arg.id;
+                el.innerHTML = '';
+                document.getElementById('selectedArgDisplay').textContent =
+                    `Selected: ${arg.title}`;
+                document.getElementById('selectedArgDisplay').classList.remove('d-none');
+                document.getElementById('submitContributionBtn').disabled = false;
+            });
+        });
+    }
+
+    // ── Submit contribution ───────────────────────────────────────────────────
+    document.getElementById('submitContributionBtn').addEventListener('click', async () => {
+        if (!activeRoomId || !selectedArgId) return;
+        const role   = document.getElementById('contributionRole').value;
+        const errEl  = document.getElementById('contributionError');
+        errEl.classList.add('d-none');
+
+        if (hub.state === 'Connected') {
+            try {
+                await hub.invoke('SubmitArgument', activeRoomId, selectedArgId, role);
+                selectedArgId = null;
+                document.getElementById('selectedArgDisplay').classList.add('d-none');
+                document.getElementById('submitContributionBtn').disabled = true;
+            } catch (e) {
+                errEl.textContent = e.message;
+                errEl.classList.remove('d-none');
+            }
+        } else {
+            // REST fallback
+            const res = await fetch(`/api/debaterooms/${activeRoomId}/contributions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ argumentId: selectedArgId, role })
+            });
+            if (!res.ok) {
+                errEl.textContent = `HTTP ${res.status}`;
+                errEl.classList.remove('d-none');
+            }
+        }
+    });
+
+    // ── Conclude debate ───────────────────────────────────────────────────────
+    document.getElementById('concludeDebateBtn').addEventListener('click', async () => {
+        if (!activeRoomId || !confirm('Conclude this debate?')) return;
+        const res = await fetch(`/api/debaterooms/${activeRoomId}/conclude`, { method: 'POST' });
+        if (!res.ok) alert('Could not conclude debate. You may not be authorized.');
+    });
+
+    // ── Create room ───────────────────────────────────────────────────────────
+    document.getElementById('createRoomBtn').addEventListener('click', async () => {
+        const title   = document.getElementById('roomTitle').value.trim();
+        const topic   = document.getElementById('roomTopic').value.trim();
+        const motion  = document.getElementById('roomMotion').value.trim();
+        const format  = document.getElementById('roomFormat').value;
+        const errEl   = document.getElementById('createRoomError');
+        const spinner = document.getElementById('createRoomSpinner');
+
+        errEl.classList.add('d-none');
+        if (!title || !topic) {
+            errEl.textContent = 'Title and Topic are required.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+
+        spinner.classList.remove('d-none');
+
+        try {
+            const res = await fetch('/api/debaterooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, topic, motionText: motion, format })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            bootstrap.Modal.getInstance(document.getElementById('createRoomModal'))?.hide();
+            loadRooms();
+            openRoom(data.id, data);
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.classList.remove('d-none');
+        }
+
+        spinner.classList.add('d-none');
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function truncate(str, n) {
+        str = String(str ?? '');
+        return str.length > n ? str.slice(0, n) + '…' : str;
+    }
+    function timeAgo(iso) {
+        const ms = Date.now() - new Date(iso).getTime();
+        const mins = Math.floor(ms / 60000);
+        if (mins < 1)  return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24)  return `${hrs}h ago`;
+        return `${Math.floor(hrs/24)}d ago`;
+    }
+
+    // Initial load
+    loadRooms();
+})();
+</script>
+}

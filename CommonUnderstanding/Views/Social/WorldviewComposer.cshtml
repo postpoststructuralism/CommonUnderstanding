@@ -1,0 +1,362 @@
+@{
+    ViewData["Title"] = "Worldview Composer";
+}
+
+@section Styles {
+<style>
+    .chain-card {
+        border: 2px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    .chain-card.selected { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+    #schwartzCanvas { max-width: 380px; width: 100%; }
+    .convergence-score { font-size: 2.5rem; font-weight: 700; }
+    .bridge-suggestion { border-left: 3px solid var(--bs-info); padding-left: 0.75rem; margin-bottom: 0.75rem; }
+</style>
+}
+
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag"><i class="bi bi-globe2"></i> Social</span>
+            <h1 class="cu-page-heading mt-3 mb-2">Worldview Composer</h1>
+            <p class="cu-workspace-lead mb-0">
+                Combine argument chains into a worldview. See value alignment and convergence scores.
+            </p>
+        </div>
+        <div class="cu-workspace-actions">
+            <button class="cu-btn-primary" data-bs-toggle="modal" data-bs-target="#saveWorldviewModal">
+                <i class="bi bi-floppy"></i> Save Worldview
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left: chain selector -->
+    <div class="col-lg-5">
+        <h6 class="text-muted mb-2"><i class="bi bi-diagram-3"></i> Available Chains</h6>
+        <div class="input-group input-group-sm mb-2">
+            <input id="chainSearchInput" class="form-control" placeholder="Search chains…" />
+            <button class="btn btn-outline-secondary" id="chainSearchBtn">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+        <div id="chainList" class="d-flex flex-column gap-2">
+            <div class="text-muted small">Search or browse chains above.</div>
+        </div>
+    </div>
+
+    <!-- Right: analysis panel -->
+    <div class="col-lg-7">
+        <!-- Selected chains -->
+        <h6 class="text-muted mb-2"><i class="bi bi-collection"></i> Selected Chains
+            <span id="selectedCount" class="badge bg-primary ms-1">0</span>
+        </h6>
+        <div id="selectedChains" class="d-flex flex-wrap gap-2 mb-3">
+            <span class="text-muted small">Select chains from the left panel.</span>
+        </div>
+
+        <hr />
+
+        <!-- Schwartz radar -->
+        <div class="row g-3 align-items-start">
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-pentagon"></i> Schwartz Value Profile</h6>
+                <canvas id="schwartzCanvas"></canvas>
+            </div>
+            <div class="col-md-6">
+                <!-- Convergence score -->
+                <h6 class="text-muted mb-2"><i class="bi bi-intersect"></i> Convergence</h6>
+                <div class="text-center mb-3">
+                    <div class="convergence-score text-primary" id="convergenceScoreDisplay">—</div>
+                    <div class="text-muted small">Overall convergence score (0–1)</div>
+                </div>
+                <div id="convergenceDetail" class="small text-muted"></div>
+
+                <hr />
+
+                <!-- Bridge suggestions -->
+                <h6 class="text-muted mb-2"><i class="bi bi-bridge"></i> Bridge Argument Suggestions</h6>
+                <div id="bridgeSuggestions">
+                    <span class="text-muted small">Select 2+ chains to see suggestions.</span>
+                </div>
+                <button id="refreshBridgesBtn" class="btn btn-sm btn-outline-info mt-2 d-none">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh Suggestions
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Save Worldview Modal ───────────────────────────────────────────────── -->
+<div class="modal fade" id="saveWorldviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Save Worldview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    <input id="wvName" class="form-control" maxlength="200" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea id="wvDesc" class="form-control" rows="2" maxlength="2000"></textarea>
+                </div>
+                <div id="saveWvError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="saveWvBtn" class="btn btn-primary">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="saveWvSpinner"></span>
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const SCHWARTZ_DIMENSIONS = [
+        'Universalism','Benevolence','Conformity','Tradition',
+        'Security','Power','Achievement','Hedonism','Stimulation','Self-Direction'
+    ];
+
+    const selectedChains = new Map(); // id → chain obj
+    let schwartzChart = null;
+
+    // ── Schwartz radar chart ──────────────────────────────────────────────────
+    const ctx = document.getElementById('schwartzCanvas').getContext('2d');
+    schwartzChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: SCHWARTZ_DIMENSIONS,
+            datasets: [{
+                label: 'Value Profile',
+                data: new Array(10).fill(0),
+                backgroundColor: 'rgba(13,110,253,0.15)',
+                borderColor: 'rgba(13,110,253,0.8)',
+                pointBackgroundColor: 'rgba(13,110,253,0.8)'
+            }]
+        },
+        options: {
+            scales: { r: { min: 0, max: 1, ticks: { stepSize: 0.2 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // ── Chain search ──────────────────────────────────────────────────────────
+    document.getElementById('chainSearchBtn').addEventListener('click', searchChains);
+    document.getElementById('chainSearchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchChains();
+    });
+
+    async function searchChains() {
+        const tags = document.getElementById('chainSearchInput').value.trim();
+        const url  = '/api/argumentchains?limit=20' + (tags ? `&tags=${encodeURIComponent(tags)}` : '');
+        const res  = await fetch(url);
+        const data = await res.json();
+        renderChainList(data.items || []);
+    }
+
+    // Load all chains initially
+    searchChains();
+
+    function renderChainList(chains) {
+        const el = document.getElementById('chainList');
+        if (chains.length === 0) {
+            el.innerHTML = '<div class="text-muted small">No chains found.</div>';
+            return;
+        }
+        el.innerHTML = chains.map(c => `
+            <div class="chain-card ${selectedChains.has(c.id) ? 'selected' : ''}" data-id="${c.id}">
+                <strong>${escHtml(c.title)}</strong>
+                <div class="text-muted small">${c.argumentCount} arguments
+                    ${(c.tags||[]).map(t => `<span class="badge bg-secondary ms-1">${escHtml(t)}</span>`).join('')}
+                </div>
+            </div>`).join('');
+
+        el.querySelectorAll('.chain-card').forEach(card => {
+            const chain = chains.find(c => c.id === card.dataset.id);
+            card.addEventListener('click', () => toggleChain(chain, card));
+        });
+    }
+
+    function toggleChain(chain, cardEl) {
+        if (selectedChains.has(chain.id)) {
+            selectedChains.delete(chain.id);
+            cardEl?.classList.remove('selected');
+        } else {
+            selectedChains.set(chain.id, chain);
+            cardEl?.classList.add('selected');
+        }
+        renderSelectedChips();
+        analyzeWorldview();
+    }
+
+    function renderSelectedChips() {
+        const count = selectedChains.size;
+        document.getElementById('selectedCount').textContent = count;
+        const el = document.getElementById('selectedChains');
+        if (count === 0) {
+            el.innerHTML = '<span class="text-muted small">Select chains from the left panel.</span>';
+            return;
+        }
+        el.innerHTML = [...selectedChains.values()].map(c => `
+            <span class="badge bg-primary d-flex align-items-center gap-1 py-2 px-2" style="font-size:0.82rem">
+                ${escHtml(c.title)}
+                <button class="btn-close btn-close-white" style="font-size:0.55rem"
+                        data-id="${c.id}" onclick="removeChip(this)"></button>
+            </span>`).join('');
+    }
+
+    window.removeChip = function(btn) {
+        const id = btn.dataset.id;
+        selectedChains.delete(id);
+        // Update card selection state
+        document.querySelectorAll(`.chain-card[data-id="${id}"]`).forEach(c => c.classList.remove('selected'));
+        renderSelectedChips();
+        analyzeWorldview();
+    };
+
+    // ── Worldview analysis ────────────────────────────────────────────────────
+    async function analyzeWorldview() {
+        const ids = [...selectedChains.keys()];
+
+        if (ids.length === 0) {
+            updateSchwartzChart(new Array(10).fill(0));
+            document.getElementById('convergenceScoreDisplay').textContent = '—';
+            document.getElementById('convergenceDetail').textContent = '';
+            document.getElementById('bridgeSuggestions').innerHTML =
+                '<span class="text-muted small">Select 2+ chains to see suggestions.</span>';
+            document.getElementById('refreshBridgesBtn').classList.add('d-none');
+            return;
+        }
+
+        // Compute Schwartz profile: average across selected chains
+        const schwartzAgg = new Array(10).fill(0);
+        ids.forEach(id => {
+            const c = selectedChains.get(id);
+            (c.schwartzValues || []).forEach((v, i) => { schwartzAgg[i] += v; });
+        });
+        const schwartzAvg = schwartzAgg.map(v => ids.length ? v / ids.length : 0);
+        updateSchwartzChart(schwartzAvg);
+
+        if (ids.length >= 2) {
+            // Ask backend for convergence and bridge suggestions
+            try {
+                const res  = await fetch('/api/worldviews/convergence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chainIds: ids })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    displayConvergence(data);
+                }
+            } catch (e) {
+                // Convergence endpoint may not exist yet — compute locally
+                document.getElementById('convergenceScoreDisplay').textContent = 'N/A';
+            }
+            document.getElementById('refreshBridgesBtn').classList.remove('d-none');
+            loadBridgeSuggestions(ids);
+        }
+    }
+
+    function updateSchwartzChart(values) {
+        schwartzChart.data.datasets[0].data = values;
+        schwartzChart.update();
+    }
+
+    function displayConvergence(data) {
+        document.getElementById('convergenceScoreDisplay').textContent =
+            typeof data.score === 'number' ? data.score.toFixed(2) : '—';
+        document.getElementById('convergenceDetail').innerHTML =
+            data.summary ? escHtml(data.summary) : '';
+    }
+
+    async function loadBridgeSuggestions(chainIds) {
+        const el = document.getElementById('bridgeSuggestions');
+        el.innerHTML = '<div class="spinner-border spinner-border-sm text-info me-2"></div><span class="small">Generating…</span>';
+
+        try {
+            const res  = await fetch('/api/worldviews/bridge-suggestions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chainIds })
+            });
+            const data = res.ok ? await res.json() : { suggestions: [] };
+            const suggestions = data.suggestions || [];
+
+            if (suggestions.length === 0) {
+                el.innerHTML = '<span class="text-muted small">No bridge arguments suggested.</span>';
+                return;
+            }
+
+            el.innerHTML = suggestions.map(s => `
+                <div class="bridge-suggestion">
+                    <strong class="small">${escHtml(s.title || 'Suggestion')}</strong><br/>
+                    <span class="small text-muted">${escHtml(s.text || s.description || '')}</span>
+                </div>`).join('');
+        } catch (e) {
+            el.innerHTML = '<span class="text-muted small">Could not load suggestions.</span>';
+        }
+    }
+
+    document.getElementById('refreshBridgesBtn').addEventListener('click', () => {
+        loadBridgeSuggestions([...selectedChains.keys()]);
+    });
+
+    // ── Save worldview ────────────────────────────────────────────────────────
+    document.getElementById('saveWvBtn').addEventListener('click', async () => {
+        const name    = document.getElementById('wvName').value.trim();
+        const desc    = document.getElementById('wvDesc').value.trim();
+        const errEl   = document.getElementById('saveWvError');
+        const spinner = document.getElementById('saveWvSpinner');
+
+        errEl.classList.add('d-none');
+
+        if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('d-none'); return; }
+        if (selectedChains.size === 0) { errEl.textContent = 'Select at least one chain.'; errEl.classList.remove('d-none'); return; }
+
+        spinner.classList.remove('d-none');
+
+        try {
+            const res = await fetch('/api/worldviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    description: desc,
+                    chainIds: [...selectedChains.keys()]
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            bootstrap.Modal.getInstance(document.getElementById('saveWorldviewModal'))?.hide();
+            alert('Worldview saved!');
+        } catch (err) {
+            errEl.textContent = 'Save failed: ' + err.message;
+            errEl.classList.remove('d-none');
+        }
+
+        spinner.classList.add('d-none');
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+})();
+</script>
+}
