@@ -98,8 +98,9 @@
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Role</label>
                     <select id="contributionRole" class="form-select form-select-sm">
-                        <option value="Pro">Pro (Proponent)</option>
-                        <option value="Con">Con (Opponent)</option>
+                        <option value="Proponent">Proponent</option>
+                        <option value="Opponent">Opponent</option>
+                        <option value="Rebuttal">Rebuttal</option>
                     </select>
                 </div>
                 <div class="col-md-8 d-flex align-items-end gap-2">
@@ -140,9 +141,9 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Format</label>
                     <select id="roomFormat" class="form-select">
-                        <option value="OpenFloor">Open Floor</option>
-                        <option value="Structured">Structured</option>
-                        <option value="OxfordStyle">Oxford Style</option>
+                        <option value="Oxford">Oxford</option>
+                        <option value="LincolnDouglas">Lincoln-Douglas</option>
+                        <option value="Custom">Custom</option>
                     </select>
                 </div>
                 <div id="createRoomError" class="alert alert-danger d-none"></div>
@@ -227,25 +228,38 @@
     document.getElementById('refreshRoomsBtn').addEventListener('click', loadRooms);
 
     // ── Open room ─────────────────────────────────────────────────────────────
-    async function openRoom(roomId, roomMeta) {
+    async function openRoom(roomId, roomMeta, attemptJoin = true) {
         activeRoomId = roomId;
         document.getElementById('roomBrowser').style.display = 'none';
         document.getElementById('activeDebatePanel').style.display = 'block';
+        document.getElementById('submitContributionPanel').style.display = '';
 
         document.getElementById('debateTitle').textContent = roomMeta?.title || 'Debate';
-        const statusColor = { Open: 'bg-success', Active: 'bg-primary', Concluded: 'bg-secondary' };
-        const badge = document.getElementById('debateStatusBadge');
-        badge.textContent = roomMeta?.status || '';
-        badge.className = 'badge ' + (statusColor[roomMeta?.status] || 'bg-secondary');
 
-        // Load full room with contributions
+        // Try to claim the Opponent slot. Harmless if already a participant or full (409).
+        if (attemptJoin) {
+            try { await fetch(`/api/debaterooms/${roomId}/join`, { method: 'POST' }); } catch { /* spectator */ }
+        }
+
+        // Load full room with contributions + scores.
         const res  = await fetch(`/api/debaterooms/${roomId}`);
         const room = await res.json();
+
+        const statusColor = { Open: 'bg-success', Active: 'bg-primary', Concluded: 'bg-secondary', Cancelled: 'bg-danger' };
+        const badge = document.getElementById('debateStatusBadge');
+        badge.textContent = room.status || roomMeta?.status || '';
+        badge.className = 'badge ' + (statusColor[room.status] || 'bg-secondary');
+
+        document.getElementById('proScore').textContent = (room.proponentScore ?? 0).toFixed(1);
+        document.getElementById('conScore').textContent = (room.opponentScore ?? 0).toFixed(1);
+
+        if (room.status === 'Concluded' || room.status === 'Cancelled')
+            document.getElementById('submitContributionPanel').style.display = 'none';
 
         document.getElementById('contributionsContainer').innerHTML = '';
         (room.contributions || []).forEach(c => appendContribution(c));
 
-        // Join SignalR group
+        // Join SignalR group for live updates.
         if (hub.state === 'Connected') {
             hub.invoke('JoinDebate', roomId).catch(console.error);
         }
@@ -263,32 +277,33 @@
 
     // ── Contributions ─────────────────────────────────────────────────────────
     function appendContribution(c) {
-        const role    = (c.role || 'pro').toLowerCase();
-        const isJudge = role === 'judge';
-        const colorCls = isJudge ? 'judge' : (role === 'pro' || role === 'proponent' ? 'pro' : 'con');
-        const icon     = isJudge ? 'bi-person-badge' : (colorCls === 'pro' ? 'bi-hand-thumbs-up' : 'bi-hand-thumbs-down');
+        if (document.getElementById(`contrib-${c.id}`)) return; // de-dupe (initial load + live echo)
+
+        const role    = (c.role || 'Proponent').toLowerCase();
+        const isJudge = role.startsWith('judge');
+        const isPro   = role === 'proponent';
+        const colorCls = isJudge ? 'judge' : (isPro ? 'pro' : 'con');
+        const icon     = isJudge ? 'bi-person-badge' : (isPro ? 'bi-hand-thumbs-up' : 'bi-hand-thumbs-down');
+        const headline = c.claimText || c.argumentTitle || '';
+        const validity = c.validityScore;
 
         const html = `
         <div class="contribution-card ${colorCls}" id="contrib-${c.id}">
             <div class="d-flex justify-content-between align-items-start mb-1">
-                <span class="badge ${isJudge ? 'bg-purple text-white' : colorCls === 'pro' ? 'bg-success' : 'bg-danger'}">
+                <span class="badge ${isJudge ? 'bg-purple text-white' : isPro ? 'bg-success' : 'bg-danger'}">
                     <i class="bi ${icon}"></i> ${escHtml(c.role || role)}
                 </span>
                 <span class="text-muted small">${timeAgo(c.createdAt || new Date())}</span>
             </div>
-            <p class="mb-1 fw-semibold small">${escHtml(c.argument?.claimText || c.argumentSummary || '')}</p>
-            ${c.argument?.warrantText ? `<p class="text-muted small mb-1">${escHtml(truncate(c.argument.warrantText, 180))}</p>` : ''}
+            ${c.argumentTitle ? `<div class="small fw-semibold">${escHtml(c.argumentTitle)}</div>` : ''}
+            <p class="mb-1 small">${escHtml(headline)}</p>
             <div class="d-flex gap-2 align-items-center mt-1">
-                ${c.argument?.aiValidityScore != null ? `
+                ${validity != null ? `
                 <div class="validity-bar flex-grow-1">
-                    <div class="validity-fill bg-${c.argument.aiValidityScore >= 0.7 ? 'success' : c.argument.aiValidityScore >= 0.4 ? 'warning' : 'danger'}"
-                         style="width:${Math.round(c.argument.aiValidityScore*100)}%"></div>
+                    <div class="validity-fill bg-${validity >= 0.7 ? 'success' : validity >= 0.4 ? 'warning' : 'danger'}"
+                         style="width:${Math.round(validity*100)}%"></div>
                 </div>
-                <span class="small text-muted">${Math.round(c.argument.aiValidityScore*100)}% valid</span>` : ''}
-                <button class="btn btn-link btn-sm p-0 ms-auto referee-btn text-warning"
-                        data-id="${c.id}" title="Ask AI Referee">
-                    <i class="bi bi-robot"></i>
-                </button>
+                <span class="small text-muted">${Math.round(validity*100)}% valid</span>` : ''}
             </div>
             <div class="fallacy-flags-${c.id}"></div>
         </div>`;
@@ -297,12 +312,12 @@
         container.insertAdjacentHTML('beforeend', html);
         container.scrollTop = container.scrollHeight;
 
-        container.querySelector(`#contrib-${c.id} .referee-btn`)
-            ?.addEventListener('click', async () => {
-                if (activeRoomId && hub.state === 'Connected') {
-                    await hub.invoke('RequestAIReferee', activeRoomId, c.id).catch(console.error);
-                }
-            });
+        // Render any fallacy flags already persisted (initial load returns them as a JSON string).
+        if (c.fallacyFlags) {
+            let fallacies = [];
+            try { fallacies = JSON.parse(c.fallacyFlags); } catch { fallacies = []; }
+            appendRefereeFlag({ contributionId: c.id, fallacies, comment: c.aiRefereeComment });
+        }
     }
 
     function appendRefereeFlag(flag) {
@@ -370,35 +385,39 @@
         const errEl  = document.getElementById('contributionError');
         errEl.classList.add('d-none');
 
-        if (hub.state === 'Connected') {
-            try {
-                await hub.invoke('SubmitArgument', activeRoomId, selectedArgId, role);
-                selectedArgId = null;
-                document.getElementById('selectedArgDisplay').classList.add('d-none');
-                document.getElementById('submitContributionBtn').disabled = true;
-            } catch (e) {
-                errEl.textContent = e.message;
-                errEl.classList.remove('d-none');
-            }
-        } else {
-            // REST fallback
-            const res = await fetch(`/api/debaterooms/${activeRoomId}/contributions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ argumentId: selectedArgId, role })
-            });
-            if (!res.ok) {
-                errEl.textContent = `HTTP ${res.status}`;
-                errEl.classList.remove('d-none');
-            }
+        // Contributions are created only through the hub (Phase2DebateHub.SubmitArgument);
+        // there is no REST equivalent, so a live connection is required.
+        if (hub.state !== 'Connected') {
+            errEl.textContent = 'Not connected to the debate server. Please wait or reload.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            await hub.invoke('SubmitArgument', activeRoomId, selectedArgId, role);
+            selectedArgId = null;
+            document.getElementById('selectedArgDisplay').classList.add('d-none');
+            document.getElementById('submitContributionBtn').disabled = true;
+        } catch (e) {
+            errEl.textContent = e.message;
+            errEl.classList.remove('d-none');
         }
     });
 
     // ── Conclude debate ───────────────────────────────────────────────────────
     document.getElementById('concludeDebateBtn').addEventListener('click', async () => {
         if (!activeRoomId || !confirm('Conclude this debate?')) return;
-        const res = await fetch(`/api/debaterooms/${activeRoomId}/conclude`, { method: 'POST' });
-        if (!res.ok) alert('Could not conclude debate. You may not be authorized.');
+        if (hub.state !== 'Connected') {
+            alert('Not connected to the debate server. Please wait or reload.');
+            return;
+        }
+        // ConcludeDebate is a hub method; the server enforces that only a judge or the
+        // proponent may conclude. The DebateConcluded broadcast updates the UI.
+        try {
+            await hub.invoke('ConcludeDebate', activeRoomId);
+        } catch {
+            alert('Could not conclude debate. You may not be authorized.');
+        }
     });
 
     // ── Create room ───────────────────────────────────────────────────────────

@@ -69,11 +69,17 @@
                 <canvas id="schwartzCanvas"></canvas>
             </div>
             <div class="col-md-6">
-                <!-- Convergence score -->
+                <!-- Convergence score (compares the saved worldview against another) -->
                 <h6 class="text-muted mb-2"><i class="bi bi-intersect"></i> Convergence</h6>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Compare saved worldview with:</label>
+                    <select id="compareWorldviewSelect" class="form-select form-select-sm" disabled>
+                        <option value="">Save this worldview first…</option>
+                    </select>
+                </div>
                 <div class="text-center mb-3">
                     <div class="convergence-score text-primary" id="convergenceScoreDisplay">—</div>
-                    <div class="text-muted small">Overall convergence score (0–1)</div>
+                    <div class="text-muted small" id="convergenceClassification">Overall convergence score (0–1)</div>
                 </div>
                 <div id="convergenceDetail" class="small text-muted"></div>
 
@@ -82,7 +88,7 @@
                 <!-- Bridge suggestions -->
                 <h6 class="text-muted mb-2"><i class="bi bi-bridge"></i> Bridge Argument Suggestions</h6>
                 <div id="bridgeSuggestions">
-                    <span class="text-muted small">Select 2+ chains to see suggestions.</span>
+                    <span class="text-muted small">Save a worldview and pick another to compare.</span>
                 </div>
                 <button id="refreshBridgesBtn" class="btn btn-sm btn-outline-info mt-2 d-none">
                     <i class="bi bi-arrow-clockwise"></i> Refresh Suggestions
@@ -128,13 +134,15 @@
 (function () {
     'use strict';
 
+    // Order MUST match the backend WorldviewConvergencePlugin.SchwartzDimensions vector order.
     const SCHWARTZ_DIMENSIONS = [
-        'Universalism','Benevolence','Conformity','Tradition',
-        'Security','Power','Achievement','Hedonism','Stimulation','Self-Direction'
+        'Self-Direction','Stimulation','Hedonism','Achievement','Power',
+        'Security','Conformity','Tradition','Benevolence','Universalism'
     ];
 
     const selectedChains = new Map(); // id → chain obj
     let schwartzChart = null;
+    let savedWorldviewId = null;   // set after a successful save
 
     // ── Schwartz radar chart ──────────────────────────────────────────────────
     const ctx = document.getElementById('schwartzCanvas').getContext('2d');
@@ -230,48 +238,30 @@
         analyzeWorldview();
     };
 
-    // ── Worldview analysis ────────────────────────────────────────────────────
-    async function analyzeWorldview() {
-        const ids = [...selectedChains.keys()];
-
-        if (ids.length === 0) {
+    // ── Selection bookkeeping ───────────────────────────────────────────────────
+    // Schwartz vector + convergence are computed server-side per worldview, so they
+    // only become available after the worldview is saved. Changing the chain set
+    // invalidates a previously saved worldview's analysis.
+    function analyzeWorldview() {
+        if (selectedChains.size === 0) {
             updateSchwartzChart(new Array(10).fill(0));
-            document.getElementById('convergenceScoreDisplay').textContent = '—';
-            document.getElementById('convergenceDetail').textContent = '';
-            document.getElementById('bridgeSuggestions').innerHTML =
-                '<span class="text-muted small">Select 2+ chains to see suggestions.</span>';
-            document.getElementById('refreshBridgesBtn').classList.add('d-none');
-            return;
+            resetConvergence('Select chains, then save to see value alignment.');
+        } else if (savedWorldviewId) {
+            // Chain set changed after a save — mark analysis as stale.
+            resetConvergence('Chain set changed. Re-save to refresh value alignment.');
+            updateSchwartzChart(new Array(10).fill(0));
+            savedWorldviewId = null;
+            disableComparison();
         }
+    }
 
-        // Compute Schwartz profile: average across selected chains
-        const schwartzAgg = new Array(10).fill(0);
-        ids.forEach(id => {
-            const c = selectedChains.get(id);
-            (c.schwartzValues || []).forEach((v, i) => { schwartzAgg[i] += v; });
-        });
-        const schwartzAvg = schwartzAgg.map(v => ids.length ? v / ids.length : 0);
-        updateSchwartzChart(schwartzAvg);
-
-        if (ids.length >= 2) {
-            // Ask backend for convergence and bridge suggestions
-            try {
-                const res  = await fetch('/api/worldviews/convergence', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chainIds: ids })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    displayConvergence(data);
-                }
-            } catch (e) {
-                // Convergence endpoint may not exist yet — compute locally
-                document.getElementById('convergenceScoreDisplay').textContent = 'N/A';
-            }
-            document.getElementById('refreshBridgesBtn').classList.remove('d-none');
-            loadBridgeSuggestions(ids);
-        }
+    function resetConvergence(detailMsg) {
+        document.getElementById('convergenceScoreDisplay').textContent = '—';
+        document.getElementById('convergenceClassification').textContent = 'Overall convergence score (0–1)';
+        document.getElementById('convergenceDetail').textContent = '';
+        document.getElementById('bridgeSuggestions').innerHTML =
+            `<span class="text-muted small">${escHtml(detailMsg)}</span>`;
+        document.getElementById('refreshBridgesBtn').classList.add('d-none');
     }
 
     function updateSchwartzChart(values) {
@@ -279,25 +269,68 @@
         schwartzChart.update();
     }
 
-    function displayConvergence(data) {
-        document.getElementById('convergenceScoreDisplay').textContent =
-            typeof data.score === 'number' ? data.score.toFixed(2) : '—';
-        document.getElementById('convergenceDetail').innerHTML =
-            data.summary ? escHtml(data.summary) : '';
+    // ── Convergence + bridges (require a saved worldview + a comparison target) ──
+    const compareSelect = document.getElementById('compareWorldviewSelect');
+    compareSelect.addEventListener('change', runComparison);
+
+    function disableComparison() {
+        compareSelect.disabled = true;
+        compareSelect.innerHTML = '<option value="">Save this worldview first…</option>';
     }
 
-    async function loadBridgeSuggestions(chainIds) {
+    async function populateComparisonList() {
+        try {
+            const res  = await fetch('/api/worldviews?limit=50');
+            const data = await res.json();
+            const others = (data.items || []).filter(w => w.id !== savedWorldviewId);
+            compareSelect.disabled = false;
+            compareSelect.innerHTML = '<option value="">Choose a worldview…</option>' +
+                others.map(w => `<option value="${w.id}">${escHtml(w.title)}</option>`).join('');
+            if (others.length === 0)
+                compareSelect.innerHTML = '<option value="">No other worldviews to compare</option>';
+        } catch {
+            disableComparison();
+        }
+    }
+
+    async function runComparison() {
+        const otherId = compareSelect.value;
+        if (!savedWorldviewId || !otherId) return;
+
+        document.getElementById('convergenceDetail').innerHTML =
+            '<div class="spinner-border spinner-border-sm text-primary me-2"></div><span>Computing…</span>';
+
+        try {
+            const res = await fetch(
+                `/api/worldviews/${savedWorldviewId}/convergence/${otherId}?includeNarrative=true`);
+            if (res.ok) displayConvergence(await res.json());
+            else document.getElementById('convergenceScoreDisplay').textContent = 'N/A';
+        } catch {
+            document.getElementById('convergenceScoreDisplay').textContent = 'N/A';
+        }
+
+        document.getElementById('refreshBridgesBtn').classList.remove('d-none');
+        loadBridgeSuggestions(otherId);
+    }
+
+    function displayConvergence(data) {
+        const score = typeof data.convergenceScore === 'number' ? data.convergenceScore : null;
+        document.getElementById('convergenceScoreDisplay').textContent =
+            score != null ? score.toFixed(2) : '—';
+        document.getElementById('convergenceClassification').textContent =
+            data.classification || 'Overall convergence score (0–1)';
+        document.getElementById('convergenceDetail').innerHTML =
+            data.narrative ? escHtml(data.narrative) : '';
+    }
+
+    async function loadBridgeSuggestions(otherId) {
         const el = document.getElementById('bridgeSuggestions');
         el.innerHTML = '<div class="spinner-border spinner-border-sm text-info me-2"></div><span class="small">Generating…</span>';
 
         try {
-            const res  = await fetch('/api/worldviews/bridge-suggestions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chainIds })
-            });
-            const data = res.ok ? await res.json() : { suggestions: [] };
-            const suggestions = data.suggestions || [];
+            const res  = await fetch(`/api/worldviews/${savedWorldviewId}/bridges/${otherId}?count=3`);
+            const data = res.ok ? await res.json() : { bridges: [] };
+            const suggestions = data.bridges || [];
 
             if (suggestions.length === 0) {
                 el.innerHTML = '<span class="text-muted small">No bridge arguments suggested.</span>';
@@ -306,45 +339,66 @@
 
             el.innerHTML = suggestions.map(s => `
                 <div class="bridge-suggestion">
-                    <strong class="small">${escHtml(s.title || 'Suggestion')}</strong><br/>
-                    <span class="small text-muted">${escHtml(s.text || s.description || '')}</span>
+                    <strong class="small">${escHtml(s.generatedClaim || 'Bridge argument')}</strong>
+                    ${s.sharedSchwartzValue ? `<span class="badge bg-info-subtle text-info-emphasis ms-1">${escHtml(s.sharedSchwartzValue)}</span>` : ''}
+                    <br/>
+                    <span class="small text-muted">${escHtml(s.generatedWarrant || s.bridgeRationale || '')}</span>
                 </div>`).join('');
-        } catch (e) {
+        } catch {
             el.innerHTML = '<span class="text-muted small">Could not load suggestions.</span>';
         }
     }
 
     document.getElementById('refreshBridgesBtn').addEventListener('click', () => {
-        loadBridgeSuggestions([...selectedChains.keys()]);
+        if (compareSelect.value) loadBridgeSuggestions(compareSelect.value);
     });
 
     // ── Save worldview ────────────────────────────────────────────────────────
     document.getElementById('saveWvBtn').addEventListener('click', async () => {
-        const name    = document.getElementById('wvName').value.trim();
+        const title   = document.getElementById('wvName').value.trim();
         const desc    = document.getElementById('wvDesc').value.trim();
         const errEl   = document.getElementById('saveWvError');
         const spinner = document.getElementById('saveWvSpinner');
 
         errEl.classList.add('d-none');
 
-        if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('d-none'); return; }
+        if (!title) { errEl.textContent = 'Name is required.'; errEl.classList.remove('d-none'); return; }
         if (selectedChains.size === 0) { errEl.textContent = 'Select at least one chain.'; errEl.classList.remove('d-none'); return; }
 
         spinner.classList.remove('d-none');
 
         try {
-            const res = await fetch('/api/worldviews', {
+            // 1) Create the worldview (metadata only).
+            const createRes = await fetch('/api/worldviews', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    description: desc,
-                    chainIds: [...selectedChains.keys()]
-                })
+                body: JSON.stringify({ title, description: desc, tags: [], isPublic: true })
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!createRes.ok) throw new Error(await describeError(createRes));
+            const created = await createRes.json();
+            savedWorldviewId = created.id;
+
+            // 2) Attach each selected chain (server recomputes the Schwartz vector).
+            for (const chainId of selectedChains.keys()) {
+                await fetch(`/api/worldviews/${savedWorldviewId}/chains`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chainId })
+                });
+            }
+
+            // 3) Reload to render the computed Schwartz radar + enable comparison.
+            const wvRes = await fetch(`/api/worldviews/${savedWorldviewId}`);
+            if (wvRes.ok) {
+                const wv = await wvRes.json();
+                const vec = (wv.schwartzVector && wv.schwartzVector.length === 10)
+                    ? wv.schwartzVector : new Array(10).fill(0);
+                updateSchwartzChart(vec);
+            }
+            await populateComparisonList();
+            resetConvergence('Pick another worldview above to compare.');
+
             bootstrap.Modal.getInstance(document.getElementById('saveWorldviewModal'))?.hide();
-            alert('Worldview saved!');
         } catch (err) {
             errEl.textContent = 'Save failed: ' + err.message;
             errEl.classList.remove('d-none');
@@ -354,6 +408,10 @@
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    async function describeError(res) {
+        const body = await res.json().catch(() => ({}));
+        return body.detail || body.title || `HTTP ${res.status}`;
+    }
     function escHtml(str) {
         return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }

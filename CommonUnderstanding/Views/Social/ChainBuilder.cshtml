@@ -72,9 +72,9 @@
                     <div id="linkSelectionStatus" class="small text-muted mb-2">No nodes selected.</div>
                     <select id="linkType" class="form-select form-select-sm mb-2">
                         <option value="Supports">Supports</option>
-                        <option value="Rebuts">Rebuts</option>
-                        <option value="Qualifies">Qualifies</option>
-                        <option value="Elaborates">Elaborates</option>
+                        <option value="Contradicts">Contradicts</option>
+                        <option value="Refines">Refines</option>
+                        <option value="Extends">Extends</option>
                     </select>
                     <button id="addLinkBtn" class="btn btn-sm btn-outline-primary w-100" disabled>
                         <i class="bi bi-arrow-right-circle"></i> Add Link
@@ -182,12 +182,15 @@
 
     async function searchArguments() {
         const query = document.getElementById('argSearchInput').value.trim();
-        if (!query) return;
-
-        const res  = await fetch(`/api/arguments?limit=10&sort=hot&tags=${encodeURIComponent(query)}`);
+        // Empty query lists recent public arguments; a query filters by tag (backend supports tag filtering).
+        const tagParam = query ? `&tags=${encodeURIComponent(query)}` : '';
+        const res  = await fetch(`/api/arguments?limit=15&sort=hot${tagParam}`);
         const data = await res.json();
         renderSearchResults(data.items || []);
     }
+
+    // Populate with recent arguments on load.
+    searchArguments();
 
     function renderSearchResults(items) {
         const el = document.getElementById('argSearchResults');
@@ -216,6 +219,9 @@
             title: arg.claimText || arg.title,
             color: arg.isAIValidated ? { background: '#d4edda', border: '#28a745' } : undefined
         });
+        // If collaborating on a saved chain, broadcast the addition to co-editors.
+        if (existingChainId && hub.state === 'Connected')
+            hub.invoke('NotifyArgumentAdded', existingChainId, arg.id).catch(() => {});
     }
 
     // ── Add link ──────────────────────────────────────────────────────────────
@@ -233,7 +239,7 @@
         const edgeId = `${from}→${to}`;
         if (edges.get(edgeId)) return;
 
-        const colorMap = { Supports: '#198754', Rebuts: '#dc3545', Qualifies: '#fd7e14', Elaborates: '#0d6efd' };
+        const colorMap = { Supports: '#198754', Contradicts: '#dc3545', Refines: '#fd7e14', Extends: '#0d6efd' };
         edges.add({ id: edgeId, from, to, label: type, color: colorMap[type] || '#888', font: { size: 10 } });
         linksData.push({ from, to, type, edgeId });
         renderLinksTable();
@@ -261,7 +267,7 @@
             return;
         }
         el.innerHTML = linksData.map(l => {
-            const colorMap = { Supports: 'success', Rebuts: 'danger', Qualifies: 'warning', Elaborates: 'primary' };
+            const colorMap = { Supports: 'success', Contradicts: 'danger', Refines: 'warning', Extends: 'primary' };
             return `<div class="d-flex align-items-center gap-2 mb-1">
                 <span>${escHtml(truncate(argMap[l.from]?.title || l.from, 25))}</span>
                 <span class="badge bg-${colorMap[l.type]||'secondary'} link-type-badge">${l.type}</span>
@@ -289,11 +295,18 @@
         .withAutomaticReconnect()
         .build();
 
-    hub.on('NodeAdded', ({ argumentId, title }) => {
-        if (!nodes.get(argumentId))
-            nodes.add({ id: argumentId, label: truncate(title, 25) });
+    // Server → client events (see ChainUpdateHub).
+    hub.on('ChainArgumentAdded', ({ argument }) => {
+        if (!argument || nodes.get(argument.id)) return;
+        argMap[argument.id] = argument;
+        nodes.add({ id: argument.id, label: truncate(argument.title, 25), title: argument.claimText || argument.title });
     });
-    hub.on('LinkAdded', ({ from, to, type }) => {
+    hub.on('ChainArgumentRemoved', ({ argumentId }) => {
+        if (nodes.get(argumentId)) nodes.remove(argumentId);
+    });
+    hub.on('ChainLinkCreated', ({ link }) => {
+        if (!link) return;
+        const from = link.sourceArgumentId, to = link.targetArgumentId, type = link.linkType;
         const edgeId = `${from}→${to}`;
         if (!edges.get(edgeId)) {
             edges.add({ id: edgeId, from, to, label: type });
@@ -302,7 +315,9 @@
         }
     });
 
-    hub.start().catch(() => {});
+    hub.start()
+        .then(() => { if (existingChainId) hub.invoke('JoinChainSession', existingChainId).catch(() => {}); })
+        .catch(() => {});
 
     // ── Save chain ────────────────────────────────────────────────────────────
     document.getElementById('saveChainBtn').addEventListener('click', saveChain);
@@ -331,27 +346,37 @@
         document.getElementById('saveChainBtn').disabled = true;
 
         try {
-            const body = {
-                title,
-                description,
-                tags,
-                argumentIds: nodes.getIds(),
-                links: linksData.map(l => ({ fromArgumentId: l.from, toArgumentId: l.to, linkType: l.type }))
-            };
+            const argumentIds = nodes.getIds();
 
-            const url    = existingChainId ? `/api/argumentchains/${existingChainId}` : '/api/argumentchains';
-            const method = existingChainId ? 'PUT' : 'POST';
+            if (existingChainId) {
+                // Editing: update metadata only (argument membership managed via add/remove endpoints).
+                const res = await fetch(`/api/argumentchains/${existingChainId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, tags, isPublic: true })
+                });
+                if (!res.ok) throw new Error(await describeError(res));
+            } else {
+                // Creating: backend requires a rootArgumentId + the argument list (links are separate).
+                const rootArgumentId = computeRootArgument(argumentIds);
+                const res = await fetch('/api/argumentchains', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, tags, rootArgumentId, argumentIds, isPublic: true })
+                });
+                if (!res.ok) throw new Error(await describeError(res));
+                const data = await res.json();
+                existingChainId = data.id;
 
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+                // Persist each link via the dedicated link API (server enforces cycle detection).
+                await persistLinks();
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            existingChainId = data.id || existingChainId;
-            alert('Chain saved! ID: ' + existingChainId);
+                // Join the live collaboration session for this chain.
+                if (hub.state === 'Connected')
+                    hub.invoke('JoinChainSession', existingChainId).catch(() => {});
+            }
+
+            alert('Chain saved. ID: ' + existingChainId);
         } catch (err) {
             errEl.textContent = 'Save failed: ' + err.message;
             errEl.classList.remove('d-none');
@@ -359,6 +384,38 @@
 
         spinner.classList.add('d-none');
         document.getElementById('saveChainBtn').disabled = false;
+    }
+
+    // The root is a node with no incoming edges; fall back to the first node.
+    function computeRootArgument(argumentIds) {
+        const hasIncoming = new Set(linksData.map(l => l.to));
+        const root = argumentIds.find(id => !hasIncoming.has(id));
+        return root || argumentIds[0];
+    }
+
+    async function persistLinks() {
+        for (const l of linksData) {
+            try {
+                const res = await fetch('/api/argumentlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sourceArgumentId: l.from,
+                        targetArgumentId: l.to,
+                        linkType: l.type
+                    })
+                });
+                if (res.ok && hub.state === 'Connected') {
+                    const link = await res.json();
+                    hub.invoke('NotifyLinkCreated', existingChainId, link).catch(() => {});
+                }
+            } catch { /* skip individual link failures; chain itself already saved */ }
+        }
+    }
+
+    async function describeError(res) {
+        const body = await res.json().catch(() => ({}));
+        return body.detail || body.title || `HTTP ${res.status}`;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
