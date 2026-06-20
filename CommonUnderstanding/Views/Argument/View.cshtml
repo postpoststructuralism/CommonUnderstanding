@@ -97,6 +97,15 @@
                 <i class="bi @RecIcon(adjudication.Recommendation) me-1"></i>@adjudication.Recommendation
             </span>
         }
+        @if (Model.Status == ArgumentStatus.Complete && Model.Claims.Any())
+        {
+            <form asp-action="Publish" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-cloud-arrow-up"></i> Publish to Feed
+                </button>
+            </form>
+        }
         <a asp-action="Analyze" asp-route-id="@Model.Id" asp-route-force="true"
            class="btn btn-outline-primary btn-sm"
            onclick="return confirm('Re-run will overwrite the current decomposition. Continue?')">
@@ -104,6 +113,22 @@
         </a>
     </div>
 </div>
+
+@if (TempData["Info"] is string infoMsg)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i> @infoMsg
+        <a asp-controller="SocialView" asp-action="Feed" class="alert-link ms-2">View feed</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] is string errMsg)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i> @errMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
 <!-- ── Tab Navigation ──────────────────────────────────────────────────────── -->
 <ul class="nav nav-tabs mb-0" id="argTabs" role="tablist">

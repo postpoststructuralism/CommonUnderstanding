@@ -30,6 +30,13 @@ public class SocialArgument : BaseEntity
     /// <summary>References UserAccount.Id</summary>
     public string UserId { get; set; } = null!;
 
+    /// <summary>
+    /// When this social argument was published from an existing Phase 1 analytical
+    /// Argument, this links back to that Argument.Id. Null for natively-created posts.
+    /// Used to keep the two layers in sync and prevent duplicate publishes.
+    /// </summary>
+    public int? SourceArgumentId { get; set; }
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // ── Denormalized vote tallies — updated asynchronously by VotingHub consumer ──
