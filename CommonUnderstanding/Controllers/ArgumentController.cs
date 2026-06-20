@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Models;
+using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services;
 using System.Security.Claims;
 using System.Text.Json;
@@ -486,6 +487,88 @@ public class ArgumentController : Controller
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  POST /Argument/Publish/{id}  — bridge a Phase 1 argument into the social feed
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Publishes an analysed Phase 1 argument to the social feed by creating (or
+    /// re-publishing) a linked public SocialArgument. Idempotent: a second publish
+    /// of the same argument re-uses the existing social post via SourceArgumentId.
+    /// </summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Publish(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
+
+        var argument = await _db.Arguments
+            .Include(a => a.Claims)
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        if (argument == null)
+            return NotFound();
+
+        if (argument.SubmittedBy != userId)
+            return Forbid();
+
+        // Idempotent: if already published, just route to the feed.
+        var existing = await _db.SocialArguments
+            .FirstOrDefaultAsync(a => a.SourceArgumentId == id);
+        if (existing != null)
+        {
+            if (!existing.IsPublic)
+            {
+                existing.IsPublic = true;
+                existing.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+            TempData["Info"] = "This argument is already on the feed.";
+            return RedirectToAction(nameof(View), new { id });
+        }
+
+        var claim = argument.Claims.FirstOrDefault();
+        var claimText = claim?.Text;
+        if (string.IsNullOrWhiteSpace(claimText))
+        {
+            TempData["Error"] = "Analyse this argument before publishing — it has no claim yet.";
+            return RedirectToAction(nameof(View), new { id });
+        }
+
+        var claimProp = new SocialProposition
+        {
+            Text = claimText,
+            Type = SocialPropositionType.Claim,
+            UserId = userId,
+            IsAIGenerated = true,
+            IsConfirmed = true
+        };
+        _db.SocialPropositions.Add(claimProp);
+        await _db.SaveChangesAsync();
+
+        var social = new SocialArgument
+        {
+            Title = argument.Title,
+            ClaimPropositionId = claimProp.Id,
+            WarrantText = argument.RawText,
+            UserId = userId,
+            SourceArgumentId = id,
+            IsPublic = true,
+            Tags = string.IsNullOrWhiteSpace(claim?.ClaimType)
+                ? Array.Empty<string>()
+                : new[] { claim!.ClaimType! }
+        };
+        _db.SocialArguments.Add(social);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Published argument {ArgumentId} to social feed as {SocialId} by {UserId}",
+            id, social.Id, userId);
+
+        TempData["Info"] = "Published to the social feed.";
+        return RedirectToAction(nameof(View), new { id });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

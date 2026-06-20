@@ -1038,5 +1038,27 @@ BEGIN
     VALUES ('20260620054834_AddPhase2SocialEntities', '9.0.3');
     END IF;
 END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260620065635_AddSourceArgumentIdToSocialArgument') THEN
+    ALTER TABLE "SocialArguments" ADD "SourceArgumentId" integer;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260620065635_AddSourceArgumentIdToSocialArgument') THEN
+    CREATE UNIQUE INDEX idx_socialarguments_sourceargumentid ON "SocialArguments" ("SourceArgumentId") WHERE "SourceArgumentId" IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260620065635_AddSourceArgumentIdToSocialArgument') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260620065635_AddSourceArgumentIdToSocialArgument', '9.0.3');
+    END IF;
+END $EF$;
 COMMIT;
 
