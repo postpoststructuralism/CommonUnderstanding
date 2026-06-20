@@ -127,16 +127,20 @@
                         <span>Well Sourced</span>
                     </label>
                     <label class="d-flex align-items-center gap-2">
-                        <input type="radio" name="voteRationale" value="LogicallySound" />
-                        <span>Logically Sound</span>
+                        <input type="radio" name="voteRationale" value="LogicallyValid" />
+                        <span>Logically Valid</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="ChangedMyView" />
+                        <span>Changed My View</span>
                     </label>
                     <label class="d-flex align-items-center gap-2">
                         <input type="radio" name="voteRationale" value="Fallacious" />
                         <span>Fallacious</span>
                     </label>
                     <label class="d-flex align-items-center gap-2">
-                        <input type="radio" name="voteRationale" value="Spam" />
-                        <span>Spam</span>
+                        <input type="radio" name="voteRationale" value="OffTopic" />
+                        <span>Off Topic</span>
                     </label>
                 </div>
                 <textarea id="voteComment" class="form-control mt-3" rows="2"
@@ -236,7 +240,7 @@
                 <span class="text-muted small ms-2 text-nowrap">${timeAgo(arg.createdAt)}</span>
             </div>
             <p class="mb-1 fw-semibold">${escHtml(arg.claimText || '')}</p>
-            ${arg.warrantyText ? `<p class="text-muted small mb-2">${escHtml(truncate(arg.warrantyText, 200))}</p>` : ''}
+            ${arg.warrantText ? `<p class="text-muted small mb-2">${escHtml(truncate(arg.warrantText, 200))}</p>` : ''}
             <div class="tags mb-2">${tagHtml}${aiLabel}</div>
             <div class="d-flex align-items-center gap-3">
                 <div class="vote-bar">
