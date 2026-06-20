@@ -1,4 +1,7 @@
 using CommonUnderstanding.Services;
+using CommonUnderstanding.Services.Social;
+using CommonUnderstanding.Services.Social.Plugins;
+using CommonUnderstanding.Services.Social.Workers;
 using CommonUnderstanding.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -12,6 +15,11 @@ builder.Services.AddControllersWithViews();
 // Add EF Core with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// EF Core DbContext factory for use in SignalR hubs and background workers (scoped lifetime is not thread-safe)
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
+    ServiceLifetime.Scoped);
 
 
 // Add HttpContextAccessor for views that need Request access
@@ -86,6 +94,35 @@ builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
 builder.Services.AddScoped<ConvergenceExpansionService>();
 builder.Services.AddScoped<CollaborativeSessionService>();
+
+// ── Phase 2: Social Platform Services ────────────────────────────────────────
+
+// Core scoring and reputation
+builder.Services.AddScoped<EpistemicScoringService>();
+builder.Services.AddScoped<BadgeAwardService>();
+builder.Services.AddScoped<XPAwardService>();
+builder.Services.AddScoped<EmbeddingService>();
+
+// Voting
+builder.Services.AddScoped<VotingService>();
+
+// Argument chain and worldview logic
+builder.Services.AddScoped<ArgumentChainService>();
+
+// AI Plugins
+builder.Services.AddScoped<FallacyDetectionPlugin>();
+builder.Services.AddScoped<ArgumentLinkSuggestionPlugin>();
+builder.Services.AddScoped<WorldviewConvergencePlugin>();
+builder.Services.AddScoped<BridgeArgumentPlugin>();
+
+// WorldviewService depends on WorldviewConvergencePlugin — register after the plugin
+builder.Services.AddScoped<WorldviewService>();
+
+// Background workers
+builder.Services.AddHostedService<HotScoreUpdateWorker>();
+builder.Services.AddHostedService<EpistemicScoringWorker>();
+builder.Services.AddHostedService<AIValidationWorker>();
+builder.Services.AddHostedService<EmbeddingBackfillWorker>();
 
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
@@ -166,6 +203,11 @@ app.MapControllerRoute(
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");
 app.MapHub<CommonUnderstanding.Hubs.DebateHub>("/debatehub");
+
+// Phase 2 SignalR hubs
+app.MapHub<CommonUnderstanding.Hubs.VotingHub>("/hubs/voting");
+app.MapHub<CommonUnderstanding.Hubs.Phase2DebateHub>("/hubs/debate");
+app.MapHub<CommonUnderstanding.Hubs.ChainUpdateHub>("/hubs/chains");
 
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())

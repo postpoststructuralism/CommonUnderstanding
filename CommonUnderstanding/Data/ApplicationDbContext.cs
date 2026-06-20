@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Models;
+using CommonUnderstanding.Models.Social;
 
 namespace CommonUnderstanding.Data;
 
@@ -44,6 +45,25 @@ public class ApplicationDbContext : DbContext
     // Account system (manually-managed, ADFS-ready)
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<AiUsageCounter> AiUsageCounters => Set<AiUsageCounter>();
+
+    // ── Phase 2: Social Platform ─────────────────────────────────────────────
+    public DbSet<SocialProposition> SocialPropositions => Set<SocialProposition>();
+    public DbSet<SocialArgumentProposition> SocialArgumentPropositions => Set<SocialArgumentProposition>();
+    public DbSet<SocialArgument> SocialArguments => Set<SocialArgument>();
+    public DbSet<ArgumentLink> ArgumentLinks => Set<ArgumentLink>();
+    public DbSet<ArgumentVote> ArgumentVotes => Set<ArgumentVote>();
+    public DbSet<ArgumentChain> ArgumentChains => Set<ArgumentChain>();
+    public DbSet<Worldview> Worldviews => Set<Worldview>();
+    public DbSet<WorldviewChain> WorldviewChains => Set<WorldviewChain>();
+    public DbSet<WorldviewVote> WorldviewVotes => Set<WorldviewVote>();
+    public DbSet<DebateRoom> DebateRooms => Set<DebateRoom>();
+    public DbSet<DebateContribution> DebateContributions => Set<DebateContribution>();
+    public DbSet<EpistemicProfile> EpistemicProfiles => Set<EpistemicProfile>();
+    public DbSet<UserReputation> UserReputations => Set<UserReputation>();
+    public DbSet<XPTransaction> XPTransactions => Set<XPTransaction>();
+    public DbSet<Moderator> Moderators => Set<Moderator>();
+    public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
+    public DbSet<ModerationAppeal> ModerationAppeals => Set<ModerationAppeal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -237,6 +257,228 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.CounterKey).HasMaxLength(200).IsRequired();
             e.Property(x => x.RequestCount).IsRequired();
             e.HasIndex(x => x.LastRequestAt);
+        });
+
+        // ── Phase 2: Social Platform Entities ───────────────────────────────
+
+        // SocialProposition
+        modelBuilder.Entity<SocialProposition>(e =>
+        {
+            e.ToTable("SocialPropositions");
+            e.HasKey(x => x.Id);
+            // pgvector: column type set here; requires Npgsql.EntityFrameworkCore.PostgreSQL with vector support
+            // When pgvector NuGet is added, change to HasColumnType("vector(1536)")
+            e.Property(x => x.Embedding).HasColumnType("float4[]");
+        });
+
+        // SocialArgument
+        modelBuilder.Entity<SocialArgument>(e =>
+        {
+            e.ToTable("SocialArguments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Embedding).HasColumnType("float4[]");
+            e.Property(x => x.Tags).HasColumnType("text[]");
+            e.Property(x => x.SchwartzValues).HasColumnType("text[]");
+            e.HasOne(x => x.ClaimProposition)
+             .WithMany()
+             .HasForeignKey(x => x.ClaimPropositionId)
+             .OnDelete(DeleteBehavior.Restrict)
+             .IsRequired(false);
+            e.HasIndex(x => x.HotScore)
+             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasDatabaseName("idx_socialarguments_hotscore");
+            e.HasIndex(x => x.WilsonScore)
+             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasDatabaseName("idx_socialarguments_wilsonscore");
+            e.HasIndex(x => x.CreatedAt)
+             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasDatabaseName("idx_socialarguments_createdat");
+        });
+
+        // SocialArgumentProposition (join table)
+        modelBuilder.Entity<SocialArgumentProposition>(e =>
+        {
+            e.ToTable("SocialArgumentPropositions");
+            e.HasKey(x => new { x.ArgumentId, x.PropositionId });
+            e.HasOne(x => x.Argument)
+             .WithMany(a => a.ArgumentPropositions)
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Proposition)
+             .WithMany(p => p.ArgumentPropositions)
+             .HasForeignKey(x => x.PropositionId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ArgumentLink
+        modelBuilder.Entity<ArgumentLink>(e =>
+        {
+            e.ToTable("ArgumentLinks");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.LinkType).HasConversion<string>();
+            e.HasOne(x => x.SourceArgument)
+             .WithMany(a => a.OutboundLinks)
+             .HasForeignKey(x => x.SourceArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.TargetArgument)
+             .WithMany(a => a.InboundLinks)
+             .HasForeignKey(x => x.TargetArgumentId)
+             .OnDelete(DeleteBehavior.Restrict);
+            // Check constraint: no self-loops
+            e.ToTable(t => t.HasCheckConstraint(
+                "CK_ArgumentLinks_NoSelfLoop",
+                "\"SourceArgumentId\" <> \"TargetArgumentId\""));
+        });
+
+        // ArgumentVote
+        modelBuilder.Entity<ArgumentVote>(e =>
+        {
+            e.ToTable("ArgumentVotes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Vote).HasConversion<string>();
+            e.Property(x => x.Rationale).HasConversion<string>();
+            e.HasIndex(x => new { x.ArgumentId, x.UserId }).IsUnique();
+            e.HasOne(x => x.Argument)
+             .WithMany(a => a.Votes)
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ArgumentChain
+        modelBuilder.Entity<ArgumentChain>(e =>
+        {
+            e.ToTable("ArgumentChains");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Tags).HasColumnType("text[]");
+            e.Property(x => x.ArgumentIds).HasColumnType("uuid[]");
+            e.Property(x => x.Embedding).HasColumnType("float4[]");
+            e.HasOne(x => x.RootArgument)
+             .WithMany()
+             .HasForeignKey(x => x.RootArgumentId)
+             .OnDelete(DeleteBehavior.Restrict)
+             .IsRequired(false);
+        });
+
+        // Worldview
+        modelBuilder.Entity<Worldview>(e =>
+        {
+            e.ToTable("Worldviews");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Tags).HasColumnType("text[]");
+            e.Property(x => x.SchwartzValues).HasColumnType("text[]");
+            e.Property(x => x.SchwartzVector).HasColumnType("float8[]");
+            e.Property(x => x.Embedding).HasColumnType("float4[]");
+        });
+
+        // WorldviewChain (join table)
+        modelBuilder.Entity<WorldviewChain>(e =>
+        {
+            e.ToTable("WorldviewChains");
+            e.HasKey(x => new { x.WorldviewId, x.ArgumentChainId });
+            e.HasOne(x => x.Worldview)
+             .WithMany(w => w.WorldviewChains)
+             .HasForeignKey(x => x.WorldviewId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.ArgumentChain)
+             .WithMany(c => c.WorldviewChains)
+             .HasForeignKey(x => x.ArgumentChainId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // WorldviewVote
+        modelBuilder.Entity<WorldviewVote>(e =>
+        {
+            e.ToTable("WorldviewVotes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Vote).HasConversion<string>();
+            e.HasIndex(x => new { x.WorldviewId, x.UserId }).IsUnique();
+            e.HasOne(x => x.Worldview)
+             .WithMany(w => w.Votes)
+             .HasForeignKey(x => x.WorldviewId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // DebateRoom
+        modelBuilder.Entity<DebateRoom>(e =>
+        {
+            e.ToTable("DebateRooms");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.Format).HasConversion<string>();
+            e.Property(x => x.JudgeUserIds).HasColumnType("text[]");
+            e.HasOne(x => x.MotionProposition)
+             .WithMany()
+             .HasForeignKey(x => x.MotionPropositionId)
+             .OnDelete(DeleteBehavior.SetNull)
+             .IsRequired(false);
+        });
+
+        // DebateContribution
+        modelBuilder.Entity<DebateContribution>(e =>
+        {
+            e.ToTable("DebateContributions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Role).HasConversion<string>();
+            e.HasOne(x => x.DebateRoom)
+             .WithMany(d => d.Contributions)
+             .HasForeignKey(x => x.DebateRoomId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Argument)
+             .WithMany()
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // EpistemicProfile
+        modelBuilder.Entity<EpistemicProfile>(e =>
+        {
+            e.ToTable("EpistemicProfiles");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.TopicDomain }).IsUnique();
+        });
+
+        // UserReputation
+        modelBuilder.Entity<UserReputation>(e =>
+        {
+            e.ToTable("UserReputations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Badges).HasColumnType("text[]");
+            e.HasIndex(x => x.UserId).IsUnique();
+        });
+
+        // XPTransaction
+        modelBuilder.Entity<XPTransaction>(e =>
+        {
+            e.ToTable("XPTransactions");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
+        });
+
+        // Moderator
+        modelBuilder.Entity<Moderator>(e =>
+        {
+            e.ToTable("Moderators");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.TopicDomain });
+        });
+
+        // ModerationFlag
+        modelBuilder.Entity<ModerationFlag>(e =>
+        {
+            e.ToTable("ModerationFlags");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Reason).HasConversion<string>();
+            e.Property(x => x.Status).HasConversion<string>();
+            e.HasIndex(x => new { x.EntityType, x.EntityId });
+            e.HasIndex(x => x.Status);
+        });
+
+        // ModerationAppeal
+        modelBuilder.Entity<ModerationAppeal>(e =>
+        {
+            e.ToTable("ModerationAppeals");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.AppellantUserId);
         });
     }
 }
