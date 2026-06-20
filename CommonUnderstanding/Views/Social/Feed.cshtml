@@ -144,6 +144,17 @@
         updateCardTally(tally.argumentId, tally);
     });
 
+    hubConn.on('VoteCastConfirmed', payload => {
+        if (payload && payload.newTally) {
+            updateCardTally(payload.argumentId, payload.newTally);
+        }
+    });
+
+    hubConn.on('VoteRejected', payload => {
+        const reason = (payload && payload.reason) || 'Vote could not be recorded.';
+        showVoteError(reason);
+    });
+
     async function startHub() {
         try { await hubConn.start(); } catch (e) { console.warn('VotingHub unavailable:', e); }
     }
@@ -227,14 +238,29 @@
     }
 
     function updateCardTally(argId, tally) {
+        if (!tally) return;
         const card = document.getElementById(`arg-${argId}`);
         if (!card) return;
         const upEl   = card.querySelector('.upvote-count');
         const downEl = card.querySelector('.downvote-count');
         const fill   = card.querySelector('.wilson-fill');
-        if (upEl)   upEl.textContent   = tally.upvoteCount ?? 0;
-        if (downEl) downEl.textContent = tally.downvoteCount ?? 0;
+        // VoteTallyDto serializes as upvotes/downvotes/wilsonScore (camelCase).
+        if (upEl)   upEl.textContent   = tally.upvotes ?? 0;
+        if (downEl) downEl.textContent = tally.downvotes ?? 0;
         if (fill)   fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%';
+    }
+
+    function showVoteError(message) {
+        let banner = document.getElementById('voteErrorBanner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'voteErrorBanner';
+            banner.className = 'alert alert-warning alert-dismissible fade show';
+            banner.setAttribute('role', 'alert');
+            const container = document.getElementById('feedContainer');
+            container.parentNode.insertBefore(banner, container);
+        }
+        banner.innerHTML = `${escHtml(message)}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
     }
 
     // ── Sort buttons ──────────────────────────────────────────────────────────
@@ -274,24 +300,40 @@
         const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
         const comment   = document.getElementById('voteComment').value.trim();
 
+        const argId = pendingVoteArgId;
+        bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
+        pendingVoteArgId = null;
+
         if (hubConn.state === 'Connected') {
+            // Hub path: tally arrives via VoteCastConfirmed / VoteScoreUpdated.
             try {
-                await hubConn.invoke('CastVote', pendingVoteArgId, voteValue, rationale, comment);
+                await hubConn.invoke('CastVote', argId, voteValue, rationale, comment);
             } catch (e) {
                 console.error('Vote failed:', e);
+                showVoteError('Vote could not be recorded. Please try again.');
             }
-        } else {
-            // Fallback: REST
-            const res = await fetch(`/api/arguments/${pendingVoteArgId}/votes`, {
+            return;
+        }
+
+        // REST fallback (used when the SignalR hub is unavailable).
+        try {
+            const res = await fetch(`/api/arguments/${argId}/votes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vote: voteValue, rationale, comment })
             });
-            if (res.ok) loadFeed(true);
+            if (res.ok) {
+                const tally = await res.json();
+                updateCardTally(argId, tally);
+            } else if (res.status === 401 || res.status === 403 || res.redirected) {
+                showVoteError('Please sign in to vote.');
+            } else {
+                showVoteError('Vote could not be recorded. Please try again.');
+            }
+        } catch (e) {
+            console.error('Vote failed:', e);
+            showVoteError('Vote could not be recorded. Please try again.');
         }
-
-        bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
-        pendingVoteArgId = null;
     }
 
     document.getElementById('submitUpvoteBtn').addEventListener('click', () => castVote('Up'));
