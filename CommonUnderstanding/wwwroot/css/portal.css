@@ -168,7 +168,7 @@ main {
 
 .cu-nav .container-fluid {
     padding: 0.65rem 0.9rem;
-    background: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.85);
     border: 1px solid var(--cu-border-light);
     border-radius: 999px;
     box-shadow: var(--cu-shadow-xs);
@@ -182,7 +182,7 @@ main {
 .cu-nav .nav-link {
     color: var(--cu-text-dark) !important;
     font-weight: 600;
-    padding: 0.72rem 1rem;
+    padding: 0.6rem 1.1rem;
     border-radius: 999px;
     transition: all var(--cu-transition);
     display: flex;
@@ -203,13 +203,77 @@ main {
 
 .cu-nav .nav-link i {
     color: var(--cu-secondary-blue);
-    font-size: 1rem;
+    font-size: 1.1rem;
+}
+
+/* Submit CTA — accent button in nav */
+.cu-btn-submit {
+    background: linear-gradient(135deg, var(--cu-accent), #d48a4a);
+    border: none;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 0.55rem 1.2rem;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(var(--cu-accent-rgb), 0.32);
+    transition: all var(--cu-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.cu-btn-submit:hover {
+    background: linear-gradient(135deg, #d48a4a, var(--cu-accent));
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(var(--cu-accent-rgb), 0.4);
+}
+.cu-btn-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(var(--cu-accent-rgb), 0.28);
+}
+
+/* Public / Private zone divider */
+.cu-nav-divider {
+    display: inline-block;
+    width: 1px;
+    height: 24px;
+    background: var(--cu-border-mid);
+    border-radius: 1px;
+}
+
+/* Dropdown section headers */
+.cu-dropdown-section {
+    font-size: 0.7rem !important;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cu-text-muted) !important;
+    padding: 0.6rem 1.25rem 0.35rem;
+    border-left: 2px solid var(--cu-secondary-blue);
+    margin-left: 0.75rem;
+}
+
+/* Dropdown workspace — no scroll, compact */
+.cu-dropdown-workspace {
+    max-height: none;
+    overflow-y: visible;
+    min-width: 220px;
+    border-radius: 1.5rem;
+    padding: 0.4rem 0;
+}
+
+/* Active dropdown item indicator */
+.cu-nav .dropdown-item.active,
+.cu-nav .dropdown-item:active {
+    background-color: rgba(var(--cu-secondary-rgb), 0.1);
+    color: var(--cu-primary-blue);
+    font-weight: 600;
 }
 
 .cu-nav .dropdown-menu {
     background-color: rgba(255, 255, 255, 0.96);
     border: 1px solid var(--cu-border-light);
-    border-radius: 1.25rem;
+    border-radius: 1.5rem;
     box-shadow: var(--cu-shadow-sm);
     margin-top: 0.75rem;
     overflow: hidden;
