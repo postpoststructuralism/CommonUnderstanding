@@ -69,7 +69,7 @@
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-workspace"></i> My Workspace
                         </a>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu" style="max-height:70vh; overflow-y:auto;">
                             <li><h6 class="dropdown-header small text-uppercase" style="font-size:0.65rem; letter-spacing:0.06em;">Analysis</h6></li>
                             <li>
                                 <a class="dropdown-item" asp-controller="Argument" asp-action="Index">
@@ -132,16 +132,6 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
-
-                    <!-- SETTINGS (icon-only with AI status dot) -->
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Settings" ? "active" : "")"
-                           asp-controller="Settings" asp-action="Index" title="Settings">
-                            <i class="bi bi-gear"></i>
-                            <span id="navAiStatusDot"
-                                  style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6b7280;margin-left:2px;vertical-align:middle;"></span>
-                        </a>
                     </li>
 
                 </ul>
@@ -291,23 +281,6 @@
 
                 return response;
             };
-        })();
-
-        // AI status dot in nav — polls every 30s
-        (async function updateNavAiDot() {
-            try {
-                const r = await fetch('/api/AIStatus/status');
-                const d = await r.json();
-                const dot = document.getElementById('navAiStatusDot');
-                if (!dot) return;
-                // Supports both Ollama-era and Azure Foundry-era response shapes
-                const ready   = d.isReady   ?? d.modelLoaded      ?? d.ollamaConnected ?? false;
-                const partial = d.isPartial ?? d.ollamaConnected  ?? false;
-                if (ready)        { dot.style.background = '#198754'; dot.title = 'AI: Ready'; }
-                else if (partial) { dot.style.background = '#ffc107'; dot.title = 'AI: Partial'; }
-                else              { dot.style.background = '#dc3545'; dot.title = 'AI: Offline'; }
-            } catch { /* silent fail */ }
-            setTimeout(updateNavAiDot, 30_000);
         })();
 
         // Language Toggle Function

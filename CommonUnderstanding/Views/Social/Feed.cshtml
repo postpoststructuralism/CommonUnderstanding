@@ -255,7 +255,7 @@
         const upActive   = userVote === 'up'   ? ' active-up' : '';
         const downActive = userVote === 'down' ? ' active-down' : '';
         return `
-        <a href="/Argument/View/${arg.id}" class="argument-card text-decoration-none text-reset d-block" id="arg-${arg.id}" data-id="${arg.id}">
+        <a href="/SocialView/Detail/${arg.id}" class="argument-card text-decoration-none text-reset d-block" id="arg-${arg.id}" data-id="${arg.id}">
             <div class="d-flex justify-content-between align-items-start mb-1">
                 <h5 class="mb-0">${escHtml(arg.title)}</h5>
                 <span class="text-muted small ms-2 text-nowrap">${timeAgo(arg.createdAt)}</span>

@@ -1,0 +1,271 @@
+@model CommonUnderstanding.Models.Social.SocialArgument
+@using CommonUnderstanding.Models.Social
+@{
+    ViewData["Title"] = Model.Title;
+    var userVote = ViewBag.UserVote as ArgumentVote;
+    var upActive = userVote?.Vote == VoteValue.Up ? " active-up" : "";
+    var downActive = userVote?.Vote == VoteValue.Down ? " active-down" : "";
+    var wilson = Math.Round((Model.WilsonScore) * 100);
+}
+
+@section Styles {
+<style>
+    .detail-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        background: var(--bs-body-bg);
+    }
+    .detail-card .tags .badge { font-size: 0.72rem; }
+    .vote-bar { display: flex; align-items: center; gap: 0.5rem; }
+    .vote-bar .vote-count { font-weight: 600; min-width: 2.5rem; text-align: center; }
+    .wilson-bar { height: 6px; border-radius: 3px; background: var(--bs-secondary-bg); margin-top: 8px; }
+    .wilson-fill { height: 100%; border-radius: 3px; background: #198754; }
+    .vote-trigger.active-up { box-shadow: 0 0 0 2px #198754; background: rgba(25,135,84,0.12); }
+    .vote-trigger.active-down { box-shadow: 0 0 0 2px #dc3545; background: rgba(220,53,69,0.12); }
+    .linked-arg-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: box-shadow 0.15s ease;
+    }
+    .linked-arg-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+</style>
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="SocialView" asp-action="Feed">Feed</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+    </ol>
+</nav>
+
+<div class="detail-card">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="cu-page-heading mb-1">@Model.Title</h1>
+            <p class="text-muted small mb-0">
+                Posted @Model.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt") UTC
+                @if (Model.UpdatedAt != Model.CreatedAt)
+                {
+                    <span>&middot; Updated @Model.UpdatedAt.ToString("MMM dd, yyyy 'at' h:mm tt") UTC</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (Model.IsAIValidated)
+            {
+                <span class="badge @(Model.AIValidityScore >= 0.7 ? "bg-success" : Model.AIValidityScore >= 0.4 ? "bg-warning text-dark" : "bg-danger")">
+                    <i class="bi bi-cpu"></i> AI: @(Math.Round((Model.AIValidityScore ?? 0) * 100))%
+                </span>
+            }
+            @if (Model.IsShadowBanned)
+            {
+                <span class="badge bg-secondary"><i class="bi bi-eye-slash"></i> Shadow-banned</span>
+            }
+        </div>
+    </div>
+
+    <!-- Claim -->
+    <div class="mb-3 p-3 bg-light rounded">
+        <h6 class="text-uppercase text-muted small mb-1">Claim</h6>
+        <p class="fw-semibold mb-0 fs-5">@Model.ClaimProposition?.Text</p>
+    </div>
+
+    <!-- Warrant -->
+    @if (!string.IsNullOrWhiteSpace(Model.WarrantText))
+    {
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small mb-1">Warrant / Evidence</h6>
+            <p class="mb-0">@Model.WarrantText</p>
+        </div>
+    }
+
+    <!-- Resolution -->
+    @if (!string.IsNullOrWhiteSpace(Model.ResolutionText))
+    {
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small mb-1">Resolution</h6>
+            <p class="mb-0">@Model.ResolutionText</p>
+        </div>
+    }
+
+    <!-- Tags & Values -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        @foreach (var tag in Model.Tags)
+        {
+            <span class="badge bg-secondary">@tag</span>
+        }
+        @foreach (var sv in Model.SchwartzValues)
+        {
+            <span class="badge bg-info text-dark"><i class="bi bi-compass me-1"></i>@sv</span>
+        }
+    </div>
+
+    <!-- Voting -->
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="vote-bar">
+            <button class="btn btn-outline-success vote-trigger@(upActive)" data-id="@Model.Id" title="Upvote">
+                <i class="bi bi-hand-thumbs-up"></i>
+                <span class="upvote-count vote-count">@Model.UpvoteCount</span>
+            </button>
+            <button class="btn btn-outline-danger vote-trigger@(downActive)" data-id="@Model.Id" title="Downvote">
+                <i class="bi bi-hand-thumbs-down"></i>
+                <span class="downvote-count vote-count">@Model.DownvoteCount</span>
+            </button>
+        </div>
+        <div class="flex-grow-1">
+            <div class="wilson-bar">
+                <div class="wilson-fill" style="width:@(wilson)%"></div>
+            </div>
+        </div>
+        <span class="text-muted small" title="Hot score">@Model.HotScore.ToString("F2") <i class="bi bi-fire"></i></span>
+    </div>
+
+    <!-- AI Fallacy Flags -->
+    @if (!string.IsNullOrWhiteSpace(Model.AIFallacyFlags))
+    {
+        <div class="alert alert-warning small mb-3">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            <strong>AI Fallacy Flags:</strong> @Model.AIFallacyFlags
+        </div>
+    }
+</div>
+
+<!-- Linked Arguments -->
+@if (Model.OutboundLinks.Any() || Model.InboundLinks.Any())
+{
+    <div class="row mt-4">
+        @if (Model.OutboundLinks.Any())
+        {
+            <div class="col-md-6 mb-3">
+                <h6 class="text-uppercase text-muted small mb-2">
+                    <i class="bi bi-arrow-right me-1"></i>This argument references
+                </h6>
+                @foreach (var link in Model.OutboundLinks)
+                {
+                    <a asp-action="Detail" asp-route-id="@link.TargetArgumentId"
+                       class="linked-arg-card text-decoration-none text-reset d-block mb-2">
+                        <strong>@link.TargetArgument?.Title</strong>
+                        @if (link.TargetArgument?.ClaimProposition?.Text is not null)
+                        {
+                            <p class="text-muted small mb-0">@link.TargetArgument.ClaimProposition.Text</p>
+                        }
+                        <span class="badge bg-light text-dark mt-1">@link.LinkType</span>
+                    </a>
+                }
+            </div>
+        }
+        @if (Model.InboundLinks.Any())
+        {
+            <div class="col-md-6 mb-3">
+                <h6 class="text-uppercase text-muted small mb-2">
+                    <i class="bi bi-arrow-left me-1"></i>Arguments referencing this
+                </h6>
+                @foreach (var link in Model.InboundLinks)
+                {
+                    <a asp-action="Detail" asp-route-id="@link.SourceArgumentId"
+                       class="linked-arg-card text-decoration-none text-reset d-block mb-2">
+                        <strong>@link.SourceArgument?.Title</strong>
+                        @if (link.SourceArgument?.ClaimProposition?.Text is not null)
+                        {
+                            <p class="text-muted small mb-0">@link.SourceArgument.ClaimProposition.Text</p>
+                        }
+                        <span class="badge bg-light text-dark mt-1">@link.LinkType</span>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const argId = '@Model.Id';
+
+    // ── SignalR ───────────────────────────────────────────────────────────────
+    const hubConn = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/voting')
+        .withAutomaticReconnect()
+        .build();
+
+    hubConn.on('VoteScoreUpdated', tally => {
+        if (tally.argumentId !== argId) return;
+        updateTally(tally);
+    });
+
+    hubConn.on('VoteCastConfirmed', data => {
+        if (data.argumentId !== argId) return;
+        updateTally(data.newTally, data.vote);
+    });
+
+    hubConn.on('VoteRejected', data => {
+        alert('Vote rejected: ' + (data.reason || 'Unknown error'));
+    });
+
+    async function startHub() {
+        try {
+            await hubConn.start();
+            await hubConn.invoke('SubscribeToArgument', argId);
+        } catch (e) { console.warn('VotingHub unavailable:', e); }
+    }
+    startHub();
+
+    function updateTally(tally, newVote) {
+        const upEl   = document.querySelector('.upvote-count');
+        const downEl = document.querySelector('.downvote-count');
+        const fill   = document.querySelector('.wilson-fill');
+        const upBtn  = document.querySelector('.btn-outline-success');
+        const downBtn = document.querySelector('.btn-outline-danger');
+        if (upEl)   upEl.textContent   = tally.upvotes ?? 0;
+        if (downEl) downEl.textContent = tally.downvotes ?? 0;
+        if (fill)   fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%';
+        if (newVote !== undefined) {
+            upBtn?.classList.toggle('active-up', newVote === 'Up');
+            downBtn?.classList.toggle('active-down', newVote === 'Down');
+        }
+    }
+
+    // ── Vote modal ────────────────────────────────────────────────────────────
+    document.querySelectorAll('.vote-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modal = new bootstrap.Modal(document.getElementById('voteModal'));
+            modal.show();
+        });
+    });
+
+    async function castVote(voteValue) {
+        const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
+        const comment   = document.getElementById('voteComment').value.trim();
+
+        try {
+            const res = await fetch('/api/votes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    argumentId: argId,
+                    vote: voteValue,
+                    rationale: rationale,
+                    comment: comment
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                alert('Vote failed: ' + (err.message || res.statusText));
+            }
+        } catch (e) {
+            console.error('Vote failed:', e);
+        }
+    }
+
+    document.getElementById('submitUpvoteBtn')?.addEventListener('click', () => castVote('Up'));
+    document.getElementById('submitDownvoteBtn')?.addEventListener('click', () => castVote('Down'));
+})();
+</script>
+}

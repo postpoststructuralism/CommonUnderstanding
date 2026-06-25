@@ -60,4 +60,30 @@ public class SocialViewController : Controller
 
         return View("~/Views/Social/DebateRoom.cshtml");
     }
+
+    // GET /Social/Detail/{id}
+    public async Task<IActionResult> Detail(Guid id, CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var arg = await db.SocialArguments
+            .AsNoTracking()
+            .Include(a => a.ClaimProposition)
+            .Include(a => a.Votes)
+            .Include(a => a.OutboundLinks)
+                .ThenInclude(l => l.TargetArgument)
+                    .ThenInclude(a => a!.ClaimProposition)
+            .Include(a => a.InboundLinks)
+                .ThenInclude(l => l.SourceArgument)
+                    .ThenInclude(a => a!.ClaimProposition)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+        if (arg is null || (!arg.IsPublic && arg.UserId != userId))
+            return NotFound();
+
+        ViewData["Title"] = arg.Title;
+        ViewBag.UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId);
+        return View("~/Views/Social/Detail.cshtml", arg);
+    }
 }
