@@ -293,6 +293,11 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => x.CreatedAt)
              .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
              .HasDatabaseName("idx_socialarguments_createdat");
+            // One social post per source Phase 1 argument (partial unique: ignores native posts).
+            e.HasIndex(x => x.SourceArgumentId)
+             .IsUnique()
+             .HasFilter("\"SourceArgumentId\" IS NOT NULL")
+             .HasDatabaseName("idx_socialarguments_sourceargumentid");
         });
 
         // SocialArgumentProposition (join table)

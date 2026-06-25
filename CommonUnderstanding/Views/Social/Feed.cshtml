@@ -36,9 +36,12 @@
             <p class="cu-workspace-lead mb-0">Public arguments ranked by community consensus.</p>
         </div>
         <div class="cu-workspace-actions">
-            <button class="cu-btn-primary" data-bs-toggle="modal" data-bs-target="#createArgModal">
+            <a class="cu-btn-primary" href="/Argument/Submit">
                 <i class="bi bi-plus-circle"></i> New Argument
-            </button>
+            </a>
+            <a class="btn btn-outline-secondary ms-2" href="/Argument">
+                <i class="bi bi-cloud-arrow-up"></i> Publish existing
+            </a>
         </div>
     </div>
 </div>
@@ -72,46 +75,6 @@
     <button id="loadMoreBtn" class="btn btn-outline-secondary btn-sm" style="display:none">
         Load more
     </button>
-</div>
-
-<!-- ── Create Argument Modal ──────────────────────────────────────────────── -->
-<div class="modal fade" id="createArgModal" tabindex="-1" aria-labelledby="createArgModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createArgModalLabel"><i class="bi bi-plus-circle me-2"></i>New Argument</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
-                    <input id="argTitle" class="form-control" maxlength="200" placeholder="Short descriptive title" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Claim <span class="text-danger">*</span></label>
-                    <textarea id="argClaim" class="form-control" rows="2" maxlength="1000"
-                              placeholder="State the claim you are arguing for…"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Warrant / Evidence</label>
-                    <textarea id="argWarrant" class="form-control" rows="3" maxlength="4000"
-                              placeholder="Why is the claim true? Cite evidence, logic, or examples."></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Tags</label>
-                    <input id="argTags" class="form-control" placeholder="comma-separated, e.g. climate,science" />
-                </div>
-                <div id="createArgError" class="alert alert-danger d-none"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button id="submitArgBtn" class="cu-btn-primary">
-                    <span class="spinner-border spinner-border-sm d-none me-1" id="submitArgSpinner"></span>
-                    Publish
-                </button>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ── Vote Modal ─────────────────────────────────────────────────────────── -->
@@ -390,54 +353,6 @@
 
     document.getElementById('submitUpvoteBtn').addEventListener('click', () => castVote('Up'));
     document.getElementById('submitDownvoteBtn').addEventListener('click', () => castVote('Down'));
-
-    // ── Create argument ───────────────────────────────────────────────────────
-    document.getElementById('submitArgBtn').addEventListener('click', async () => {
-        const title   = document.getElementById('argTitle').value.trim();
-        const claim   = document.getElementById('argClaim').value.trim();
-        const warrant = document.getElementById('argWarrant').value.trim();
-        const tags    = document.getElementById('argTags').value
-            .split(',').map(t => t.trim()).filter(Boolean);
-        const errEl   = document.getElementById('createArgError');
-        const spinner = document.getElementById('submitArgSpinner');
-
-        errEl.classList.add('d-none');
-
-        if (!title || !claim) {
-            errEl.textContent = 'Title and Claim are required.';
-            errEl.classList.remove('d-none');
-            return;
-        }
-
-        spinner.classList.remove('d-none');
-        document.getElementById('submitArgBtn').disabled = true;
-
-        try {
-            const res = await fetch('/api/arguments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, claimText: claim, warrantText: warrant, tags })
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.title || err.detail || `HTTP ${res.status}`);
-            }
-
-            bootstrap.Modal.getInstance(document.getElementById('createArgModal'))?.hide();
-            document.getElementById('argTitle').value   = '';
-            document.getElementById('argClaim').value   = '';
-            document.getElementById('argWarrant').value = '';
-            document.getElementById('argTags').value    = '';
-            loadFeed(true);
-        } catch (err) {
-            errEl.textContent = 'Could not publish: ' + err.message;
-            errEl.classList.remove('d-none');
-        }
-
-        spinner.classList.add('d-none');
-        document.getElementById('submitArgBtn').disabled = false;
-    });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     function escHtml(str) {
