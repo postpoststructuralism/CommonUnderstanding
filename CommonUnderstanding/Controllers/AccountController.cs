@@ -32,7 +32,7 @@ public class AccountController : Controller
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
-            return Redirect(returnUrl ?? Url.Action("Index", "Dashboard")!);
+            return Redirect(returnUrl ?? Url.Action("Feed", "SocialView")!);
 
         ViewBag.ReturnUrl = returnUrl;
         return View();
@@ -65,7 +65,7 @@ public class AccountController : Controller
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return Redirect(returnUrl);
 
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToAction("Feed", "SocialView");
     }
 
     // ─── Register ─────────────────────────────────────────────────────────────

@@ -224,7 +224,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Argument}/{action=Submit}/{id?}");
+    pattern: "{controller=SocialView}/{action=Feed}/{id?}");
 
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");

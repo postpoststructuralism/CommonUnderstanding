@@ -45,91 +45,88 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="cuNavbarContent">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto align-items-center gap-1">
+
+                    <!-- PUBLIC: Feed -->
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" 
-                           asp-controller="Dashboard" asp-action="Index">
-                            <i class="bi bi-speedometer2"></i> Dashboard
+                        <a class="nav-link fw-semibold @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "Feed" ? "active" : "")"
+                           asp-controller="SocialView" asp-action="Feed">
+                            <i class="bi bi-fire"></i> Feed
                         </a>
                     </li>
+
+                    <!-- PUBLIC: Submit CTA (styled as button, not nav-link) -->
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Argument" ? "active" : "")"
-                           asp-controller="Argument" asp-action="Index">
-                            <i class="bi bi-diagram-3"></i> Arguments
+                        <a class="btn btn-sm btn-primary ms-1 me-2"
+                           asp-controller="Argument" asp-action="Submit">
+                            <i class="bi bi-plus-lg me-1"></i>Submit
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CommonUnderstanding" ? "active" : "")"
-                           asp-controller="CommonUnderstanding" asp-action="Index">
-                            <i class="bi bi-diagram-2"></i> Common Understanding
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "EmergentConclusions" ? "active" : "")"
-                           asp-controller="EmergentConclusions" asp-action="Index">
-                            <i class="bi bi-lightbulb"></i> Emergent Conclusions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reference" ? "active" : "")"
-                           asp-controller="Reference" asp-action="Index">
-                            <i class="bi bi-book"></i> Reference
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Connections" ? "active" : "")"
-                           asp-controller="Connections" asp-action="Index">
-                            <i class="bi bi-people"></i> Connections
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Convergence" ? "active" : "")"
-                           asp-controller="Convergence" asp-action="Index">
-                            <i class="bi bi-intersect"></i> Convergence
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CollaborativeSession" ? "active" : "")"
-                           asp-controller="CollaborativeSession" asp-action="Index">
-                            <i class="bi bi-diagram-3-fill"></i> Sessions
-                        </a>
-                    </li>
+
+                    <!-- PRIVATE: My Workspace dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" ? "active" : "")"
+                        <a class="nav-link dropdown-toggle @(new[]{"Argument","CommonUnderstanding","EmergentConclusions","Reference","Connections","Convergence","CollaborativeSession","Discovery"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "active" : "")"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-bar-chart-steps"></i> Social
+                            <i class="bi bi-person-workspace"></i> My Workspace
                         </a>
                         <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header small text-uppercase" style="font-size:0.65rem; letter-spacing:0.06em;">Analysis</h6></li>
                             <li>
-                                <a class="dropdown-item" asp-controller="SocialView" asp-action="Feed">
-                                    <i class="bi bi-fire me-2"></i> Feed
+                                <a class="dropdown-item" asp-controller="Argument" asp-action="Index">
+                                    <i class="bi bi-diagram-3 me-2"></i>Arguments
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" asp-controller="SocialView" asp-action="ChainBuilder">
-                                    <i class="bi bi-diagram-3 me-2"></i> Chain Builder
+                                <a class="dropdown-item" asp-controller="CommonUnderstanding" asp-action="Index">
+                                    <i class="bi bi-diagram-2 me-2"></i>Common Understanding
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" asp-controller="SocialView" asp-action="WorldviewComposer">
-                                    <i class="bi bi-globe2 me-2"></i> Worldview Composer
+                                <a class="dropdown-item" asp-controller="EmergentConclusions" asp-action="Index">
+                                    <i class="bi bi-lightbulb me-2"></i>Emergent Conclusions
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" asp-controller="SocialView" asp-action="DebateRoom">
-                                    <i class="bi bi-mic me-2"></i> Debate Room
+                                <a class="dropdown-item" asp-controller="Convergence" asp-action="Index">
+                                    <i class="bi bi-intersect me-2"></i>Convergence
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header small text-uppercase" style="font-size:0.65rem; letter-spacing:0.06em;">People</h6></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Discovery" asp-action="Profile">
+                                    <i class="bi bi-person me-2"></i>Belief Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Connections" asp-action="Index">
+                                    <i class="bi bi-people me-2"></i>Connections
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="CollaborativeSession" asp-action="Index">
+                                    <i class="bi bi-diagram-3-fill me-2"></i>Sessions
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Reference" asp-action="Index">
+                                    <i class="bi bi-book me-2"></i>Reference
                                 </a>
                             </li>
                         </ul>
                     </li>
+
+                    <!-- SETTINGS (icon-only with AI status dot) -->
                     <li class="nav-item">
                         <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Settings" ? "active" : "")"
-                           asp-controller="Settings" asp-action="Index">
-                            <i class="bi bi-gear"></i> Settings
-                            <span id="navAiStatusDot" title="AI Status"
-                                  style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6b7280;margin-left:4px;vertical-align:middle;"></span>
+                           asp-controller="Settings" asp-action="Index" title="Settings">
+                            <i class="bi bi-gear"></i>
+                            <span id="navAiStatusDot"
+                                  style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6b7280;margin-left:2px;vertical-align:middle;"></span>
                         </a>
                     </li>
+
                 </ul>
 
                 <!-- Identity nav (right side) -->
@@ -286,40 +283,23 @@
                 const d = await r.json();
                 const dot = document.getElementById('navAiStatusDot');
                 if (!dot) return;
-                if (d.ollamaConnected && d.modelLoaded) dot.style.background = '#198754';
-                else if (d.ollamaConnected)              dot.style.background = '#ffc107';
-                else                                     dot.style.background = '#dc3545';
-                dot.title = d.ollamaConnected ? (d.modelLoaded ? 'AI: Ready' : 'AI: Partial') : 'AI: Offline';
+                // Supports both Ollama-era and Azure Foundry-era response shapes
+                const ready   = d.isReady   ?? d.modelLoaded      ?? d.ollamaConnected ?? false;
+                const partial = d.isPartial ?? d.ollamaConnected  ?? false;
+                if (ready)        { dot.style.background = '#198754'; dot.title = 'AI: Ready'; }
+                else if (partial) { dot.style.background = '#ffc107'; dot.title = 'AI: Partial'; }
+                else              { dot.style.background = '#dc3545'; dot.title = 'AI: Offline'; }
             } catch { /* silent fail */ }
-            setTimeout(updateNavAiDot, 30000);
+            setTimeout(updateNavAiDot, 30_000);
         })();
 
         // Language Toggle Function
         function toggleLanguage() {
-            // Placeholder for future i18n implementation
-            const currentLang = document.documentElement.lang;
-            const newLang = currentLang === 'en' ? 'fr' : 'en';
-            
-            // Update button text
-            const langBtn = document.querySelector('.cu-lang-toggle');
-            langBtn.innerHTML = newLang === 'en' ? '<i class="fas fa-globe"></i> FR' : '<i class="fas fa-globe"></i> EN';
-            
-            // This would typically trigger a language switch
-            console.log('Language toggle clicked. Future implementation will switch to: ' + newLang);
-            
-            // Show notification
-            alert('Language toggle functionality will be implemented with full i18n support.');
+            // i18n not yet implemented — stub to prevent alert() in production
+            console.info('[i18n] Language toggle not yet implemented.');
         }
 
-        // Add active state to current navigation item
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-            document.querySelectorAll('.cu-nav .nav-link').forEach(link => {
-                if (link.getAttribute('href') === currentPath) {
-                    link.classList.add('active');
-                }
-            });
-        });
+        
     </script>
     
     @await RenderSectionAsync("Scripts", required: false)
