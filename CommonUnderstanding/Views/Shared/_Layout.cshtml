@@ -65,7 +65,7 @@
 
                     <!-- PRIVATE: My Workspace dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle @(new[]{"Argument","CommonUnderstanding","EmergentConclusions","Reference","Connections","Convergence","CollaborativeSession","Discovery"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "active" : "")"
+                        <a class="nav-link dropdown-toggle @(new[]{"Argument","CommonUnderstanding","EmergentConclusions","Reference","Connections","Convergence","CollaborativeSession","Discovery","SocialView"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "active" : "")"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-workspace"></i> My Workspace
                         </a>
@@ -89,6 +89,23 @@
                             <li>
                                 <a class="dropdown-item" asp-controller="Convergence" asp-action="Index">
                                     <i class="bi bi-intersect me-2"></i>Convergence
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header small text-uppercase" style="font-size:0.65rem; letter-spacing:0.06em;">Social</h6></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="SocialView" asp-action="ChainBuilder">
+                                    <i class="bi bi-diagram-3 me-2"></i>Chain Builder
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="SocialView" asp-action="WorldviewComposer">
+                                    <i class="bi bi-globe2 me-2"></i>Worldview Composer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="SocialView" asp-action="DebateRoom">
+                                    <i class="bi bi-mic me-2"></i>Debate Room
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>

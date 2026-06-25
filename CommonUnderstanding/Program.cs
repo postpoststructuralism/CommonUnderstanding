@@ -22,7 +22,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
     ServiceLifetime.Scoped);
 
-// Singleton-safe wrapper for workers and hubs that can't consume Scoped services
+// Singleton-safe wrapper for workers and hubhttps://localhost:44347/#s that can't consume Scoped services
 builder.Services.AddSingleton<SingletonDbContextFactory>();
 
 
