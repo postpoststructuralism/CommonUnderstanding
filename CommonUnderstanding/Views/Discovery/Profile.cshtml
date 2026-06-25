@@ -6,6 +6,7 @@
 }
 
 <div class="container mt-4">
+    @Html.AntiForgeryToken()
     <div class="row">
         <div class="col-md-10 offset-md-1">
             <nav aria-label="breadcrumb">
@@ -34,6 +35,36 @@
             }
             else
             {
+                <!-- AI-Generated Worldview Summary (top of page) -->
+                @if (!string.IsNullOrEmpty(ViewBag.AiSummary as string))
+                {
+                    <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="card-body text-white p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-stars fs-4 me-2"></i>
+                                <h5 class="mb-0">Your Worldview, in Summary</h5>
+                                <small class="ms-auto opacity-75 me-3">
+                                    <i class="bi bi-robot"></i> AI-generated
+                                </small>
+                                <button class="btn btn-sm btn-outline-light regenerate-summary-btn"
+                                        title="Regenerate your AI summary">
+                                    <i class="bi bi-arrow-repeat"></i> Regenerate
+                                </button>
+                            </div>
+                            <div id="ai-summary-content">
+                                @foreach (var paragraph in ((string)ViewBag.AiSummary).Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    <p class="mb-2" style="font-size: 1.05rem; line-height: 1.7;">@paragraph</p>
+                                }
+                            </div>
+                            <div id="ai-summary-spinner" class="text-center d-none py-3">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span>Regenerating your worldview summary...</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 <!-- Universe Position Card (if available) -->
                 @if (ViewBag.UniversePosition != null)
                 {
@@ -357,3 +388,52 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 </style>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const btn = document.querySelector('.regenerate-summary-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', async function () {
+            const contentEl = document.getElementById('ai-summary-content');
+            const spinnerEl = document.getElementById('ai-summary-spinner');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Regenerating...';
+            contentEl.classList.add('opacity-50');
+            spinnerEl.classList.remove('d-none');
+
+            try {
+                const resp = await fetch('/Discovery/RegenerateSummary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    }
+                });
+
+                if (!resp.ok) {
+                    throw new Error(`Server returned ${resp.status}`);
+                }
+
+                const data = await resp.json();
+                if (data.summary) {
+                    const paragraphs = data.summary.split('\n\n').filter(p => p.trim());
+                    contentEl.innerHTML = paragraphs.map(p =>
+                        `<p class="mb-2" style="font-size: 1.05rem; line-height: 1.7;">${p}</p>`
+                    ).join('');
+                }
+            } catch (err) {
+                console.error('Failed to regenerate summary:', err);
+                contentEl.innerHTML = '<p class="mb-0 text-warning">Sorry, failed to regenerate. Please try again.</p>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Regenerate';
+                contentEl.classList.remove('opacity-50');
+                spinnerEl.classList.add('d-none');
+            }
+        });
+    });
+</script>
+}

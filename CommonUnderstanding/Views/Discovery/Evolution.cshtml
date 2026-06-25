@@ -1,0 +1,213 @@
+@model List<CommonUnderstanding.Models.BeliefSnapshot>
+
+@{
+    ViewData["Title"] = "Worldview Evolution";
+    var profile = ViewBag.Profile as CommonUnderstanding.Models.UserProfile;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Question">Discovery</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Profile">Profile</a></li>
+                    <li class="breadcrumb-item active">Evolution</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-5">
+                    <i class="bi bi-graph-up-arrow"></i> Your Worldview Evolution
+                </h1>
+                <p class="lead text-muted">
+                    @(profile?.Name ?? "User") • @Model.Count snapshots over time
+                </p>
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info">
+                    <h4>No snapshots yet</h4>
+                    <p>Answer more questions to build your evolution timeline!</p>
+                    <a asp-action="Question" class="btn btn-primary">Continue Discovery</a>
+                </div>
+            }
+            else
+            {
+                <!-- Confidence Over Time -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-activity"></i> Model Confidence Over Time</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Snapshot</th>
+                                        <th>Interactions</th>
+                                        <th>Confidence</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.Count; i++)
+                                    {
+                                        var snap = Model[i];
+                                        <tr>
+                                            <td>#@(i + 1)</td>
+                                            <td>@snap.InteractionCount</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                                        <div class="progress-bar @(snap.OverallConfidence > 0.6 ? "bg-success" : snap.OverallConfidence > 0.3 ? "bg-info" : "bg-warning")"
+                                                             role="progressbar"
+                                                             style="width: @((snap.OverallConfidence * 100).ToString("F0"))%;">
+                                                            @snap.OverallConfidence.ToString("P0")
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><small class="text-muted">@snap.Timestamp.ToString("MMM dd, yyyy HH:mm")</small></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dimension Evolution -->
+                @if (Model.Any(s => s.Dimensions.Any(d => d.Confidence > 0.2)))
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-compass"></i> Belief Dimension Evolution</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="small text-muted mb-3">
+                                How your position on key dimensions has shifted over time
+                            </p>
+                            @{
+                                // Collect all dimension names that appear across snapshots
+                                var allDimNames = Model
+                                    .SelectMany(s => s.Dimensions)
+                                    .Where(d => d.Confidence > 0.2)
+                                    .Select(d => d.Name)
+                                    .Distinct()
+                                    .Take(10)
+                                    .ToList();
+                            }
+                            @foreach (var dimName in allDimNames)
+                            {
+                                <div class="mb-3">
+                                    <strong>@dimName</strong>
+                                    <div class="d-flex align-items-center mt-1">
+                                        @foreach (var snap in Model)
+                                        {
+                                            var dim = snap.Dimensions.FirstOrDefault(d => d.Name == dimName);
+                                            if (dim?.Position.HasValue == true)
+                                            {
+                                                var leftPercent = ((dim.Position.Value + 1) / 2 * 100).ToString("F0");
+                                                var opacity = Math.Max(0.3, dim.Confidence).ToString("F2");
+                                                <span class="badge bg-secondary me-1"
+                                                      style="opacity: @opacity;"
+                                                      title="Q@(snap.InteractionCount): @dim.Position.Value.ToString("F2") (@dim.Confidence.ToString("P0"))">
+                                                    @dim.Position.Value.ToString("F2")
+                                                </span>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Values Evolution -->
+                @if (Model.Any(s => s.Values.Any()))
+                {
+                    var latestValues = Model.Last().Values
+                        .OrderByDescending(v => v.Confidence)
+                        .Take(8)
+                        .ToList();
+
+                    if (latestValues.Any())
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-heart"></i> Core Values (Latest Snapshot)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    @foreach (var value in latestValues)
+                                    {
+                                        <div class="col-md-6 mb-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>@value.Name</strong>
+                                                <span class="badge bg-info">@value.Confidence.ToString("P0")</span>
+                                            </div>
+                                            <div class="progress mt-1" style="height: 8px;">
+                                                <div class="progress-bar" style="width: @((value.ImportanceScore * 10).ToString("F0"))%;"></div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- Moral Foundations Evolution -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Moral Foundations Over Time</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Snapshot</th>
+                                        <th>Care</th>
+                                        <th>Fairness</th>
+                                        <th>Loyalty</th>
+                                        <th>Authority</th>
+                                        <th>Sanctity</th>
+                                        <th>Liberty</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.Count; i++)
+                                    {
+                                        var snap = Model[i];
+                                        var mf = snap.MoralFoundations;
+                                        <tr>
+                                            <td><small>#@(i + 1) (Q@(snap.InteractionCount))</small></td>
+                                            <td><span class="badge bg-@(mf.Care.Score > 7 ? "success" : mf.Care.Score > 4 ? "info" : "secondary")">@mf.Care.Score.ToString("F1")</span></td>
+                                            <td><span class="badge bg-@(mf.Fairness.Score > 7 ? "success" : mf.Fairness.Score > 4 ? "info" : "secondary")">@mf.Fairness.Score.ToString("F1")</span></td>
+                                            <td><span class="badge bg-@(mf.Loyalty.Score > 7 ? "success" : mf.Loyalty.Score > 4 ? "info" : "secondary")">@mf.Loyalty.Score.ToString("F1")</span></td>
+                                            <td><span class="badge bg-@(mf.Authority.Score > 7 ? "success" : mf.Authority.Score > 4 ? "info" : "secondary")">@mf.Authority.Score.ToString("F1")</span></td>
+                                            <td><span class="badge bg-@(mf.Sanctity.Score > 7 ? "success" : mf.Sanctity.Score > 4 ? "info" : "secondary")">@mf.Sanctity.Score.ToString("F1")</span></td>
+                                            <td><span class="badge bg-@(mf.Liberty.Score > 7 ? "success" : mf.Liberty.Score > 4 ? "info" : "secondary")">@mf.Liberty.Score.ToString("F1")</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a asp-action="Profile" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Profile
+                    </a>
+                    <a asp-action="Question" class="btn btn-primary ms-2">
+                        <i class="bi bi-play-fill"></i> Continue Discovery
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

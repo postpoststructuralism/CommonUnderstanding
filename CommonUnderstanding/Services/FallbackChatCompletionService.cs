@@ -15,7 +15,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
     private readonly IReadOnlyList<(string Name, Func<string> ModelResolver, IChatCompletionService Service)> _providers;
     private readonly ILogger _logger;
     private readonly AiRequestTraceRecorder _traceRecorder;
-    private readonly AiUsagePolicyService _usagePolicyService;
     private int _callIndex = -1;
 
     // Per-provider rate-limit cooldown: tracks when each provider becomes available again.
@@ -31,10 +30,7 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
     public FallbackChatCompletionService(
         IReadOnlyList<(string Name, Func<string> ModelResolver, IChatCompletionService Service)> providers,
         ILogger logger,
-        AiRequestTraceRecorder traceRecorder,
-        IConfiguration configuration,
-        IServiceScopeFactory scopeFactory,
-        IHttpContextAccessor httpContextAccessor)
+        AiRequestTraceRecorder traceRecorder)
     {
         if (providers.Count == 0)
             throw new ArgumentException("At least one provider must be supplied.", nameof(providers));
@@ -42,7 +38,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         _providers = providers;
         _logger = logger;
         _traceRecorder = traceRecorder;
-        _usagePolicyService = new AiUsagePolicyService(configuration, scopeFactory, httpContextAccessor);
         _availableAt = new DateTimeOffset[providers.Count];
     }
 
@@ -57,8 +52,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         Kernel? kernel = null,
         CancellationToken cancellationToken = default)
     {
-        await _usagePolicyService.EnforceAndTrackAsync(cancellationToken);
-
         var promptPreview = ExtractPromptPreview(chatHistory);
         var startIdx = NextProviderIndex();
 
@@ -94,10 +87,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
                         promptPreview, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (AiAccessDeniedException)
                 {
                     throw;
                 }
@@ -151,8 +140,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
         Kernel? kernel,
         CancellationToken cancellationToken)
     {
-        await _usagePolicyService.EnforceAndTrackAsync(cancellationToken);
-
         var promptPreview = ExtractPromptPreview(chatHistory);
         var startIdx = NextProviderIndex();
 
@@ -188,10 +175,6 @@ internal sealed class FallbackChatCompletionService : IChatCompletionService
                         promptPreview, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (AiAccessDeniedException)
                 {
                     throw;
                 }

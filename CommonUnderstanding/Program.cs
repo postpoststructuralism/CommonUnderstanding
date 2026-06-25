@@ -5,6 +5,7 @@ using CommonUnderstanding.Services.Social.Workers;
 using CommonUnderstanding.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.SemanticKernel.ChatCompletion;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,12 +42,24 @@ builder.Services.AddSingleton<UserProfileStore>();
 // Register Belief System Knowledge Base (singleton - loaded once at startup)
 builder.Services.AddSingleton<BeliefSystemKnowledgeBase>();
 
+// Register AI-powered worldview summary generator
+builder.Services.AddScoped<WorldviewSummaryService>();
+
 // Register runtime AI config (overrides for endpoint, model, agent)
 builder.Services.AddSingleton<RuntimeAiConfigService>();
 builder.Services.AddSingleton<AiRequestTraceRecorder>();
 
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
+
+// Expose the kernel's IChatCompletionService to the app DI so other services
+// (e.g. WorldviewSummaryService) can inject it directly.
+builder.Services.AddSingleton<IChatCompletionService>(sp =>
+{
+    var kernelService = sp.GetRequiredService<SemanticKernelService>();
+    return kernelService.GetKernel().GetRequiredService<IChatCompletionService>();
+});
+
 builder.Services.AddScoped<BeliefAnalysisService>();
 
 // Register Discovery services
@@ -55,6 +68,7 @@ builder.Services.AddScoped<DiscoveryQuestionEngine>();
 builder.Services.AddScoped<ResponseAnalysisEngine>();
 builder.Services.AddScoped<BayesianInferenceEngine>();
 builder.Services.AddScoped<BeliefDiscoveryOrchestrator>();
+builder.Services.AddSingleton<PersonalityInsightGenerator>();
 
 // QuestionPrefetchService is on-demand only — called explicitly during Discovery.
 // It is NOT registered as a hosted service so it does not poll in the background.
@@ -176,35 +190,6 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (AiAccessDeniedException ex)
-    {
-        var accept = context.Request.Headers.Accept.ToString();
-        var isApi = context.Request.Path.StartsWithSegments("/api") ||
-                    accept.Contains("application/json", StringComparison.OrdinalIgnoreCase);
-
-        if (isApi)
-        {
-            context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                success = false,
-                code = "PAYWALL_LIMIT_REACHED",
-                message = ex.Message
-            });
-            return;
-        }
-
-        context.Response.Redirect("/Account/Paywall");
-    }
-});
 
 app.Use(async (context, next) =>
 {

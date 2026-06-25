@@ -255,6 +255,40 @@ public class ResponseProcessingQueue : BackgroundService
                 $"Confidence: {updatedSnapshot.OverallConfidence:P0}", 
                 "completed", 100);
 
+            // Check for early convergence
+            var convergenceResult = inferenceEngine.CheckConvergence(updatedSnapshot, profile);
+            if (convergenceResult.ShouldStop)
+            {
+                _logger.LogInformation(
+                    "🎯 Convergence detected for user {ProfileId}: {Reason}",
+                    queuedResponse.ProfileId, convergenceResult.Reason);
+                
+                await _hubContext.Clients.All.SendAsync("DiscoveryConverged", new
+                {
+                    ProfileId = queuedResponse.ProfileId,
+                    Reason = convergenceResult.Reason,
+                    Confidence = convergenceResult.Confidence,
+                    InteractionCount = profile.InteractionCount
+                });
+            }
+
+            // Generate a personality micro-insight (if conditions are met)
+            var insightGenerator = scope.ServiceProvider.GetRequiredService<PersonalityInsightGenerator>();
+            var insight = insightGenerator.GenerateInsight(updatedSnapshot, profile);
+            if (insight != null)
+            {
+                _logger.LogInformation(
+                    "💡 Personality insight for user {ProfileId}: {Category} - {Message}",
+                    queuedResponse.ProfileId, insight.Category, insight.Message);
+                
+                await _hubContext.Clients.All.SendAsync("PersonalityInsight", new
+                {
+                    ProfileId = queuedResponse.ProfileId,
+                    Message = insight.Message,
+                    Category = insight.Category
+                });
+            }
+
             var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
             var queueTime = (startTime - queuedResponse.QueuedAt).TotalMilliseconds;
             

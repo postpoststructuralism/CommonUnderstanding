@@ -14,6 +14,7 @@ public class DiscoveryController : Controller
     private readonly BeliefSystemKnowledgeBase _knowledgeBase;
     private readonly ResponseProcessingQueue _responseQueue;
     private readonly QuestionPrefetchService _prefetchService;
+    private readonly WorldviewSummaryService _summaryService;
     private readonly ILogger<DiscoveryController> _logger;
 
     public DiscoveryController(
@@ -22,6 +23,7 @@ public class DiscoveryController : Controller
         BeliefSystemKnowledgeBase knowledgeBase,
         ResponseProcessingQueue responseQueue,
         QuestionPrefetchService prefetchService,
+        WorldviewSummaryService summaryService,
         ILogger<DiscoveryController> logger)
     {
         _orchestrator = orchestrator;
@@ -29,6 +31,7 @@ public class DiscoveryController : Controller
         _knowledgeBase = knowledgeBase;
         _responseQueue = responseQueue;
         _prefetchService = prefetchService;
+        _summaryService = summaryService;
         _logger = logger;
     }
 
@@ -197,7 +200,7 @@ public class DiscoveryController : Controller
     }
 
     // GET: Discovery/Profile
-    public IActionResult Profile()
+    public async Task<IActionResult> Profile()
     {
         var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
@@ -212,8 +215,49 @@ public class DiscoveryController : Controller
             var universePosition = _knowledgeBase.CalculateUniversePosition(profile.CurrentBeliefSnapshot);
             ViewBag.UniversePosition = universePosition;
             ViewBag.AllSystems = _knowledgeBase.AllSystems.ToList();
+
+            // Only regenerate AI summary if the snapshot has changed (interaction count differs)
+            // or if no AI summary has been generated yet.
+            var snapshot = profile.CurrentBeliefSnapshot;
+            var cachedSummary = snapshot.NarrativeSummary;
+            var needsRegeneration = string.IsNullOrWhiteSpace(cachedSummary)
+                || cachedSummary.StartsWith("Your worldview is currently being mapped") // old template
+                || cachedSummary.StartsWith("Based on your responses, your worldview shows"); // fallback template
+
+            if (needsRegeneration)
+            {
+                var aiSummary = await _summaryService.GenerateSummaryAsync(snapshot);
+                snapshot.NarrativeSummary = aiSummary;
+                await _profileStore.SaveProfileAsync(profileId);
+                ViewBag.AiSummary = aiSummary;
+            }
+            else
+            {
+                ViewBag.AiSummary = cachedSummary;
+            }
         }
         return View(profile);
+    }
+
+    // POST: Discovery/RegenerateSummary
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateSummary()
+    {
+        var profileId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(profileId) || !_profileStore.ProfileExists(profileId))
+            return Unauthorized();
+
+        var profile = _profileStore.GetProfile(profileId);
+        if (profile?.CurrentBeliefSnapshot == null || profile.InteractionCount < 5)
+            return BadRequest(new { error = "Not enough data to generate a summary yet." });
+
+        var snapshot = profile.CurrentBeliefSnapshot;
+        var aiSummary = await _summaryService.GenerateSummaryAsync(snapshot);
+        snapshot.NarrativeSummary = aiSummary;
+        await _profileStore.SaveProfileAsync(profileId);
+
+        return Json(new { summary = aiSummary });
     }
 
     // GET: Discovery/History

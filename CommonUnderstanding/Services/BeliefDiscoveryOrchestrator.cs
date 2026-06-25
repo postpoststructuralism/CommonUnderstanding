@@ -77,21 +77,23 @@ public class BeliefDiscoveryOrchestrator
     }
 
     /// <summary>
-    /// Start a new user's discovery journey
+    /// Start a new user's discovery journey.
+    /// Seeds the first 2 baseline questions and lets the adaptive engine
+    /// select questions 3-5 based on emerging belief patterns.
     /// </summary>
     public async Task<UserInteraction> StartDiscoveryAsync(UserProfile profile)
     {
         _logger.LogInformation("Starting discovery journey for user {UserId}", profile.Id);
 
-        // Seed the prefetch queue with the 5 hardcoded initial survey questions.
-        // We use forcedIndex explicitly so that all 5 questions are distinct —
-        // using profile.InteractionCount in a loop would return the same question
-        // every iteration since the count doesn't change between iterations.
-        _logger.LogInformation("Pre-generating 5 initial survey questions for user {UserId}", profile.Id);
+        // Seed only the first 2 baseline questions. After those are answered,
+        // the adaptive engine will select questions 3-5 based on which
+        // dimensions show the highest uncertainty.
+        const int baselineQuestionCount = 2;
+        _logger.LogInformation("Pre-generating {Count} baseline survey questions for user {UserId}", 
+            baselineQuestionCount, profile.Id);
         
         var questions = new List<UserInteraction>();
-        const int initialSurveyCount = 5;
-        for (int i = 0; i < initialSurveyCount; i++)
+        for (int i = 0; i < baselineQuestionCount; i++)
         {
             var question = _questionEngine.GenerateInitialSurveyQuestion(profile, forcedIndex: i);
             var hash = ComputeQuestionHash(question);
@@ -102,13 +104,15 @@ public class BeliefDiscoveryOrchestrator
             }
         }
         
-        // Queue questions (starting from second one)
+        // Queue the second question (if any)
         for (int i = 1; i < questions.Count; i++)
         {
             profile.PrefetchedQuestions.Enqueue(questions[i]);
         }
         
-        _logger.LogInformation("Queued {Count} initial questions for user {UserId}", questions.Count - 1, profile.Id);
+        _logger.LogInformation("Queued {Count} baseline questions for user {UserId}. " +
+            "Questions 3-5 will be adaptively selected.", 
+            questions.Count - 1, profile.Id);
         
         // Return the first question, or fall back to adaptive generation if all were already asked
         return questions.Count > 0 ? questions[0] : await GetNextQuestionAsync(profile);
@@ -153,14 +157,59 @@ public class BeliefDiscoveryOrchestrator
     /// Generate the best next question for an existing profile without the startup bulk-seeding
     /// overhead of <see cref="StartDiscoveryAsync"/>. Use this as the fallback when the
     /// prefetch queue is empty mid-session.
+    /// 
+    /// For questions 3-5 (the "smart initial survey" phase), adaptively selects
+    /// questions that target the highest-uncertainty dimensions.
     /// </summary>
     public async Task<UserInteraction> GetNextQuestionAsync(UserProfile profile)
     {
-        // Still in initial survey phase — return a hardcoded question immediately (no AI calls)
-        if (profile.InteractionCount < 5)
+        // Questions 1-2: baseline hardcoded questions
+        if (profile.InteractionCount < 2)
             return _questionEngine.GenerateInitialSurveyQuestion(profile);
 
+        // Questions 3-5: smart adaptive survey — target high-uncertainty dimensions
+        if (profile.InteractionCount < 5)
+            return GenerateSmartInitialSurveyQuestion(profile);
+
         return await GenerateAdaptiveQuestionAsync(profile);
+    }
+
+    /// <summary>
+    /// For the smart initial survey phase (questions 3-5), select a question
+    /// that targets the dimensions with the highest uncertainty in the current model.
+    /// Falls back to a random initial survey question if no model exists yet.
+    /// </summary>
+    private UserInteraction GenerateSmartInitialSurveyQuestion(UserProfile profile)
+    {
+        var snapshot = profile.CurrentBeliefSnapshot;
+        
+        // If we have a model with dimensions, find the highest-uncertainty ones
+        if (snapshot?.Dimensions.Any() == true)
+        {
+            var highUncertaintyDimensions = snapshot.Dimensions
+                .Where(d => d.Confidence < 0.4)
+                .OrderBy(d => d.Confidence)
+                .Select(d => d.Name)
+                .Take(3)
+                .ToList();
+
+            if (highUncertaintyDimensions.Any())
+            {
+                _logger.LogInformation(
+                    "Smart survey: targeting high-uncertainty dimensions for user {UserId}: {Dimensions}",
+                    profile.Id, string.Join(", ", highUncertaintyDimensions));
+
+                // Try to get a question targeting these dimensions
+                var targetedQuestion = _questionEngine.GenerateInitialSurveyQuestionTargeting(
+                    profile, highUncertaintyDimensions);
+                if (targetedQuestion != null)
+                    return targetedQuestion;
+            }
+        }
+
+        // Fallback: use a random initial survey question beyond the first 2
+        _logger.LogInformation("Smart survey: no model yet, using fallback initial question for user {UserId}", profile.Id);
+        return _questionEngine.GenerateInitialSurveyQuestion(profile);
     }
 
     /// <summary>
@@ -253,7 +302,10 @@ public class BeliefDiscoveryOrchestrator
     }
 
     /// <summary>
-    /// Determine what type of question to ask next
+    /// Determine what type of question to ask next using entropy-based selection.
+    /// Prioritizes question types that maximize information gain given the
+    /// current state of the belief model. Moral dilemmas are used more
+    /// aggressively since they provide rich multi-dimensional data.
     /// </summary>
     private QuestionStrategy DetermineNextQuestionType(UserProfile profile, BeliefSnapshot snapshot)
     {
@@ -261,36 +313,53 @@ public class BeliefDiscoveryOrchestrator
         var uncertainAreas = snapshot.Statistics.UncertainAreas;
         var contradictions = snapshot.Statistics.DetectedContradictions;
 
-        // First 5 interactions: multiple choice foundation building (less intimidating)
-        if (interactionCount < 5)
+        // First 3 interactions: multiple choice foundation building
+        if (interactionCount < 3)
             return QuestionStrategy.MultipleChoice;
 
-        // Every 7th interaction: value ranking for calibration
-        if (interactionCount % 7 == 0)
+        // Questions 3-5: mix in moral dilemmas for richer data
+        if (interactionCount < 5)
+            return interactionCount % 2 == 0 
+                ? QuestionStrategy.MoralDilemma 
+                : QuestionStrategy.MultipleChoice;
+
+        // If contradictions detected: use moral dilemmas to resolve them
+        if (contradictions.Any())
+            return QuestionStrategy.MoralDilemma;
+
+        // Calculate entropy to guide selection
+        var entropy = snapshot.Statistics.Entropy;
+        var overallConfidence = snapshot.OverallConfidence;
+
+        // High entropy + low confidence: moral dilemmas give richest multi-dimension data
+        if (entropy > 0.5 && overallConfidence < 0.5)
+            return QuestionStrategy.MoralDilemma;
+
+        // Medium entropy: value ranking helps calibrate multiple dimensions at once
+        if (entropy > 0.3 && interactionCount % 4 == 0)
             return QuestionStrategy.ValueRanking;
 
-        // Every 5th interaction: scale question (easy to answer)
-        if (interactionCount % 5 == 0)
+        // Many uncertain areas: use emotional probes to surface hidden values
+        if (uncertainAreas.Count >= 4 && interactionCount % 5 == 0)
+            return QuestionStrategy.EmotionalProbe;
+
+        // Low entropy but low confidence: need more data points → scale questions
+        if (entropy < 0.3 && overallConfidence < 0.5)
             return QuestionStrategy.ScaleQuestion;
 
-        // If contradictions detected: multiple choice to clarify
-        if (contradictions.Any())
-            return QuestionStrategy.MultipleChoice;
+        // Periodic calibration with value ranking
+        if (interactionCount % 8 == 0)
+            return QuestionStrategy.ValueRanking;
 
-        // If high uncertainty in certain areas: use structured questions
-        if (uncertainAreas.Any())
-        {
-            // Cycle through easy question types
-            var cycle = interactionCount % 3;
-            return cycle switch
-            {
-                0 => QuestionStrategy.MultipleChoice,
-                1 => QuestionStrategy.ScaleQuestion,
-                _ => QuestionStrategy.ValueRanking
-            };
-        }
+        // Periodic scale questions for precision
+        if (interactionCount % 6 == 0)
+            return QuestionStrategy.ScaleQuestion;
 
-        // Default: multiple choice (less intimidating than open-ended)
+        // Every 3rd question after question 5: moral dilemma for engagement
+        if (interactionCount % 3 == 0)
+            return QuestionStrategy.MoralDilemma;
+
+        // Default: multiple choice (most engaging, good information density)
         return QuestionStrategy.MultipleChoice;
     }
 

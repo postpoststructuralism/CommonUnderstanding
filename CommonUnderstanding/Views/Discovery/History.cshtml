@@ -1,0 +1,157 @@
+@model CommonUnderstanding.Models.UserProfile
+
+@{
+    ViewData["Title"] = "Discovery History";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Question">Discovery</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Profile">Profile</a></li>
+                    <li class="breadcrumb-item active">History</li>
+                </ol>
+            </nav>
+
+            <div class="text-center mb-4">
+                <h1 class="display-5">
+                    <i class="bi bi-clock-history"></i> Discovery History
+                </h1>
+                <p class="lead text-muted">
+                    @Model.Name • @Model.InteractionCount interactions • @Model.Stage stage
+                </p>
+            </div>
+
+            @if (!Model.Interactions.Any())
+            {
+                <div class="alert alert-info">
+                    <h4>No interactions yet</h4>
+                    <p>Start answering questions to build your discovery history!</p>
+                    <a asp-action="Question" class="btn btn-primary">Begin Discovery</a>
+                </div>
+            }
+            else
+            {
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Interactions</h5>
+                        <span class="badge bg-primary">@Model.Interactions.Count total</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 60px;">#</th>
+                                        <th>Question</th>
+                                        <th style="width: 100px;">Type</th>
+                                        <th style="width: 140px;">Your Response</th>
+                                        <th style="width: 120px;">When</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.Interactions.Count; i++)
+                                    {
+                                        var interaction = Model.Interactions[Model.Interactions.Count - 1 - i];
+                                        <tr>
+                                            <td class="text-muted">@(Model.Interactions.Count - i)</td>
+                                            <td>
+                                                <div>@interaction.Content.Question</div>
+                                                @if (interaction.TargetedDimensions?.Any() == true)
+                                                {
+                                                    <small class="text-muted">
+                                                        Targeting: @string.Join(", ", interaction.TargetedDimensions)
+                                                    </small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">@interaction.Type</span>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(interaction.Response.RawText))
+                                                {
+                                                    <span class="text-truncate d-inline-block" style="max-width: 120px;"
+                                                          title="@interaction.Response.RawText">
+                                                        @interaction.Response.RawText
+                                                    </span>
+                                                }
+                                                else if (interaction.Response.NumericValue.HasValue)
+                                                {
+                                                    <span>@interaction.Response.NumericValue / 10</span>
+                                                }
+                                                else if (interaction.Response.SelectedOptions?.Any() == true)
+                                                {
+                                                    <span>@string.Join(", ", interaction.Response.SelectedOptions.Take(2))</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small class="text-muted" title="@interaction.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                    @interaction.Timestamp.ToString("MMM dd, HH:mm")
+                                                </small>
+                                                @if (interaction.ResponseTimeMs > 0)
+                                                {
+                                                    <br />
+                                                    <small class="text-muted">
+                                                        @(interaction.ResponseTimeMs < 1000
+                                                            ? $"{interaction.ResponseTimeMs}ms"
+                                                            : $"{interaction.ResponseTimeMs / 1000.0:F1}s")
+                                                    </small>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h2 class="text-primary">@Model.InteractionCount</h2>
+                                <p class="text-muted mb-0">Total Interactions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h2 class="text-info">@Model.HistoricalSnapshots.Count</h2>
+                                <p class="text-muted mb-0">Snapshots Saved</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h2 class="text-success">@Model.Stage</h2>
+                                <p class="text-muted mb-0">Current Stage</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <a asp-action="Profile" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Profile
+                    </a>
+                    <a asp-action="Evolution" class="btn btn-outline-info ms-2">
+                        <i class="bi bi-graph-up-arrow"></i> View Evolution
+                    </a>
+                    <a asp-action="Question" class="btn btn-primary ms-2">
+                        <i class="bi bi-play-fill"></i> Continue Discovery
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

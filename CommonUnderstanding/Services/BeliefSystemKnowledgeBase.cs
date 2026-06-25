@@ -514,7 +514,7 @@ public class BeliefSystemKnowledgeBase
     {
         var alignment = new Dictionary<string, double>();
 
-        foreach (var userDim in userDimensions.Where(d => d.Position.HasValue && d.Confidence > 0.5))
+        foreach (var userDim in userDimensions.Where(d => d.Position.HasValue && d.Confidence > 0.3))
         {
             var systemDim = systemDimensions.FirstOrDefault(d => 
                 d.Name.Equals(userDim.Name, StringComparison.OrdinalIgnoreCase));
@@ -523,8 +523,14 @@ public class BeliefSystemKnowledgeBase
             {
                 // Calculate alignment (1.0 = perfect match, 0.0 = opposite)
                 var distance = Math.Abs(userDim.Position.Value - systemDim.Position.Value);
-                var similarity = 1.0 - (distance / 2.0); // Normalize to 0-1
-                alignment[userDim.Name] = similarity;
+                var rawSimilarity = 1.0 - (distance / 2.0); // Normalize to 0-1
+                
+                // Weight by user's confidence in this dimension.
+                // High-confidence dimensions contribute more to the match score.
+                var confidenceWeight = 0.5 + (userDim.Confidence * 0.5); // Range: 0.5-1.0
+                var weightedSimilarity = rawSimilarity * confidenceWeight;
+                
+                alignment[userDim.Name] = weightedSimilarity;
             }
         }
 
@@ -548,7 +554,7 @@ public class BeliefSystemKnowledgeBase
             scores.Add(avgMFAlignment * 40);
         }
 
-        // Dimensional match (0-30 points)
+        // Dimensional match (0-30 points) — already confidence-weighted
         if (dimensionalAlignment.Any())
         {
             var avgDimAlignment = dimensionalAlignment.Values.Average();

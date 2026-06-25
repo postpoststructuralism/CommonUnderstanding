@@ -408,5 +408,97 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeSignalR();
         });
+
+        // Listen for convergence events from the background processor
+        function setupConvergenceListener() {
+            if (connection) {
+                connection.on("DiscoveryConverged", function(data) {
+                    console.log("🎯 Convergence detected:", data);
+                    showConvergenceToast(data);
+                });
+
+                connection.on("PersonalityInsight", function(data) {
+                    console.log("💡 Personality insight:", data);
+                    showInsightToast(data);
+                });
+            }
+        }
+
+        function showConvergenceToast(data) {
+            // Create a toast notification
+            const toastHtml = `
+                <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+                    <div class="toast show" role="alert" id="convergenceToast">
+                        <div class="toast-header bg-success text-white">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <strong class="me-auto">Discovery Complete!</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                        </div>
+                        <div class="toast-body">
+                            <p>${data.reason || "Your belief profile has been mapped!"}</p>
+                            <p class="small text-muted">Confidence: ${(data.confidence * 100).toFixed(0)}% • ${data.interactionCount} questions</p>
+                            <a href="/Discovery/Profile" class="btn btn-success btn-sm mt-2">
+                                <i class="bi bi-person-badge"></i> View Your Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.body.insertAdjacentHTML('beforeend', toastHtml);
+            
+            // Auto-hide after 15 seconds
+            setTimeout(() => {
+                const toast = document.getElementById('convergenceToast');
+                if (toast) toast.remove();
+            }, 15000);
+        }
+
+        function showInsightToast(data) {
+            const categoryColors = {
+                'Compassion': 'bg-danger',
+                'Pragmatism': 'bg-secondary',
+                'Justice': 'bg-warning text-dark',
+                'Freedom': 'bg-info text-dark',
+                'Traditional': 'bg-primary',
+                'Decision Style': 'bg-dark',
+                'Complexity': 'bg-purple',
+                'Consistency': 'bg-teal',
+                'Engagement': 'bg-success',
+                'Balance': 'bg-indigo',
+                'Milestone': 'bg-warning'
+            };
+            const colorClass = categoryColors[data.category] || 'bg-info';
+            
+            const toastHtml = `
+                <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9998;">
+                    <div class="toast show insight-toast" role="alert">
+                        <div class="toast-header ${colorClass} text-white">
+                            <i class="bi bi-lightbulb-fill me-2"></i>
+                            <strong class="me-auto">${data.category || 'Insight'}</strong>
+                            <small class="text-white-50">just now</small>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${data.message}
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.body.insertAdjacentHTML('beforeend', toastHtml);
+            
+            // Auto-hide after 8 seconds
+            setTimeout(() => {
+                const toasts = document.querySelectorAll('.insight-toast');
+                const lastToast = toasts[toasts.length - 1];
+                if (lastToast) lastToast.remove();
+            }, 8000);
+        }
+
+        // Wire up convergence listener after connection
+        const originalInit = initializeSignalR;
+        initializeSignalR = async function() {
+            await originalInit();
+            setupConvergenceListener();
+        };
     </script>
 }

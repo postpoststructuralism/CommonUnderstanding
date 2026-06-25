@@ -147,6 +147,12 @@ public class ResponseAnalysis
     public double AnalysisConfidence { get; set; }
     
     /// <summary>
+    /// Quality of the user's response (0-1). Low-quality responses
+    /// (very short, off-topic) should be weighted less in Bayesian updates.
+    /// </summary>
+    public double ResponseQuality { get; set; } = 0.7;
+    
+    /// <summary>
     /// Full AI narrative analysis
     /// </summary>
     public string NarrativeAnalysis { get; set; } = string.Empty;
@@ -184,4 +190,25 @@ public class DimensionUpdate
     /// Reasoning for this update
     /// </summary>
     public string Reasoning { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Specific evidence from the user's response supporting this update
+    /// </summary>
+    public string Evidence { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Result of a convergence check — determines whether the discovery
+/// session should end early because the belief model has stabilized.
+/// </summary>
+public class ConvergenceResult
+{
+    /// <summary>Whether the discovery session should stop</summary>
+    public bool ShouldStop { get; set; }
+    
+    /// <summary>Human-readable explanation for the decision</summary>
+    public string Reason { get; set; } = string.Empty;
+    
+    /// <summary>Current model confidence at time of check</summary>
+    public double Confidence { get; set; }
 }

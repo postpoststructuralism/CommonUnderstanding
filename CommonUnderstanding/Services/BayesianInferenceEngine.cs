@@ -13,7 +13,7 @@ public class BayesianInferenceEngine
     private const double DefaultPriorMean = 0.0;      // Neutral position
     private const double DefaultPriorVariance = 1.0;   // High initial uncertainty
     private const double MinVariance = 0.01;           // Minimum uncertainty (never 100% certain)
-    private const double LearningRate = 0.15;          // How quickly we update beliefs
+    private const double LearningRate = 0.35;          // How quickly we update beliefs (higher = faster convergence)
 
     public BayesianInferenceEngine(ILogger<BayesianInferenceEngine> logger)
     {
@@ -21,7 +21,9 @@ public class BayesianInferenceEngine
     }
 
     /// <summary>
-    /// Update belief model based on new evidence
+    /// Update belief model based on new evidence.
+    /// Uses response quality to weight evidence — low-effort responses
+    /// have less impact on the model.
     /// </summary>
     public BeliefSnapshot UpdateModel(
         UserProfile profile,
@@ -35,10 +37,23 @@ public class BayesianInferenceEngine
         newSnapshot.Timestamp = DateTime.UtcNow;
         newSnapshot.InteractionCount = profile.InteractionCount;
 
+        // Use response quality to scale evidence weight
+        var qualityMultiplier = analysis.ResponseQuality > 0 ? analysis.ResponseQuality : 0.7;
+
         // Update dimensions based on analysis
         foreach (var update in analysis.DimensionUpdates)
         {
-            UpdateDimension(newSnapshot, update, interaction.Id);
+            // Scale evidence weight by response quality
+            var weightedUpdate = new DimensionUpdate
+            {
+                DimensionName = update.DimensionName,
+                Category = update.Category,
+                Position = update.Position,
+                EvidenceWeight = update.EvidenceWeight * qualityMultiplier,
+                Evidence = update.Evidence,
+                Reasoning = update.Reasoning
+            };
+            UpdateDimension(newSnapshot, weightedUpdate, interaction.Id);
         }
 
         // Update moral foundations
@@ -198,34 +213,49 @@ public class BayesianInferenceEngine
     }
 
     /// <summary>
-    /// Calculate confidence based on sample size and variance
+    /// Calculate confidence based on sample size and variance.
+    /// Uses a faster-growing sigmoid curve so that 2-3 data points
+    /// on a dimension already yield meaningful confidence (40-60%).
     /// </summary>
     private double CalculateDimensionConfidence(int sampleSize, double variance)
     {
-        // Confidence increases with sample size and decreases with variance
-        var sampleFactor = 1.0 - Math.Exp(-sampleSize / 10.0); // Approaches 1 as N increases
-        var varianceFactor = Math.Exp(-variance);               // Decreases as variance increases
+        // Sigmoid-based sample factor: grows quickly for early samples, saturates at ~1.0
+        // At N=1: 0.27, N=2: 0.50, N=3: 0.73, N=5: 0.92, N=10: 0.99
+        var sampleFactor = 1.0 / (1.0 + Math.Exp(-0.8 * (sampleSize - 2.0)));
+        
+        // Variance factor: tighter distributions = higher confidence
+        // At variance=1.0: 0.37, variance=0.5: 0.61, variance=0.1: 0.90
+        var varianceFactor = Math.Exp(-variance * 1.5);
         
         return sampleFactor * varianceFactor;
     }
 
     /// <summary>
-    /// Calculate overall model confidence
+    /// Calculate overall model confidence.
+    /// Uses a weighted average that emphasizes high-confidence dimensions
+    /// and rewards having more dimensions covered.
     /// </summary>
     private double CalculateOverallConfidence(BeliefSnapshot snapshot)
     {
         if (!snapshot.Dimensions.Any())
             return 0.1;
 
-        // Weighted average of dimension confidences
-        var totalConfidence = snapshot.Dimensions
-            .Where(d => d.Confidence > 0)
-            .Average(d => d.Confidence);
+        // Use a weighted average that gives more weight to higher-confidence dimensions
+        // This prevents a few low-confidence dimensions from dragging the average down
+        var dimensions = snapshot.Dimensions.Where(d => d.Confidence > 0).ToList();
+        if (!dimensions.Any()) return 0.1;
 
-        // Bonus for having more dimensions
-        var coverageFactor = Math.Min(snapshot.Dimensions.Count / 20.0, 1.0);
+        // Weight each dimension by its own confidence (self-reinforcing)
+        var totalWeight = dimensions.Sum(d => d.Confidence);
+        var weightedAvg = totalWeight > 0
+            ? dimensions.Sum(d => d.Confidence * d.Confidence) / totalWeight
+            : 0.1;
 
-        return totalConfidence * (0.7 + 0.3 * coverageFactor);
+        // Coverage bonus: having more dimensions is good, but don't penalize early stages
+        // At 5 dims: 0.25, at 10 dims: 0.50, at 15 dims: 0.75
+        var coverageBonus = Math.Min(dimensions.Count / 20.0, 0.5);
+
+        return Math.Min(weightedAvg + coverageBonus, 0.98);
     }
 
     /// <summary>
@@ -368,6 +398,89 @@ public class BayesianInferenceEngine
         return $"Based on {snapshot.InteractionCount} interactions, this individual values {string.Join(", ", topValues)}. " +
                $"Key belief dimensions: {string.Join(", ", topDimensions)}. " +
                $"Overall model confidence: {snapshot.OverallConfidence:P0}.";
+    }
+
+    /// <summary>
+    /// Check whether the belief model has converged enough to stop asking questions.
+    /// Returns a ConvergenceResult indicating whether to stop and why.
+    /// </summary>
+    public ConvergenceResult CheckConvergence(BeliefSnapshot snapshot, UserProfile profile)
+    {
+        var result = new ConvergenceResult();
+
+        // Minimum questions before we even consider convergence
+        const int minQuestions = 8;
+        if (profile.InteractionCount < minQuestions)
+        {
+            result.ShouldStop = false;
+            result.Reason = $"Need at least {minQuestions} responses before convergence check.";
+            return result;
+        }
+
+        // Criterion 1: High overall confidence
+        const double highConfidenceThreshold = 0.75;
+        if (snapshot.OverallConfidence >= highConfidenceThreshold)
+        {
+            result.ShouldStop = true;
+            result.Reason = $"Model confidence ({snapshot.OverallConfidence:P0}) exceeds threshold ({highConfidenceThreshold:P0}).";
+            result.Confidence = snapshot.OverallConfidence;
+            return result;
+        }
+
+        // Criterion 2: Diminishing returns — confidence growth has plateaued
+        var recentSnapshots = profile.HistoricalSnapshots.TakeLast(5).ToList();
+        if (recentSnapshots.Count >= 5)
+        {
+            var confidenceGrowth = snapshot.OverallConfidence - recentSnapshots.First().OverallConfidence;
+            const double minGrowthThreshold = 0.03;
+            if (confidenceGrowth < minGrowthThreshold && snapshot.OverallConfidence >= 0.55)
+            {
+                result.ShouldStop = true;
+                result.Reason = $"Confidence growth has plateaued (only {confidenceGrowth:P2} growth over last 5 questions).";
+                result.Confidence = snapshot.OverallConfidence;
+                return result;
+            }
+        }
+
+        // Criterion 3: All key dimensions have sufficient confidence
+        const double dimensionConfidenceThreshold = 0.6;
+        const int minDimensionsForConvergence = 6;
+        var highConfidenceDimensions = snapshot.Dimensions
+            .Where(d => d.Confidence >= dimensionConfidenceThreshold)
+            .ToList();
+        if (highConfidenceDimensions.Count >= minDimensionsForConvergence && snapshot.OverallConfidence >= 0.5)
+        {
+            result.ShouldStop = true;
+            result.Reason = $"{highConfidenceDimensions.Count} dimensions have high confidence (≥{dimensionConfidenceThreshold:P0}).";
+            result.Confidence = snapshot.OverallConfidence;
+            return result;
+        }
+
+        // Criterion 4: Entropy is low (beliefs are well-defined)
+        if (snapshot.Statistics.Entropy < 0.3 && snapshot.OverallConfidence >= 0.5)
+        {
+            result.ShouldStop = true;
+            result.Reason = $"Belief distribution is well-defined (entropy: {snapshot.Statistics.Entropy:F3}).";
+            result.Confidence = snapshot.OverallConfidence;
+            return result;
+        }
+
+        // Criterion 5: Hard cap — don't ask more than 30 questions
+        const int maxQuestions = 30;
+        if (profile.InteractionCount >= maxQuestions)
+        {
+            result.ShouldStop = true;
+            result.Reason = $"Reached maximum question limit ({maxQuestions}).";
+            result.Confidence = snapshot.OverallConfidence;
+            return result;
+        }
+
+        result.ShouldStop = false;
+        result.Reason = $"Continuing: confidence={snapshot.OverallConfidence:P2}, " +
+                        $"high-confidence dims={highConfidenceDimensions.Count}/{minDimensionsForConvergence}, " +
+                        $"entropy={snapshot.Statistics.Entropy:F3}";
+        result.Confidence = snapshot.OverallConfidence;
+        return result;
     }
 
     #region Helper Classes

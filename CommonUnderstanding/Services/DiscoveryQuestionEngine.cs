@@ -459,10 +459,103 @@ public class DiscoveryQuestionEngine
     /// Generate initial survey multiple choice question.
     /// Pass <paramref name="forcedIndex"/> to override the profile interaction count
     /// when pre-generating multiple questions in a loop (otherwise they all resolve to the same index).
+    /// Uses random selection from unseen questions to avoid deterministic ordering.
     /// </summary>
     public UserInteraction GenerateInitialSurveyQuestion(UserProfile profile, int? forcedIndex = null)
     {
-        var questions = new List<(string Question, List<string> Options, List<string> Dimensions)>
+        var questions = GetInitialSurveyQuestionPool();
+
+        var pool = ExcludeAsked(questions,
+            profile.AskedQuestionHashes,
+            q => q.Question,
+            q => q.Options,
+            _ => null);
+
+        // Random selection from unseen pool for variety
+        var selectedQuestion = pool[new Random().Next(pool.Count)];
+
+        return new UserInteraction
+        {
+            UserId = profile.Id,
+            Type = InteractionType.StatementAgreement,
+            Content = new InteractionContent
+            {
+                Question = selectedQuestion.Question,
+                Format = InteractionFormat.MultipleChoice,
+                Options = selectedQuestion.Options
+            },
+            TargetedDimensions = selectedQuestion.Dimensions
+        };
+    }
+
+    /// <summary>
+    /// Select an initial survey question that targets specific high-uncertainty dimensions.
+    /// Returns null if no matching question is found.
+    /// </summary>
+    public UserInteraction? GenerateInitialSurveyQuestionTargeting(
+        UserProfile profile, 
+        List<string> targetDimensions)
+    {
+        // Reuse the same question pool as GenerateInitialSurveyQuestion
+        var questions = GetInitialSurveyQuestionPool();
+        
+        // Score each question by how many target dimensions it covers
+        var scored = questions
+            .Select(q => new
+            {
+                Question = q,
+                Score = q.Dimensions.Count(d => targetDimensions.Any(td =>
+                    d.Contains(td, StringComparison.OrdinalIgnoreCase) ||
+                    td.Contains(d, StringComparison.OrdinalIgnoreCase)))
+            })
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ToList();
+
+        if (!scored.Any())
+        {
+            _logger.LogInformation("No targeted initial survey question found for dimensions: {Dimensions}",
+                string.Join(", ", targetDimensions));
+            return null;
+        }
+
+        // Pick the best-matching question that hasn't been asked yet
+        foreach (var candidate in scored)
+        {
+            var hash = ComputeQuestionHash(candidate.Question.Question, candidate.Question.Options);
+            if (!profile.AskedQuestionHashes.Contains(hash))
+            {
+                profile.AskedQuestionHashes.Add(hash);
+                _logger.LogInformation(
+                    "Selected targeted initial question for dimensions {TargetDims}: {Question} (score: {Score})",
+                    string.Join(", ", targetDimensions), candidate.Question.Question, candidate.Score);
+
+                return new UserInteraction
+                {
+                    UserId = profile.Id,
+                    Type = InteractionType.StatementAgreement,
+                    Content = new InteractionContent
+                    {
+                        Question = candidate.Question.Question,
+                        Format = InteractionFormat.MultipleChoice,
+                        Options = candidate.Question.Options
+                    },
+                    TargetedDimensions = candidate.Question.Dimensions
+                };
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the pool of initial survey questions. Extracted to a method
+    /// so it can be shared between GenerateInitialSurveyQuestion and
+    /// GenerateInitialSurveyQuestionTargeting.
+    /// </summary>
+    private List<(string Question, List<string> Options, List<string> Dimensions)> GetInitialSurveyQuestionPool()
+    {
+        return new List<(string Question, List<string> Options, List<string> Dimensions)>
         {
             (
                 "What do you value most in life?",
@@ -585,28 +678,19 @@ public class DiscoveryQuestionEngine
                 new List<string> { "moral-reasoning", "moral-foundations", "values" }
             )
         };
+    }
 
-        var pool = ExcludeAsked(questions,
-            profile.AskedQuestionHashes,
-            q => q.Question,
-            q => q.Options,
-            _ => null);
-
-        var questionIndex = (forcedIndex ?? profile.InteractionCount) % pool.Count;
-        var selectedQuestion = pool[questionIndex];
-
-        return new UserInteraction
+    /// <summary>
+    /// Compute a hash for a question to detect duplicates
+    /// </summary>
+    private string ComputeQuestionHash(string question, List<string>? options = null)
+    {
+        var content = question ?? "";
+        if (options?.Any() == true)
         {
-            UserId = profile.Id,
-            Type = InteractionType.StatementAgreement,
-            Content = new InteractionContent
-            {
-                Question = selectedQuestion.Question,
-                Format = InteractionFormat.MultipleChoice,
-                Options = selectedQuestion.Options
-            },
-            TargetedDimensions = selectedQuestion.Dimensions
-        };
+            content += "|" + string.Join("|", options);
+        }
+        return content.GetHashCode().ToString();
     }
 
     /// <summary>

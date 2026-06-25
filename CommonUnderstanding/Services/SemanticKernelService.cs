@@ -70,10 +70,7 @@ public class SemanticKernelService
             var fallback = new FallbackChatCompletionService(
                 providers,
                 _logger,
-                _traceRecorder,
-                _configuration,
-                _scopeFactory,
-                _httpContextAccessor);
+                _traceRecorder);
 
             var builder = Kernel.CreateBuilder();
             builder.Services.AddSingleton<IChatCompletionService>(fallback);
