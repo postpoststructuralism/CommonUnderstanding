@@ -112,12 +112,10 @@
                 <textarea id="voteComment" class="form-control mt-3" rows="2"
                           placeholder="Optional comment…" maxlength="500"></textarea>
             </div>
-            <div class="modal-footer justify-content-between">
-                <button id="submitDownvoteBtn" class="btn btn-sm btn-outline-danger">
-                    <i class="bi bi-hand-thumbs-down"></i> Downvote
-                </button>
-                <button id="submitUpvoteBtn" class="btn btn-sm btn-success">
-                    <i class="bi bi-hand-thumbs-up"></i> Upvote
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="submitVoteBtn" class="btn btn-sm btn-success">
+                    <i class="bi bi-hand-thumbs-up"></i> Submit Upvote
                 </button>
             </div>
         </div>
@@ -227,12 +225,12 @@
             ${arg.warrantText ? `<p class="text-muted small mb-2">${escHtml(truncate(arg.warrantText, 200))}</p>` : ''}
             <div class="tags mb-2">${tagHtml}${aiLabel}</div>
             <div class="d-flex align-items-center gap-3">
-                <div class="vote-bar" onclick="event.preventDefault(); event.stopPropagation();">
-                    <button class="btn btn-sm btn-outline-success vote-trigger${upActive}" data-id="${arg.id}" title="Upvote">
+                <div class="vote-bar">
+                    <button class="btn btn-sm btn-outline-success vote-trigger${upActive}" data-id="${arg.id}" data-vote="Up" title="Upvote">
                         <i class="bi bi-hand-thumbs-up"></i>
                         <span class="upvote-count vote-count">${arg.upvotes ?? 0}</span>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger vote-trigger${downActive}" data-id="${arg.id}" title="Downvote">
+                    <button class="btn btn-sm btn-outline-danger vote-trigger${downActive}" data-id="${arg.id}" data-vote="Down" title="Downvote">
                         <i class="bi bi-hand-thumbs-down"></i>
                         <span class="downvote-count vote-count">${arg.downvotes ?? 0}</span>
                     </button>
@@ -295,38 +293,52 @@
     document.getElementById('loadMoreBtn').addEventListener('click', loadFeed);
 
     // ── Vote modal ────────────────────────────────────────────────────────────
+    let pendingVoteValue = null;
+
     document.getElementById('feedContainer').addEventListener('click', e => {
         const trigger = e.target.closest('.vote-trigger');
         if (!trigger) return;
+
+        // Prevent the parent <a> link from navigating
+        e.preventDefault();
+        e.stopPropagation();
+
         pendingVoteArgId = trigger.dataset.id;
+        pendingVoteValue = trigger.dataset.vote;
+
+        // Update modal title and button
+        const isUpvote = pendingVoteValue === 'Up';
+        document.getElementById('voteModalTitle').textContent = isUpvote ? 'Upvote Argument' : 'Downvote Argument';
+        document.getElementById('submitVoteBtn').innerHTML = isUpvote
+            ? '<i class="bi bi-hand-thumbs-up"></i> Submit Upvote'
+            : '<i class="bi bi-hand-thumbs-down"></i> Submit Downvote';
+        document.getElementById('submitVoteBtn').className = isUpvote
+            ? 'btn btn-sm btn-success'
+            : 'btn btn-sm btn-outline-danger';
+
         const modal = new bootstrap.Modal(document.getElementById('voteModal'));
         modal.show();
     });
 
-    async function castVote(voteValue) {
-        if (!pendingVoteArgId) return;
+    async function castVote() {
+        if (!pendingVoteArgId || !pendingVoteValue) return;
         const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
         const comment   = document.getElementById('voteComment').value.trim();
 
-        // Optimistic UI update
-        const card = document.getElementById(`arg-${pendingVoteArgId}`);
-        const upEl = card?.querySelector('.upvote-count');
-        const downEl = card?.querySelector('.downvote-count');
-
         if (hubConn.state === 'Connected') {
             try {
-                await hubConn.invoke('CastVote', pendingVoteArgId, voteValue, rationale, comment);
-                // UI will be updated by VoteCastConfirmed / VoteScoreUpdated handlers
+                await hubConn.invoke('CastVote', pendingVoteArgId, pendingVoteValue, rationale, comment);
             } catch (e) {
                 console.error('Vote via SignalR failed, trying REST:', e);
-                await restVote(pendingVoteArgId, voteValue, rationale, comment);
+                await restVote(pendingVoteArgId, pendingVoteValue, rationale, comment);
             }
         } else {
-            await restVote(pendingVoteArgId, voteValue, rationale, comment);
+            await restVote(pendingVoteArgId, pendingVoteValue, rationale, comment);
         }
 
         bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
         pendingVoteArgId = null;
+        pendingVoteValue = null;
     }
 
     async function restVote(argId, voteValue, rationale, comment) {
@@ -351,8 +363,7 @@
         }
     }
 
-    document.getElementById('submitUpvoteBtn').addEventListener('click', () => castVote('Up'));
-    document.getElementById('submitDownvoteBtn').addEventListener('click', () => castVote('Down'));
+    document.getElementById('submitVoteBtn').addEventListener('click', () => castVote());
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     function escHtml(str) {

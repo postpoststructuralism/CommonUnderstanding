@@ -23,6 +23,7 @@
     .wilson-fill { height: 100%; border-radius: 3px; background: #198754; }
     .vote-trigger.active-up { box-shadow: 0 0 0 2px #198754; background: rgba(25,135,84,0.12); }
     .vote-trigger.active-down { box-shadow: 0 0 0 2px #dc3545; background: rgba(220,53,69,0.12); }
+    .vote-modal-reason label { cursor: pointer; }
     .linked-arg-card {
         border: 1px solid var(--bs-border-color);
         border-radius: 0.5rem;
@@ -107,11 +108,11 @@
     <!-- Voting -->
     <div class="d-flex align-items-center gap-3 mb-3">
         <div class="vote-bar">
-            <button class="btn btn-outline-success vote-trigger@(upActive)" data-id="@Model.Id" title="Upvote">
+            <button class="btn btn-outline-success vote-trigger@(upActive)" data-id="@Model.Id" data-vote="Up" title="Upvote">
                 <i class="bi bi-hand-thumbs-up"></i>
                 <span class="upvote-count vote-count">@Model.UpvoteCount</span>
             </button>
-            <button class="btn btn-outline-danger vote-trigger@(downActive)" data-id="@Model.Id" title="Downvote">
+            <button class="btn btn-outline-danger vote-trigger@(downActive)" data-id="@Model.Id" data-vote="Down" title="Downvote">
                 <i class="bi bi-hand-thumbs-down"></i>
                 <span class="downvote-count vote-count">@Model.DownvoteCount</span>
             </button>
@@ -182,6 +183,51 @@
 }
 
 @section Scripts {
+<!-- ── Vote Modal ─────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="voteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="voteModalTitle">Cast Vote</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">Select your rationale:</p>
+                <div class="vote-modal-reason d-flex flex-column gap-2">
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="WellSourced" checked />
+                        <span>Well Sourced</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="LogicallyValid" />
+                        <span>Logically Valid</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="ChangedMyView" />
+                        <span>Changed My View</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="Fallacious" />
+                        <span>Fallacious</span>
+                    </label>
+                    <label class="d-flex align-items-center gap-2">
+                        <input type="radio" name="voteRationale" value="OffTopic" />
+                        <span>Off Topic</span>
+                    </label>
+                </div>
+                <textarea id="voteComment" class="form-control mt-3" rows="2"
+                          placeholder="Optional comment…" maxlength="500"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="submitVoteBtn" class="btn btn-sm btn-success">
+                    <i class="bi bi-hand-thumbs-up"></i> Submit Upvote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 <script>
 (function () {
@@ -233,14 +279,28 @@
     }
 
     // ── Vote modal ────────────────────────────────────────────────────────────
+    let pendingVoteValue = null;
+
     document.querySelectorAll('.vote-trigger').forEach(btn => {
         btn.addEventListener('click', () => {
+            pendingVoteValue = btn.dataset.vote;
+
+            const isUpvote = pendingVoteValue === 'Up';
+            document.getElementById('voteModalTitle').textContent = isUpvote ? 'Upvote Argument' : 'Downvote Argument';
+            document.getElementById('submitVoteBtn').innerHTML = isUpvote
+                ? '<i class="bi bi-hand-thumbs-up"></i> Submit Upvote'
+                : '<i class="bi bi-hand-thumbs-down"></i> Submit Downvote';
+            document.getElementById('submitVoteBtn').className = isUpvote
+                ? 'btn btn-sm btn-success'
+                : 'btn btn-sm btn-outline-danger';
+
             const modal = new bootstrap.Modal(document.getElementById('voteModal'));
             modal.show();
         });
     });
 
-    async function castVote(voteValue) {
+    async function castVote() {
+        if (!pendingVoteValue) return;
         const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
         const comment   = document.getElementById('voteComment').value.trim();
 
@@ -250,7 +310,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     argumentId: argId,
-                    vote: voteValue,
+                    vote: pendingVoteValue,
                     rationale: rationale,
                     comment: comment
                 })
@@ -262,10 +322,12 @@
         } catch (e) {
             console.error('Vote failed:', e);
         }
+
+        bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
+        pendingVoteValue = null;
     }
 
-    document.getElementById('submitUpvoteBtn')?.addEventListener('click', () => castVote('Up'));
-    document.getElementById('submitDownvoteBtn')?.addEventListener('click', () => castVote('Down'));
+    document.getElementById('submitVoteBtn')?.addEventListener('click', () => castVote());
 })();
 </script>
 }
