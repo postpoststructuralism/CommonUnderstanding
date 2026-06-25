@@ -86,7 +86,7 @@ public class VotingHub : Hub
 
         // Confirm to caller
         await Clients.Caller.SendAsync("VoteCastConfirmed",
-            new { argumentId, newTally = result.Tally },
+            new { argumentId, vote = voteValue.ToString(), newTally = result.Tally },
             Context.ConnectionAborted);
 
         // Broadcast updated tally to all subscribers of this argument
