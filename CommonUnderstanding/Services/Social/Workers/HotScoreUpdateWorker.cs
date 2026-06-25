@@ -14,7 +14,7 @@ namespace CommonUnderstanding.Services.Social.Workers;
 /// </summary>
 public class HotScoreUpdateWorker : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<HotScoreUpdateWorker> _logger;
 
@@ -22,7 +22,7 @@ public class HotScoreUpdateWorker : BackgroundService
     private static readonly TimeSpan OldInterval = TimeSpan.FromMinutes(60);
 
     public HotScoreUpdateWorker(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         IConfiguration configuration,
         ILogger<HotScoreUpdateWorker> logger)
     {

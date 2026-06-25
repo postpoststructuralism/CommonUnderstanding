@@ -20,7 +20,6 @@ namespace CommonUnderstanding.Hubs;
 ///   "VoteCastConfirmed" — { argumentId, newTally } (caller only)
 ///   "VoteRejected"      — { reason } (caller only)
 /// </summary>
-[Authorize]
 public class VotingHub : Hub
 {
     private readonly VotingService _votingService;
@@ -34,6 +33,7 @@ public class VotingHub : Hub
 
     // ── Group subscriptions ───────────────────────────────────────────────────
 
+    [AllowAnonymous]
     public async Task SubscribeToArgument(Guid argumentId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, GroupKey(argumentId));
@@ -44,6 +44,7 @@ public class VotingHub : Hub
             await Clients.Caller.SendAsync("VoteScoreUpdated", tally, Context.ConnectionAborted);
     }
 
+    [AllowAnonymous]
     public async Task UnsubscribeFromArgument(Guid argumentId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupKey(argumentId));
@@ -51,6 +52,7 @@ public class VotingHub : Hub
 
     // ── Vote actions ──────────────────────────────────────────────────────────
 
+    [Authorize]
     public async Task CastVote(Guid argumentId, string vote, string rationale, string? comment = null)
     {
         var userId = Context.UserIdentifier;
@@ -92,6 +94,7 @@ public class VotingHub : Hub
             .SendAsync("VoteScoreUpdated", result.Tally, Context.ConnectionAborted);
     }
 
+    [Authorize]
     public async Task RevokeVote(Guid argumentId)
     {
         var userId = Context.UserIdentifier;
@@ -105,5 +108,5 @@ public class VotingHub : Hub
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static string GroupKey(Guid argumentId) => $"arg-votes-{argumentId}";
+    public static string GroupKey(Guid argumentId) => $"arg-votes-{argumentId}";
 }

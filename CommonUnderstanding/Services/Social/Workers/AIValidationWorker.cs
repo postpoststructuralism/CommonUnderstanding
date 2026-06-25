@@ -14,7 +14,7 @@ namespace CommonUnderstanding.Services.Social.Workers;
 /// </summary>
 public class AIValidationWorker : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AIValidationWorker> _logger;
@@ -22,7 +22,7 @@ public class AIValidationWorker : BackgroundService
     private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(30);
 
     public AIValidationWorker(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
         ILogger<AIValidationWorker> logger)

@@ -1,8 +1,10 @@
 using CommonUnderstanding.Data;
+using CommonUnderstanding.Hubs;
 using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services.Social;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -20,13 +22,16 @@ public class ArgumentVoteController : ControllerBase
 {
     private readonly VotingService _votingService;
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly IHubContext<VotingHub> _hubContext;
 
     public ArgumentVoteController(
         VotingService votingService,
-        IDbContextFactory<ApplicationDbContext> dbFactory)
+        IDbContextFactory<ApplicationDbContext> dbFactory,
+        IHubContext<VotingHub> hubContext)
     {
         _votingService = votingService;
         _dbFactory = dbFactory;
+        _hubContext = hubContext;
     }
 
     /// <summary>GET /api/arguments/{id}/votes/tally — public tally snapshot.</summary>
@@ -87,6 +92,10 @@ public class ArgumentVoteController : ControllerBase
             return UnprocessableEntity(new { title = "Vote rejected.", detail = result.ErrorMessage });
         }
 
+        // Broadcast updated tally to all SignalR subscribers
+        await _hubContext.Clients.Group(VotingHub.GroupKey(argumentId))
+            .SendAsync("VoteScoreUpdated", result.Tally, ct);
+
         return Ok(result.Tally);
     }
 
@@ -99,6 +108,11 @@ public class ArgumentVoteController : ControllerBase
         if (userId is null) return Unauthorized();
 
         var tally = await _votingService.RevokeVoteAsync(userId, argumentId, ct);
+
+        // Broadcast updated tally to all SignalR subscribers
+        await _hubContext.Clients.Group(VotingHub.GroupKey(argumentId))
+            .SendAsync("VoteScoreUpdated", tally, ct);
+
         return Ok(tally);
     }
 }

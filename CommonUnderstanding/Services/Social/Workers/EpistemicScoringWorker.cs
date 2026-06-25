@@ -14,7 +14,7 @@ namespace CommonUnderstanding.Services.Social.Workers;
 /// </summary>
 public class EpistemicScoringWorker : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EpistemicScoringWorker> _logger;
 
@@ -22,7 +22,7 @@ public class EpistemicScoringWorker : BackgroundService
     private static readonly TimeSpan StaleThreshold = TimeSpan.FromMinutes(15);
 
     public EpistemicScoringWorker(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
         ILogger<EpistemicScoringWorker> logger)
     {

@@ -27,7 +27,7 @@ namespace CommonUnderstanding.Hubs;
 [Authorize]
 public class Phase2DebateHub : Hub
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly Services.Social.Plugins.FallacyDetectionPlugin _fallacyPlugin;
     private readonly Services.Social.XPAwardService _xpAwards;
     private readonly ILogger<Phase2DebateHub> _logger;
@@ -37,7 +37,7 @@ public class Phase2DebateHub : Hub
     private static readonly object _roomLock = new();
 
     public Phase2DebateHub(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         Services.Social.Plugins.FallacyDetectionPlugin fallacyPlugin,
         Services.Social.XPAwardService xpAwards,
         ILogger<Phase2DebateHub> logger)

@@ -13,19 +13,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 // Add EF Core with PostgreSQL
-// Keep the DbContext as Scoped but register the DbContextOptions as Singleton so
-// singletons (like IDbContextFactory) that depend on options can be validated.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
-    ServiceLifetime.Scoped,
-    ServiceLifetime.Singleton);
-
-// EF Core DbContext factory for use in SignalR hubs and background workers.
-// Configure both the context lifetime and the options lifetime as Singleton so
-// the factory (a singleton) does not capture scoped options which would
-// cause DI validation errors when hosted services consume the factory.
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// EF Core DbContext factory for use in SignalR hubs and background workers
+// Must be Scoped so it can consume the Scoped DbContextOptions registered by AddDbContext
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
+    ServiceLifetime.Scoped);
+
+// Singleton-safe wrapper for workers and hubs that can't consume Scoped services
+builder.Services.AddSingleton<SingletonDbContextFactory>();
 
 
 // Add HttpContextAccessor for views that need Request access
@@ -93,6 +91,27 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
+        // Return 401 for API routes instead of redirecting to login
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
     });
 
 // Register Multi-User Convergence services (Phase 6)
@@ -108,12 +127,10 @@ builder.Services.AddScoped<EpistemicScoringService>();
 builder.Services.AddScoped<BadgeAwardService>();
 builder.Services.AddScoped<XPAwardService>();
 builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddScoped<FeedService>();
 
 // Voting
 builder.Services.AddScoped<VotingService>();
-
-// Feed aggregation
-builder.Services.AddScoped<FeedService>();
 
 // Argument chain and worldview logic
 builder.Services.AddScoped<ArgumentChainService>();
@@ -223,6 +240,13 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
+
+    // Seed Phase 2 sample data in development
+    if (app.Environment.IsDevelopment())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await Phase2SeedData.SeedAllAsync(db, logger);
+    }
 }
 
 app.Run();

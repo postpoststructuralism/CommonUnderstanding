@@ -27,11 +27,11 @@ namespace CommonUnderstanding.Hubs;
 [Authorize]
 public class ChainUpdateHub : Hub
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly ILogger<ChainUpdateHub> _logger;
 
     public ChainUpdateHub(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         ILogger<ChainUpdateHub> logger)
     {
         _dbFactory = dbFactory;

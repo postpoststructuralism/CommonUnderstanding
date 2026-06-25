@@ -12,14 +12,14 @@ namespace CommonUnderstanding.Services.Social.Workers;
 /// </summary>
 public class EmbeddingBackfillWorker : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EmbeddingBackfillWorker> _logger;
 
     private static readonly TimeSpan PollingInterval = TimeSpan.FromMinutes(10);
 
     public EmbeddingBackfillWorker(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
+        SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
         ILogger<EmbeddingBackfillWorker> logger)
     {

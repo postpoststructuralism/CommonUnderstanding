@@ -181,6 +181,21 @@
         updateCardTally(tally.argumentId, tally);
     });
 
+    hubConn.on('VoteCastConfirmed', data => {
+        updateCardTally(data.argumentId, data.newTally);
+        // Flash the card to show success
+        const card = document.getElementById(`arg-${data.argumentId}`);
+        if (card) {
+            card.style.transition = 'box-shadow 0.3s ease';
+            card.style.boxShadow = '0 0 0 3px #198754';
+            setTimeout(() => { card.style.boxShadow = ''; }, 1500);
+        }
+    });
+
+    hubConn.on('VoteRejected', data => {
+        alert('Vote rejected: ' + (data.reason || 'Unknown error'));
+    });
+
     async function startHub() {
         try { await hubConn.start(); } catch (e) { console.warn('VotingHub unavailable:', e); }
     }
@@ -269,9 +284,15 @@
         const upEl   = card.querySelector('.upvote-count');
         const downEl = card.querySelector('.downvote-count');
         const fill   = card.querySelector('.wilson-fill');
-        if (upEl)   upEl.textContent   = tally.upvoteCount ?? 0;
-        if (downEl) downEl.textContent = tally.downvoteCount ?? 0;
-        if (fill)   fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%';
+        if (upEl)   { upEl.textContent   = tally.upvoteCount ?? 0; pulseElement(upEl); }
+        if (downEl) { downEl.textContent = tally.downvoteCount ?? 0; pulseElement(downEl); }
+        if (fill)   { fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%'; }
+    }
+
+    function pulseElement(el) {
+        el.style.transition = 'transform 0.15s ease';
+        el.style.transform = 'scale(1.3)';
+        setTimeout(() => { el.style.transform = 'scale(1)'; }, 150);
     }
 
     // ── Sort buttons ──────────────────────────────────────────────────────────
@@ -311,24 +332,47 @@
         const rationale = document.querySelector('input[name="voteRationale"]:checked')?.value || 'WellSourced';
         const comment   = document.getElementById('voteComment').value.trim();
 
+        // Optimistic UI update
+        const card = document.getElementById(`arg-${pendingVoteArgId}`);
+        const upEl = card?.querySelector('.upvote-count');
+        const downEl = card?.querySelector('.downvote-count');
+
         if (hubConn.state === 'Connected') {
             try {
                 await hubConn.invoke('CastVote', pendingVoteArgId, voteValue, rationale, comment);
+                // UI will be updated by VoteCastConfirmed / VoteScoreUpdated handlers
             } catch (e) {
-                console.error('Vote failed:', e);
+                console.error('Vote via SignalR failed, trying REST:', e);
+                await restVote(pendingVoteArgId, voteValue, rationale, comment);
             }
         } else {
-            // Fallback: REST
-            const res = await fetch(`/api/arguments/${pendingVoteArgId}/votes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vote: voteValue, rationale, comment })
-            });
-            if (res.ok) loadFeed(true);
+            await restVote(pendingVoteArgId, voteValue, rationale, comment);
         }
 
         bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
         pendingVoteArgId = null;
+    }
+
+    async function restVote(argId, voteValue, rationale, comment) {
+        try {
+            const res = await fetch(`/api/arguments/${argId}/votes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vote: voteValue, rationale, comment })
+            });
+            if (res.ok) {
+                const tally = await res.json();
+                // Update UI immediately with the returned tally
+                updateCardTally(argId, tally);
+            } else if (res.status === 401) {
+                alert('Please log in to vote.');
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert('Vote failed: ' + (err.detail || err.title || 'Unknown error'));
+            }
+        } catch (e) {
+            console.error('REST vote failed:', e);
+        }
     }
 
     document.getElementById('submitUpvoteBtn').addEventListener('click', () => castVote('Up'));
