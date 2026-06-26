@@ -19,6 +19,8 @@ namespace CommonUnderstanding.Hubs;
 ///   "VoteScoreUpdated"  — VoteTallyDto (broadcast to argument group)
 ///   "VoteCastConfirmed" — { argumentId, newTally } (caller only)
 ///   "VoteRejected"      — { reason } (caller only)
+///   "ReplyAdded"        — { parentId, replyId, replyTitle } (broadcast to argument group)
+///   "ReplyCountUpdated" — { argumentId, newCount } (broadcast to argument group)
 /// </summary>
 public class VotingHub : Hub
 {
@@ -109,4 +111,16 @@ public class VotingHub : Hub
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     public static string GroupKey(Guid argumentId) => $"arg-votes-{argumentId}";
+    
+    public async Task NotifyReplyAdded(Guid parentId, Guid replyId, string replyTitle)
+    {
+        await Clients.Group(GroupKey(parentId))
+            .SendAsync("ReplyAdded", new { parentId, replyId, replyTitle });
+    }
+    
+    public async Task NotifyReplyCountUpdated(Guid argumentId, int newCount)
+    {
+        await Clients.Group(GroupKey(argumentId))
+            .SendAsync("ReplyCountUpdated", new { argumentId, newCount });
+    }
 }

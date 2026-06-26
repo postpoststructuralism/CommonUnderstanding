@@ -31,6 +31,23 @@
         transition: box-shadow 0.15s ease;
     }
     .linked-arg-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .reply-thread {
+        border-left: 2px solid var(--bs-border-color);
+        padding-left: 8px;
+        margin-bottom: 4px;
+    }
+    .reply-thread .reply-thread {
+        border-left-color: var(--bs-secondary-bg);
+    }
+    .nested-replies {
+        transition: all 0.2s ease;
+    }
+    .toggle-nested {
+        transition: transform 0.15s ease;
+    }
+    .toggle-nested:hover {
+        transform: scale(1.1);
+    }
 </style>
 }
 
@@ -182,6 +199,99 @@
     </div>
 }
 
+<!-- Reply Section -->
+<div id="replies" class="mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="bi bi-chat-left me-2"></i>Replies
+            <span class="badge bg-secondary ms-2">@Model.ReplyCount</span>
+        </h5>
+        <button class="btn btn-sm btn-outline-primary" id="showReplyFormBtn">
+            <i class="bi bi-plus-circle me-1"></i>Add Reply
+        </button>
+    </div>
+
+    <!-- Reply Form (initially hidden) -->
+    <div id="replyFormContainer" class="mb-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Add a Follow-up Argument</h6>
+                <form id="replyForm">
+                    <div class="mb-3">
+                        <label for="replyTitle" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="replyTitle" 
+                               placeholder="Brief title for your reply" maxlength="300" required>
+                        <div class="form-text">Summarize your response in a few words</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="replyClaim" class="form-label">Claim (Optional)</label>
+                        <textarea class="form-control" id="replyClaim" rows="2" 
+                                  placeholder="The main claim of your reply argument" maxlength="500"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="replyWarrant" class="form-label">Warrant / Evidence *</label>
+                        <textarea class="form-control" id="replyWarrant" rows="4" 
+                                  placeholder="Explain your reasoning or provide evidence" maxlength="5000" required></textarea>
+                        <div class="form-text">This is the main content of your reply</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="replyResolution" class="form-label">Resolution (Optional)</label>
+                        <textarea class="form-control" id="replyResolution" rows="2" 
+                                  placeholder="Conclusion or resolution of your argument" maxlength="2000"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="replyTags" class="form-label">Tags (Optional)</label>
+                        <input type="text" class="form-control" id="replyTags" 
+                               placeholder="comma,separated,tags">
+                        <div class="form-text">Add relevant tags to categorize your reply</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="replyAnnotation" class="form-label">Annotation (Optional)</label>
+                        <textarea class="form-control" id="replyAnnotation" rows="2" 
+                                  placeholder="Explain how this relates to the parent argument" maxlength="500"></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="form-text">
+                            <span id="charCount">0</span> / 5000 characters
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary me-2" id="cancelReplyBtn">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitReplyBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                Post Reply
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Replies List -->
+    <div id="repliesList" class="mb-4">
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading replies...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load More Button -->
+    <div class="text-center">
+        <button id="loadMoreRepliesBtn" class="btn btn-outline-secondary btn-sm" style="display: none;">
+            Load more replies
+        </button>
+    </div>
+</div>
+
 @section Scripts {
 <!-- ── Vote Modal ─────────────────────────────────────────────────────────── -->
 <div class="modal fade" id="voteModal" tabindex="-1" aria-hidden="true">
@@ -328,6 +438,293 @@
     }
 
     document.getElementById('submitVoteBtn')?.addEventListener('click', () => castVote());
+
+    // ── Reply functionality ──────────────────────────────────────────────────
+    let replySkip = 0;
+    const REPLY_PAGE_SIZE = 20;
+    let totalReplies = @Model.ReplyCount;
+
+    // Character counter for warrant text
+    const warrantTextarea = document.getElementById('replyWarrant');
+    const charCount = document.getElementById('charCount');
+    
+    if (warrantTextarea && charCount) {
+        warrantTextarea.addEventListener('input', () => {
+            charCount.textContent = warrantTextarea.value.length;
+        });
+    }
+
+    // Show/hide reply form
+    document.getElementById('showReplyFormBtn')?.addEventListener('click', () => {
+        const formContainer = document.getElementById('replyFormContainer');
+        formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById('cancelReplyBtn')?.addEventListener('click', () => {
+        document.getElementById('replyFormContainer').style.display = 'none';
+        document.getElementById('replyForm').reset();
+        charCount.textContent = '0';
+    });
+
+    // Load replies
+    async function loadReplies(reset = false) {
+        if (reset) {
+            replySkip = 0;
+            document.getElementById('repliesList').innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading replies...</span>
+                    </div>
+                </div>`;
+        }
+
+        try {
+            const response = await fetch(`/api/arguments/${argId}/follow-ups?skip=${replySkip}&take=${REPLY_PAGE_SIZE}`);
+            if (!response.ok) throw new Error('Failed to load replies');
+            
+            const data = await response.json();
+            totalReplies = data.parentReplyCount || data.totalCount || 0;
+            
+            if (reset) {
+                document.getElementById('repliesList').innerHTML = '';
+            }
+            
+            if (data.arguments && data.arguments.length > 0) {
+                data.arguments.forEach(reply => {
+                    document.getElementById('repliesList').insertAdjacentHTML('beforeend', renderReply(reply));
+                });
+                
+                replySkip += data.arguments.length;
+                
+                // Show/hide load more button
+                const loadMoreBtn = document.getElementById('loadMoreRepliesBtn');
+                if (replySkip < totalReplies) {
+                    loadMoreBtn.style.display = 'block';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+            } else if (replySkip === 0) {
+                document.getElementById('repliesList').innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-chat-left" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No replies yet. Be the first to respond!</p>
+                    </div>`;
+            }
+        } catch (error) {
+            console.error('Error loading replies:', error);
+            document.getElementById('repliesList').innerHTML = `
+                <div class="alert alert-danger">
+                    Failed to load replies. Please try again.
+                </div>`;
+        }
+    }
+
+    // Render a single reply (with nested thread support)
+    function renderReply(reply, depth = 0) {
+        const wilson = Math.round((reply.wilsonScore || 0) * 100);
+        const timeAgo = new Date(reply.createdAt).toLocaleDateString();
+        const tagsHtml = (reply.tags || []).map(tag => 
+            `<span class="badge bg-secondary me-1">${escapeHtml(tag)}</span>`
+        ).join('');
+        const hasReplies = (reply.replyCount || 0) > 0;
+        const marginLeft = Math.min(depth * 24, 96); // Indent up to 4 levels
+        
+        return `
+        <div class="reply-thread" style="margin-left: ${marginLeft}px;">
+            <div class="card mb-2" id="reply-${reply.id}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">${escapeHtml(reply.title)}</h6>
+                        <small class="text-muted">${timeAgo}</small>
+                    </div>
+                    
+                    ${reply.claimProposition ? `
+                    <div class="mb-2 p-2 bg-light rounded">
+                        <strong>Claim:</strong> ${escapeHtml(reply.claimProposition.text)}
+                    </div>` : ''}
+                    
+                    <p class="card-text">${escapeHtml(reply.warrantText || '')}</p>
+                    
+                    ${reply.resolutionText ? `
+                    <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                        <strong>Resolution:</strong> ${escapeHtml(reply.resolutionText)}
+                    </div>` : ''}
+                    
+                    ${tagsHtml ? `<div class="mt-2">${tagsHtml}</div>` : ''}
+                    
+                    <div class="d-flex align-items-center gap-3 mt-3">
+                        <div class="vote-bar">
+                            <button class="btn btn-sm btn-outline-success vote-trigger" data-id="${reply.id}" data-vote="Up">
+                                <i class="bi bi-hand-thumbs-up"></i>
+                                <span class="upvote-count">${reply.upvoteCount || 0}</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger vote-trigger" data-id="${reply.id}" data-vote="Down">
+                                <i class="bi bi-hand-thumbs-down"></i>
+                                <span class="downvote-count">${reply.downvoteCount || 0}</span>
+                            </button>
+                            <a href="/SocialView/Detail/${reply.id}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-chat-left"></i>
+                                <span class="reply-count">${reply.replyCount || 0}</span>
+                            </a>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="wilson-bar">
+                                <div class="wilson-fill" style="width:${wilson}%"></div>
+                            </div>
+                        </div>
+                        ${hasReplies ? `
+                        <button class="btn btn-sm btn-outline-info toggle-nested" data-reply-id="${reply.id}" title="Toggle nested replies">
+                            <i class="bi bi-arrows-collapse"></i>
+                        </button>` : ''}
+                    </div>
+                </div>
+            </div>
+            ${hasReplies ? `
+            <div class="nested-replies" id="nested-${reply.id}" style="display: none;">
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading nested replies...</span>
+                    </div>
+                </div>
+            </div>` : ''}
+        </div>`;
+    }
+
+    // Load nested replies for a specific reply
+    async function loadNestedReplies(replyId, depth = 1) {
+        const container = document.getElementById(`nested-${replyId}`);
+        if (!container) return;
+        
+        // If already loaded, just toggle visibility
+        if (container.dataset.loaded === 'true') {
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            const btn = document.querySelector(`.toggle-nested[data-reply-id="${replyId}"] i`);
+            if (btn) {
+                btn.className = container.style.display === 'none' 
+                    ? 'bi bi-arrows-collapse' 
+                    : 'bi bi-arrows-expand';
+            }
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/arguments/${replyId}/follow-ups?skip=0&take=20`);
+            if (!response.ok) throw new Error('Failed to load nested replies');
+            
+            const data = await response.json();
+            
+            if (data.arguments && data.arguments.length > 0) {
+                container.innerHTML = '';
+                data.arguments.forEach(nestedReply => {
+                    container.insertAdjacentHTML('beforeend', renderReply(nestedReply, depth));
+                });
+            } else {
+                container.innerHTML = '<div class="text-muted small py-1 ps-3">No further replies</div>';
+            }
+            
+            container.dataset.loaded = 'true';
+            container.style.display = 'block';
+            
+            const btn = document.querySelector(`.toggle-nested[data-reply-id="${replyId}"] i`);
+            if (btn) btn.className = 'bi bi-arrows-expand';
+            
+        } catch (error) {
+            console.error('Error loading nested replies:', error);
+            container.innerHTML = '<div class="text-danger small py-1 ps-3">Failed to load replies</div>';
+            container.style.display = 'block';
+        }
+    }
+
+    // Delegate click events for nested reply toggles
+    document.getElementById('repliesList')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.toggle-nested');
+        if (toggleBtn) {
+            const replyId = toggleBtn.dataset.replyId;
+            loadNestedReplies(replyId, 1);
+        }
+    });
+
+    // Submit reply form
+    document.getElementById('replyForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitReplyBtn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const originalText = submitBtn.textContent;
+        
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        
+        try {
+            const tags = document.getElementById('replyTags').value
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
+            
+            const replyData = {
+                title: document.getElementById('replyTitle').value,
+                warrantText: document.getElementById('replyWarrant').value,
+                claimText: document.getElementById('replyClaim').value || null,
+                resolutionText: document.getElementById('replyResolution').value || null,
+                tags: tags,
+                annotation: document.getElementById('replyAnnotation').value || null
+            };
+            
+            const response = await fetch(`/api/arguments/${argId}/follow-ups`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(replyData)
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to post reply');
+            }
+            
+            const result = await response.json();
+            
+            // Reset form
+            document.getElementById('replyForm').reset();
+            charCount.textContent = '0';
+            document.getElementById('replyFormContainer').style.display = 'none';
+            
+            // Show success message
+            alert('Reply posted successfully!');
+            
+            // Reload replies
+            loadReplies(true);
+            
+            // Update reply count in header
+            const replyCountBadge = document.querySelector('#replies h5 .badge');
+            if (replyCountBadge) {
+                replyCountBadge.textContent = totalReplies + 1;
+            }
+            
+        } catch (error) {
+            console.error('Error posting reply:', error);
+            alert(`Error: ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    });
+
+    // Load more replies
+    document.getElementById('loadMoreRepliesBtn')?.addEventListener('click', () => {
+        loadReplies(false);
+    });
+
+    // Utility function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initial load of replies
+    loadReplies(true);
 })();
 </script>
 }

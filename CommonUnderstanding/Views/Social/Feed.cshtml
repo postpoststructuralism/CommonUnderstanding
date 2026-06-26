@@ -28,24 +28,6 @@
 </style>
 }
 
-<div class="cu-workspace-hero mb-4">
-    <div class="cu-workspace-hero-content">
-        <div>
-            <span class="cu-workspace-tag"><i class="bi bi-bar-chart-steps"></i> Social</span>
-            <h1 class="cu-page-heading mt-3 mb-2">Social Feed</h1>
-            <p class="cu-workspace-lead mb-0">Public arguments ranked by community consensus.</p>
-        </div>
-        <div class="cu-workspace-actions">
-            <a class="cu-btn-primary" href="/Argument/Submit">
-                <i class="bi bi-plus-circle"></i> New Argument
-            </a>
-            <a class="btn btn-outline-secondary ms-2" href="/Argument">
-                <i class="bi bi-cloud-arrow-up"></i> Publish existing
-            </a>
-        </div>
-    </div>
-</div>
-
 <!-- Sort + filter toolbar -->
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     <span class="text-muted small me-1">Sort:</span>
@@ -234,6 +216,10 @@
                         <i class="bi bi-hand-thumbs-down"></i>
                         <span class="downvote-count vote-count">${arg.downvotes ?? 0}</span>
                     </button>
+                    <a href="/SocialView/Detail/${arg.id}#replies" class="btn btn-sm btn-outline-secondary" title="Replies">
+                        <i class="bi bi-chat-left"></i>
+                        <span class="reply-count vote-count">${arg.replyCount ?? 0}</span>
+                    </a>
                 </div>
                 <div class="flex-grow-1">
                     <div class="wilson-bar">
@@ -250,11 +236,16 @@
         if (!card) return;
         const upEl   = card.querySelector('.upvote-count');
         const downEl = card.querySelector('.downvote-count');
+        const replyEl = card.querySelector('.reply-count');
         const fill   = card.querySelector('.wilson-fill');
         const upBtn  = card.querySelector('.btn-outline-success');
         const downBtn = card.querySelector('.btn-outline-danger');
         if (upEl)   { upEl.textContent   = tally.upvotes ?? 0; pulseElement(upEl); }
         if (downEl) { downEl.textContent = tally.downvotes ?? 0; pulseElement(downEl); }
+        if (replyEl && tally.replyCount !== undefined) { 
+            replyEl.textContent = tally.replyCount; 
+            pulseElement(replyEl); 
+        }
         if (fill)   { fill.style.width   = Math.round((tally.wilsonScore || 0) * 100) + '%'; }
         // Update active button state
         if (newVote !== undefined) {

@@ -7,7 +7,8 @@ public enum LinkType
     Supports,
     Contradicts,
     Refines,
-    Extends
+    Extends,
+    Reply
 }
 
 /// <summary>

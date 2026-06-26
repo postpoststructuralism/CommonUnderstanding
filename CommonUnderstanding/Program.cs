@@ -11,6 +11,7 @@ using System.Security.Claims;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddControllers();
 builder.Services.AddControllersWithViews();
 
 // Add EF Core with PostgreSQL
@@ -146,6 +147,10 @@ builder.Services.AddScoped<FeedService>();
 // Voting
 builder.Services.AddScoped<VotingService>();
 
+// Follow-up arguments (replies)
+builder.Services.AddScoped<FollowUpArgumentService>();
+builder.Services.AddScoped<ArgumentValidationService>();
+
 // Argument chain and worldview logic
 builder.Services.AddScoped<ArgumentChainService>();
 
@@ -163,6 +168,7 @@ builder.Services.AddHostedService<HotScoreUpdateWorker>();
 builder.Services.AddHostedService<EpistemicScoringWorker>();
 builder.Services.AddHostedService<AIValidationWorker>();
 builder.Services.AddHostedService<EmbeddingBackfillWorker>();
+builder.Services.AddHostedService<ReplyCountWorker>();
 
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
@@ -174,6 +180,9 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
+
+// Add authentication middleware
+app.UseAuthentication();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

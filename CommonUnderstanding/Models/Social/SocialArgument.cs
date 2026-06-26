@@ -46,6 +46,9 @@ public class SocialArgument : BaseEntity
     public double WilsonScore { get; set; } = 0.0;
     public double ControversyScore { get; set; } = 0.0;
 
+    // ── Reply tracking ──
+    public int ReplyCount { get; set; } = 0;
+
     // ── AI validation ──
     public bool IsAIValidated { get; set; } = false;
     public double? AIValidityScore { get; set; }

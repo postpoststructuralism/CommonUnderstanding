@@ -259,7 +259,8 @@ public class VotingService
             TotalVotes: argument.UpvoteCount + argument.DownvoteCount,
             ControversyScore: ScoringAlgorithms.ControversyScore(
                 ScoringAlgorithms.EpistemicWeightedVoteCount(votes, VoteValue.Up, maxMultiplier),
-                ScoringAlgorithms.EpistemicWeightedVoteCount(votes, VoteValue.Down, maxMultiplier))
+                ScoringAlgorithms.EpistemicWeightedVoteCount(votes, VoteValue.Down, maxMultiplier)),
+            ReplyCount: argument.ReplyCount
         );
     }
 }
@@ -274,7 +275,8 @@ public record VoteTallyDto(
     double WilsonScore,
     double HotScore,
     int TotalVotes,
-    double ControversyScore);
+    double ControversyScore,
+    int ReplyCount);
 
 public class VoteCastResult
 {
