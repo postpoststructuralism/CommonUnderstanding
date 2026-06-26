@@ -158,7 +158,11 @@ public class SocialArgumentController : ControllerBase
                 wilsonScore = a.WilsonScore,
                 replyCount = a.ReplyCount,
                 tags = a.Tags,
-                createdAt = a.CreatedAt
+                createdAt = a.CreatedAt,
+                isAIValidated = a.IsAIValidated,
+                aiValidityScore = a.AIValidityScore,
+                followUpRelevanceScore = a.FollowUpRelevanceScore,
+                followUpEffectivenessNotes = a.FollowUpEffectivenessNotes
             }),
             totalCount,
             parentReplyCount,

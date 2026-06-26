@@ -176,14 +176,125 @@ public class FallacyDetectionPlugin
                 "Could not parse AI response.");
         }
     }
+
+    /// <summary>
+    /// Assesses how relevant and effective a follow-up argument (reply) is at
+    /// addressing its parent argument. Returns a score from 0.0 to 1.0 with
+    /// explanatory notes.
+    /// </summary>
+    [KernelFunction("AssessFollowUpRelevance")]
+    [Description("Assesses how relevant and effective a follow-up argument is at addressing its parent argument.")]
+    public async Task<FollowUpRelevanceResult> AssessFollowUpRelevanceAsync(
+        [Description("The follow-up (reply) argument text")] string replyText,
+        [Description("The parent argument text that the reply is responding to")] string parentText,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(replyText) || string.IsNullOrWhiteSpace(parentText))
+            return new FollowUpRelevanceResult(0.5, "Insufficient text to assess.");
+
+        var kernel = _kernelService.GetKernel();
+        var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+        var history = new ChatHistory();
+        history.AddSystemMessage(BuildRelevanceSystemPrompt());
+        history.AddUserMessage(BuildRelevanceUserPrompt(replyText, parentText));
+
+        try
+        {
+            var response = await chatService.GetChatMessageContentAsync(
+                history,
+                cancellationToken: cancellationToken);
+
+            return ParseRelevanceResponse(response.Content ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Follow-up relevance assessment failed; returning neutral score.");
+            return new FollowUpRelevanceResult(0.5, "Relevance assessment unavailable.");
+        }
+    }
+
+    private static string BuildRelevanceSystemPrompt() => """
+        You are a debate analyst evaluating how well a follow-up argument (reply) addresses
+        the argument it is responding to.
+
+        Evaluate the reply on these criteria:
+        1. Relevance (0.0–1.0): Does the reply directly engage with the parent's claim and warrant,
+           or does it change the subject / introduce unrelated points?
+        2. Effectiveness (0.0–1.0): How well does the reply challenge, support, or refine the
+           parent argument? Does it provide new reasoning, evidence, or perspective?
+        3. Clarity (0.0–1.0): Is the reply clearly stated and easy to understand?
+
+        The overall relevanceScore is the weighted average of these three (relevance 50%,
+        effectiveness 35%, clarity 15%).
+
+        Respond ONLY with valid JSON in this exact format:
+        {
+          "relevanceScore": 0.75,
+          "effectivenessNotes": "2-3 sentences explaining the assessment, noting specific strengths or weaknesses"
+        }
+
+        relevanceScore ranges from 0.0 (completely irrelevant / ineffective) to 1.0
+        (highly relevant and effective).
+        """;
+
+    private static string BuildRelevanceUserPrompt(string replyText, string parentText) =>
+        $"""
+        PARENT ARGUMENT:
+        {parentText}
+
+        FOLLOW-UP REPLY:
+        {replyText}
+
+        Evaluate how relevant and effective this reply is at addressing the parent argument.
+        Return only the JSON object, no markdown.
+        """;
+
+    private FollowUpRelevanceResult ParseRelevanceResponse(string content)
+    {
+        // Strip markdown code fences if present
+        content = content.Trim();
+        if (content.StartsWith("```"))
+        {
+            var start = content.IndexOf('\n') + 1;
+            var end = content.LastIndexOf("```");
+            if (end > start)
+                content = content[start..end].Trim();
+        }
+
+        try
+        {
+            var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            double score = root.TryGetProperty("relevanceScore", out var rs) ? rs.GetDouble() : 0.5;
+            score = Math.Clamp(score, 0.0, 1.0);
+
+            string notes = root.TryGetProperty("effectivenessNotes", out var en)
+                && en.ValueKind != JsonValueKind.Null
+                ? en.GetString() ?? ""
+                : "";
+
+            return new FollowUpRelevanceResult(score, notes);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse follow-up relevance JSON: {Content}", content);
+            return new FollowUpRelevanceResult(0.5, "Could not parse AI response.");
+        }
+    }
+
+    // ── Result types ───────────────────────────────────────────────────────────────
 }
 
-// ── Result types ───────────────────────────────────────────────────────────────
-
-public record FallacyDetectionResult(
+    public record FallacyDetectionResult(
     bool IsValid,
     double ValidityScore,
     List<FallacyFlag> Fallacies,
     string? SuggestedImprovement);
 
 public record FallacyFlag(string Name, string Description, string QuotedText);
+
+public record FollowUpRelevanceResult(
+    double RelevanceScore,
+    string EffectivenessNotes);

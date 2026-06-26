@@ -54,6 +54,17 @@ public class SocialArgument : BaseEntity
     public double? AIValidityScore { get; set; }
     public string? AIFallacyFlags { get; set; }  // JSON array of fallacy names
 
+    // ── Follow-up (reply) relevance assessment ──
+    /// <summary>
+    /// For follow-up arguments: how relevant and effective this reply is at
+    /// addressing the parent argument (0.0 = irrelevant, 1.0 = highly effective).
+    /// Null for top-level (non-reply) arguments.
+    /// </summary>
+    public double? FollowUpRelevanceScore { get; set; }
+
+    /// <summary>AI-generated notes explaining the relevance/effectiveness assessment.</summary>
+    public string? FollowUpEffectivenessNotes { get; set; }
+
     // ── Metadata stored as PostgreSQL text[] ──
     public string[] Tags { get; set; } = Array.Empty<string>();
     public string[] SchwartzValues { get; set; } = Array.Empty<string>();

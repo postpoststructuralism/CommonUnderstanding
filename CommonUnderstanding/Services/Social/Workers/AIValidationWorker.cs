@@ -64,8 +64,8 @@ public class AIValidationWorker : BackgroundService
         var fallacyPlugin = scope.ServiceProvider.GetRequiredService<FallacyDetectionPlugin>();
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        // Arguments that are public, not yet AI-validated, and published within the last 10 minutes
-        var cutoff = DateTime.UtcNow.AddMinutes(-10);
+        // Arguments that are public, not yet AI-validated, and published within the last 60 minutes
+        var cutoff = DateTime.UtcNow.AddMinutes(-60);
         var pending = await db.SocialArguments
             .Include(a => a.ClaimProposition)
             .Where(a => a.IsPublic
@@ -77,7 +77,7 @@ public class AIValidationWorker : BackgroundService
 
         if (pending.Count == 0) return;
 
-        _logger.LogDebug("AIValidationWorker: validating {Count} arguments.", pending.Count);
+        _logger.LogInformation("AIValidationWorker: validating {Count} arguments.", pending.Count);
 
         double shadowBanThreshold = _configuration.GetValue("Voting:ShadowBanValidityThreshold", 0.3);
 
@@ -87,6 +87,8 @@ public class AIValidationWorker : BackgroundService
         }
 
         await db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("AIValidationWorker: completed validation for {Count} arguments.", pending.Count);
     }
 
     private async Task ValidateArgumentAsync(
@@ -124,6 +126,33 @@ public class AIValidationWorker : BackgroundService
             if (result.Fallacies.Count > 0 && !argument.IsShadowBanned)
             {
                 argument.WilsonScore = Math.Max(0, argument.WilsonScore - 0.1 * result.Fallacies.Count);
+            }
+
+            // ── Follow-up relevance assessment ──────────────────────────────
+            // If this argument is a reply to another argument, assess how relevant
+            // and effective it is at addressing the parent.
+            var inboundLink = await db.ArgumentLinks
+                .Include(l => l.SourceArgument)
+                    .ThenInclude(a => a.ClaimProposition)
+                .FirstOrDefaultAsync(l =>
+                    l.TargetArgumentId == argument.Id &&
+                    l.LinkType == LinkType.Reply, ct);
+
+            if (inboundLink?.SourceArgument != null)
+            {
+                var parent = inboundLink.SourceArgument;
+                string parentText = BuildArgumentText(parent);
+                string replyText = BuildArgumentText(argument);
+
+                var relevanceResult = await fallacyPlugin.AssessFollowUpRelevanceAsync(
+                    replyText, parentText, ct);
+
+                argument.FollowUpRelevanceScore = relevanceResult.RelevanceScore;
+                argument.FollowUpEffectivenessNotes = relevanceResult.EffectivenessNotes;
+
+                _logger.LogInformation(
+                    "Follow-up relevance for {ReplyId} → {ParentId}: {Score:F2} — {Notes}",
+                    argument.Id, parent.Id, relevanceResult.RelevanceScore, relevanceResult.EffectivenessNotes);
             }
         }
         catch (Exception ex)

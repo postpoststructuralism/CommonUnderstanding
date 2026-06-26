@@ -150,6 +150,21 @@
             <strong>AI Fallacy Flags:</strong> @Model.AIFallacyFlags
         </div>
     }
+
+    <!-- Follow-up Relevance (only for reply arguments) -->
+    @if (Model.FollowUpRelevanceScore.HasValue)
+    {
+        var relevancePct = Math.Round(Model.FollowUpRelevanceScore.Value * 100);
+        var relevanceColor = relevancePct >= 70 ? "success" : relevancePct >= 40 ? "warning text-dark" : "danger";
+        <div class="alert alert-@relevanceColor small mb-3">
+            <i class="bi bi-chat-quote me-1"></i>
+            <strong>Follow-up Relevance:</strong> @relevancePct%
+            @if (!string.IsNullOrWhiteSpace(Model.FollowUpEffectivenessNotes))
+            {
+                <br><span class="fst-italic">@Model.FollowUpEffectivenessNotes</span>
+            }
+        </div>
+    }
 </div>
 
 <!-- Linked Arguments -->
@@ -548,6 +563,24 @@
             `<span class="badge bg-secondary me-1">${escapeHtml(tag)}</span>`
         ).join('');
         const hasReplies = (reply.replyCount || 0) > 0;
+        
+        // AI validation badge
+        const aiBadge = reply.isAIValidated && reply.aiValidityScore != null
+            ? `<span class="badge ${reply.aiValidityScore >= 0.7 ? 'bg-success' : reply.aiValidityScore >= 0.4 ? 'bg-warning text-dark' : 'bg-danger'} ms-2" style="font-size:0.65rem;">
+                   <i class="bi bi-cpu"></i> ${Math.round(reply.aiValidityScore * 100)}%
+               </span>`
+            : '';
+        
+        // Follow-up relevance badge (only for replies that have been assessed)
+        const relevanceBadge = reply.followUpRelevanceScore != null
+            ? (() => {
+                const pct = Math.round(reply.followUpRelevanceScore * 100);
+                const color = pct >= 70 ? 'success' : pct >= 40 ? 'warning text-dark' : 'danger';
+                return `<span class="badge bg-${color} ms-1" style="font-size:0.65rem;" title="${escapeHtml(reply.followUpEffectivenessNotes || '')}">
+                           <i class="bi bi-chat-quote"></i> Rel: ${pct}%
+                       </span>`;
+              })()
+            : '';
         const marginLeft = Math.min(depth * 24, 96); // Indent up to 4 levels
         
         return `
@@ -555,7 +588,7 @@
             <div class="card mb-2" id="reply-${reply.id}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">${escapeHtml(reply.title)}</h6>
+                        <h6 class="card-title mb-0">${escapeHtml(reply.title)}${aiBadge}${relevanceBadge}</h6>
                         <small class="text-muted">${timeAgo}</small>
                     </div>
                     
