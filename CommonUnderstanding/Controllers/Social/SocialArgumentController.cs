@@ -71,6 +71,7 @@ public class SocialArgumentController : ControllerBase
             Title = request.Title,
             WarrantText = request.WarrantText,
             ResolutionText = request.ResolutionText,
+            ClaimPropositionId = parentArg.ClaimPropositionId,
             UserId = userId,
             IsPublic = true,
             Tags = request.Tags?.Length > 0 ? request.Tags : parentArg.Tags,
@@ -167,8 +168,8 @@ public class SocialArgumentController : ControllerBase
     }
 
     public record CreateFollowUpRequest(
-        [property: Required, MaxLength(300)] string Title,
-        [property: Required] string WarrantText,
+        [Required, MaxLength(300)] string Title,
+        [Required] string WarrantText,
         string? ResolutionText = null,
         string? ClaimText = null,
         string[]? Tags = null,
