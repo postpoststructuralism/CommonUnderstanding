@@ -150,6 +150,7 @@ builder.Services.AddScoped<VotingService>();
 // Follow-up arguments (replies)
 builder.Services.AddScoped<FollowUpArgumentService>();
 builder.Services.AddScoped<ArgumentValidationService>();
+builder.Services.AddScoped<SocialArgumentAnalysisService>();
 
 // Argument chain and worldview logic
 builder.Services.AddScoped<ArgumentChainService>();

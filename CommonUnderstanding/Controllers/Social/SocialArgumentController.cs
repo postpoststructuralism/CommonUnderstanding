@@ -62,9 +62,8 @@ public class SocialArgumentController : ControllerBase
         if (parentArg == null || !parentArg.IsPublic)
             return NotFound(new { title = "Parent argument not found or not public" });
 
-        // Prevent self-replies
-        if (parentArg.UserId == userId)
-            return BadRequest(new { error = "Cannot reply to your own argument" });
+        // Allow users to reply to their own arguments (follow-ups to own content)
+        // Note: self-replies are permitted so users can build on their own arguments.
 
         var followUp = new SocialArgument
         {
@@ -162,7 +161,8 @@ public class SocialArgumentController : ControllerBase
                 isAIValidated = a.IsAIValidated,
                 aiValidityScore = a.AIValidityScore,
                 followUpRelevanceScore = a.FollowUpRelevanceScore,
-                followUpEffectivenessNotes = a.FollowUpEffectivenessNotes
+                followUpEffectivenessNotes = a.FollowUpEffectivenessNotes,
+                sourceArgumentId = a.SourceArgumentId
             }),
             totalCount,
             parentReplyCount,

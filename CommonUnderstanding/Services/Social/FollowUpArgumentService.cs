@@ -15,17 +15,20 @@ public class FollowUpArgumentService
     private readonly ILogger<FollowUpArgumentService> _logger;
     private readonly ArgumentValidationService _validationService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly SocialArgumentAnalysisService _analysisService;
 
     public FollowUpArgumentService(
         IDbContextFactory<ApplicationDbContext> dbFactory,
         ILogger<FollowUpArgumentService> logger,
         ArgumentValidationService validationService,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        SocialArgumentAnalysisService analysisService)
     {
         _dbFactory = dbFactory;
         _logger = logger;
         _validationService = validationService;
         _httpContextAccessor = httpContextAccessor;
+        _analysisService = analysisService;
     }
 
     /// <summary>
@@ -97,6 +100,26 @@ public class FollowUpArgumentService
         _logger.LogInformation(
             "Created follow-up argument {ReplyId} for parent {ParentId} by user {UserId}",
             newArgument.Id, parentArgumentId, userId);
+
+        // ── Run the full Phase 1 analysis pipeline for this follow-up ──────
+        // This creates a linked Argument record with claims, premises, evidence,
+        // syllogisms, assumptions, qualifiers, rebuttals, and adjudication,
+        // enabling the same "View Analysis" functionality as published arguments.
+        try
+        {
+            await _analysisService.AnalyzeSocialArgumentAsync(newArgument.Id, ct);
+            _logger.LogInformation(
+                "Analysis pipeline completed for follow-up {ReplyId}",
+                newArgument.Id);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the reply creation if analysis fails — the user can
+            // retry analysis manually from the detail view.
+            _logger.LogWarning(ex,
+                "Analysis pipeline failed for follow-up {ReplyId}, user can retry manually",
+                newArgument.Id);
+        }
 
         return newArgument;
     }
