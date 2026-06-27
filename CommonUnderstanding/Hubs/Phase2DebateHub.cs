@@ -52,36 +52,50 @@ public class Phase2DebateHub : Hub
 
     public async Task JoinDebate(Guid debateRoomId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, RoomGroup(debateRoomId));
-
-        lock (_roomLock)
+        try
         {
-            if (!_roomConnections.TryGetValue(debateRoomId, out var connections))
-            {
-                connections = new HashSet<string>();
-                _roomConnections[debateRoomId] = connections;
-            }
-            connections.Add(Context.ConnectionId);
-        }
+            await Groups.AddToGroupAsync(Context.ConnectionId, RoomGroup(debateRoomId));
 
-        int count = GetSpectatorCount(debateRoomId);
-        await Clients.Group(RoomGroup(debateRoomId))
-            .SendAsync("SpectatorCount", new { count }, Context.ConnectionAborted);
+            lock (_roomLock)
+            {
+                if (!_roomConnections.TryGetValue(debateRoomId, out var connections))
+                {
+                    connections = new HashSet<string>();
+                    _roomConnections[debateRoomId] = connections;
+                }
+                connections.Add(Context.ConnectionId);
+            }
+
+            int count = GetSpectatorCount(debateRoomId);
+            await Clients.Group(RoomGroup(debateRoomId))
+                .SendAsync("SpectatorCount", new { count }, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("JoinDebate cancelled (client disconnected) for debate {DebateRoomId}", debateRoomId);
+        }
     }
 
     public async Task LeaveDebate(Guid debateRoomId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, RoomGroup(debateRoomId));
-
-        lock (_roomLock)
+        try
         {
-            if (_roomConnections.TryGetValue(debateRoomId, out var connections))
-                connections.Remove(Context.ConnectionId);
-        }
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, RoomGroup(debateRoomId));
 
-        int count = GetSpectatorCount(debateRoomId);
-        await Clients.Group(RoomGroup(debateRoomId))
-            .SendAsync("SpectatorCount", new { count }, Context.ConnectionAborted);
+            lock (_roomLock)
+            {
+                if (_roomConnections.TryGetValue(debateRoomId, out var connections))
+                    connections.Remove(Context.ConnectionId);
+            }
+
+            int count = GetSpectatorCount(debateRoomId);
+            await Clients.Group(RoomGroup(debateRoomId))
+                .SendAsync("SpectatorCount", new { count }, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("LeaveDebate cancelled (client disconnected) for debate {DebateRoomId}", debateRoomId);
+        }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -99,154 +113,175 @@ public class Phase2DebateHub : Hub
 
     public async Task SubmitArgument(Guid debateRoomId, Guid argumentId, string role)
     {
-        var userId = Context.UserIdentifier!;
-
-        if (!Enum.TryParse<DebateRole>(role, ignoreCase: true, out var debateRole))
+        try
         {
-            await Clients.Caller.SendAsync("Error", new { message = $"Invalid role: {role}" });
-            return;
-        }
+            var userId = Context.UserIdentifier!;
 
-        await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
-
-        var room = await db.DebateRooms
-            .Include(r => r.Contributions)
-            .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
-
-        if (room is null || room.Status == DebateStatus.Concluded || room.Status == DebateStatus.Cancelled)
-        {
-            await Clients.Caller.SendAsync("Error", new { message = "Debate room is not active." });
-            return;
-        }
-
-        // Validate the user is allowed to contribute in this role
-        if (!IsAuthorizedToContribute(room, userId, debateRole))
-        {
-            await Clients.Caller.SendAsync("Error", new { message = "You are not authorized to submit in this role." });
-            return;
-        }
-
-        // Enforce per-side contribution cap
-        if (debateRole != DebateRole.JudgeComment)
-        {
-            int sideContributions = room.Contributions.Count(c =>
-                (debateRole == DebateRole.Proponent && c.UserId == room.ProponentUserId) ||
-                (debateRole == DebateRole.Opponent  && c.UserId == room.OpponentUserId));
-
-            if (sideContributions >= room.MaxContributionsPerSide)
+            if (!Enum.TryParse<DebateRole>(role, ignoreCase: true, out var debateRole))
             {
-                await Clients.Caller.SendAsync("Error", new { message = "Maximum contributions per side reached." });
+                await Clients.Caller.SendAsync("Error", new { message = $"Invalid role: {role}" });
                 return;
             }
+
+            await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
+
+            var room = await db.DebateRooms
+                .Include(r => r.Contributions)
+                .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
+
+            if (room is null || room.Status == DebateStatus.Concluded || room.Status == DebateStatus.Cancelled)
+            {
+                await Clients.Caller.SendAsync("Error", new { message = "Debate room is not active." });
+                return;
+            }
+
+            // Validate the user is allowed to contribute in this role
+            if (!IsAuthorizedToContribute(room, userId, debateRole))
+            {
+                await Clients.Caller.SendAsync("Error", new { message = "You are not authorized to submit in this role." });
+                return;
+            }
+
+            // Enforce per-side contribution cap
+            if (debateRole != DebateRole.JudgeComment)
+            {
+                int sideContributions = room.Contributions.Count(c =>
+                    (debateRole == DebateRole.Proponent && c.UserId == room.ProponentUserId) ||
+                    (debateRole == DebateRole.Opponent  && c.UserId == room.OpponentUserId));
+
+                if (sideContributions >= room.MaxContributionsPerSide)
+                {
+                    await Clients.Caller.SendAsync("Error", new { message = "Maximum contributions per side reached." });
+                    return;
+                }
+            }
+
+            // Validate the argument exists and is accessible
+            var argument = await db.SocialArguments
+                .Include(a => a.ClaimProposition)
+                .FirstOrDefaultAsync(a => a.Id == argumentId, Context.ConnectionAborted);
+
+            if (argument is null || (!argument.IsPublic && argument.UserId != userId))
+            {
+                await Clients.Caller.SendAsync("Error", new { message = "Argument not found or not accessible." });
+                return;
+            }
+
+            // Activate room on first contribution
+            if (room.Status == DebateStatus.Open)
+                room.Status = DebateStatus.Active;
+
+            var contribution = new DebateContribution
+            {
+                DebateRoomId = debateRoomId,
+                UserId = userId,
+                ArgumentId = argumentId,
+                Role = debateRole,
+                OrderIndex = room.Contributions.Count
+            };
+            db.DebateContributions.Add(contribution);
+            await db.SaveChangesAsync(Context.ConnectionAborted);
+
+            // Broadcast to room immediately
+            var dto = MapContributionToDto(contribution, argument);
+            await Clients.Group(RoomGroup(debateRoomId))
+                .SendAsync("ContributionAdded", dto, Context.ConnectionAborted);
+
+            // AI referee — fire and forget, results arrive asynchronously
+            if (room.AIRefereeEnabled)
+                _ = RunAIRefereeAsync(contribution.Id, argument, room, debateRoomId);
         }
-
-        // Validate the argument exists and is accessible
-        var argument = await db.SocialArguments
-            .Include(a => a.ClaimProposition)
-            .FirstOrDefaultAsync(a => a.Id == argumentId, Context.ConnectionAborted);
-
-        if (argument is null || (!argument.IsPublic && argument.UserId != userId))
+        catch (OperationCanceledException)
         {
-            await Clients.Caller.SendAsync("Error", new { message = "Argument not found or not accessible." });
-            return;
+            _logger.LogDebug("SubmitArgument cancelled (client disconnected) for debate {DebateRoomId}", debateRoomId);
         }
-
-        // Activate room on first contribution
-        if (room.Status == DebateStatus.Open)
-            room.Status = DebateStatus.Active;
-
-        var contribution = new DebateContribution
-        {
-            DebateRoomId = debateRoomId,
-            UserId = userId,
-            ArgumentId = argumentId,
-            Role = debateRole,
-            OrderIndex = room.Contributions.Count
-        };
-        db.DebateContributions.Add(contribution);
-        await db.SaveChangesAsync(Context.ConnectionAborted);
-
-        // Broadcast to room immediately
-        var dto = MapContributionToDto(contribution, argument);
-        await Clients.Group(RoomGroup(debateRoomId))
-            .SendAsync("ContributionAdded", dto, Context.ConnectionAborted);
-
-        // AI referee — fire and forget, results arrive asynchronously
-        if (room.AIRefereeEnabled)
-            _ = RunAIRefereeAsync(contribution.Id, argument, room, debateRoomId);
     }
 
     public async Task JudgeScore(Guid debateRoomId, string scoredUserId, double score, string? comment)
     {
-        var judgeId = Context.UserIdentifier!;
-
-        await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
-
-        var room = await db.DebateRooms
-            .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
-
-        if (room is null || !room.JudgeUserIds.Contains(judgeId))
+        try
         {
-            await Clients.Caller.SendAsync("Error", new { message = "Not a judge in this room." });
-            return;
+            var judgeId = Context.UserIdentifier!;
+
+            await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
+
+            var room = await db.DebateRooms
+                .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
+
+            if (room is null || !room.JudgeUserIds.Contains(judgeId))
+            {
+                await Clients.Caller.SendAsync("Error", new { message = "Not a judge in this room." });
+                return;
+            }
+
+            // Update the relevant score
+            if (scoredUserId == room.ProponentUserId)
+                room.ProponentScore = (room.ProponentScore ?? 0) + score;
+            else if (scoredUserId == room.OpponentUserId)
+                room.OpponentScore = (room.OpponentScore ?? 0) + score;
+
+            await db.SaveChangesAsync(Context.ConnectionAborted);
+
+            await Clients.Group(RoomGroup(debateRoomId))
+                .SendAsync("ScoreUpdated", new { userId = scoredUserId, score }, Context.ConnectionAborted);
         }
-
-        // Update the relevant score
-        if (scoredUserId == room.ProponentUserId)
-            room.ProponentScore = (room.ProponentScore ?? 0) + score;
-        else if (scoredUserId == room.OpponentUserId)
-            room.OpponentScore = (room.OpponentScore ?? 0) + score;
-
-        await db.SaveChangesAsync(Context.ConnectionAborted);
-
-        await Clients.Group(RoomGroup(debateRoomId))
-            .SendAsync("ScoreUpdated", new { userId = scoredUserId, score }, Context.ConnectionAborted);
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("JudgeScore cancelled (client disconnected) for debate {DebateRoomId}", debateRoomId);
+        }
     }
 
     public async Task ConcludeDebate(Guid debateRoomId)
     {
-        var userId = Context.UserIdentifier!;
-
-        await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
-
-        var room = await db.DebateRooms
-            .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
-
-        if (room is null) return;
-
-        // Only judges or the proponent can conclude
-        bool isJudge = room.JudgeUserIds.Contains(userId);
-        bool isProponent = room.ProponentUserId == userId;
-        if (!isJudge && !isProponent) return;
-
-        room.Status = DebateStatus.Concluded;
-        room.ConcludedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(Context.ConnectionAborted);
-
-        // Determine winner
-        string? winner = null;
-        if (room.ProponentScore.HasValue && room.OpponentScore.HasValue)
+        try
         {
-            winner = room.ProponentScore > room.OpponentScore
-                ? room.ProponentUserId
-                : room.OpponentUserId;
-        }
+            var userId = Context.UserIdentifier!;
 
-        await Clients.Group(RoomGroup(debateRoomId))
-            .SendAsync("DebateConcluded", new
+            await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
+
+            var room = await db.DebateRooms
+                .FirstOrDefaultAsync(r => r.Id == debateRoomId, Context.ConnectionAborted);
+
+            if (room is null) return;
+
+            // Only judges or the proponent can conclude
+            bool isJudge = room.JudgeUserIds.Contains(userId);
+            bool isProponent = room.ProponentUserId == userId;
+            if (!isJudge && !isProponent) return;
+
+            room.Status = DebateStatus.Concluded;
+            room.ConcludedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(Context.ConnectionAborted);
+
+            // Determine winner
+            string? winner = null;
+            if (room.ProponentScore.HasValue && room.OpponentScore.HasValue)
             {
-                proponentScore = room.ProponentScore,
-                opponentScore = room.OpponentScore,
-                winner
-            }, Context.ConnectionAborted);
+                winner = room.ProponentScore > room.OpponentScore
+                    ? room.ProponentUserId
+                    : room.OpponentUserId;
+            }
 
-        // Award XP
-        if (winner is not null)
+            await Clients.Group(RoomGroup(debateRoomId))
+                .SendAsync("DebateConcluded", new
+                {
+                    proponentScore = room.ProponentScore,
+                    opponentScore = room.OpponentScore,
+                    winner
+                }, Context.ConnectionAborted);
+
+            // Award XP
+            if (winner is not null)
+            {
+                await _xpAwards.AwardAsync(winner, 50, "Won a Debate Room", debateRoomId, Context.ConnectionAborted);
+                var loser = winner == room.ProponentUserId ? room.OpponentUserId : room.ProponentUserId;
+                if (loser is not null)
+                    await _xpAwards.AwardAsync(loser, 10, "Participated in Debate Room", debateRoomId, Context.ConnectionAborted);
+            }
+        }
+        catch (OperationCanceledException)
         {
-            await _xpAwards.AwardAsync(winner, 50, "Won a Debate Room", debateRoomId, Context.ConnectionAborted);
-            var loser = winner == room.ProponentUserId ? room.OpponentUserId : room.ProponentUserId;
-            if (loser is not null)
-                await _xpAwards.AwardAsync(loser, 10, "Participated in Debate Room", debateRoomId, Context.ConnectionAborted);
+            _logger.LogDebug("ConcludeDebate cancelled (client disconnected) for debate {DebateRoomId}", debateRoomId);
         }
     }
 

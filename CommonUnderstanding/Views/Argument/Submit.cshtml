@@ -9,9 +9,9 @@
 
     <!-- Page heading -->
     <div class="mb-4 pb-2 border-bottom">
-        <h2 class="fw-semibold mb-1" style="letter-spacing: -0.01em;">Submit an Argument for Structured Analysis</h2>
+        <h2 class="fw-semibold mb-1" style="letter-spacing: -0.01em;">Add Your Perspective</h2>
         <p class="text-muted mb-0" style="font-size: 0.9rem;">
-            The system will decompose the argument into its logical components — claim, premises, syllogisms, hidden assumptions, qualifiers, and rebuttals — and produce a formal adjudication report.
+            Share what you believe and why. The system will analyze your argument's logic, surface the evidence behind it, and map it against the values that drive it — then add it to the collective understanding.
         </p>
     </div>
 
@@ -31,12 +31,12 @@
             <!-- Argument text — takes most of the horizontal space -->
             <div class="col-xl-8 col-lg-7">
                 <label asp-for="ArgumentText" class="form-label fw-semibold small text-uppercase tracking-wide text-secondary mb-1">
-                    Argument Statement
+                    Your Perspective
                 </label>
                 <textarea asp-for="ArgumentText" id="argumentText" class="form-control font-monospace"
                           rows="16" autofocus spellcheck="true"
                           style="font-size: 0.875rem; line-height: 1.6; resize: vertical;"
-                          placeholder="Enter the complete argument. Include the central claim, all supporting premises, any cited evidence, qualifying conditions, and known counter-arguments."></textarea>
+                          placeholder="What do you believe, and why? Include your reasoning, any evidence you'd cite, and what you think the other side gets wrong or misses."></textarea>
                 <span asp-validation-for="ArgumentText" class="text-danger small d-block mt-1"></span>
                 <div class="d-flex justify-content-end mt-1">
                     <span id="charCount" class="text-muted" style="font-size: 0.78rem;">0 characters</span>
@@ -49,26 +49,25 @@
                 <!-- Submit button -->
                 <div>
                     <button type="submit" class="btn btn-primary w-100" id="submitBtn" style="padding: 0.6rem 1rem; font-size: 0.95rem;">
-                        <i class="bi bi-send me-2"></i>Submit for Analysis
+                        <i class="bi bi-send me-2"></i>Add to The Map
                     </button>
                     <div class="text-center mt-2">
                         <a asp-action="Index" class="text-muted" style="font-size: 0.8rem;">
-                            <i class="bi bi-clock-history me-1"></i>Prior submissions
+                            <i class="bi bi-clock-history me-1"></i>My previous submissions
                         </a>
                     </div>
                 </div>
 
-                <!-- Analysis pipeline — compact, institutional -->
+                <!-- What you'll get — outcome-focused -->
                 <div class="border rounded p-3 bg-light" style="font-size: 0.8rem;">
-                    <p class="fw-semibold text-secondary text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">Analysis Pipeline</p>
-                    <ol class="ps-3 mb-0 text-secondary" style="line-height: 1.8;">
-                        <li>Central claim extraction</li>
-                        <li>Premise identification</li>
-                        <li>Syllogistic structure</li>
-                        <li>Hidden assumption surfacing</li>
-                        <li>Informal fallacy detection</li>
-                        <li>Adjudication &amp; confidence scoring</li>
-                    </ol>
+                    <p class="fw-semibold text-secondary text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">What You'll Get</p>
+                    <ul class="ps-3 mb-0 text-secondary" style="line-height: 1.8;">
+                        <li>Your core claim, clearly identified</li>
+                        <li>The evidence and reasoning behind it</li>
+                        <li>Hidden assumptions surfaced for review</li>
+                        <li>How your view connects to others on the map</li>
+                        <li>The universal values your perspective draws on</li>
+                    </ul>
                 </div>
 
             </div>

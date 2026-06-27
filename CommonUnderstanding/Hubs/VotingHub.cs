@@ -40,10 +40,18 @@ public class VotingHub : Hub
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, GroupKey(argumentId));
 
-        // Send current tally immediately so client gets initial state
-        var tally = await _votingService.GetTallyAsync(argumentId, Context.ConnectionAborted);
-        if (tally is not null)
-            await Clients.Caller.SendAsync("VoteScoreUpdated", tally, Context.ConnectionAborted);
+        try
+        {
+            // Send current tally immediately so client gets initial state
+            var tally = await _votingService.GetTallyAsync(argumentId, Context.ConnectionAborted);
+            if (tally is not null)
+                await Clients.Caller.SendAsync("VoteScoreUpdated", tally, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected before the query completed — this is expected.
+            _logger.LogDebug("SubscribeToArgument cancelled (client disconnected) for argument {ArgumentId}", argumentId);
+        }
     }
 
     [AllowAnonymous]

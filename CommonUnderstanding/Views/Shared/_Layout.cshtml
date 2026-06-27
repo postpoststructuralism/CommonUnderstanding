@@ -51,14 +51,14 @@
                     <li class="nav-item">
                         <a class="nav-link fw-semibold @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "Feed" ? "active" : "")"
                            asp-controller="SocialView" asp-action="Feed">
-                            <i class="bi bi-fire"></i> Feed
+                            <i class="bi bi-fire"></i> The Live Map
                         </a>
                     </li>
 
                     <li class="nav-item">
                         <a class="btn cu-btn-primary ms-1 me-2"
                            asp-controller="Argument" asp-action="Submit">
-                            <i class="bi bi-plus-lg me-1"></i>New Argument
+                            <i class="bi bi-plus-lg me-1"></i>Add Your Perspective
                         </a>
                     </li>
 
@@ -77,7 +77,7 @@
                             <li><h6 class="dropdown-header cu-dropdown-section">Analysis</h6></li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Argument" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-controller="Argument" asp-action="Index">
-                                    <i class="bi bi-diagram-3 me-2"></i>My Arguments
+                                    <i class="bi bi-diagram-3 me-2"></i>My Analysis
                                 </a>
                             </li>
                             <li>
@@ -87,12 +87,12 @@
                             </li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "EmergentConclusions" ? "active" : "")" asp-controller="EmergentConclusions" asp-action="Index">
-                                    <i class="bi bi-lightbulb me-2"></i>Emergent Conclusions
+                                    <i class="bi bi-lightbulb me-2"></i>Key Insights
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Convergence" ? "active" : "")" asp-controller="Convergence" asp-action="Index">
-                                    <i class="bi bi-intersect me-2"></i>Convergence
+                                    <i class="bi bi-intersect me-2"></i>Where We Agree
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -125,17 +125,17 @@
                             <li><h6 class="dropdown-header cu-dropdown-section">Published Arguments</h6></li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "ChainBuilder" ? "active" : "")" asp-controller="SocialView" asp-action="ChainBuilder">
-                                    <i class="bi bi-diagram-3 me-2"></i>Chain Builder
+                                    <i class="bi bi-diagram-3 me-2"></i>Trace the Reasoning
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "WorldviewComposer" ? "active" : "")" asp-controller="SocialView" asp-action="WorldviewComposer">
-                                    <i class="bi bi-globe2 me-2"></i>Worldview Composer
+                                    <i class="bi bi-globe2 me-2"></i>Worldview Mosaic
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "DebateRoom" ? "active" : "")" asp-controller="SocialView" asp-action="DebateRoom">
-                                    <i class="bi bi-mic me-2"></i>Debate Room
+                                    <i class="bi bi-mic me-2"></i>Structured Debate
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -232,11 +232,11 @@
                 <div class="cu-footer-info">
                     <p>
                         <i class="bi bi-compass"></i>
-                        <strong>A Common Understanding</strong> - Strategic clarity across beliefs, values, and decisions
+                        <strong>A Common Understanding</strong> - See what the world actually believes, and why
                     </p>
                     <p class="small">
                         &copy; @DateTime.Now.Year A Common Understanding |
-                        Private AI-assisted analysis for research, facilitation, and decision support
+                        Every discussion builds a living map of what humanity believes, and why
                     </p>
                 </div>
                 <div class="cu-footer-links">

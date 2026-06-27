@@ -40,22 +40,29 @@ public class ChainUpdateHub : Hub
 
     public async Task JoinChainSession(Guid chainId)
     {
-        var userId = Context.UserIdentifier!;
-
-        await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
-
-        var chain = await db.ArgumentChains
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == chainId, Context.ConnectionAborted);
-
-        // Access check: owner or chain is public
-        if (chain is null || (!chain.IsPublic && chain.UserId != userId))
+        try
         {
-            Context.Abort();
-            return;
-        }
+            var userId = Context.UserIdentifier!;
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, ChainGroup(chainId));
+            await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
+
+            var chain = await db.ArgumentChains
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == chainId, Context.ConnectionAborted);
+
+            // Access check: owner or chain is public
+            if (chain is null || (!chain.IsPublic && chain.UserId != userId))
+            {
+                Context.Abort();
+                return;
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, ChainGroup(chainId));
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("JoinChainSession cancelled (client disconnected) for chain {ChainId}", chainId);
+        }
     }
 
     public async Task LeaveChainSession(Guid chainId)
@@ -65,31 +72,52 @@ public class ChainUpdateHub : Hub
 
     public async Task NotifyArgumentAdded(Guid chainId, Guid argumentId)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
+        try
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(Context.ConnectionAborted);
 
-        var argument = await db.SocialArguments
-            .AsNoTracking()
-            .Include(a => a.ClaimProposition)
-            .FirstOrDefaultAsync(a => a.Id == argumentId, Context.ConnectionAborted);
+            var argument = await db.SocialArguments
+                .AsNoTracking()
+                .Include(a => a.ClaimProposition)
+                .FirstOrDefaultAsync(a => a.Id == argumentId, Context.ConnectionAborted);
 
-        if (argument is null) return;
+            if (argument is null) return;
 
-        var dto = MapArgumentToDto(argument);
+            var dto = MapArgumentToDto(argument);
 
-        await Clients.OthersInGroup(ChainGroup(chainId))
-            .SendAsync("ChainArgumentAdded", new { chainId, argument = dto }, Context.ConnectionAborted);
+            await Clients.OthersInGroup(ChainGroup(chainId))
+                .SendAsync("ChainArgumentAdded", new { chainId, argument = dto }, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("NotifyArgumentAdded cancelled (client disconnected) for chain {ChainId}", chainId);
+        }
     }
 
     public async Task NotifyArgumentRemoved(Guid chainId, Guid argumentId)
     {
-        await Clients.OthersInGroup(ChainGroup(chainId))
-            .SendAsync("ChainArgumentRemoved", new { chainId, argumentId }, Context.ConnectionAborted);
+        try
+        {
+            await Clients.OthersInGroup(ChainGroup(chainId))
+                .SendAsync("ChainArgumentRemoved", new { chainId, argumentId }, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("NotifyArgumentRemoved cancelled (client disconnected) for chain {ChainId}", chainId);
+        }
     }
 
     public async Task NotifyLinkCreated(Guid chainId, object link)
     {
-        await Clients.OthersInGroup(ChainGroup(chainId))
-            .SendAsync("ChainLinkCreated", new { chainId, link }, Context.ConnectionAborted);
+        try
+        {
+            await Clients.OthersInGroup(ChainGroup(chainId))
+                .SendAsync("ChainLinkCreated", new { chainId, link }, Context.ConnectionAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("NotifyLinkCreated cancelled (client disconnected) for chain {ChainId}", chainId);
+        }
     }
 
     private static object MapArgumentToDto(SocialArgument a) => new
