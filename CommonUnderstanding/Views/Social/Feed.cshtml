@@ -142,6 +142,16 @@
         alert('Vote rejected: ' + (data.reason || 'Unknown error'));
     });
 
+    hubConn.on('ReplyCountUpdated', data => {
+        const card = document.getElementById(`arg-${data.argumentId}`);
+        if (!card) return;
+        const replyEl = card.querySelector('.reply-count');
+        if (replyEl) {
+            replyEl.textContent = data.newCount;
+            pulseElement(replyEl);
+        }
+    });
+
     async function startHub() {
         try { await hubConn.start(); } catch (e) { console.warn('VotingHub unavailable:', e); }
     }

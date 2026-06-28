@@ -129,6 +129,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         };
     });
 
+// ── Phase 3: Understanding Graph Services ────────────────────────────────────
+builder.Services.AddScoped<UnderstandingGraphService>();
+builder.Services.AddScoped<SchemaDiscoveryService>();
+builder.Services.AddScoped<DialecticalSynthesisService>();
+
 // Register Multi-User Convergence services (Phase 6)
 builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();

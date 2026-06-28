@@ -19,9 +19,17 @@ public class ApplicationDbContext : DbContext
     public DbSet<EvidenceItem> EvidenceItems => Set<EvidenceItem>();
     public DbSet<AdjudicationSummary> AdjudicationSummaries => Set<AdjudicationSummary>();
 
-    // Phase 3 — Common Understanding Graph
+    // Phase 3 — Common Understanding Graph (legacy)
     public DbSet<CommonUnderstandingNode> CommonUnderstandingNodes => Set<CommonUnderstandingNode>();
     public DbSet<CommonUnderstandingEdge> CommonUnderstandingEdges => Set<CommonUnderstandingEdge>();
+
+    // Phase 3 — Understanding Graph (enhanced successor)
+    public DbSet<UnderstandingNode> UnderstandingNodes => Set<UnderstandingNode>();
+    public DbSet<UnderstandingEdge> UnderstandingEdges => Set<UnderstandingEdge>();
+    public DbSet<ConceptualSchema> ConceptualSchemas => Set<ConceptualSchema>();
+    public DbSet<SchemaMembership> SchemaMemberships => Set<SchemaMembership>();
+    public DbSet<DialecticalSynthesis> DialecticalSyntheses => Set<DialecticalSynthesis>();
+    public DbSet<GraphSnapshot> GraphSnapshots => Set<GraphSnapshot>();
 
     // Phase 4 — Stakeholders
     public DbSet<Stakeholder> Stakeholders => Set<Stakeholder>();
@@ -484,6 +492,86 @@ public class ApplicationDbContext : DbContext
             e.ToTable("ModerationAppeals");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.AppellantUserId);
+        });
+
+        // ── Phase 3: Understanding Graph Entities ─────────────────────────
+
+        // UnderstandingNode
+        modelBuilder.Entity<UnderstandingNode>(e =>
+        {
+            e.ToTable("UnderstandingNodes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SemanticEmbedding).HasColumnType("float4[]");
+            e.Property(x => x.GraphEmbedding).HasColumnType("float4[]");
+            e.Property(x => x.SchwartzVector).HasColumnType("float8[]");
+            e.Property(x => x.MoralFoundationsVector).HasColumnType("float8[]");
+            e.HasIndex(x => x.NormalizedKey);
+            e.HasIndex(x => x.Confidence);
+            e.HasIndex(x => x.ControversyScore);
+            e.HasMany(x => x.OutboundEdges)
+             .WithOne(edge => edge.SourceNode)
+             .HasForeignKey(edge => edge.SourceNodeId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.InboundEdges)
+             .WithOne(edge => edge.TargetNode)
+             .HasForeignKey(edge => edge.TargetNodeId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // UnderstandingEdge
+        modelBuilder.Entity<UnderstandingEdge>(e =>
+        {
+            e.ToTable("UnderstandingEdges");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SourceNodeId, x.TargetNodeId, x.Relationship });
+            e.HasIndex(x => x.Weight);
+            e.ToTable(t => t.HasCheckConstraint(
+                "CK_UnderstandingEdges_NoSelfLoop",
+                "\"SourceNodeId\" <> \"TargetNodeId\""));
+        });
+
+        // ConceptualSchema
+        modelBuilder.Entity<ConceptualSchema>(e =>
+        {
+            e.ToTable("ConceptualSchemas");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Coherence);
+            e.HasIndex(x => x.DiscoveryMethod);
+        });
+
+        // SchemaMembership (join table)
+        modelBuilder.Entity<SchemaMembership>(e =>
+        {
+            e.ToTable("SchemaMemberships");
+            e.HasKey(x => new { x.NodeId, x.SchemaId });
+            e.HasOne(x => x.Node)
+             .WithMany(n => n.SchemaMemberships)
+             .HasForeignKey(x => x.NodeId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Schema)
+             .WithMany(s => s.Memberships)
+             .HasForeignKey(x => x.SchemaId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // DialecticalSynthesis
+        modelBuilder.Entity<DialecticalSynthesis>(e =>
+        {
+            e.ToTable("DialecticalSyntheses");
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.SynthesisNode)
+             .WithMany()
+             .HasForeignKey(x => x.SynthesisNodeId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.Depth);
+        });
+
+        // GraphSnapshot
+        modelBuilder.Entity<GraphSnapshot>(e =>
+        {
+            e.ToTable("GraphSnapshots");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.CapturedAt);
         });
     }
 }

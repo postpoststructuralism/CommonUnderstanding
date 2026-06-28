@@ -1057,6 +1057,14 @@
         alert('Vote rejected: ' + (data.reason || 'Unknown error'));
     });
 
+    hubConn.on('ReplyCountUpdated', data => {
+        if (data.argumentId !== argId) return;
+        const badge = document.querySelector('#replies h5 .badge');
+        if (badge) {
+            badge.textContent = data.newCount;
+        }
+    });
+
     async function startHub() {
         try {
             await hubConn.start();
