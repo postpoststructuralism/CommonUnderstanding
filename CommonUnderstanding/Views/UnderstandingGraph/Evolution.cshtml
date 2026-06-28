@@ -1,0 +1,222 @@
+@{
+    var snapshots = ViewBag.Snapshots as List<CommonUnderstanding.Models.GraphSnapshot> ?? new();
+    var evolution = ViewBag.Evolution as CommonUnderstanding.Services.SchemaEvolutionResult;
+    ViewData["Title"] = "Graph Evolution";
+}
+
+<style>
+    :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-card: #1c2333;
+        --border: #30363d;
+        --text-primary: #e6edf3;
+        --text-secondary: #8b949e;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-orange: #d29922;
+        --accent-red: #f85149;
+    }
+
+    body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 24px; font-weight: 600; }
+    .page-header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+
+    .evolution-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .evo-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        text-align: center;
+    }
+
+    .evo-card .value { font-size: 22px; font-weight: 700; }
+    .evo-card .label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    .evo-card .delta { font-size: 12px; font-weight: 600; margin-top: 2px; }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 24px 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .snapshot-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .snapshot-table th {
+        background: var(--bg-secondary);
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .snapshot-table td {
+        padding: 10px 14px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .snapshot-table tr:hover td { background: rgba(88,166,255,0.05); }
+    .snapshot-table tr:last-child td { border-bottom: none; }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: var(--accent-blue);
+        text-decoration: none;
+        font-size: 13px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    .btn {
+        display: inline-block;
+        padding: 8px 16px;
+        background: var(--accent-blue);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-group {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .positive { color: var(--accent-green); }
+    .negative { color: var(--accent-red); }
+    .neutral { color: var(--text-secondary); }
+</style>
+
+<div class="container">
+    <a href="/UnderstandingGraph" class="back-link">← Back to Schema Explorer</a>
+
+    <div class="page-header">
+        <h1>📈 Graph Evolution</h1>
+        <p>Track how the Understanding Graph grows and changes over time</p>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn" onclick="captureSnapshot()">📸 Capture Snapshot</button>
+        <button class="btn" onclick="runFullCapture()">🔄 Full Capture Pipeline</button>
+    </div>
+
+    @if (evolution != null)
+    {
+        <h2 class="section-title">Latest Changes</h2>
+        <div class="evolution-summary">
+            <div class="evo-card">
+                <div class="value @(evolution.NodeGrowth >= 0 ? "positive" : "negative")">@(evolution.NodeGrowth >= 0 ? "+" : "")@evolution.NodeGrowth</div>
+                <div class="label">Nodes</div>
+            </div>
+            <div class="evo-card">
+                <div class="value @(evolution.EdgeGrowth >= 0 ? "positive" : "negative")">@(evolution.EdgeGrowth >= 0 ? "+" : "")@evolution.EdgeGrowth</div>
+                <div class="label">Edges</div>
+            </div>
+            <div class="evo-card">
+                <div class="value @(evolution.SchemaGrowth >= 0 ? "positive" : "negative")">@(evolution.SchemaGrowth >= 0 ? "+" : "")@evolution.SchemaGrowth</div>
+                <div class="label">Schemas</div>
+            </div>
+            <div class="evo-card">
+                <div class="value @(evolution.TemperatureChange <= 0 ? "positive" : "negative")">@(evolution.TemperatureChange >= 0 ? "+" : "")@evolution.TemperatureChange.ToString("F3")</div>
+                <div class="label">Δ Dialectical Temp</div>
+            </div>
+            <div class="evo-card">
+                <div class="value @(evolution.DensityChange >= 0 ? "positive" : "negative")">@(evolution.DensityChange >= 0 ? "+" : "")@evolution.DensityChange.ToString("F6")</div>
+                <div class="label">Δ Density</div>
+            </div>
+        </div>
+    }
+
+    <h2 class="section-title">Snapshot History (@snapshots.Count)</h2>
+    @if (snapshots.Count == 0)
+    {
+        <p style="color:var(--text-secondary);">No snapshots captured yet. Click "Capture Snapshot" to create the first one.</p>
+    }
+    else
+    {
+        <table class="snapshot-table">
+            <thead>
+                <tr>
+                    <th>Label</th>
+                    <th>Captured</th>
+                    <th>Nodes</th>
+                    <th>Edges</th>
+                    <th>Schemas</th>
+                    <th>Avg Temp</th>
+                    <th>Density</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var snap in snapshots)
+                {
+                    <tr>
+                        <td>@snap.Label</td>
+                        <td style="font-size:12px;">@snap.CapturedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@snap.NodeCount</td>
+                        <td>@snap.EdgeCount</td>
+                        <td>@snap.SchemaCount</td>
+                        <td>@snap.AverageDialecticalTemperature.ToString("F3")</td>
+                        <td>@snap.GraphDensity.ToString("F6")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<script>
+    async function captureSnapshot() {
+        try {
+            const res = await fetch('/api/understanding-graph/capture-snapshot', { method: 'POST' });
+            const data = await res.json();
+            alert(`Snapshot captured: ${data.label} (ID: ${data.id})`);
+            location.reload();
+        } catch (err) {
+            alert('Failed to capture snapshot: ' + err.message);
+        }
+    }
+
+    async function runFullCapture() {
+        if (!confirm('Run full capture pipeline? This will recompute metrics and rediscover schemas.')) return;
+        try {
+            const res = await fetch('/api/understanding-graph/run-full-capture', { method: 'POST' });
+            const data = await res.json();
+            alert(`Full capture complete: ${data.label} (ID: ${data.id})`);
+            location.reload();
+        } catch (err) {
+            alert('Failed to run full capture: ' + err.message);
+        }
+    }
+</script>

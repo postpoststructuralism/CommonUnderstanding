@@ -1,0 +1,350 @@
+@{
+    var dialecticalPairs = ViewBag.DialecticalPairs as List<CommonUnderstanding.Services.DialecticalPair> ?? new();
+    var syntheses = ViewBag.Syntheses as List<CommonUnderstanding.Services.SynthesisSummary> ?? new();
+    var blindspots = ViewBag.Blindspots as List<CommonUnderstanding.Services.Blindspot> ?? new();
+    ViewData["Title"] = "Dialectical Navigator";
+}
+
+<style>
+    :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-card: #1c2333;
+        --border: #30363d;
+        --text-primary: #e6edf3;
+        --text-secondary: #8b949e;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-orange: #d29922;
+        --accent-red: #f85149;
+        --accent-purple: #bc8cff;
+    }
+
+    body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .page-header {
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 { font-size: 24px; font-weight: 600; }
+    .page-header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+
+    .nav-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 20px;
+    }
+
+    .nav-tab {
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        background: none;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+    }
+
+    .nav-tab:hover { color: var(--text-primary); }
+    .nav-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 20px 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Synthesis triad card ── */
+    .triad-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+
+    .triad-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 8px 0;
+    }
+
+    .triad-node {
+        flex: 1;
+        padding: 10px 14px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .triad-arrow {
+        font-size: 20px;
+        color: var(--text-secondary);
+    }
+
+    .triad-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        min-width: 80px;
+    }
+
+    .triad-meta {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    /* ── Pair card ── */
+    .pair-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pair-nodes {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pair-node-link {
+        color: var(--accent-blue);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .pair-node-link:hover { text-decoration: underline; }
+
+    .pair-vs {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .pair-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .pair-meta-item {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+
+    .controversy-bar {
+        width: 80px;
+        height: 6px;
+        background: var(--bg-secondary);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .controversy-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s;
+    }
+
+    /* ── Blindspot card ── */
+    .blindspot-card {
+        background: var(--bg-card);
+        border: 1px solid var(--accent-red);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 8px;
+    }
+
+    .blindspot-card .bs-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--accent-red);
+        margin-bottom: 4px;
+    }
+
+    .blindspot-card .bs-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 12px;
+    }
+
+    .blindspot-card .bs-reason {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+        font-style: italic;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .badge-green { background: #1a3a2a; color: var(--accent-green); }
+    .badge-orange { background: #3a2e1a; color: var(--accent-orange); }
+    .badge-red { background: #3a1a1a; color: var(--accent-red); }
+    .badge-purple { background: #2a1a3a; color: var(--accent-purple); }
+    .badge-blue { background: #1f3a5f; color: var(--accent-blue); }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+</style>
+
+<div class="container">
+    <div class="page-header">
+        <h1>⚖️ Dialectical Navigator</h1>
+        <p>Explore thesis-antithesis-synthesis triads, contradictions, and conceptual blindspots</p>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="syntheses">Syntheses (@syntheses.Count)</button>
+        <button class="nav-tab" data-tab="contradictions">Contradictions (@dialecticalPairs.Count)</button>
+        <button class="nav-tab" data-tab="blindspots">Blindspots (@blindspots.Count)</button>
+    </div>
+
+    <!-- Syntheses tab -->
+    <div class="tab-content" id="tab-syntheses">
+        @if (syntheses.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="icon">⚖️</div>
+                <p>No dialectical syntheses have been generated yet.</p>
+                <p style="font-size:12px;margin-top:8px;">Syntheses emerge when contradictory propositions are resolved into higher-order understanding.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var syn in syntheses)
+            {
+                <div class="triad-card">
+                    <div class="triad-row">
+                        <span class="triad-label">Depth @syn.Depth</span>
+                        <div class="triad-node">
+                            <span style="color:var(--text-secondary);font-size:12px;">
+                                @syn.ParentNodeIds.Count parent node(s)
+                            </span>
+                        </div>
+                    </div>
+                    <div class="triad-row">
+                        <span class="triad-arrow">⬇</span>
+                    </div>
+                    <div class="triad-row">
+                        <span class="triad-label">Synthesis</span>
+                        <div class="triad-node" style="border-color: var(--accent-green);">
+                            <a href="/UnderstandingGraph/Node/@syn.SynthesisLabel" class="pair-node-link">@syn.SynthesisLabel</a>
+                        </div>
+                    </div>
+                    <div class="triad-meta">
+                        @if (!string.IsNullOrEmpty(syn.ResolutionNarrative))
+                        {
+                            <span style="color:var(--text-secondary);font-size:12px;grid-column:1/-1;">@syn.ResolutionNarrative</span>
+                        }
+                        <span>Accepted: <span class="badge @(syn.IsAccepted ? "badge-green" : "badge-orange")">@syn.IsAccepted</span></span>
+                        <span>Created: @syn.CreatedAt.ToString("yyyy-MM-dd")</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Contradictions tab -->
+    <div class="tab-content" id="tab-contradictions" style="display:none;">
+        @if (dialecticalPairs.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="icon">⚡</div>
+                <p>No significant contradictions detected.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var pair in dialecticalPairs)
+            {
+                <div class="pair-card">
+                    <div class="pair-nodes">
+                        <a href="/UnderstandingGraph/Node/@pair.SourceId" class="pair-node-link">@pair.SourceLabel</a>
+                        <span class="pair-vs">↔</span>
+                        <a href="/UnderstandingGraph/Node/@pair.TargetId" class="pair-node-link">@pair.TargetLabel</a>
+                    </div>
+                    <div class="pair-meta">
+                        <span class="pair-meta-item">@pair.Relationship</span>
+                        <span class="pair-meta-item">W: @pair.Weight.ToString("F2")</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Blindspots tab -->
+    <div class="tab-content" id="tab-blindspots" style="display:none;">
+        @if (blindspots.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="icon">👁️</div>
+                <p>No conceptual blindspots detected.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var bs in blindspots)
+            {
+                <div class="blindspot-card">
+                    <div class="bs-title">
+                        <a href="/UnderstandingGraph/Node/@bs.NodeId" class="pair-node-link">@bs.CanonicalText</a>
+                    </div>
+                    <div class="bs-meta">
+                        <span>🌡️ @bs.DialecticalTemperature.ToString("F2")</span>
+                        <span>⚡ @bs.ControversyScore.ToString("F2")</span>
+                        <span>🎯 @bs.Confidence.ToString("F2")</span>
+                        <span>📊 @bs.SchemaEntropy.ToString("F2") entropy</span>
+                    </div>
+                    <div class="bs-reason">@bs.Reason</div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+            document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+        });
+    });
+</script>

@@ -134,6 +134,14 @@ builder.Services.AddScoped<UnderstandingGraphService>();
 builder.Services.AddScoped<SchemaDiscoveryService>();
 builder.Services.AddScoped<DialecticalSynthesisService>();
 
+// Phase 3b: Graph Algorithms — Tensor decomposition, FCA, TDA, snapshots, query
+builder.Services.AddScoped<TensorConstructionService>();
+builder.Services.AddScoped<TensorDecompositionService>();
+builder.Services.AddScoped<FcaLatticeService>();
+builder.Services.AddScoped<TdaService>();
+builder.Services.AddScoped<GraphSnapshotService>();
+builder.Services.AddScoped<UnderstandingQueryService>();
+
 // Register Multi-User Convergence services (Phase 6)
 builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
