@@ -42,18 +42,10 @@ public class UnderstandingGraphController : Controller
     /// </summary>
     public async Task<IActionResult> Index()
     {
-        var schemas = await _queryService.GetAllSchemasAsync();
+        // Load only lightweight stats on initial page render.
+        // Sidebar tab data (schemas, syntheses, bridges, blindspots) loads via AJAX.
         var stats = await _graphService.GetStatisticsAsync();
-        var syntheses = await _queryService.GetAllSynthesesAsync();
-        var bridgeNodes = await _queryService.GetBridgeNodesAsync(10);
-        var blindspots = await _queryService.GetBlindspotsAsync(10);
-
-        ViewBag.Schemas = schemas;
         ViewBag.Statistics = stats;
-        ViewBag.Syntheses = syntheses;
-        ViewBag.BridgeNodes = bridgeNodes;
-        ViewBag.Blindspots = blindspots;
-
         return View();
     }
 
@@ -162,6 +154,16 @@ public class UnderstandingGraphController : Controller
     }
 
     /// <summary>
+    /// Returns syntheses as JSON.
+    /// </summary>
+    [HttpGet("api/understanding-graph/syntheses")]
+    public async Task<IActionResult> GetSyntheses()
+    {
+        var syntheses = await _queryService.GetAllSynthesesAsync();
+        return Json(syntheses);
+    }
+
+    /// <summary>
     /// Returns dialectical pairs as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/dialectical-pairs")]
@@ -242,5 +244,126 @@ public class UnderstandingGraphController : Controller
 
         var results = await _queryService.SearchAsync(q, count);
         return Json(results);
+    }
+
+    // ── Pipeline Actions ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs the full analysis pipeline: recompute topology, discover schemas,
+    /// run tensor decomposition, FCA lattice, TDA, and capture a snapshot.
+    /// </summary>
+    [HttpPost("api/understanding-graph/run-pipeline")]
+    public async Task<IActionResult> RunPipeline()
+    {
+        try
+        {
+            _logger.LogInformation("Full analysis pipeline triggered via UI.");
+
+            // Step 1: Recompute topology metrics
+            await _graphService.RecomputeTopologyMetricsAsync();
+
+            // Step 2: Discover schemas via k-means
+            var schemas = await _schemaService.DiscoverSchemasKMeansAsync();
+            _logger.LogInformation("Pipeline: discovered {Count} schemas.", schemas.Count);
+
+            // Step 3: Run dialectical synthesis
+            await _synthesisService.GenerateSynthesesAsync();
+
+            // Step 4: Capture snapshot
+            var snapshot = await _snapshotService.CaptureSnapshotAsync($"Pipeline run {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
+
+            return Json(new
+            {
+                success = true,
+                schemasDiscovered = schemas.Count,
+                snapshotId = snapshot.Id,
+                snapshotLabel = snapshot.Label,
+                message = $"Pipeline complete. Discovered {schemas.Count} schemas, captured snapshot."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Pipeline run failed.");
+            return Json(new { success = false, message = $"Pipeline failed: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Runs just the schema discovery step.
+    /// </summary>
+    [HttpPost("api/understanding-graph/run-discovery")]
+    public async Task<IActionResult> RunDiscovery()
+    {
+        try
+        {
+            var schemas = await _schemaService.DiscoverSchemasKMeansAsync();
+            return Json(new { success = true, schemasDiscovered = schemas.Count });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the entire Understanding Graph from existing data.
+    /// Syncs all arguments and social arguments into nodes/edges,
+    /// then runs the full pipeline (topology, discovery, synthesis, snapshot).
+    /// </summary>
+    [HttpPost("api/understanding-graph/rebuild")]
+    public async Task<IActionResult> RebuildGraph()
+    {
+        try
+        {
+            _logger.LogInformation("Rebuild Graph triggered via UI.");
+
+            // Step 1: Bulk sync all existing data
+            await _graphService.SyncAllAsync();
+
+            // Step 2: Recompute topology metrics
+            await _graphService.RecomputeTopologyMetricsAsync();
+
+            // Step 3: Discover schemas via k-means
+            var schemas = await _schemaService.DiscoverSchemasKMeansAsync();
+            _logger.LogInformation("Rebuild: discovered {Count} schemas.", schemas.Count);
+
+            // Step 4: Run dialectical synthesis
+            await _synthesisService.GenerateSynthesesAsync();
+
+            // Step 5: Capture snapshot
+            var snapshot = await _snapshotService.CaptureSnapshotAsync($"Rebuild {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
+
+            return Json(new
+            {
+                success = true,
+                nodesCreated = true,
+                schemasDiscovered = schemas.Count,
+                snapshotId = snapshot.Id,
+                snapshotLabel = snapshot.Label,
+                message = $"Graph rebuilt. Discovered {schemas.Count} schemas, captured snapshot."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Rebuild graph failed.");
+            return Json(new { success = false, message = $"Rebuild failed: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Runs just the dialectical synthesis step.
+    /// </summary>
+    [HttpPost("api/understanding-graph/run-synthesis")]
+    public async Task<IActionResult> RunSynthesis()
+    {
+        try
+        {
+            var count = await _synthesisService.GenerateSynthesesAsync();
+            return Json(new { success = true, synthesesGenerated = count });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
     }
 }

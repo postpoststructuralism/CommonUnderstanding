@@ -2,49 +2,24 @@
 @using CommonUnderstanding.Services
 @{
     ViewData["Title"] = "Understanding Graph — Schema Explorer";
-    var schemas = ViewBag.Schemas as List<CommonUnderstanding.Services.SchemaSummary> ?? new();
     var stats = ViewBag.Statistics as GraphStatistics;
-    var syntheses = ViewBag.Syntheses as List<CommonUnderstanding.Services.SynthesisSummary> ?? new();
-    var bridgeNodes = ViewBag.BridgeNodes as List<CommonUnderstanding.Services.BridgeNode> ?? new();
-    var blindspots = ViewBag.Blindspots as List<CommonUnderstanding.Services.Blindspot> ?? new();
 }
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/dist/vis-network.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.css" />
 <style>
-    :root {
-        --bg-primary: #0d1117;
-        --bg-secondary: #161b22;
-        --bg-card: #1c2333;
-        --border: #30363d;
-        --text-primary: #e6edf3;
-        --text-secondary: #8b949e;
-        --accent-blue: #58a6ff;
-        --accent-green: #3fb950;
-        --accent-orange: #d29922;
-        --accent-red: #f85149;
-        --accent-purple: #bc8cff;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
     .graph-container {
         display: flex;
         height: calc(100vh - 60px);
         gap: 0;
+        min-height: 0;
     }
 
     /* ── Sidebar ── */
     .sidebar {
         width: 380px;
         min-width: 380px;
-        background: var(--bg-secondary);
-        border-right: 1px solid var(--border);
+        background: #fff;
+        border-right: 1px solid var(--cu-border-light);
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -52,26 +27,26 @@
 
     .sidebar-header {
         padding: 16px 20px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-card);
+        border-bottom: 1px solid var(--cu-border-light);
+        background: linear-gradient(135deg, rgba(var(--cu-secondary-rgb), 0.06), rgba(var(--cu-accent-rgb), 0.04));
     }
 
     .sidebar-header h1 {
         font-size: 18px;
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--cu-primary-blue);
     }
 
     .sidebar-header p {
         font-size: 12px;
-        color: var(--text-secondary);
+        color: var(--cu-text-muted);
         margin-top: 4px;
     }
 
     .sidebar-tabs {
         display: flex;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--cu-border-light);
+        background: #fff;
     }
 
     .sidebar-tab {
@@ -80,7 +55,7 @@
         text-align: center;
         font-size: 12px;
         font-weight: 500;
-        color: var(--text-secondary);
+        color: var(--cu-text-muted);
         cursor: pointer;
         border-bottom: 2px solid transparent;
         transition: all 0.2s;
@@ -90,10 +65,10 @@
         border-right: none;
     }
 
-    .sidebar-tab:hover { color: var(--text-primary); }
+    .sidebar-tab:hover { color: var(--cu-primary-blue); }
     .sidebar-tab.active {
-        color: var(--accent-blue);
-        border-bottom-color: var(--accent-blue);
+        color: var(--cu-secondary-blue);
+        border-bottom-color: var(--cu-secondary-blue);
     }
 
     .sidebar-content {
@@ -102,64 +77,52 @@
         padding: 12px;
     }
 
-    /* ── Cards ── */
-    .card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 8px;
+    /* ── Sidebar cards ── */
+    .sidebar .card {
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: 0.9rem;
         padding: 14px;
         margin-bottom: 10px;
         cursor: pointer;
         transition: border-color 0.2s, transform 0.1s;
+        box-shadow: var(--cu-shadow-xs);
     }
 
-    .card:hover {
-        border-color: var(--accent-blue);
+    .sidebar .card:hover {
+        border-color: var(--cu-secondary-blue);
         transform: translateX(2px);
+        box-shadow: var(--cu-shadow-sm);
     }
 
-    .card-title {
+    .sidebar .card-title {
         font-size: 14px;
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--cu-primary-blue);
         margin-bottom: 6px;
     }
 
-    .card-meta {
+    .sidebar .card-meta {
         font-size: 11px;
-        color: var(--text-secondary);
+        color: var(--cu-text-muted);
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
     }
 
-    .card-meta span {
+    .sidebar .card-meta span {
         display: inline-flex;
         align-items: center;
         gap: 4px;
     }
-
-    .badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 10px;
-        font-weight: 600;
-    }
-
-    .badge-blue { background: #1f3a5f; color: var(--accent-blue); }
-    .badge-green { background: #1a3a2a; color: var(--accent-green); }
-    .badge-orange { background: #3a2e1a; color: var(--accent-orange); }
-    .badge-red { background: #3a1a1a; color: var(--accent-red); }
-    .badge-purple { background: #2a1a3a; color: var(--accent-purple); }
 
     /* ── Stats bar ── */
     .stats-bar {
         display: flex;
         gap: 16px;
         padding: 10px 20px;
-        background: var(--bg-card);
-        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(var(--cu-secondary-rgb), 0.06), rgba(var(--cu-accent-rgb), 0.04));
+        border-bottom: 1px solid var(--cu-border-light);
         font-size: 12px;
     }
 
@@ -171,58 +134,152 @@
 
     .stat-value {
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--cu-primary-blue);
     }
 
     .stat-label {
-        color: var(--text-secondary);
+        color: var(--cu-text-muted);
     }
 
     /* ── Visualization ── */
     .visualization {
         flex: 1;
         position: relative;
-        background: var(--bg-primary);
+        background: #fcfaf6;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
     }
 
     #graph-network {
         width: 100%;
-        height: 100%;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* ── Graph Controls ── */
+    .graph-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        background: #fff;
+        border-bottom: 1px solid var(--cu-border-light);
+        font-size: 12px;
+        flex-wrap: wrap;
+    }
+
+    .graph-controls label {
+        color: var(--cu-text-muted);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .graph-controls select,
+    .graph-controls input[type="range"] {
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: 0.5rem;
+        color: var(--cu-text-dark);
+        padding: 4px 8px;
+        font-size: 12px;
+        outline: none;
+    }
+
+    .graph-controls select:focus { border-color: var(--cu-secondary-blue); }
+
+    .graph-controls .ctrl-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .graph-controls .ctrl-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border: 1px solid var(--cu-border-light);
+        border-radius: 0.5rem;
+        background: #fff;
+        color: var(--cu-text-muted);
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+
+    .graph-controls .ctrl-toggle:hover {
+        border-color: var(--cu-secondary-blue);
+        color: var(--cu-primary-blue);
+    }
+
+    .graph-controls .ctrl-toggle.active {
+        background: rgba(var(--cu-secondary-rgb), 0.1);
+        border-color: var(--cu-secondary-blue);
+        color: var(--cu-secondary-blue);
+    }
+
+    /* ── Legend ── */
+    .graph-legend {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 16px;
+        background: #fff;
+        border-bottom: 1px solid var(--cu-border-light);
+        font-size: 11px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--cu-text-muted);
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
     }
 
     .vis-tooltip {
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 6px !important;
-        color: var(--text-primary) !important;
+        background: #fff !important;
+        border: 1px solid var(--cu-border-light) !important;
+        border-radius: 0.6rem !important;
+        color: var(--cu-text-dark) !important;
         font-size: 12px !important;
         padding: 8px 12px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        box-shadow: var(--cu-shadow-sm) !important;
     }
 
     /* ── Search ── */
     .search-box {
         padding: 12px 20px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--cu-border-light);
     }
 
     .search-box input {
         width: 100%;
         padding: 8px 12px;
-        background: var(--bg-primary);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--text-primary);
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: 0.9rem;
+        color: var(--cu-text-dark);
         font-size: 13px;
         outline: none;
     }
 
     .search-box input:focus {
-        border-color: var(--accent-blue);
+        border-color: var(--cu-secondary-blue);
+        box-shadow: 0 0 0 4px rgba(var(--cu-secondary-rgb), 0.12);
     }
 
     .search-box input::placeholder {
-        color: var(--text-secondary);
+        color: var(--cu-text-muted);
     }
 
     /* ── Scrollbar ── */
@@ -233,10 +290,28 @@
         background: transparent;
     }
     .sidebar-content::-webkit-scrollbar-thumb {
-        background: var(--border);
+        background: var(--cu-border-light);
         border-radius: 3px;
     }
 </style>
+
+<!-- ── Pipeline Action Panel ── -->
+<div class="pipeline-panel" style="display:flex;align-items:center;gap:10px;padding:10px 20px;background:linear-gradient(135deg,rgba(var(--cu-secondary-rgb),0.08),rgba(var(--cu-accent-rgb),0.06));border-bottom:1px solid var(--cu-border-light);flex-wrap:wrap;">
+    <span style="font-size:13px;font-weight:600;color:var(--cu-primary-blue);white-space:nowrap;">🧪 Analysis Pipeline</span>
+    <button class="btn btn-sm btn-outline-secondary pipeline-btn" data-action="run-pipeline" style="border-radius:0.7rem;font-size:12px;display:inline-flex;align-items:center;gap:4px;" onclick="runPipeline('run-pipeline')">
+        <i class="bi bi-play-fill"></i> Full Pipeline
+    </button>
+    <button class="btn btn-sm btn-outline-secondary pipeline-btn" data-action="run-discovery" style="border-radius:0.7rem;font-size:12px;display:inline-flex;align-items:center;gap:4px;" onclick="runPipeline('run-discovery')">
+        <i class="bi bi-diagram-3"></i> Discover Schemas
+    </button>
+    <button class="btn btn-sm btn-outline-secondary pipeline-btn" data-action="run-synthesis" style="border-radius:0.7rem;font-size:12px;display:inline-flex;align-items:center;gap:4px;" onclick="runPipeline('run-synthesis')">
+        <i class="bi bi-arrow-left-right"></i> Synthesize
+    </button>
+    <button class="btn btn-sm btn-outline-primary pipeline-btn" data-action="rebuild" style="border-radius:0.7rem;font-size:12px;display:inline-flex;align-items:center;gap:4px;border-color:var(--cu-accent);color:var(--cu-accent);" onclick="runPipeline('rebuild')">
+        <i class="bi bi-arrow-repeat"></i> Rebuild Graph
+    </button>
+    <span id="pipeline-status" style="font-size:12px;color:var(--cu-text-muted);margin-left:auto;">Ready</span>
+</div>
 
 <div class="graph-container">
     <!-- Sidebar -->
@@ -248,15 +323,15 @@
 
         <div class="stats-bar">
             <div class="stat-item">
-                <span class="stat-value">@(stats?.TotalNodes ?? 0)</span>
+                <span class="stat-value" id="stat-nodes">@(stats?.TotalNodes ?? 0)</span>
                 <span class="stat-label">nodes</span>
             </div>
             <div class="stat-item">
-                <span class="stat-value">@schemas.Count</span>
+                <span class="stat-value" id="stat-schemas">—</span>
                 <span class="stat-label">schemas</span>
             </div>
             <div class="stat-item">
-                <span class="stat-value">@syntheses.Count</span>
+                <span class="stat-value" id="stat-syntheses">—</span>
                 <span class="stat-label">syntheses</span>
             </div>
         </div>
@@ -275,130 +350,86 @@
         <div class="sidebar-content" id="sidebar-content">
             <!-- Schemas tab -->
             <div class="tab-content" id="tab-schemas">
-                @if (schemas.Count == 0)
-                {
-                    <div style="text-align:center;padding:40px 20px;color:var(--text-secondary);">
-                        <div style="font-size:40px;margin-bottom:12px;">🧠</div>
-                        <p>No schemas discovered yet.</p>
-                        <p style="font-size:12px;margin-top:8px;">Run the discovery pipeline to detect emergent conceptual structures.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var schema in schemas)
-                    {
-                        <div class="card" onclick="focusSchema(@schema.Id, '@schema.Label')">
-                            <div class="card-title">@schema.Label</div>
-                            <div class="card-meta">
-                                <span>📦 @schema.MemberCount members</span>
-                                <span>🎯 @schema.Coherence.ToString("F2") coherence</span>
-                                <span>📊 @schema.DiscoveryMethod</span>
-                                @if (schema.Stability > 0)
-                                {
-                                    <span>⚡ @schema.Stability.ToString("F2") stability</span>
-                                }
-                            </div>
-                        </div>
-                    }
-                }
+                <div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);">
+                    <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+                    <p>Loading schemas...</p>
+                </div>
             </div>
 
             <!-- Syntheses tab -->
             <div class="tab-content" id="tab-syntheses" style="display:none;">
-                @if (syntheses.Count == 0)
-                {
-                    <div style="text-align:center;padding:40px 20px;color:var(--text-secondary);">
-                        <div style="font-size:40px;margin-bottom:12px;">⚖️</div>
-                        <p>No dialectical syntheses yet.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var syn in syntheses)
-                    {
-                        <div class="card" onclick="focusSynthesis(@syn.Id)">
-                            <div class="card-title">Synthesis (Depth @syn.Depth)</div>
-                            <div class="card-meta">
-                                <span>➡️ @syn.SynthesisLabel</span>
-                                <span>📦 @syn.ParentNodeIds.Count parents</span>
-                                <span class="badge @(syn.IsAccepted ? "badge-green" : "badge-orange")">@(syn.IsAccepted ? "Accepted" : "Pending")</span>
-                            </div>
-                        </div>
-                    }
-                }
+                <div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);">
+                    <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+                    <p>Loading syntheses...</p>
+                </div>
             </div>
 
             <!-- Bridges tab -->
             <div class="tab-content" id="tab-bridges" style="display:none;">
-                @if (bridgeNodes.Count == 0)
-                {
-                    <div style="text-align:center;padding:40px 20px;color:var(--text-secondary);">
-                        <div style="font-size:40px;margin-bottom:12px;">🌉</div>
-                        <p>No bridge nodes found.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var bridge in bridgeNodes)
-                    {
-                        <div class="card" onclick="focusNode(@bridge.NodeId)">
-                            <div class="card-title">@bridge.CanonicalText</div>
-                            <div class="card-meta">
-                                <span>🔗 @bridge.SchemaCount schemas</span>
-                                <span>📊 BC @bridge.BetweennessCentrality.ToString("F3")</span>
-                                <span>🌡️ @bridge.DialecticalTemperature.ToString("F2")</span>
-                            </div>
-                            <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">
-                                @foreach (var sl in bridge.SchemaLabels.Take(3))
-                                {
-                                    <span class="badge badge-blue">@sl</span>
-                                }
-                                @if (bridge.SchemaLabels.Count > 3)
-                                {
-                                    <span class="badge">+@(bridge.SchemaLabels.Count - 3)</span>
-                                }
-                            </div>
-                        </div>
-                    }
-                }
+                <div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);">
+                    <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+                    <p>Loading bridges...</p>
+                </div>
             </div>
 
             <!-- Blindspots tab -->
             <div class="tab-content" id="tab-blindspots" style="display:none;">
-                @if (blindspots.Count == 0)
-                {
-                    <div style="text-align:center;padding:40px 20px;color:var(--text-secondary);">
-                        <div style="font-size:40px;margin-bottom:12px;">👁️</div>
-                        <p>No blindspots detected.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var bs in blindspots)
-                    {
-                        <div class="card" onclick="focusNode(@bs.NodeId)">
-                            <div class="card-title">@bs.CanonicalText</div>
-                            <div class="card-meta">
-                                <span>🌡️ @bs.DialecticalTemperature.ToString("F2") temp</span>
-                                <span>⚡ @bs.ControversyScore.ToString("F2") controversy</span>
-                            </div>
-                            <div style="margin-top:6px;font-size:11px;color:var(--text-secondary);">
-                                @bs.Reason
-                            </div>
-                        </div>
-                    }
-                }
+                <div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);">
+                    <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+                    <p>Loading blindspots...</p>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Visualization -->
     <div class="visualization">
+        <div class="graph-controls">
+            <div class="ctrl-group">
+                <label>Color by:</label>
+                <select id="color-metric">
+                    <option value="default">Default</option>
+                    <option value="dialecticalTemperature">Dialectical Temp</option>
+                    <option value="controversyScore">Controversy</option>
+                    <option value="confidence">Confidence</option>
+                    <option value="schemaEntropy">Schema Entropy</option>
+                    <option value="degreeCentrality">Centrality</option>
+                </select>
+            </div>
+            <div class="ctrl-group">
+                <label>Min weight:</label>
+                <input type="range" id="weight-filter" min="0" max="1" step="0.05" value="0" />
+                <span id="weight-label" style="color:var(--cu-text-muted);min-width:24px;">0</span>
+            </div>
+            <div class="ctrl-group">
+                <button class="ctrl-toggle active" id="toggle-physics" title="Toggle physics simulation">
+                    <i class="bi bi-activity"></i> Physics
+                </button>
+                <button class="ctrl-toggle" id="toggle-labels" title="Toggle edge labels">
+                    <i class="bi bi-fonts"></i> Labels
+                </button>
+                <button class="ctrl-toggle" id="reset-view" title="Reset graph view">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            </div>
+        </div>
+        <div class="graph-legend" id="graph-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--cu-secondary-blue);"></span> High Confidence</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--cu-primary-blue);"></span> Normal</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--cu-accent);"></span> Controversial</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#c0392b;"></span> High Temp</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#8e44ad;"></span> High Entropy</span>
+            <span class="legend-item" style="margin-left:auto;">
+                <span class="badge" style="background:rgba(var(--cu-secondary-rgb),0.12);color:var(--cu-secondary-blue);">Settled</span>
+                <span class="badge" style="background:rgba(192,122,63,0.12);color:var(--cu-accent);">Contested</span>
+                <span class="badge" style="background:var(--cu-border-light);color:var(--cu-text-muted);">Unevaluated</span>
+            </span>
+        </div>
         <div id="graph-network"></div>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/peer/vis-network.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 <script>
     // ── State ──
     let network = null;
@@ -406,7 +437,6 @@
     let edges = new vis.DataSet([]);
     let allNodes = [];
     let allEdges = [];
-    let allSchemas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(schemas));
     let currentHighlight = null;
 
     // ── Tab switching ──
@@ -462,7 +492,7 @@
                 label: e.edgeType,
                 value: Math.max(0.5, e.weight),
                 color: {
-                    color: '#58a6ff',
+                    color: '#0f766e',
                     opacity: Math.min(1, Math.max(0.2, e.weight || 0.3))
                 },
                 width: Math.max(0.5, (e.weight || 0.5) * 3)
@@ -480,11 +510,11 @@
     }
 
     function getNodeColor(n) {
-        if (n.dialecticalTemperature > 0.7) return { background: '#f85149', border: '#ff7b72', highlight: { background: '#ff7b72', border: '#f85149' } };
-        if (n.controversyScore > 0.6) return { background: '#d29922', border: '#e3b341', highlight: { background: '#e3b341', border: '#d29922' } };
-        if (n.confidence > 0.7) return { background: '#3fb950', border: '#56d364', highlight: { background: '#56d364', border: '#3fb950' } };
-        if (n.schemaEntropy > 0.5) return { background: '#bc8cff', border: '#d2a8ff', highlight: { background: '#d2a8ff', border: '#bc8cff' } };
-        return { background: '#58a6ff', border: '#79c0ff', highlight: { background: '#79c0ff', border: '#58a6ff' } };
+        if (n.dialecticalTemperature > 0.7) return { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
+        if (n.controversyScore > 0.6) return { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
+        if (n.confidence > 0.7) return { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
+        if (n.schemaEntropy > 0.5) return { background: '#7c3aed', border: '#a78bfa', highlight: { background: '#a78bfa', border: '#7c3aed' } };
+        return { background: '#0f766e', border: '#14b8a6', highlight: { background: '#14b8a6', border: '#0f766e' } };
     }
 
     // ── Draw network ──
@@ -507,10 +537,10 @@
             },
             edges: {
                 smooth: { type: 'continuous' },
-                font: { size: 9, color: '#8b949e', strokeWidth: 0 }
+                font: { size: 9, color: '#667487', strokeWidth: 0 }
             },
             nodes: {
-                font: { size: 10, color: '#e6edf3', strokeWidth: 0 },
+                font: { size: 10, color: '#17202f', strokeWidth: 0 },
                 borderWidth: 1.5,
                 size: 12,
                 shape: 'dot'
@@ -522,10 +552,10 @@
                 keyboard: true
             },
             groups: {
-                Settled: { color: { background: '#3fb950', border: '#56d364' } },
-                Contested: { color: { background: '#d29922', border: '#e3b341' } },
-                Unknown: { color: { background: '#8b949e', border: '#a5afba' } },
-                Unevaluated: { color: { background: '#58a6ff', border: '#79c0ff' } }
+                Settled: { color: { background: '#059669', border: '#34d399' } },
+                Contested: { color: { background: '#d97706', border: '#f59e0b' } },
+                Unknown: { color: { background: '#667487', border: '#8b95a5' } },
+                Unevaluated: { color: { background: '#0f766e', border: '#14b8a6' } }
             }
         };
 
@@ -546,28 +576,66 @@
         });
     }
 
+    // ── Helpers ──
+    // Strip any existing alpha suffix from a hex color (e.g. '#05966922' -> '#059669')
+    function stripAlpha(hex) {
+        if (!hex || typeof hex !== 'string') return hex;
+        // If it's an 8-char hex like #RRGGBBAA, strip the AA
+        if (/^#[0-9a-f]{8}$/i.test(hex)) return hex.substring(0, 7);
+        // If it's longer than 7 chars (multiple alpha appends), take first 7
+        if (hex.startsWith('#') && hex.length > 7) return hex.substring(0, 7);
+        return hex;
+    }
+
+    // Get the original (non-dimmed) color for a node from allNodes
+    function getOriginalNodeColor(nodeId) {
+        const orig = allNodes.find(n => n.id === nodeId);
+        return orig ? orig.color : { background: '#0f766e', border: '#14b8a6' };
+    }
+
     // ── Highlight / Focus ──
     function highlightNodes(nodeIds) {
         const idSet = new Set(nodeIds);
-        nodes.forEach(n => {
+        // Batch update nodes — always reference original colors from allNodes
+        const nodeUpdates = [];
+        allNodes.forEach(n => {
+            const origColor = n.color;
+            const bg = stripAlpha(origColor.background || '#0f766e');
+            const border = stripAlpha(origColor.border || '#14b8a6');
             if (idSet.has(n.id)) {
-                nodes.update({ id: n.id, opacity: 1.0, scaling: { min: 10, max: 30 } });
+                nodeUpdates.push({ id: n.id, color: { background: bg, border: border } });
             } else {
-                nodes.update({ id: n.id, opacity: 0.15 });
+                // Use hex with low alpha for dimmed nodes
+                nodeUpdates.push({ id: n.id, color: { background: bg + '22', border: border + '44' } });
             }
         });
+        nodes.update(nodeUpdates);
+
+        const edgeUpdates = [];
         edges.forEach(e => {
             if (idSet.has(e.from) && idSet.has(e.to)) {
-                edges.update({ id: e.id, color: { opacity: 0.8 } });
+                edgeUpdates.push({ id: e.id, color: { color: '#0f766e', opacity: 0.8 } });
             } else {
-                edges.update({ id: e.id, color: { opacity: 0.05 } });
+                edgeUpdates.push({ id: e.id, color: { color: '#0f766e', opacity: 0.05 } });
             }
         });
+        edges.update(edgeUpdates);
     }
 
     function resetView() {
-        nodes.forEach(n => nodes.update({ id: n.id, opacity: 1.0 }));
-        edges.forEach(e => edges.update({ id: e.id, color: { opacity: 0.3 } }));
+        // Restore all nodes to original colors from allNodes
+        const nodeUpdates = [];
+        allNodes.forEach(n => {
+            nodeUpdates.push({ id: n.id, color: n.color });
+        });
+        nodes.update(nodeUpdates);
+
+        const edgeUpdates = [];
+        allEdges.forEach(e => {
+            edgeUpdates.push({ id: e.id, color: e.color });
+        });
+        edges.update(edgeUpdates);
+
         if (network) network.fit();
     }
 
@@ -580,7 +648,8 @@
                 if (network && ids.length > 0) {
                     network.fit({ nodes: ids, animation: true });
                 }
-            });
+            })
+            .catch(err => console.error('focusSchema error:', err));
     }
 
     function focusNode(nodeId) {
@@ -600,6 +669,242 @@
         // window.location.href = '/UnderstandingGraph/Node/' + nodeId;
     }
 
-    // ── Init ──
-    document.addEventListener('DOMContentLoaded', loadGraph);
+    // ── Color by metric ──
+    function recolorByMetric(metric) {
+        if (!allNodes.length) return;
+        const updated = allNodes.map(n => {
+            let color;
+            if (metric === 'default') {
+                color = getNodeColor(n);
+            } else {
+                const val = n[metric] || 0;
+                // Heatmap: blue (0) → purple (0.25) → orange (0.5) → red (0.75+)
+                const t = Math.min(1, Math.max(0, val));
+                const r = Math.min(255, Math.round(t * 2 * 255));
+                const g = Math.round((1 - Math.abs(t - 0.5) * 2) * 150);
+                const b = Math.round((1 - t) * 255);
+                const bg = `rgb(${r},${g},${b})`;
+                color = { background: bg, border: bg, highlight: { background: bg, border: bg } };
+            }
+            // Also update allNodes so resetView can restore correctly
+            n.color = color;
+            return { id: n.id, color: color };
+        });
+        nodes.update(updated);
+    }
+
+    // ── Weight filter ──
+    function applyWeightFilter(minWeight) {
+        if (!allEdges.length) return;
+        const filtered = allEdges.filter(e => (e.value || 0) >= minWeight);
+        const filteredIds = new Set(filtered.map(e => e.id));
+        const visibleIds = new Set();
+        filtered.forEach(e => { visibleIds.add(e.from); visibleIds.add(e.to); });
+
+        edges.clear();
+        edges.add(filtered);
+
+        // Dim orphaned nodes via color alpha — always reference allNodes originals
+        const updates = [];
+        allNodes.forEach(n => {
+            const origColor = n.color;
+            const bg = stripAlpha(origColor.background || '#0f766e');
+            const border = stripAlpha(origColor.border || '#14b8a6');
+            if (visibleIds.has(n.id)) {
+                updates.push({ id: n.id, color: { background: bg, border: border } });
+            } else {
+                updates.push({ id: n.id, color: { background: bg + '15', border: border + '15' } });
+            }
+        });
+        nodes.update(updates);
+    }
+
+    // ── Controls setup ──
+    document.addEventListener('DOMContentLoaded', () => {
+        // Color metric dropdown
+        document.getElementById('color-metric').addEventListener('change', (e) => {
+            recolorByMetric(e.target.value);
+        });
+
+        // Weight filter slider
+        document.getElementById('weight-filter').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('weight-label').textContent = val.toFixed(2);
+            applyWeightFilter(val);
+        });
+
+        // Toggle physics
+        document.getElementById('toggle-physics').addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const enabled = btn.classList.toggle('active');
+            if (network) {
+                network.setOptions({ physics: { enabled: enabled } });
+                if (enabled) network.startSimulation();
+                else network.stopSimulation();
+            }
+        });
+
+        // Toggle edge labels
+        document.getElementById('toggle-labels').addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const show = btn.classList.toggle('active');
+            if (network) {
+                edges.forEach(edge => {
+                    edges.update({ id: edge.id, label: show ? edge.label : '' });
+                });
+            }
+        });
+
+        // Reset view
+        document.getElementById('reset-view').addEventListener('click', () => {
+            document.getElementById('color-metric').value = 'default';
+            document.getElementById('weight-filter').value = '0';
+            document.getElementById('weight-label').textContent = '0';
+            document.getElementById('toggle-physics').classList.add('active');
+            document.getElementById('toggle-labels').classList.remove('active');
+            recolorByMetric('default');
+            applyWeightFilter(0);
+            if (network) {
+                network.setOptions({ physics: { enabled: true } });
+                network.startSimulation();
+                network.fit({ animation: true });
+            }
+        });
+
+        loadGraph();
+        loadSidebarData();
+    });
+
+    // ── Lazy-load sidebar data ──
+    async function loadSidebarData() {
+        try {
+            const [schemas, syntheses, bridges, blindspots] = await Promise.all([
+                fetch('/api/understanding-graph/schemas').then(r => r.json()),
+                fetch('/api/understanding-graph/syntheses').then(r => r.json()),
+                fetch('/api/understanding-graph/bridge-nodes?count=10').then(r => r.json()),
+                fetch('/api/understanding-graph/blindspots?count=10').then(r => r.json())
+            ]);
+
+            // Update stats
+            document.getElementById('stat-schemas').textContent = schemas.length;
+            document.getElementById('stat-syntheses').textContent = syntheses.length;
+
+            // Render schemas tab
+            renderSchemasTab(schemas);
+            // Render syntheses tab
+            renderSynthesesTab(syntheses);
+            // Render bridges tab
+            renderBridgesTab(bridges);
+            // Render blindspots tab
+            renderBlindspotsTab(blindspots);
+        } catch (err) {
+            console.error('Failed to load sidebar data:', err);
+        }
+    }
+
+    function renderSchemasTab(schemas) {
+        const el = document.getElementById('tab-schemas');
+        if (!schemas || schemas.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);"><div style="font-size:40px;margin-bottom:12px;">🧠</div><p>No schemas discovered yet.</p><p style="font-size:12px;margin-top:8px;">Run the discovery pipeline to detect emergent conceptual structures.</p></div>';
+            return;
+        }
+        el.innerHTML = schemas.map(s => `
+            <div class="card" onclick="focusSchema(${s.id}, '${s.label.replace(/'/g, "\\'")}')">
+                <div class="card-title">${escHtml(s.label)}</div>
+                <div class="card-meta">
+                    <span>📦 ${s.memberCount} members</span>
+                    <span>🎯 ${s.coherence.toFixed(2)} coherence</span>
+                    <span>📊 ${s.discoveryMethod}</span>
+                    ${s.stability > 0 ? `<span>⚡ ${s.stability.toFixed(2)} stability</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderSynthesesTab(syntheses) {
+        const el = document.getElementById('tab-syntheses');
+        if (!syntheses || syntheses.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);"><div style="font-size:40px;margin-bottom:12px;">⚖️</div><p>No dialectical syntheses yet.</p></div>';
+            return;
+        }
+        el.innerHTML = syntheses.map(s => `
+            <div class="card" onclick="focusSynthesis(${s.id})">
+                <div class="card-title">Synthesis (Depth ${s.depth})</div>
+                <div class="card-meta">
+                    <span>➡️ ${escHtml(s.synthesisLabel)}</span>
+                    <span>📦 ${s.parentNodeIds.length} parents</span>
+                    <span class="badge ${s.isAccepted ? 'badge-green' : 'badge-orange'}">${s.isAccepted ? 'Accepted' : 'Pending'}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderBridgesTab(bridges) {
+        const el = document.getElementById('tab-bridges');
+        if (!bridges || bridges.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);"><div style="font-size:40px;margin-bottom:12px;">🌉</div><p>No bridge nodes found.</p></div>';
+            return;
+        }
+        el.innerHTML = bridges.map(b => {
+            const labels = (b.schemaLabels || []).slice(0, 3).map(l => `<span class="badge badge-blue">${escHtml(l)}</span>`).join('');
+            const extra = (b.schemaLabels || []).length > 3 ? `<span class="badge">+${b.schemaLabels.length - 3}</span>` : '';
+            return `
+            <div class="card" onclick="focusNode(${b.nodeId})">
+                <div class="card-title">${escHtml(b.canonicalText)}</div>
+                <div class="card-meta">
+                    <span>🔗 ${b.schemaCount} schemas</span>
+                    <span>📊 BC ${b.betweennessCentrality.toFixed(3)}</span>
+                    <span>🌡️ ${b.dialecticalTemperature.toFixed(2)}</span>
+                </div>
+                <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">${labels}${extra}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderBlindspotsTab(blindspots) {
+        const el = document.getElementById('tab-blindspots');
+        if (!blindspots || blindspots.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--cu-text-muted);"><div style="font-size:40px;margin-bottom:12px;">👁️</div><p>No blindspots detected.</p></div>';
+            return;
+        }
+        el.innerHTML = blindspots.map(b => `
+            <div class="card" onclick="focusNode(${b.nodeId})">
+                <div class="card-title">${escHtml(b.canonicalText)}</div>
+                <div class="card-meta">
+                    <span>🌡️ ${b.dialecticalTemperature.toFixed(2)} temp</span>
+                    <span>⚡ ${b.controversyScore.toFixed(2)} controversy</span>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:var(--cu-text-muted);">${escHtml(b.reason)}</div>
+            </div>
+        `).join('');
+    }
+
+    function escHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+    }
+
+    // ── Pipeline Actions ──
+    async function runPipeline(action) {
+        const statusEl = document.getElementById('pipeline-status');
+        const buttons = document.querySelectorAll('.pipeline-btn');
+        buttons.forEach(b => b.disabled = true);
+        statusEl.textContent = '⏳ Running...';
+
+        try {
+            const resp = await fetch('/api/understanding-graph/' + action, { method: 'POST' });
+            const result = await resp.json();
+            if (result.success) {
+                statusEl.textContent = '✅ ' + (result.message || 'Complete');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                statusEl.textContent = '❌ ' + (result.message || 'Failed');
+            }
+        } catch (err) {
+            statusEl.textContent = '❌ Error: ' + err.message;
+        } finally {
+            buttons.forEach(b => b.disabled = false);
+        }
+    }
 </script>

@@ -5,6 +5,7 @@ using CommonUnderstanding.Services.Social.Workers;
 using CommonUnderstanding.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel.ChatCompletion;
 using System.Security.Claims;
 
@@ -142,6 +143,9 @@ builder.Services.AddScoped<TdaService>();
 builder.Services.AddScoped<GraphSnapshotService>();
 builder.Services.AddScoped<UnderstandingQueryService>();
 
+// Phase 3c: Background schema discovery worker
+builder.Services.AddHostedService<SchemaDiscoveryWorker>();
+
 // Register Multi-User Convergence services (Phase 6)
 builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
@@ -155,6 +159,9 @@ builder.Services.AddScoped<EpistemicScoringService>();
 builder.Services.AddScoped<BadgeAwardService>();
 builder.Services.AddScoped<XPAwardService>();
 builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddSingleton<LocalEmbeddingGenerator>();
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(
+    sp => sp.GetRequiredService<LocalEmbeddingGenerator>());
 builder.Services.AddScoped<FeedService>();
 
 // Voting
@@ -229,6 +236,11 @@ app.Use(async (context, next) =>
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "understandingGraph",
+    pattern: "UnderstandingGraph/{action=Index}/{id?}",
+    defaults: new { controller = "UnderstandingGraph" });
 
 app.MapControllerRoute(
     name: "default",

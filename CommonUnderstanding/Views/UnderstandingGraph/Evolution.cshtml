@@ -5,25 +5,11 @@
 }
 
 <style>
-    :root {
-        --bg-primary: #0d1117;
-        --bg-secondary: #161b22;
-        --bg-card: #1c2333;
-        --border: #30363d;
-        --text-primary: #e6edf3;
-        --text-secondary: #8b949e;
-        --accent-blue: #58a6ff;
-        --accent-green: #3fb950;
-        --accent-orange: #d29922;
-        --accent-red: #f85149;
-    }
-
-    body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
 
     .page-header { margin-bottom: 24px; }
-    .page-header h1 { font-size: 24px; font-weight: 600; }
-    .page-header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+    .page-header h1 { font-size: 24px; font-weight: 600; color: var(--cu-primary-blue); }
+    .page-header p { color: var(--cu-text-muted); font-size: 14px; margin-top: 4px; }
 
     .evolution-summary {
         display: grid;
@@ -33,80 +19,67 @@
     }
 
     .evo-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: var(--cu-border-radius);
         padding: 14px;
         text-align: center;
+        box-shadow: var(--cu-shadow-xs);
     }
 
-    .evo-card .value { font-size: 22px; font-weight: 700; }
-    .evo-card .label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    .evo-card .value { font-size: 22px; font-weight: 700; color: var(--cu-primary-blue); }
+    .evo-card .label { font-size: 11px; color: var(--cu-text-muted); margin-top: 4px; }
     .evo-card .delta { font-size: 12px; font-weight: 600; margin-top: 2px; }
 
     .section-title {
         font-size: 16px;
         font-weight: 600;
+        color: var(--cu-primary-blue);
         margin: 24px 0 12px;
         padding-bottom: 8px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--cu-border-light);
     }
 
     .snapshot-table {
         width: 100%;
         border-collapse: collapse;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: var(--cu-border-radius);
         overflow: hidden;
+        box-shadow: var(--cu-shadow-xs);
     }
 
     .snapshot-table th {
-        background: var(--bg-secondary);
+        background: var(--cu-background);
         padding: 10px 14px;
         text-align: left;
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: var(--text-secondary);
-        border-bottom: 1px solid var(--border);
+        color: var(--cu-text-muted);
+        border-bottom: 1px solid var(--cu-border-light);
     }
 
     .snapshot-table td {
         padding: 10px 14px;
         font-size: 13px;
-        border-bottom: 1px solid var(--border);
+        color: var(--cu-text-dark);
+        border-bottom: 1px solid var(--cu-border-light);
     }
 
-    .snapshot-table tr:hover td { background: rgba(88,166,255,0.05); }
+    .snapshot-table tr:hover td { background: rgba(var(--cu-secondary-rgb), 0.04); }
     .snapshot-table tr:last-child td { border-bottom: none; }
 
     .back-link {
         display: inline-block;
         margin-bottom: 16px;
-        color: var(--accent-blue);
+        color: var(--cu-secondary-blue);
         text-decoration: none;
         font-size: 13px;
     }
 
-    .back-link:hover { text-decoration: underline; }
-
-    .btn {
-        display: inline-block;
-        padding: 8px 16px;
-        background: var(--accent-blue);
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        transition: opacity 0.2s;
-    }
-
-    .btn:hover { opacity: 0.85; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .back-link:hover { text-decoration: underline; color: var(--cu-primary-blue); }
 
     .btn-group {
         display: flex;
@@ -114,9 +87,47 @@
         margin-bottom: 20px;
     }
 
-    .positive { color: var(--accent-green); }
-    .negative { color: var(--accent-red); }
-    .neutral { color: var(--text-secondary); }
+    .positive { color: var(--cu-secondary-blue); }
+    .negative { color: #c0392b; }
+    .neutral { color: var(--cu-text-muted); }
+
+    /* ── Chart ── */
+    .chart-container {
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: var(--cu-border-radius);
+        padding: 16px;
+        margin-bottom: 20px;
+        position: relative;
+        box-shadow: var(--cu-shadow-xs);
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 250px !important;
+    }
+
+    .chart-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .chart-controls select,
+    .chart-controls button {
+        background: #fff;
+        border: 1px solid var(--cu-border-light);
+        border-radius: 0.5rem;
+        color: var(--cu-text-dark);
+        padding: 4px 10px;
+        font-size: 12px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .chart-controls select:focus { border-color: var(--cu-secondary-blue); }
+    .chart-controls button:hover { border-color: var(--cu-secondary-blue); }
 </style>
 
 <div class="container">
@@ -159,6 +170,24 @@
         </div>
     }
 
+    @if (snapshots.Count >= 2)
+    {
+        <h2 class="section-title">Metric Evolution</h2>
+        <div class="chart-container">
+            <div class="chart-controls">
+                <select id="chart-metric">
+                    <option value="NodeCount">Nodes</option>
+                    <option value="EdgeCount">Edges</option>
+                    <option value="SchemaCount">Schemas</option>
+                    <option value="AverageDialecticalTemperature">Avg Dialectical Temp</option>
+                    <option value="GraphDensity">Graph Density</option>
+                </select>
+                <button onclick="renderChart()">🔄 Refresh</button>
+            </div>
+            <canvas id="evolution-chart"></canvas>
+        </div>
+    }
+
     <h2 class="section-title">Snapshot History (@snapshots.Count)</h2>
     @if (snapshots.Count == 0)
     {
@@ -197,6 +226,112 @@
 </div>
 
 <script>
+    // ── Snapshot data for charting ──
+    const snapshotData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(snapshots.Select(s => new {
+        s.Label, s.NodeCount, s.EdgeCount, s.SchemaCount,
+        s.AverageDialecticalTemperature, s.GraphDensity,
+        CapturedAt = s.CapturedAt.ToString("yyyy-MM-dd")
+    })));
+
+    function renderChart() {
+        const canvas = document.getElementById('evolution-chart');
+        if (!canvas || snapshotData.length < 2) return;
+        const ctx = canvas.getContext('2d');
+        const metric = document.getElementById('chart-metric').value;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const w = rect.width - 32;
+        const h = 250;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.scale(dpr, dpr);
+
+        const values = snapshotData.map(s => s[metric]);
+        const labels = snapshotData.map(s => s.CapturedAt);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min || 1;
+        const padding = { top: 20, bottom: 30, left: 50, right: 20 };
+        const chartW = w - padding.left - padding.right;
+        const chartH = h - padding.top - padding.bottom;
+
+        // Clear
+        ctx.clearRect(0, 0, w, h);
+
+        // Grid lines
+        ctx.strokeStyle = '#30363d';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + (chartH / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(w - padding.right, y);
+            ctx.stroke();
+            const val = max - (range / 4) * i;
+            ctx.fillStyle = '#8b949e';
+            ctx.font = '10px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(val.toFixed(3), padding.left - 6, y + 3);
+        }
+
+        // Line
+        ctx.beginPath();
+        ctx.strokeStyle = '#58a6ff';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        values.forEach((v, i) => {
+            const x = padding.left + (i / (values.length - 1)) * chartW;
+            const y = padding.top + chartH - ((v - min) / range) * chartH;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Fill under line
+        ctx.lineTo(padding.left + chartW, padding.top + chartH);
+        ctx.lineTo(padding.left, padding.top + chartH);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
+        grad.addColorStop(0, 'rgba(88,166,255,0.2)');
+        grad.addColorStop(1, 'rgba(88,166,255,0.02)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Data points
+        values.forEach((v, i) => {
+            const x = padding.left + (i / (values.length - 1)) * chartW;
+            const y = padding.top + chartH - ((v - min) / range) * chartH;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#58a6ff';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        });
+
+        // X-axis labels
+        const step = Math.max(1, Math.floor(labels.length / 6));
+        labels.forEach((label, i) => {
+            if (i % step !== 0 && i !== labels.length - 1) return;
+            const x = padding.left + (i / (labels.length - 1)) * chartW;
+            ctx.fillStyle = '#8b949e';
+            ctx.font = '9px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x, h - padding.bottom + 16);
+        });
+    }
+
+    // Render chart on load if canvas exists
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.getElementById('evolution-chart')) {
+            // Small delay to ensure layout is settled
+            setTimeout(renderChart, 100);
+        }
+    });
+
     async function captureSnapshot() {
         try {
             const res = await fetch('/api/understanding-graph/capture-snapshot', { method: 'POST' });

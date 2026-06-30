@@ -192,50 +192,44 @@ public class UnderstandingQueryService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        // Nodes belonging to multiple schemas are bridge nodes
-        var bridgeCandidates = await db.SchemaMemberships
+        // Single query: nodes belonging to multiple schemas with their labels
+        var bridgeData = await db.SchemaMemberships
             .GroupBy(m => m.NodeId)
             .Where(g => g.Count() > 1)
             .Select(g => new
             {
                 NodeId = g.Key,
                 SchemaCount = g.Count(),
-                AvgWeight = g.Average(m => m.Weight)
+                AvgWeight = g.Average(m => m.Weight),
+                SchemaIds = g.Select(m => m.SchemaId).ToList()
             })
             .OrderByDescending(x => x.SchemaCount)
             .ThenByDescending(x => x.AvgWeight)
             .Take(count)
+            .Join(
+                db.UnderstandingNodes,
+                bc => bc.NodeId,
+                n => n.Id,
+                (bc, n) => new { bc, n }
+            )
             .ToListAsync();
 
-        var result = new List<BridgeNode>();
-        foreach (var bc in bridgeCandidates)
+        // Batch-load all schema labels
+        var allSchemaIds = bridgeData.SelectMany(b => b.bc.SchemaIds).Distinct().ToList();
+        var schemaLabels = await db.ConceptualSchemas
+            .Where(s => allSchemaIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Label);
+
+        return bridgeData.Select(b => new BridgeNode
         {
-            var node = await db.UnderstandingNodes.FindAsync(bc.NodeId);
-            if (node == null) continue;
-
-            var schemaIds = await db.SchemaMemberships
-                .Where(m => m.NodeId == bc.NodeId)
-                .Select(m => m.SchemaId)
-                .ToListAsync();
-
-            var schemaLabels = await db.ConceptualSchemas
-                .Where(s => schemaIds.Contains(s.Id))
-                .Select(s => s.Label)
-                .ToListAsync();
-
-            result.Add(new BridgeNode
-            {
-                NodeId = bc.NodeId,
-                CanonicalText = node.CanonicalText,
-                SchemaCount = bc.SchemaCount,
-                SchemaLabels = schemaLabels,
-                BetweennessCentrality = node.BetweennessCentrality,
-                DegreeCentrality = node.DegreeCentrality,
-                DialecticalTemperature = node.DialecticalTemperature
-            });
-        }
-
-        return result;
+            NodeId = b.bc.NodeId,
+            CanonicalText = b.n.CanonicalText,
+            SchemaCount = b.bc.SchemaCount,
+            SchemaLabels = b.bc.SchemaIds.Select(id => schemaLabels.GetValueOrDefault(id, "Unknown")).ToList(),
+            BetweennessCentrality = b.n.BetweennessCentrality,
+            DegreeCentrality = b.n.DegreeCentrality,
+            DialecticalTemperature = b.n.DialecticalTemperature
+        }).ToList();
     }
 
     // ── Blindspots ────────────────────────────────────────────────────────
@@ -248,34 +242,24 @@ public class UnderstandingQueryService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        var nodes = await db.UnderstandingNodes
-            .Where(n => n.DialecticalTemperature > 0.3)
+        // Single query: nodes with high dialectical temperature and no schema membership
+        var nodeIdsWithMembership = db.SchemaMemberships.Select(m => m.NodeId);
+
+        var result = await db.UnderstandingNodes
+            .Where(n => n.DialecticalTemperature > 0.3 && !nodeIdsWithMembership.Contains(n.Id))
             .OrderByDescending(n => n.DialecticalTemperature)
-            .Take(count * 3)
-            .ToListAsync();
-
-        var result = new List<Blindspot>();
-        foreach (var node in nodes)
-        {
-            var membershipCount = await db.SchemaMemberships
-                .CountAsync(m => m.NodeId == node.Id);
-
-            if (membershipCount == 0)
+            .Take(count)
+            .Select(n => new Blindspot
             {
-                result.Add(new Blindspot
-                {
-                    NodeId = node.Id,
-                    CanonicalText = node.CanonicalText,
-                    DialecticalTemperature = node.DialecticalTemperature,
-                    ControversyScore = node.ControversyScore,
-                    Confidence = node.Confidence,
-                    SchemaEntropy = node.SchemaEntropy,
-                    Reason = "Isolated proposition with high dialectical tension"
-                });
-            }
-
-            if (result.Count >= count) break;
-        }
+                NodeId = n.Id,
+                CanonicalText = n.CanonicalText,
+                DialecticalTemperature = n.DialecticalTemperature,
+                ControversyScore = n.ControversyScore,
+                Confidence = n.Confidence,
+                SchemaEntropy = n.SchemaEntropy,
+                Reason = "Isolated proposition with high dialectical tension"
+            })
+            .ToListAsync();
 
         return result;
     }

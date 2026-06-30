@@ -53,6 +53,45 @@ public partial class UnderstandingGraphService
         await DetectEdgesForSocialArgumentAsync(db, sa);
     }
 
+    /// <summary>
+    /// Bulk-syncs ALL existing arguments and social arguments into the Understanding Graph.
+    /// This populates the graph from existing data so schema discovery can run.
+    /// </summary>
+    public async Task SyncAllAsync()
+    {
+        _logger.LogInformation("Starting bulk sync of all data into Understanding Graph...");
+
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        // Sync legacy Arguments
+        var arguments = await db.Arguments
+            .Include(a => a.Claims).ThenInclude(c => c.Premises)
+            .ToListAsync();
+        _logger.LogInformation("Syncing {Count} legacy arguments...", arguments.Count);
+        foreach (var argument in arguments)
+        {
+            foreach (var claim in argument.Claims)
+                foreach (var prop in claim.Premises)
+                    await UpsertNodeAsync(db, prop, argument.Id);
+            await DetectEdgesForArgumentAsync(db, argument);
+        }
+
+        // Sync SocialArguments
+        var socialArgs = await db.SocialArguments
+            .Include(x => x.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+            .ToListAsync();
+        _logger.LogInformation("Syncing {Count} social arguments...", socialArgs.Count);
+        foreach (var sa in socialArgs)
+        {
+            foreach (var ap in sa.ArgumentPropositions)
+                if (ap.Proposition != null)
+                    await UpsertNodeFromSocialPropositionAsync(db, ap.Proposition, sa.Id);
+            await DetectEdgesForSocialArgumentAsync(db, sa);
+        }
+
+        _logger.LogInformation("Bulk sync complete.");
+    }
+
     // ── Edge detection ────────────────────────────────────────────────────
 
     public async Task DetectEdgesAsync(double similarityThreshold = 0.75)

@@ -144,6 +144,23 @@
                                     <i class="bi bi-book me-2"></i>Reference Library
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header cu-dropdown-section">Understanding Graph</h6></li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "UnderstandingGraph" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-controller="UnderstandingGraph" asp-action="Index">
+                                    <i class="bi bi-diagram-3 me-2"></i>Schema Explorer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "UnderstandingGraph" && ViewContext.RouteData.Values["action"]?.ToString() == "Navigator" ? "active" : "")" asp-controller="UnderstandingGraph" asp-action="Navigator">
+                                    <i class="bi bi-arrow-left-right me-2"></i>Dialectical Navigator
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "UnderstandingGraph" && ViewContext.RouteData.Values["action"]?.ToString() == "Evolution" ? "active" : "")" asp-controller="UnderstandingGraph" asp-action="Evolution">
+                                    <i class="bi bi-graph-up me-2"></i>Graph Evolution
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
