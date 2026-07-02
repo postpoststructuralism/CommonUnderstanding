@@ -1,0 +1,190 @@
+@{
+    ViewData["Title"] = "Widget Dashboard";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item active">Widget Dashboard</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-chat-square-quote"></i> Comments Widget</h1>
+        <a href="/Widget/Register" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Register New Site
+        </a>
+    </div>
+
+    <div id="sites-loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading your sites...</p>
+    </div>
+
+    <div id="sites-container" style="display:none;"></div>
+</div>
+
+@section Styles {
+    <style>
+        .site-card {
+            transition: box-shadow 0.2s ease;
+            border-left: 4px solid var(--bs-primary);
+        }
+        .site-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--bs-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .api-key-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            background: var(--bs-light);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .badge-tier {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const container = document.getElementById('sites-container');
+            const loading = document.getElementById('sites-loading');
+
+            try {
+                const resp = await fetch('/api/widget/sites');
+                if (!resp.ok) {
+                    if (resp.status === 401) {
+                        window.location.href = '/Account/Login?returnUrl=/Widget/Dashboard';
+                        return;
+                    }
+                    throw new Error('Failed to load sites');
+                }
+                const sites = await resp.json();
+
+                loading.style.display = 'none';
+                container.style.display = 'block';
+
+                if (sites.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="bi bi-globe2" style="font-size: 3rem; color: var(--bs-secondary);"></i>
+                            <h3 class="mt-3">No Sites Registered</h3>
+                            <p class="text-muted">Register your first site to get the embed code.</p>
+                            <a href="/Widget/Register" class="btn btn-primary btn-lg">
+                                <i class="bi bi-plus-circle"></i> Register a Site
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = sites.map(site => `
+                    <div class="card site-card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title mb-1">
+                                        <i class="bi bi-globe2 me-1"></i> ${escapeHtml(site.siteName)}
+                                    </h5>
+                                    <p class="text-muted mb-2">${escapeHtml(site.domain)}</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-${site.planTier === 'enterprise' ? 'warning' : site.planTier === 'pro' ? 'info' : 'secondary'} badge-tier">
+                                        ${site.planTier}
+                                    </span>
+                                    <span class="badge bg-${site.isActive ? 'success' : 'danger'} ms-1">
+                                        ${site.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3 mb-3">
+                                <div class="col-3">
+                                    <div class="stat-value">${site.threadCount}</div>
+                                    <div class="stat-label">Threads</div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="stat-value">${site.pendingModeration}</div>
+                                    <div class="stat-label">Pending</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-label mb-1">Embed Code</div>
+                                    <code class="api-key-text">&lt;div id="cu-widget" data-site-id="${site.id}"&gt;&lt;/div&gt;</code>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <a href="/Widget/Dashboard/${site.id}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-bar-chart"></i> Analytics
+                                </a>
+                                <a href="/Widget/Moderation/${site.id}" class="btn btn-outline-warning btn-sm">
+                                    <i class="bi bi-shield-check"></i> Moderation
+                                    ${site.pendingModeration > 0 ? `<span class="badge bg-danger ms-1">${site.pendingModeration}</span>` : ''}
+                                </a>
+                                <a href="/Widget/Settings/${site.id}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-gear"></i> Settings
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Connect to SignalR for real-time updates
+                try {
+                    const connection = new signalR.HubConnectionBuilder()
+                        .withUrl('/hubs/widget')
+                        .withAutomaticReconnect()
+                        .build();
+
+                    connection.on('moderationAlert', (data) => {
+                        // Refresh the page to show updated counts
+                        // In production, update the specific site's badge
+                        location.reload();
+                    });
+
+                    await connection.start();
+                    sites.forEach(site => {
+                        connection.invoke('SubscribeToSite', site.id);
+                    });
+                } catch (err) {
+                    console.warn('SignalR connection failed:', err);
+                }
+
+            } catch (err) {
+                loading.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Failed to load sites: ${err.message}
+                    </div>
+                `;
+            }
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+}

@@ -2,7 +2,9 @@ using CommonUnderstanding.Services;
 using CommonUnderstanding.Services.Social;
 using CommonUnderstanding.Services.Social.Plugins;
 using CommonUnderstanding.Services.Social.Workers;
+using CommonUnderstanding.Services.Widget;
 using CommonUnderstanding.Data;
+using CommonUnderstanding.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.AI;
@@ -194,6 +196,17 @@ builder.Services.AddHostedService<EmbeddingBackfillWorker>();
 builder.Services.AddHostedService<ReplyCountWorker>();
 builder.Services.AddHostedService<DmiScoreWorker>();
 
+// ── Widget / Embeddable Comments Services ────────────────────────────────────
+builder.Services.AddScoped<ThreadService>();
+builder.Services.AddScoped<WidgetModerationService>();
+builder.Services.AddScoped<WidgetAnalyticsService>();
+builder.Services.AddHostedService<CrossThreadContradictionWorker>();
+
+// API Key authentication for widget endpoints
+builder.Services.AddAuthentication()
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationOptions.DefaultScheme, null);
+
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -258,6 +271,9 @@ app.MapHub<CommonUnderstanding.Hubs.VotingHub>("/hubs/voting");
 app.MapHub<CommonUnderstanding.Hubs.Phase2DebateHub>("/hubs/debate");
 app.MapHub<CommonUnderstanding.Hubs.ChainUpdateHub>("/hubs/chains");
 app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
+
+// Widget SignalR hub
+app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())

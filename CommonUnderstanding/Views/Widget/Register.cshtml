@@ -1,0 +1,145 @@
+@{
+    ViewData["Title"] = "Register Site";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item"><a href="/Widget/Dashboard">Widget Dashboard</a></li>
+            <li class="breadcrumb-item active">Register Site</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title mb-4"><i class="bi bi-plus-circle"></i> Register a New Site</h2>
+                    <p class="text-muted">Add your website to get the embeddable comments widget.</p>
+
+                    <form id="registerForm">
+                        <div class="mb-3">
+                            <label for="siteName" class="form-label">Site Name</label>
+                            <input type="text" class="form-control" id="siteName" required
+                                   placeholder="My Blog">
+                            <div class="form-text">A display name to identify this site.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="domain" class="form-label">Domain</label>
+                            <input type="text" class="form-control" id="domain" required
+                                   placeholder="example.com">
+                            <div class="form-text">Your website's domain (e.g., example.com).</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="planTier" class="form-label">Plan</label>
+                            <select class="form-select" id="planTier">
+                                <option value="free">Free — 10,000 page views/month</option>
+                                <option value="pro">Pro — 100,000 page views/month</option>
+                                <option value="enterprise">Enterprise — Unlimited</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="logoUrl" class="form-label">Logo URL (optional)</label>
+                            <input type="url" class="form-control" id="logoUrl"
+                                   placeholder="https://example.com/logo.png">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="customCssUrl" class="form-label">Custom CSS URL (optional)</label>
+                            <input type="url" class="form-control" id="customCssUrl"
+                                   placeholder="https://example.com/widget.css">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                            <i class="bi bi-check-lg"></i> Register Site
+                        </button>
+                    </form>
+
+                    <div id="resultContainer" style="display:none;" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registering...';
+
+            try {
+                const resp = await fetch('/api/widget/sites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        domain: document.getElementById('domain').value.trim(),
+                        siteName: document.getElementById('siteName').value.trim(),
+                        planTier: document.getElementById('planTier').value,
+                        logoUrl: document.getElementById('logoUrl').value.trim() || null,
+                        customCssUrl: document.getElementById('customCssUrl').value.trim() || null
+                    })
+                });
+
+                if (!resp.ok) {
+                    if (resp.status === 401) {
+                        window.location.href = '/Account/Login?returnUrl=/Widget/Register';
+                        return;
+                    }
+                    throw new Error('Registration failed');
+                }
+
+                const result = await resp.json();
+
+                document.getElementById('registerForm').style.display = 'none';
+                const resultContainer = document.getElementById('resultContainer');
+                resultContainer.style.display = 'block';
+                resultContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <strong>Site registered successfully!</strong>
+                    </div>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5>Your API Key</h5>
+                            <p class="text-danger"><strong>Save this key — it will not be shown again.</strong></p>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control api-key-text" value="${result.apiKey}" readonly id="apiKeyField">
+                                <button class="btn btn-outline-secondary" onclick="copyApiKey()">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                            </div>
+
+                            <h5 class="mt-4">Embed Code</h5>
+                            <p>Add this to your website's HTML where you want comments to appear:</p>
+                            <pre class="bg-dark text-light p-3 rounded"><code>&lt;div id="cu-widget" data-site-id="${result.siteId}"&gt;&lt;/div&gt;
+&lt;script src="${result.embedScriptUrl}"&gt;&lt;/script&gt;</code></pre>
+
+                            <a href="${result.dashboardUrl}" class="btn btn-primary mt-3">
+                                <i class="bi bi-bar-chart"></i> Go to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> Register Site';
+            }
+        });
+
+        function copyApiKey() {
+            const field = document.getElementById('apiKeyField');
+            field.select();
+            document.execCommand('copy');
+        }
+    </script>
+}

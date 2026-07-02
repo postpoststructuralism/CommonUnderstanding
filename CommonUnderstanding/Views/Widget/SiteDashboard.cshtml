@@ -1,0 +1,228 @@
+@model Guid
+@{
+    ViewData["Title"] = "Site Analytics";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item"><a href="/Widget/Dashboard">Widget Dashboard</a></li>
+            <li class="breadcrumb-item active">Analytics</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-bar-chart"></i> Site Analytics</h1>
+        <div>
+            <a href="/Widget/Moderation/@Model" class="btn btn-outline-warning">
+                <i class="bi bi-shield-check"></i> Moderation
+            </a>
+            <a href="/Widget/Settings/@Model" class="btn btn-outline-secondary">
+                <i class="bi bi-gear"></i> Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="stat-value" id="totalViews">-</div>
+                    <div class="stat-label">Page Views</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="stat-value" id="totalComments">-</div>
+                    <div class="stat-label">Comments</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="stat-value" id="totalVotes">-</div>
+                    <div class="stat-label">Votes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="stat-value" id="totalAi">-</div>
+                    <div class="stat-label">AI Analyses</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-graph-up"></i> Daily Usage (30 days)</span>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary active" onclick="loadAnalytics(7)">7d</button>
+                <button class="btn btn-outline-secondary" onclick="loadAnalytics(30)">30d</button>
+                <button class="btn btn-outline-secondary" onclick="loadAnalytics(90)">90d</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="usageChart" height="250"></canvas>
+        </div>
+    </div>
+
+    <!-- Contradictions -->
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-arrow-left-right"></i> Cross-Thread Contradictions
+        </div>
+        <div class="card-body" id="contradictions-container">
+            <div class="text-center py-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                Loading contradictions...
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--bs-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .contradiction-card {
+            border-left: 3px solid var(--bs-warning);
+            margin-bottom: 0.75rem;
+        }
+        .contradiction-card.resolved {
+            border-left-color: var(--bs-success);
+            opacity: 0.7;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        const siteId = '@Model';
+        let usageChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAnalytics(30);
+            loadContradictions();
+        });
+
+        async function loadAnalytics(days) {
+            const to = new Date().toISOString().split('T')[0];
+            const from = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+
+            try {
+                const resp = await fetch(`/api/widget/sites/${siteId}/analytics?from=${from}&to=${to}`);
+                if (!resp.ok) throw new Error('Failed to load analytics');
+                const data = await resp.json();
+
+                // Update totals
+                document.getElementById('totalViews').textContent = data.reduce((s, r) => s + r.pageViews, 0).toLocaleString();
+                document.getElementById('totalComments').textContent = data.reduce((s, r) => s + r.commentsPosted, 0).toLocaleString();
+                document.getElementById('totalVotes').textContent = data.reduce((s, r) => s + r.votesCast, 0).toLocaleString();
+                document.getElementById('totalAi').textContent = data.reduce((s, r) => s + r.aiAnalysesRun, 0).toLocaleString();
+
+                // Render chart
+                const ctx = document.getElementById('usageChart').getContext('2d');
+                if (usageChart) usageChart.destroy();
+
+                usageChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(r => r.date),
+                        datasets: [
+                            {
+                                label: 'Page Views',
+                                data: data.map(r => r.pageViews),
+                                backgroundColor: 'rgba(13, 110, 253, 0.5)',
+                                borderColor: 'rgba(13, 110, 253, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Comments',
+                                data: data.map(r => r.commentsPosted),
+                                backgroundColor: 'rgba(25, 135, 84, 0.5)',
+                                borderColor: 'rgba(25, 135, 84, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Analytics error:', err);
+            }
+        }
+
+        async function loadContradictions() {
+            const container = document.getElementById('contradictions-container');
+
+            try {
+                const resp = await fetch(`/api/widget/sites/${siteId}/contradictions`);
+                if (!resp.ok) throw new Error('Failed to load contradictions');
+                const data = await resp.json();
+
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center mb-0">No cross-thread contradictions detected yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(c => `
+                    <div class="card contradiction-card">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">
+                                    <a href="${escapeHtml(c.threadUrlA)}" target="_blank">${escapeHtml(c.threadUrlA)}</a>
+                                    <i class="bi bi-arrow-right mx-1"></i>
+                                    <a href="${escapeHtml(c.threadUrlB)}" target="_blank">${escapeHtml(c.threadUrlB)}</a>
+                                </small>
+                                <span class="badge bg-${c.confidence > 0.7 ? 'danger' : c.confidence > 0.4 ? 'warning' : 'info'}">
+                                    ${(c.confidence * 100).toFixed(0)}% confidence
+                                </span>
+                            </div>
+                            <div class="mt-1 small">
+                                <span class="text-truncate d-inline-block" style="max-width: 300px;">${escapeHtml(c.commentSnippetA)}</span>
+                                <i class="bi bi-lightning-fill text-warning mx-1"></i>
+                                <span class="text-truncate d-inline-block" style="max-width: 300px;">${escapeHtml(c.commentSnippetB)}</span>
+                            </div>
+                            ${c.explanation ? `<p class="mb-0 mt-1 small text-muted">${escapeHtml(c.explanation)}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<p class="text-danger mb-0">Failed to load contradictions: ${err.message}</p>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+}

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Models.Graph;
+using CommonUnderstanding.Models.Widget;
 
 namespace CommonUnderstanding.Data;
 
@@ -78,6 +79,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<ResolutionEndorsement> ResolutionEndorsements => Set<ResolutionEndorsement>();
     public DbSet<BadgeAwardLog> BadgeAwardLogs => Set<BadgeAwardLog>();
     public DbSet<StructuralResolution> StructuralResolutions => Set<StructuralResolution>();
+
+    // ── Widget / Embeddable Comments ─────────────────────────────────────────
+    public DbSet<CommentSite> CommentSites => Set<CommentSite>();
+    public DbSet<CommentThread> CommentThreads => Set<CommentThread>();
+    public DbSet<ThreadArgument> ThreadArguments => Set<ThreadArgument>();
+    public DbSet<ThreadContradiction> ThreadContradictions => Set<ThreadContradiction>();
+    public DbSet<WidgetUsage> WidgetUsages => Set<WidgetUsage>();
+    public DbSet<CommentModerationItem> CommentModerationItems => Set<CommentModerationItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -610,6 +619,75 @@ public class ApplicationDbContext : DbContext
             e.ToTable("GraphSnapshots");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.CapturedAt);
+        });
+
+        // ── Widget / Embeddable Comments ─────────────────────────────────────
+
+        // CommentSite
+        modelBuilder.Entity<CommentSite>(e =>
+        {
+            e.ToTable("CommentSites");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.AllowedOrigins).HasColumnType("text[]");
+            e.HasIndex(x => x.Domain).IsUnique();
+            e.HasIndex(x => x.ApiKey).IsUnique();
+            e.HasIndex(x => x.OwnerUserId);
+        });
+
+        // CommentThread
+        modelBuilder.Entity<CommentThread>(e =>
+        {
+            e.ToTable("CommentThreads");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PageUrl).HasMaxLength(2000);
+            e.HasIndex(x => new { x.SiteId, x.ThreadSlug }).IsUnique();
+            e.HasOne(x => x.Site)
+             .WithMany(s => s.Threads)
+             .HasForeignKey(x => x.SiteId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ThreadArgument (join table)
+        modelBuilder.Entity<ThreadArgument>(e =>
+        {
+            e.ToTable("ThreadArguments");
+            e.HasKey(x => new { x.ThreadId, x.ArgumentId });
+            e.HasOne(x => x.Thread)
+             .WithMany(t => t.ThreadArguments)
+             .HasForeignKey(x => x.ThreadId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Argument)
+             .WithMany()
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ThreadContradiction
+        modelBuilder.Entity<ThreadContradiction>(e =>
+        {
+            e.ToTable("ThreadContradictions");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.SiteId);
+            e.HasIndex(x => new { x.ArgumentIdA, x.ArgumentIdB });
+            e.HasIndex(x => x.IsResolved);
+        });
+
+        // WidgetUsage
+        modelBuilder.Entity<WidgetUsage>(e =>
+        {
+            e.ToTable("WidgetUsages");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SiteId, x.Date }).IsUnique();
+        });
+
+        // CommentModerationItem
+        modelBuilder.Entity<CommentModerationItem>(e =>
+        {
+            e.ToTable("CommentModerationItems");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.SiteId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => new { x.SiteId, x.Status });
         });
     }
 }

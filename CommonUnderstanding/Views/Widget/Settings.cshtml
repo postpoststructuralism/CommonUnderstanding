@@ -1,0 +1,135 @@
+@model Guid
+@{
+    ViewData["Title"] = "Site Settings";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item"><a href="/Widget/Dashboard">Widget Dashboard</a></li>
+            <li class="breadcrumb-item active">Settings</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="card-title mb-4"><i class="bi bi-gear"></i> Site Settings</h2>
+
+                    <form id="settingsForm">
+                        <div class="mb-3">
+                            <label for="siteName" class="form-label">Site Name</label>
+                            <input type="text" class="form-control" id="siteName" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="domain" class="form-label">Domain</label>
+                            <input type="text" class="form-control" id="domain" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="planTier" class="form-label">Plan</label>
+                            <select class="form-select" id="planTier">
+                                <option value="free">Free</option>
+                                <option value="pro">Pro</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="logoUrl" class="form-label">Logo URL</label>
+                            <input type="url" class="form-control" id="logoUrl">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="customCssUrl" class="form-label">Custom CSS URL</label>
+                            <input type="url" class="form-control" id="customCssUrl">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="saveBtn">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-code-slash"></i> Embed Code</h5>
+                    <p class="text-muted">Add this to your website where you want comments to appear:</p>
+                    <pre class="bg-dark text-light p-3 rounded" id="embedCode"><code>Loading...</code></pre>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copyEmbedCode()">
+                        <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const siteId = '@Model';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load current settings
+            try {
+                const resp = await fetch('/api/widget/sites');
+                if (!resp.ok) throw new Error('Failed to load sites');
+                const sites = await resp.json();
+                const site = sites.find(s => s.id === siteId);
+                if (!site) throw new Error('Site not found');
+
+                document.getElementById('siteName').value = site.siteName;
+                document.getElementById('domain').value = site.domain;
+                document.getElementById('planTier').value = site.planTier;
+                document.getElementById('logoUrl').value = '';
+                document.getElementById('customCssUrl').value = '';
+
+                document.getElementById('embedCode').innerHTML =
+                    `<code>&lt;div id="cu-widget" data-site-id="${site.id}"&gt;&lt;/div&gt;<br>&lt;script src="/widget/v1/embed.js"&gt;&lt;/script&gt;</code>`;
+            } catch (err) {
+                alert('Error loading settings: ' + err.message);
+            }
+
+            document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('saveBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+                try {
+                    const resp = await fetch(`/api/widget/sites/${siteId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            domain: document.getElementById('domain').value.trim(),
+                            siteName: document.getElementById('siteName').value.trim(),
+                            planTier: document.getElementById('planTier').value,
+                            logoUrl: document.getElementById('logoUrl').value.trim() || null,
+                            customCssUrl: document.getElementById('customCssUrl').value.trim() || null
+                        })
+                    });
+
+                    if (!resp.ok) throw new Error('Save failed');
+                    alert('Settings saved successfully!');
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+                }
+            });
+        });
+
+        function copyEmbedCode() {
+            const code = document.querySelector('#embedCode code');
+            if (code) {
+                navigator.clipboard.writeText(code.textContent);
+            }
+        }
+    </script>
+}
