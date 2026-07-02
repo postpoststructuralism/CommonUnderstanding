@@ -1,0 +1,219 @@
+@{
+    ViewData["Title"] = "Leaderboards";
+}
+
+@section Styles {
+<style>
+    .leaderboard-tabs { border-bottom: 2px solid var(--bs-border-color); margin-bottom: 1.5rem; }
+    .leaderboard-tabs .nav-link { color: var(--bs-body-color); border: none; padding: 0.75rem 1.25rem; font-weight: 500; }
+    .leaderboard-tabs .nav-link.active { color: var(--bs-primary); border-bottom: 2px solid var(--bs-primary); background: transparent; }
+    .leaderboard-tabs .nav-link:hover { border-bottom: 2px solid var(--bs-primary); }
+    .rank-cell { font-weight: 700; min-width: 2.5rem; text-align: center; }
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #a8a8a8; }
+    .rank-3 { color: #cd7f32; }
+    .leaderboard-table { font-size: 0.9rem; }
+    .leaderboard-table td { vertical-align: middle; padding: 0.6rem 0.75rem; }
+    .leaderboard-table tr:hover { background: var(--bs-tertiary-bg); }
+    .badge-count { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .lb-spinner { display: none; }
+</style>
+}
+
+<div class="container py-4">
+    <h1 class="mb-1"><i class="bi bi-trophy me-2"></i>Leaderboards</h1>
+    <p class="text-muted mb-4">Top contributors across XP, resolutions, and mastery.</p>
+
+    <!-- Tabs -->
+    <ul class="nav leaderboard-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="xp-tab" data-bs-toggle="tab" data-bs-target="#xp-panel" type="button" role="tab">
+                <i class="bi bi-star me-1"></i>XP Overall
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly-panel" type="button" role="tab">
+                <i class="bi bi-calendar-week me-1"></i>Weekly
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="nexus-tab" data-bs-toggle="tab" data-bs-target="#nexus-panel" type="button" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i>Nexus Builders
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="mastery-tab" data-bs-toggle="tab" data-bs-target="#mastery-panel" type="button" role="tab">
+                <i class="bi bi-brain me-1"></i>Mastery (DMI)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        @* ── XP Overall ── *@
+        <div class="tab-pane fade show active" id="xp-panel" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th class="text-end">XP</th>
+                            <th>Rank</th>
+                            <th class="text-end">Badges</th>
+                            <th class="text-end">DMI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var xpList = ViewBag.XPOverall as List<dynamic> ?? new();
+                            for (int i = 0; i < xpList.Count; i++)
+                            {
+                                var item = xpList[i];
+                                var rankClass = i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "";
+                                <tr>
+                                    <td class="rank-cell @rankClass">@(i + 1)</td>
+                                    <td>
+                                        <a asp-controller="Discovery" asp-action="Profile" asp-route-id="@item.userId" class="text-decoration-none fw-semibold">
+                                            @item.userId
+                                        </a>
+                                    </td>
+                                    <td class="text-end fw-bold">@item.xp.ToString("N0")</td>
+                                    <td><span class="badge bg-secondary">@item.rank</span></td>
+                                    <td class="text-end">
+                                        <span class="badge-count">
+                                            <i class="bi bi-award"></i> @item.badgeCount
+                                        </span>
+                                    </td>
+                                    <td class="text-end">@item.dmiScore.ToString("F1")</td>
+                                </tr>
+                            }
+                        }
+                        @if (xpList.Count == 0)
+                        {
+                            <tr><td colspan="6" class="text-center text-muted py-4">No data yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── Weekly ── *@
+        <div class="tab-pane fade" id="weekly-panel" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th class="text-end">XP (7 days)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var weeklyList = ViewBag.Weekly as List<dynamic> ?? new();
+                            for (int i = 0; i < weeklyList.Count; i++)
+                            {
+                                var item = weeklyList[i];
+                                var rankClass = i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "";
+                                <tr>
+                                    <td class="rank-cell @rankClass">@(i + 1)</td>
+                                    <td>
+                                        <a asp-controller="Discovery" asp-action="Profile" asp-route-id="@item.userId" class="text-decoration-none fw-semibold">
+                                            @item.userId
+                                        </a>
+                                    </td>
+                                    <td class="text-end fw-bold text-success">+@item.weeklyXp.ToString("N0")</td>
+                                </tr>
+                            }
+                        }
+                        @if (weeklyList.Count == 0)
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">No activity this week yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── Nexus Builders ── *@
+        <div class="tab-pane fade" id="nexus-panel" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th class="text-end">Resolutions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var nexusList = ViewBag.Nexus as List<dynamic> ?? new();
+                            for (int i = 0; i < nexusList.Count; i++)
+                            {
+                                var item = nexusList[i];
+                                var rankClass = i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "";
+                                <tr>
+                                    <td class="rank-cell @rankClass">@(i + 1)</td>
+                                    <td>
+                                        <a asp-controller="Discovery" asp-action="Profile" asp-route-id="@item.userId" class="text-decoration-none fw-semibold">
+                                            @item.userId
+                                        </a>
+                                    </td>
+                                    <td class="text-end fw-bold">@item.resolutionCount.ToString("N0")</td>
+                                </tr>
+                            }
+                        }
+                        @if (nexusList.Count == 0)
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">No resolutions created yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── Mastery (DMI) ── *@
+        <div class="tab-pane fade" id="mastery-panel" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th class="text-end">DMI Score</th>
+                            <th class="text-end">XP</th>
+                            <th>Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var masteryList = ViewBag.Mastery as List<dynamic> ?? new();
+                            for (int i = 0; i < masteryList.Count; i++)
+                            {
+                                var item = masteryList[i];
+                                var rankClass = i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "";
+                                <tr>
+                                    <td class="rank-cell @rankClass">@(i + 1)</td>
+                                    <td>
+                                        <a asp-controller="Discovery" asp-action="Profile" asp-route-id="@item.userId" class="text-decoration-none fw-semibold">
+                                            @item.userId
+                                        </a>
+                                    </td>
+                                    <td class="text-end fw-bold text-info">@item.dmiScore.ToString("F1")</td>
+                                    <td class="text-end">@item.xp.ToString("N0")</td>
+                                    <td><span class="badge bg-secondary">@item.rank</span></td>
+                                </tr>
+                            }
+                        }
+                        @if (masteryList.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center text-muted py-4">No mastery scores yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

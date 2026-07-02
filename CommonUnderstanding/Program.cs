@@ -158,6 +158,8 @@ builder.Services.AddScoped<CollaborativeSessionService>();
 builder.Services.AddScoped<EpistemicScoringService>();
 builder.Services.AddScoped<BadgeAwardService>();
 builder.Services.AddScoped<XPAwardService>();
+builder.Services.AddScoped<DmiScoreService>();
+builder.Services.AddScoped<ResolutionEndorsementService>();
 builder.Services.AddScoped<EmbeddingService>();
 builder.Services.AddSingleton<LocalEmbeddingGenerator>();
 builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(
@@ -190,6 +192,7 @@ builder.Services.AddHostedService<EpistemicScoringWorker>();
 builder.Services.AddHostedService<AIValidationWorker>();
 builder.Services.AddHostedService<EmbeddingBackfillWorker>();
 builder.Services.AddHostedService<ReplyCountWorker>();
+builder.Services.AddHostedService<DmiScoreWorker>();
 
 // Add session support for user tracking
 builder.Services.AddDistributedMemoryCache();
@@ -254,6 +257,7 @@ app.MapHub<CommonUnderstanding.Hubs.DebateHub>("/debatehub");
 app.MapHub<CommonUnderstanding.Hubs.VotingHub>("/hubs/voting");
 app.MapHub<CommonUnderstanding.Hubs.Phase2DebateHub>("/hubs/debate");
 app.MapHub<CommonUnderstanding.Hubs.ChainUpdateHub>("/hubs/chains");
+app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
 
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Models.Social;
+using CommonUnderstanding.Models.Graph;
 
 namespace CommonUnderstanding.Data;
 
@@ -72,6 +73,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<Moderator> Moderators => Set<Moderator>();
     public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
     public DbSet<ModerationAppeal> ModerationAppeals => Set<ModerationAppeal>();
+
+    // ── Badge System Entities ────────────────────────────────────────────────
+    public DbSet<ResolutionEndorsement> ResolutionEndorsements => Set<ResolutionEndorsement>();
+    public DbSet<BadgeAwardLog> BadgeAwardLogs => Set<BadgeAwardLog>();
+    public DbSet<StructuralResolution> StructuralResolutions => Set<StructuralResolution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -492,6 +498,38 @@ public class ApplicationDbContext : DbContext
             e.ToTable("ModerationAppeals");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.AppellantUserId);
+        });
+
+        // ── Badge System Entities ─────────────────────────────────────────────
+
+        // ResolutionEndorsement
+        modelBuilder.Entity<ResolutionEndorsement>(e =>
+        {
+            e.ToTable("ResolutionEndorsements");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.ResolutionId, x.UserId }).IsUnique();
+        });
+
+        // BadgeAwardLog
+        modelBuilder.Entity<BadgeAwardLog>(e =>
+        {
+            e.ToTable("BadgeAwardLogs");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.BadgeId);
+        });
+
+        // StructuralResolution
+        modelBuilder.Entity<StructuralResolution>(e =>
+        {
+            e.ToTable("StructuralResolutions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ResolutionText).IsRequired();
+            e.HasIndex(x => x.AuthorId);
+            e.HasMany(x => x.Endorsements)
+             .WithOne()
+             .HasForeignKey(x => x.ResolutionId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── Phase 3: Understanding Graph Entities ─────────────────────────

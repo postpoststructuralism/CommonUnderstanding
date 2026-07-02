@@ -120,11 +120,12 @@ public class XPAwardService
 
     public static string ComputeRank(long xp) => xp switch
     {
-        >= 50_000 => "Luminary",
-        >= 10_000 => "Sage",
-        >= 2_000  => "Scholar",
-        >= 500    => "Reasoner",
-        >= 100    => "Thinker",
-        _         => "Novice"
+        >= 50_000 => "Grandmaster",
+        >= 20_000 => "Sovereign Reasoner",
+        >= 8_000  => "Master Dialectician",
+        >= 3_000  => "Architect of Logic",
+        >= 1_000  => "Logician",
+        >= 200    => "Contender",
+        _         => "Strategist-in-Training"
     };
 }

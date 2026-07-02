@@ -69,7 +69,7 @@
 
                     <!-- PRIVATE ZONE: My Work -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle @(new[]{"Argument","CommonUnderstanding","EmergentConclusions","Convergence","Discovery","Connections","CollaborativeSession"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "active" : "")"
+                        <a class="nav-link dropdown-toggle @(new[]{"Argument","CommonUnderstanding","EmergentConclusions","Convergence","Discovery","Connections","CollaborativeSession","ReputationView"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "active" : "")"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-workspace"></i> My Work
                         </a>
@@ -110,6 +110,23 @@
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "CollaborativeSession" ? "active" : "")" asp-controller="CollaborativeSession" asp-action="Index">
                                     <i class="bi bi-diagram-3-fill me-2"></i>Sessions
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header cu-dropdown-section">Achievements</h6></li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "ReputationView" && ViewContext.RouteData.Values["action"]?.ToString() == "Leaderboard" ? "active" : "")" asp-controller="ReputationView" asp-action="Leaderboard">
+                                    <i class="bi bi-trophy me-2"></i>Leaderboards
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "ReputationView" && ViewContext.RouteData.Values["action"]?.ToString() == "BadgeGallery" ? "active" : "")" asp-controller="ReputationView" asp-action="BadgeGallery">
+                                    <i class="bi bi-award me-2"></i>Badge Gallery
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "ReputationView" && ViewContext.RouteData.Values["action"]?.ToString() == "HowItWorks" ? "active" : "")" asp-controller="ReputationView" asp-action="HowItWorks">
+                                    <i class="bi bi-question-circle me-2"></i>How It Works
                                 </a>
                             </li>
                         </ul>

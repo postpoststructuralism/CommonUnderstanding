@@ -51,6 +51,14 @@ public class UserReputation : BaseEntity
 
     /// <summary>Consumable streak-freeze items. Awarded at ranks Reasoner (1) and Scholar (3).</summary>
     public int StreakFreezes { get; set; } = 0;
+
+    /// <summary>
+    /// Dialectical Mastery Index — composite score for the mastery leaderboard.
+    /// Computed hourly by DmiScoreWorker. Formula:
+    /// (ResolutionCount × 2.0) + (AlignmentMatricesCreated × 1.5) + (ChangedMindCount × 3.0)
+    /// + (CrossAisleUpvotes × 0.5) + (ResolutionsEndorsedByOthers × 1.0)
+    /// </summary>
+    public double DmiScore { get; set; } = 0.0;
 }
 
 /// <summary>

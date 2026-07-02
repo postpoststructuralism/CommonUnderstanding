@@ -1,0 +1,152 @@
+@{
+    ViewData["Title"] = "How It Works — Reputation & Badges";
+}
+
+@section Styles {
+<style>
+    .hiw-section { margin-bottom: 3rem; }
+    .hiw-section h2 { font-weight: 600; margin-bottom: 1rem; }
+    .hiw-section h2 i { margin-right: 0.5rem; }
+    .rank-table th, .rank-table td { vertical-align: middle; }
+    .rank-tier { font-weight: 600; }
+    .tier-badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .tier-bronze { background: rgba(205,127,50,0.15); color: #8b5e3c; }
+    .tier-silver { background: rgba(168,168,168,0.2); color: #6c6c6c; }
+    .tier-gold { background: rgba(255,215,0,0.2); color: #b8960f; }
+    .tier-platinum { background: rgba(0,191,255,0.15); color: #008bb5; }
+    .dmi-formula { background: var(--bs-tertiary-bg); border-radius: 0.75rem; padding: 1.25rem; font-family: var(--bs-font-monospace); font-size: 0.9rem; }
+    .dmi-formula .term { display: block; margin: 0.25rem 0; }
+    .dmi-formula .term .coeff { color: var(--bs-primary); font-weight: 600; }
+    .badge-example { border: 1px solid var(--bs-border-color); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; }
+    .badge-example .icon { font-size: 1.5rem; }
+    .badge-example .info { flex-grow: 1; }
+    .badge-example .info .name { font-weight: 600; }
+    .badge-example .info .desc { font-size: 0.85rem; color: var(--bs-secondary-color); }
+</style>
+}
+
+<div class="container py-4">
+    <h1 class="mb-1"><i class="bi bi-question-circle me-2"></i>How It Works</h1>
+    <p class="text-muted mb-4">Understanding reputation, XP, ranks, badges, and the Dialectical Mastery Index.</p>
+
+    @* ── XP & Ranks ── *@
+    <section class="hiw-section">
+        <h2><i class="bi bi-star"></i>XP &amp; Ranks</h2>
+        <p>
+            Experience Points (XP) are earned by contributing to the platform — posting arguments, voting, building chains,
+            creating resolutions, and engaging with others. Your XP determines your rank.
+        </p>
+        <div class="table-responsive">
+            <table class="table rank-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>XP Required</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td class="rank-tier">Strategist-in-Training</td><td>0</td><td>Getting started on your journey</td></tr>
+                    <tr><td class="rank-tier">Contender</td><td>200</td><td>You've found your voice</td></tr>
+                    <tr><td class="rank-tier">Logician</td><td>1,000</td><td>Building structured reasoning</td></tr>
+                    <tr><td class="rank-tier">Architect of Logic</td><td>3,000</td><td>Designing complex argument structures</td></tr>
+                    <tr><td class="rank-tier">Master Dialectician</td><td>8,000</td><td>Master of reasoned discourse</td></tr>
+                    <tr><td class="rank-tier">Sovereign Reasoner</td><td>20,000</td><td>Elite-level critical thinking</td></tr>
+                    <tr><td class="rank-tier">Grandmaster</td><td>50,000</td><td>The highest honor attainable</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @* ── Badges ── *@
+    <section class="hiw-section">
+        <h2><i class="bi bi-award"></i>Badges</h2>
+        <p>
+            Badges are special achievements awarded for specific milestones and behaviors. They are organized into four tiers:
+        </p>
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="badge-example">
+                    <div class="icon">🥉</div>
+                    <div class="info">
+                        <div class="name">Bronze</div>
+                        <div class="desc">Entry-level achievements</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="badge-example">
+                    <div class="icon">🥈</div>
+                    <div class="info">
+                        <div class="name">Silver</div>
+                        <div class="desc">Meaningful contributions</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="badge-example">
+                    <div class="icon">🥇</div>
+                    <div class="info">
+                        <div class="name">Gold</div>
+                        <div class="desc">Exceptional impact</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="badge-example">
+                    <div class="icon">💎</div>
+                    <div class="info">
+                        <div class="name">Platinum</div>
+                        <div class="desc">Rare &amp; prestigious</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p>
+            Badges are awarded automatically when you meet the criteria. Some badges are hidden — discover them through exploration!
+            Visit the <a asp-controller="ReputationView" asp-action="BadgeGallery" class="text-decoration-none">Badge Gallery</a> to see all available badges.
+        </p>
+    </section>
+
+    @* ── Dialectical Mastery Index ── *@
+    <section class="hiw-section">
+        <h2><i class="bi bi-brain"></i>Dialectical Mastery Index (DMI)</h2>
+        <p>
+            The DMI Score is a composite measure of your dialectical skill — your ability to bridge opposing viewpoints,
+            synthesize resolutions, and foster convergence. It is computed hourly and powers the Mastery Leaderboard.
+        </p>
+        <div class="dmi-formula">
+            <strong>DMI =</strong>
+            <span class="term"><span class="coeff">2.0</span> × ResolutionCount</span>
+            <span class="term"><span class="coeff">1.5</span> × AlignmentMatricesCreated</span>
+            <span class="term"><span class="coeff">3.0</span> × ChangedMindCount</span>
+            <span class="term"><span class="coeff">0.5</span> × CrossAisleUpvotes</span>
+            <span class="term"><span class="coeff">1.0</span> × ResolutionsEndorsedByOthers</span>
+        </div>
+    </section>
+
+    @* ── Resolution Endorsements ── *@
+    <section class="hiw-section">
+        <h2><i class="bi bi-hand-thumbs-up"></i>Resolution Endorsements</h2>
+        <p>
+            When a resolution (nexus point) is created to reconcile contradictory positions, other users can endorse it.
+            Endorsing a resolution signals agreement that the resolution is a valid synthesis. Resolutions with many endorsements
+            are highlighted as community-vetted syntheses and contribute to the <strong>Consensus Builder</strong> badge.
+        </p>
+    </section>
+
+    @* ── Leaderboards ── *@
+    <section class="hiw-section">
+        <h2><i class="bi bi-trophy"></i>Leaderboards</h2>
+        <p>Four leaderboards track top contributors:</p>
+        <ul>
+            <li><strong>XP Overall</strong> — Lifetime XP accumulation.</li>
+            <li><strong>Weekly</strong> — XP earned in the last 7 days. Resets every week.</li>
+            <li><strong>Nexus Builders</strong> — Users who have created the most resolutions.</li>
+            <li><strong>Mastery (DMI)</strong> — Highest Dialectical Mastery Index scores.</li>
+        </ul>
+        <p>
+            Visit the <a asp-controller="ReputationView" asp-action="Leaderboard" class="text-decoration-none">Leaderboards</a> page to see current rankings.
+        </p>
+    </section>
+</div>

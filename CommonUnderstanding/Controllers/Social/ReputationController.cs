@@ -10,7 +10,7 @@ namespace CommonUnderstanding.Controllers.Social;
 
 /// <summary>
 /// User reputation and achievement endpoints.
-/// Leaderboards, badges, XP, and streak data.
+/// Leaderboards, badges, XP, streak data, and resolution endorsements.
 /// </summary>
 [ApiController]
 [Route("api/reputation")]
@@ -19,13 +19,22 @@ public class ReputationController : ControllerBase
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
     private readonly XPAwardService _xpAwards;
+    private readonly BadgeAwardService _badgeAwards;
+    private readonly ResolutionEndorsementService _endorsements;
+    private readonly DmiScoreService _dmiService;
 
     public ReputationController(
         IDbContextFactory<ApplicationDbContext> dbFactory,
-        XPAwardService xpAwards)
+        XPAwardService xpAwards,
+        BadgeAwardService badgeAwards,
+        ResolutionEndorsementService endorsements,
+        DmiScoreService dmiService)
     {
         _dbFactory = dbFactory;
         _xpAwards = xpAwards;
+        _badgeAwards = badgeAwards;
+        _endorsements = endorsements;
+        _dmiService = dmiService;
     }
 
     /// <summary>GET /api/reputation/me — caller's full reputation profile.</summary>
@@ -47,10 +56,11 @@ public class ReputationController : ControllerBase
             {
                 userId,
                 xp = 0L,
-                rank = "Novice",
+                rank = "Strategist-in-Training",
                 currentStreak = 0,
                 longestStreak = 0,
                 streakFreezes = 0,
+                dmiScore = 0.0,
                 badges = Array.Empty<string>()
             });
 
@@ -62,6 +72,7 @@ public class ReputationController : ControllerBase
             currentStreak = rep.CurrentStreak,
             longestStreak = rep.LongestStreak,
             streakFreezes = rep.StreakFreezes,
+            dmiScore = rep.DmiScore,
             lastStreakDate = rep.LastStreakDate,
             badges = rep.Badges,
             lastActiveAt = rep.LastActiveAt
@@ -83,8 +94,9 @@ public class ReputationController : ControllerBase
             {
                 userId,
                 xp = 0L,
-                rank = "Novice",
+                rank = "Strategist-in-Training",
                 longestStreak = 0,
+                dmiScore = 0.0,
                 badges = Array.Empty<string>()
             });
 
@@ -94,6 +106,7 @@ public class ReputationController : ControllerBase
             xp = rep.XP,
             rank = rep.Rank,
             longestStreak = rep.LongestStreak,
+            dmiScore = rep.DmiScore,
             badges = rep.Badges
         });
     }
@@ -115,6 +128,7 @@ public class ReputationController : ControllerBase
                 userId = r.UserId,
                 xp = r.XP,
                 rank = r.Rank,
+                dmiScore = r.DmiScore,
                 badges = r.Badges.Length
             })
             .ToListAsync(ct);
@@ -147,7 +161,25 @@ public class ReputationController : ControllerBase
         return Ok(new { items = leaderboard });
     }
 
-    /// <summary>GET /api/reputation/badges/{userId} — user's badge collection.</summary>
+    /// <summary>GET /api/reputation/badges — list all badge definitions.</summary>
+    [HttpGet("badges")]
+    public IActionResult GetAllBadges()
+    {
+        var badges = BadgeRegistry.All.Values
+            .Select(b => new
+            {
+                id = b.Id,
+                name = b.Name,
+                description = b.Description,
+                tier = b.Tier
+            })
+            .OrderBy(b => b.tier)
+            .ThenBy(b => b.name);
+
+        return Ok(new { items = badges });
+    }
+
+    /// <summary>GET /api/reputation/badges/{userId} — user's badge collection with tier info.</summary>
     [HttpGet("badges/{userId}")]
     public async Task<IActionResult> GetBadges(string userId, CancellationToken ct)
     {
@@ -157,16 +189,173 @@ public class ReputationController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.UserId == userId, ct);
 
-        var badges = rep?.Badges ?? Array.Empty<string>();
+        var earnedBadgeIds = rep?.Badges ?? Array.Empty<string>();
 
-        var badgeDetails = badges.Select(b => new
+        var allBadges = BadgeRegistry.All.Values.Select(b => new
         {
-            id = b,
-            name = FormatBadgeName(b),
-            description = GetBadgeDescription(b)
-        });
+            id = b.Id,
+            name = b.Name,
+            description = b.Description,
+            tier = b.Tier,
+            earned = earnedBadgeIds.Contains(b.Id)
+        }).OrderBy(b => b.tier).ThenBy(b => b.name);
 
-        return Ok(new { userId, badges = badgeDetails });
+        return Ok(new { userId, badges = allBadges });
+    }
+
+    /// <summary>GET /api/reputation/badges/{badgeId}/holders — users who hold a specific badge.</summary>
+    [HttpGet("badges/{badgeId}/holders")]
+    public async Task<IActionResult> GetBadgeHolders(string badgeId, CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var holders = await db.UserReputations
+            .AsNoTracking()
+            .Where(r => r.Badges.Contains(badgeId))
+            .Select(r => new
+            {
+                userId = r.UserId,
+                xp = r.XP,
+                rank = r.Rank
+            })
+            .ToListAsync(ct);
+
+        return Ok(new { badgeId, holders });
+    }
+
+    /// <summary>GET /api/reputation/weekly-leaderboard — top 100 by XP earned in last 7 days.</summary>
+    [HttpGet("weekly-leaderboard")]
+    public async Task<IActionResult> GetWeeklyLeaderboard(
+        [FromQuery] int limit = 50,
+        CancellationToken ct = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+
+        var leaderboard = await db.XPTransactions
+            .AsNoTracking()
+            .Where(t => t.CreatedAt >= sevenDaysAgo)
+            .GroupBy(t => t.UserId)
+            .Select(g => new
+            {
+                userId = g.Key,
+                weeklyXp = g.Sum(t => t.Amount)
+            })
+            .OrderByDescending(x => x.weeklyXp)
+            .Take(Math.Min(limit, 100))
+            .ToListAsync(ct);
+
+        return Ok(new { items = leaderboard });
+    }
+
+    /// <summary>GET /api/reputation/nexus-leaderboard — top 100 by resolution count.</summary>
+    [HttpGet("nexus-leaderboard")]
+    public async Task<IActionResult> GetNexusLeaderboard(
+        [FromQuery] int limit = 50,
+        CancellationToken ct = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var leaderboard = await db.StructuralResolutions
+            .AsNoTracking()
+            .Where(r => r.AuthorId != null)
+            .GroupBy(r => r.AuthorId!)
+            .Select(g => new
+            {
+                userId = g.Key,
+                resolutionCount = g.Count()
+            })
+            .OrderByDescending(x => x.resolutionCount)
+            .Take(Math.Min(limit, 100))
+            .ToListAsync(ct);
+
+        return Ok(new { items = leaderboard });
+    }
+
+    /// <summary>GET /api/reputation/mastery-leaderboard — top 100 by DmiScore.</summary>
+    [HttpGet("mastery-leaderboard")]
+    public async Task<IActionResult> GetMasteryLeaderboard(
+        [FromQuery] int limit = 50,
+        CancellationToken ct = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var leaderboard = await db.UserReputations
+            .AsNoTracking()
+            .Where(r => r.DmiScore > 0)
+            .OrderByDescending(r => r.DmiScore)
+            .Take(Math.Min(limit, 100))
+            .Select(r => new
+            {
+                userId = r.UserId,
+                dmiScore = r.DmiScore,
+                xp = r.XP,
+                rank = r.Rank
+            })
+            .ToListAsync(ct);
+
+        return Ok(new { items = leaderboard });
+    }
+
+    /// <summary>POST /api/reputation/resolutions/{resolutionId}/endorse — endorse a resolution.</summary>
+    [HttpPost("resolutions/{resolutionId:guid}/endorse")]
+    [Authorize]
+    public async Task<IActionResult> EndorseResolution(Guid resolutionId, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
+
+        var added = await _endorsements.AddEndorsementAsync(resolutionId, userId, ct);
+
+        if (!added)
+            return Conflict(new { message = "You have already endorsed this resolution." });
+
+        return Ok(new { message = "Resolution endorsed." });
+    }
+
+    /// <summary>DELETE /api/reputation/resolutions/{resolutionId}/endorse — remove endorsement.</summary>
+    [HttpDelete("resolutions/{resolutionId:guid}/endorse")]
+    [Authorize]
+    public async Task<IActionResult> RemoveEndorsement(Guid resolutionId, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
+
+        var removed = await _endorsements.RemoveEndorsementAsync(resolutionId, userId, ct);
+
+        if (!removed)
+            return NotFound(new { message = "Endorsement not found." });
+
+        return Ok(new { message = "Endorsement removed." });
+    }
+
+    /// <summary>GET /api/reputation/resolutions/{resolutionId}/endorsements — list endorsers.</summary>
+    [HttpGet("resolutions/{resolutionId:guid}/endorsements")]
+    public async Task<IActionResult> GetEndorsements(Guid resolutionId, CancellationToken ct)
+    {
+        var endorsers = await _endorsements.GetEndorsersAsync(resolutionId, ct);
+        return Ok(new { resolutionId, endorsers });
+    }
+
+    /// <summary>POST /api/reputation/admin/award-badge — manually award a badge (admin only).</summary>
+    [HttpPost("admin/award-badge")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AwardBadgeManually(
+        [FromBody] AwardBadgeRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var awarded = await _badgeAwards.AwardBadgeAsync(
+            request.UserId, request.BadgeId, request.TriggerSummary, db, ct);
+
+        if (!awarded)
+            return Conflict(new { message = "User already holds this badge." });
+
+        return Ok(new { message = $"Badge '{request.BadgeId}' awarded to {request.UserId}." });
     }
 
     /// <summary>POST /api/reputation/xptransaction — record manual XP award (admin only).</summary>
@@ -231,48 +420,10 @@ public class ReputationController : ControllerBase
 
         return Ok(new { items = history });
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static string FormatBadgeName(string id) => id switch
-    {
-        "first_argument" => "First Post",
-        "first_upvote" => "First Support",
-        "chain_builder" => "Chain Builder",
-        "worldview_author" => "Worldview Architect",
-        "debate_winner" => "Debate Champion",
-        "bridge_builder" => "Bridge Builder",
-        "changed_mind" => "Humble Scholar",
-        "epistemic_expert" => "Epistemic Expert",
-        "streak_7" => "Weekly Warrior",
-        "streak_30" => "Monthly Stalwart",
-        "top_argument" => "Highly Upvoted",
-        "convergence_catalyst" => "Convergence Catalyst",
-        "fallacy_free" => "Logically Sound",
-        "judge" => "Debate Judge",
-        _ => id
-    };
-
-    private static string GetBadgeDescription(string id) => id switch
-    {
-        "first_argument" => "Published your first argument.",
-        "first_upvote" => "Received your first upvote.",
-        "chain_builder" => "Created an argument chain with 5+ arguments.",
-        "worldview_author" => "Published a worldview.",
-        "debate_winner" => "Won a structured debate.",
-        "bridge_builder" => "Built a bridge argument between divergent worldviews.",
-        "changed_mind" => "Received 5+ 'ChangedMyView' rationales.",
-        "epistemic_expert" => "Achieved epistemic score of 4.0+ in a domain.",
-        "streak_7" => "Maintained a 7-day daily activity streak.",
-        "streak_30" => "Maintained a 30-day daily activity streak.",
-        "top_argument" => "Argument received 100+ upvotes.",
-        "convergence_catalyst" => "Facilitated convergence between 2+ worldviews.",
-        "fallacy_free" => "All arguments passed AI fallacy validation (no flags).",
-        "judge" => "Judged a structured debate.",
-        _ => "Achievement unlocked."
-    };
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
 public record AwardXPRequest(string UserId, long Amount, string Reason, Guid? ReferenceEntityId);
+
+public record AwardBadgeRequest(string UserId, string BadgeId, string? TriggerSummary);

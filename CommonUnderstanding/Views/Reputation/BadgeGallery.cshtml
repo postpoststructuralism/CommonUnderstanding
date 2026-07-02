@@ -1,0 +1,144 @@
+@model List<CommonUnderstanding.Controllers.Social.BadgeViewModel>
+
+@{
+    ViewData["Title"] = "Badge Gallery";
+    var tiers = new[] { "Bronze", "Silver", "Gold", "Platinum" };
+    var tierDescriptions = new Dictionary<string, string>
+    {
+        ["Bronze"] = "Entry-level achievements for getting started.",
+        ["Silver"] = "Meaningful contributions and growing expertise.",
+        ["Gold"] = "Exceptional impact and deep mastery.",
+        ["Platinum"] = "The highest honors — rare and prestigious."
+    };
+}
+
+@section Styles {
+<style>
+    .badge-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        background: var(--bs-body-bg);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .badge-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .badge-card.earned { border-color: var(--bs-success); background: rgba(25,135,84,0.04); }
+    .badge-card .badge-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .badge-card .badge-name { font-weight: 600; font-size: 0.95rem; }
+    .badge-card .badge-desc { font-size: 0.82rem; color: var(--bs-secondary-color); flex-grow: 1; }
+    .badge-card .badge-tier { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    .badge-card .earned-check { color: #198754; font-size: 1.1rem; }
+    .tier-section { margin-bottom: 2.5rem; }
+    .tier-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .tier-header h3 { margin: 0; font-weight: 600; }
+    .tier-header .tier-count { font-size: 0.85rem; color: var(--bs-secondary-color); }
+    .filter-bar { margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .filter-bar .btn-outline-secondary.active { background: var(--bs-primary); color: #fff; border-color: var(--bs-primary); }
+    .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .badge-card .earned-overlay { position: absolute; top: 0.5rem; right: 0.5rem; }
+    .badge-card { position: relative; }
+</style>
+}
+
+<div class="container py-4">
+    <h1 class="mb-1"><i class="bi bi-award me-2"></i>Badge Gallery</h1>
+    <p class="text-muted mb-4">
+        Achievements you can earn by contributing to the platform.
+        @if (!string.IsNullOrEmpty(ViewBag.UserId))
+        {
+            <span>Showing badges for <strong>@ViewBag.UserId</strong>.</span>
+        }
+        else
+        {
+            <span><a asp-controller="ReputationView" asp-action="BadgeGallery" asp-route-userId="self" class="text-decoration-none">Sign in</a> to see your earned badges.</span>
+        }
+    </p>
+
+    @* Filter bar *@
+    <div class="filter-bar" id="filterBar">
+        <button class="btn btn-outline-secondary btn-sm active" data-filter="all">All</button>
+        @foreach (var tier in tiers)
+        {
+            <button class="btn btn-outline-secondary btn-sm" data-filter="@tier.ToLower()">
+                @tier
+            </button>
+        }
+        <button class="btn btn-outline-secondary btn-sm" data-filter="earned">Earned</button>
+        <button class="btn btn-outline-secondary btn-sm" data-filter="unearned">Unearned</button>
+    </div>
+
+    @foreach (var tier in tiers)
+    {
+        var tierBadges = Model.Where(b => b.Tier == tier).ToList();
+        if (tierBadges.Count == 0) continue;
+
+        <div class="tier-section" data-tier="@tier.ToLower()">
+            <div class="tier-header">
+                <span style="font-size: 1.5rem;">@tierBadges.First().TierIcon</span>
+                <h3>@tier</h3>
+                <span class="tier-count">
+                    @tierBadges.Count(b => b.Earned) / @tierBadges.Count earned
+                </span>
+            </div>
+            <p class="text-muted small mb-3">@tierDescriptions[tier]</p>
+            <div class="badge-grid">
+                @foreach (var badge in tierBadges)
+                {
+                    <div class="badge-card @(badge.Earned ? "earned" : "")" data-tier="@tier.ToLower()" data-earned="@badge.Earned.ToString().ToLower()">
+                        @if (badge.Earned)
+                        {
+                            <span class="earned-check position-absolute top-0 end-0 m-2"><i class="bi bi-check-circle-fill"></i></span>
+                        }
+                        <div class="badge-icon">@badge.TierIcon</div>
+                        <div class="badge-name">@badge.Name</div>
+                        <div class="badge-desc mt-1">@badge.Description</div>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <span class="badge-tier" style="color: @badge.TierColor">@badge.Tier</span>
+                            @if (badge.Earned)
+                            {
+                                <span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.7rem;">Earned</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('filterBar')?.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn');
+        if (!btn) return;
+
+        // Update active state
+        this.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+
+        document.querySelectorAll('.tier-section').forEach(section => {
+            const cards = section.querySelectorAll('.badge-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                let show = false;
+                if (filter === 'all') show = true;
+                else if (filter === 'earned') show = card.dataset.earned === 'true';
+                else if (filter === 'unearned') show = card.dataset.earned === 'false';
+                else show = card.dataset.tier === filter;
+
+                card.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+
+            // Hide entire tier section if no cards visible
+            section.style.display = visibleCount > 0 ? '' : 'none';
+        });
+    });
+</script>
+}

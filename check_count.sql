@@ -1,1 +1,0 @@
-SELECT COUNT(*) FROM "UnderstandingEdges" WHERE "Weight" >= 0.6;
