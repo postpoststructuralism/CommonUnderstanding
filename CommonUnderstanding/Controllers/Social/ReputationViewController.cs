@@ -10,6 +10,7 @@ namespace CommonUnderstanding.Controllers.Social;
 /// MVC controller for badge system frontend pages.
 /// Serves Leaderboard, Badge Gallery, and How It Works pages.
 /// </summary>
+[Route("reputation")]
 public class ReputationViewController : Controller
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
@@ -20,7 +21,7 @@ public class ReputationViewController : Controller
     }
 
     /// <summary>GET /reputation/leaderboard — tabbed leaderboard page.</summary>
-    [HttpGet("reputation/leaderboard")]
+    [HttpGet("leaderboard")]
     public async Task<IActionResult> Leaderboard(CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
@@ -93,7 +94,7 @@ public class ReputationViewController : Controller
     }
 
     /// <summary>GET /reputation/badges — badge gallery page.</summary>
-    [HttpGet("reputation/badges")]
+    [HttpGet("badges")]
     public async Task<IActionResult> BadgeGallery([FromQuery] string? userId, CancellationToken ct)
     {
         var allBadges = BadgeRegistry.All.Values
@@ -132,7 +133,7 @@ public class ReputationViewController : Controller
     }
 
     /// <summary>GET /reputation/how-it-works — static info page.</summary>
-    [HttpGet("reputation/how-it-works")]
+    [HttpGet("how-it-works")]
     public IActionResult HowItWorks()
     {
         return View();
