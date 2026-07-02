@@ -278,14 +278,23 @@ app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())
 {
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+    try
+    {
+        await db.Database.MigrateAsync(cts.Token);
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogError(ex, "Database migration failed at startup. The application will continue but database features may be unavailable.");
+    }
 
     // Seed Phase 2 sample data in development
     if (app.Environment.IsDevelopment())
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        await Phase2SeedData.SeedAllAsync(db, logger);
+        await Phase2SeedData.SeedAllAsync(db, startupLogger);
     }
 }
 

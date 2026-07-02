@@ -54,7 +54,8 @@ jobs:
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --settings \
-            ASPNETCORE_ENVIRONMENT=Production
+            ASPNETCORE_ENVIRONMENT=Production \
+            ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING }}"
 
     - name: Deploy to Azure Web App
       run: |
