@@ -1,0 +1,1 @@
+SELECT "Id", "Label", "NodeCount", "EdgeCount", "SchemaCount" FROM "GraphSnapshots" ORDER BY "Id";

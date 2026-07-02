@@ -1,0 +1,1 @@
+SELECT MAX("Id") AS latest_snapshot FROM "GraphSnapshots";

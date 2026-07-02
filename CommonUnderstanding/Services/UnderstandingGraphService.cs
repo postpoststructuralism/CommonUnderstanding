@@ -135,6 +135,237 @@ public partial class UnderstandingGraphService
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Scans for additional contradiction signals that pure semantic similarity
+    /// may miss. Uses three strategies:
+    ///
+    /// 1. Evidence direction: If two nodes have evidence items pointing in
+    ///    opposite directions (Supports vs Opposes), they contradict.
+    /// 2. Social argument links: If the source SocialArguments of two nodes
+    ///    are linked with a Contradicts relationship, the nodes contradict.
+    /// 3. Rebuttal propositions: If a proposition was added as a Rebuttal type
+    ///    in a social argument, it likely contradicts the argument's claim.
+    /// </summary>
+    public async Task<int> DetectContradictionsAsync()
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+        int created = 0;
+
+        // ── Strategy 1: Evidence direction ────────────────────────────────
+        // Find nodes that have evidence items with opposing directions
+        var nodesWithEvidence = await db.UnderstandingNodes
+            .Where(n => n.SemanticEmbedding != null)
+            .ToListAsync();
+
+        // For each pair of nodes, check if they share an argument context
+        // and have evidence pointing in opposite directions
+        for (int i = 0; i < nodesWithEvidence.Count; i++)
+        {
+            for (int j = i + 1; j < nodesWithEvidence.Count; j++)
+            {
+                var a = nodesWithEvidence[i];
+                var b = nodesWithEvidence[j];
+
+                // Skip if contradiction edge already exists (but allow upgrading non-contradiction edges)
+                if (await db.UnderstandingEdges.AnyAsync(e =>
+                    ((e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
+                     (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id))
+                    && e.Relationship == "contradicts"))
+                    continue;
+
+                // Check if they share argument context
+                var aArgs = DeserializeIntList(a.ArgumentIdsJson);
+                var bArgs = DeserializeIntList(b.ArgumentIdsJson);
+                bool shareContext = aArgs.Intersect(bArgs).Any();
+                if (!shareContext) continue;
+
+                // Check evidence direction via the legacy Proposition/EvidenceItem tables
+                foreach (var argId in aArgs.Intersect(bArgs))
+                {
+                    var evidenceDirections = await db.EvidenceItems
+                        .Where(ei => ei.Proposition.Claim.ArgumentId == argId)
+                        .Select(ei => ei.Direction)
+                        .Distinct()
+                        .ToListAsync();
+
+                    bool hasSupports = evidenceDirections.Contains(EvidenceDirection.Supports);
+                    bool hasOpposes = evidenceDirections.Contains(EvidenceDirection.Opposes);
+
+                    if (hasSupports && hasOpposes)
+                    {
+                        // Remove any existing non-contradiction edge between these nodes
+                        var existingEdge = await db.UnderstandingEdges
+                            .FirstOrDefaultAsync(e =>
+                                (e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
+                                (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id));
+                        if (existingEdge != null)
+                            db.UnderstandingEdges.Remove(existingEdge);
+
+                        db.UnderstandingEdges.Add(new UnderstandingEdge
+                        {
+                            SourceNodeId = a.Id,
+                            TargetNodeId = b.Id,
+                            Relationship = "contradicts",
+                            Weight = 0.6,
+                            BaseWeight = 0.6,
+                            ProvenanceJson = JsonSerializer.Serialize(new
+                            {
+                                detectedBy = "evidence_direction",
+                                argumentId = argId,
+                                note = "Nodes share an argument with opposing evidence directions"
+                            }),
+                            CreatedAt = DateTime.UtcNow,
+                            LastReinforcedAt = DateTime.UtcNow
+                        });
+                        created++;
+                        break; // One contradiction edge per pair is enough
+                    }
+                }
+            }
+        }
+
+        // ── Strategy 2: Social argument Contradicts links ─────────────────
+        // Find ArgumentLinks with LinkType.Contradicts and create contradiction
+        // edges between the propositions of the linked arguments
+        var contradictLinks = await db.Set<CommonUnderstanding.Models.Social.ArgumentLink>()
+            .Where(al => al.LinkType == CommonUnderstanding.Models.Social.LinkType.Contradicts)
+            .Include(al => al.SourceArgument).ThenInclude(sa => sa.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+            .Include(al => al.TargetArgument).ThenInclude(sa => sa.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+            .ToListAsync();
+
+        foreach (var link in contradictLinks)
+        {
+            var sourceProps = link.SourceArgument?.ArgumentPropositions?
+                .Select(ap => ap.Proposition)
+                .Where(p => p != null)
+                .ToList() ?? new();
+
+            var targetProps = link.TargetArgument?.ArgumentPropositions?
+                .Select(ap => ap.Proposition)
+                .Where(p => p != null)
+                .ToList() ?? new();
+
+            foreach (var sp in sourceProps)
+            {
+                foreach (var tp in targetProps)
+                {
+                    if (sp == null || tp == null) continue;
+
+                    var sourceKey = NormalizeKey(sp.Text);
+                    var targetKey = NormalizeKey(tp.Text);
+                    if (string.IsNullOrWhiteSpace(sourceKey) || string.IsNullOrWhiteSpace(targetKey))
+                        continue;
+
+                    var sourceNode = await db.UnderstandingNodes
+                        .FirstOrDefaultAsync(n => n.NormalizedKey == sourceKey);
+                    var targetNode = await db.UnderstandingNodes
+                        .FirstOrDefaultAsync(n => n.NormalizedKey == targetKey);
+
+                    if (sourceNode == null || targetNode == null) continue;
+
+                    // Skip if contradiction edge already exists
+                    if (await db.UnderstandingEdges.AnyAsync(e =>
+                        ((e.SourceNodeId == sourceNode.Id && e.TargetNodeId == targetNode.Id) ||
+                         (e.SourceNodeId == targetNode.Id && e.TargetNodeId == sourceNode.Id))
+                        && e.Relationship == "contradicts"))
+                        continue;
+
+                    // Remove any existing non-contradiction edge between these nodes
+                    var existingEdge2 = await db.UnderstandingEdges
+                        .FirstOrDefaultAsync(e =>
+                            (e.SourceNodeId == sourceNode.Id && e.TargetNodeId == targetNode.Id) ||
+                            (e.SourceNodeId == targetNode.Id && e.TargetNodeId == sourceNode.Id));
+                    if (existingEdge2 != null)
+                        db.UnderstandingEdges.Remove(existingEdge2);
+
+                    db.UnderstandingEdges.Add(new UnderstandingEdge
+                    {
+                        SourceNodeId = sourceNode.Id,
+                        TargetNodeId = targetNode.Id,
+                        Relationship = "contradicts",
+                        Weight = 0.75,
+                        BaseWeight = 0.75,
+                        ProvenanceJson = JsonSerializer.Serialize(new
+                        {
+                            detectedBy = "social_argument_link",
+                            sourceArgumentId = link.SourceArgumentId.ToString(),
+                            targetArgumentId = link.TargetArgumentId.ToString(),
+                            linkId = link.Id.ToString()
+                        }),
+                        CreatedAt = DateTime.UtcNow,
+                        LastReinforcedAt = DateTime.UtcNow
+                    });
+                    created++;
+                }
+            }
+        }
+
+        // ── Strategy 3: Rebuttal propositions ─────────────────────────────
+        // SocialPropositionType.Rebuttal propositions contradict the claim
+        // of the argument they belong to
+        var rebuttalProps = await db.Set<CommonUnderstanding.Models.Social.SocialArgumentProposition>()
+            .Where(ap => ap.Role == CommonUnderstanding.Models.Social.SocialPropositionType.Rebuttal)
+            .Include(ap => ap.Argument).ThenInclude(a => a.ClaimProposition)
+            .Include(ap => ap.Proposition)
+            .ToListAsync();
+
+        foreach (var rp in rebuttalProps)
+        {
+            var rebuttalProp = rp.Proposition;
+            var claimProp = rp.Argument?.ClaimProposition;
+            if (rebuttalProp == null || claimProp == null) continue;
+
+            var rebuttalKey = NormalizeKey(rebuttalProp.Text);
+            var claimKey = NormalizeKey(claimProp.Text);
+            if (string.IsNullOrWhiteSpace(rebuttalKey) || string.IsNullOrWhiteSpace(claimKey))
+                continue;
+
+            var rebuttalNode = await db.UnderstandingNodes
+                .FirstOrDefaultAsync(n => n.NormalizedKey == rebuttalKey);
+            var claimNode = await db.UnderstandingNodes
+                .FirstOrDefaultAsync(n => n.NormalizedKey == claimKey);
+
+            if (rebuttalNode == null || claimNode == null) continue;
+
+            // Skip if contradiction edge already exists
+            if (await db.UnderstandingEdges.AnyAsync(e =>
+                ((e.SourceNodeId == rebuttalNode.Id && e.TargetNodeId == claimNode.Id) ||
+                 (e.SourceNodeId == claimNode.Id && e.TargetNodeId == rebuttalNode.Id))
+                && e.Relationship == "contradicts"))
+                continue;
+
+            // Remove any existing non-contradiction edge between these nodes
+            var existingEdge3 = await db.UnderstandingEdges
+                .FirstOrDefaultAsync(e =>
+                    (e.SourceNodeId == rebuttalNode.Id && e.TargetNodeId == claimNode.Id) ||
+                    (e.SourceNodeId == claimNode.Id && e.TargetNodeId == rebuttalNode.Id));
+            if (existingEdge3 != null)
+                db.UnderstandingEdges.Remove(existingEdge3);
+
+            db.UnderstandingEdges.Add(new UnderstandingEdge
+            {
+                SourceNodeId = rebuttalNode.Id,
+                TargetNodeId = claimNode.Id,
+                Relationship = "contradicts",
+                Weight = 0.8,
+                BaseWeight = 0.8,
+                ProvenanceJson = JsonSerializer.Serialize(new
+                {
+                    detectedBy = "rebuttal_proposition",
+                    socialArgumentId = rp.ArgumentId.ToString(),
+                    note = "Rebuttal proposition contradicts the argument's claim"
+                }),
+                CreatedAt = DateTime.UtcNow,
+                LastReinforcedAt = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        await db.SaveChangesAsync();
+        _logger.LogInformation("Contradiction detection complete: {Count} contradiction edges created.", created);
+        return created;
+    }
+
     // ── Topology metrics ──────────────────────────────────────────────────
 
     public async Task RecomputeTopologyMetricsAsync()

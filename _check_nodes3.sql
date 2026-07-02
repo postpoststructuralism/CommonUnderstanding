@@ -1,0 +1,1 @@
+SELECT COUNT(*) AS node_count FROM "UnderstandingNodes";

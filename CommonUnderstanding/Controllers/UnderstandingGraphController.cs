@@ -249,8 +249,8 @@ public class UnderstandingGraphController : Controller
     // ── Pipeline Actions ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Runs the full analysis pipeline: recompute topology, discover schemas,
-    /// run tensor decomposition, FCA lattice, TDA, and capture a snapshot.
+    /// Runs the full analysis pipeline: detect contradictions, recompute topology,
+    /// discover schemas, run dialectical synthesis, and capture a snapshot.
     /// </summary>
     [HttpPost("api/understanding-graph/run-pipeline")]
     public async Task<IActionResult> RunPipeline()
@@ -259,26 +259,33 @@ public class UnderstandingGraphController : Controller
         {
             _logger.LogInformation("Full analysis pipeline triggered via UI.");
 
-            // Step 1: Recompute topology metrics
+            // Step 1: Detect contradictions
+            var contradictionsFound = await _graphService.DetectContradictionsAsync();
+            _logger.LogInformation("Pipeline: detected {Count} contradictions.", contradictionsFound);
+
+            // Step 2: Recompute topology metrics
             await _graphService.RecomputeTopologyMetricsAsync();
 
-            // Step 2: Discover schemas via k-means
+            // Step 3: Discover schemas via k-means
             var schemas = await _schemaService.DiscoverSchemasKMeansAsync();
             _logger.LogInformation("Pipeline: discovered {Count} schemas.", schemas.Count);
 
-            // Step 3: Run dialectical synthesis
-            await _synthesisService.GenerateSynthesesAsync();
+            // Step 4: Run dialectical synthesis
+            var synthesesGenerated = await _synthesisService.GenerateSynthesesAsync();
+            _logger.LogInformation("Pipeline: generated {Count} syntheses.", synthesesGenerated);
 
-            // Step 4: Capture snapshot
+            // Step 5: Capture snapshot
             var snapshot = await _snapshotService.CaptureSnapshotAsync($"Pipeline run {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
 
             return Json(new
             {
                 success = true,
+                contradictionsDetected = contradictionsFound,
+                synthesesGenerated = synthesesGenerated,
                 schemasDiscovered = schemas.Count,
                 snapshotId = snapshot.Id,
                 snapshotLabel = snapshot.Label,
-                message = $"Pipeline complete. Discovered {schemas.Count} schemas, captured snapshot."
+                message = $"Pipeline complete. Detected {contradictionsFound} contradictions, generated {synthesesGenerated} syntheses, discovered {schemas.Count} schemas."
             });
         }
         catch (Exception ex)
@@ -308,7 +315,8 @@ public class UnderstandingGraphController : Controller
     /// <summary>
     /// Rebuilds the entire Understanding Graph from existing data.
     /// Syncs all arguments and social arguments into nodes/edges,
-    /// then runs the full pipeline (topology, discovery, synthesis, snapshot).
+    /// then runs the full pipeline (topology, contradiction detection,
+    /// discovery, synthesis, snapshot).
     /// </summary>
     [HttpPost("api/understanding-graph/rebuild")]
     public async Task<IActionResult> RebuildGraph()
@@ -320,27 +328,38 @@ public class UnderstandingGraphController : Controller
             // Step 1: Bulk sync all existing data
             await _graphService.SyncAllAsync();
 
-            // Step 2: Recompute topology metrics
+            // Step 2: Detect edges (including contradictions via enhanced DetermineRelationship)
+            await _graphService.DetectEdgesAsync();
+
+            // Step 3: Detect additional contradictions from evidence direction,
+            //         social argument links, and rebuttal propositions
+            var contradictionsFound = await _graphService.DetectContradictionsAsync();
+            _logger.LogInformation("Rebuild: detected {Count} contradiction edges.", contradictionsFound);
+
+            // Step 4: Recompute topology metrics
             await _graphService.RecomputeTopologyMetricsAsync();
 
-            // Step 3: Discover schemas via k-means
+            // Step 5: Discover schemas via k-means
             var schemas = await _schemaService.DiscoverSchemasKMeansAsync();
             _logger.LogInformation("Rebuild: discovered {Count} schemas.", schemas.Count);
 
-            // Step 4: Run dialectical synthesis
-            await _synthesisService.GenerateSynthesesAsync();
+            // Step 6: Run dialectical synthesis
+            var synthesesGenerated = await _synthesisService.GenerateSynthesesAsync();
+            _logger.LogInformation("Rebuild: generated {Count} syntheses.", synthesesGenerated);
 
-            // Step 5: Capture snapshot
+            // Step 7: Capture snapshot
             var snapshot = await _snapshotService.CaptureSnapshotAsync($"Rebuild {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
 
             return Json(new
             {
                 success = true,
                 nodesCreated = true,
+                contradictionsDetected = contradictionsFound,
+                synthesesGenerated = synthesesGenerated,
                 schemasDiscovered = schemas.Count,
                 snapshotId = snapshot.Id,
                 snapshotLabel = snapshot.Label,
-                message = $"Graph rebuilt. Discovered {schemas.Count} schemas, captured snapshot."
+                message = $"Graph rebuilt. Detected {contradictionsFound} contradictions, generated {synthesesGenerated} syntheses, discovered {schemas.Count} schemas."
             });
         }
         catch (Exception ex)
@@ -360,6 +379,25 @@ public class UnderstandingGraphController : Controller
         {
             var count = await _synthesisService.GenerateSynthesesAsync();
             return Json(new { success = true, synthesesGenerated = count });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Runs just the contradiction detection step.
+    /// Scans for contradictions via evidence direction, social argument links,
+    /// and rebuttal propositions.
+    /// </summary>
+    [HttpPost("api/understanding-graph/detect-contradictions")]
+    public async Task<IActionResult> DetectContradictions()
+    {
+        try
+        {
+            var count = await _graphService.DetectContradictionsAsync();
+            return Json(new { success = true, contradictionsDetected = count });
         }
         catch (Exception ex)
         {

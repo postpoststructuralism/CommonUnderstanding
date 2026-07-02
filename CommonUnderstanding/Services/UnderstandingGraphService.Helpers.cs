@@ -153,11 +153,48 @@ public partial class UnderstandingGraphService
 
     // ── Relationship determination ────────────────────────────────────────
 
+    /// <summary>
+    /// Determines the relationship between two nodes based on semantic similarity
+    /// and contextual signals.
+    ///
+    /// Contradiction detection logic:
+    /// - If similarity is very low (&lt; 0.30) but nodes share an argument context,
+    ///   they likely represent opposing viewpoints on the same topic → "contradicts"
+    /// - If one node is Contested and the other Settled with moderate similarity
+    ///   (0.30–0.55), they may be contradictory claims on the same subject
+    /// - High similarity (≥ 0.85) → "supports"
+    /// - Moderate-high similarity (≥ 0.65) → "refines"
+    /// - Moderate similarity (≥ 0.45) → "qualifies"
+    /// - Low similarity with shared context → "contradicts"
+    /// - Otherwise → "assumes"
+    /// </summary>
     private static string DetermineRelationship(UnderstandingNode a, UnderstandingNode b, double similarity)
     {
         if (similarity >= 0.85) return "supports";
         if (similarity >= 0.65) return "refines";
         if (similarity >= 0.45) return "qualifies";
+
+        // Low similarity but shared argument context → likely contradiction
+        // (same topic, opposing viewpoints)
+        if (similarity < 0.30)
+        {
+            var aArgs = DeserializeIntList(a.ArgumentIdsJson);
+            var bArgs = DeserializeIntList(b.ArgumentIdsJson);
+            if (aArgs.Intersect(bArgs).Any())
+                return "contradicts";
+        }
+
+        // One contested, one settled with moderate-low similarity → contradiction signal
+        if (similarity < 0.55 &&
+            ((a.Status == PropositionStatus.Contested && b.Status == PropositionStatus.Settled) ||
+             (a.Status == PropositionStatus.Settled && b.Status == PropositionStatus.Contested)))
+        {
+            var aArgs = DeserializeIntList(a.ArgumentIdsJson);
+            var bArgs = DeserializeIntList(b.ArgumentIdsJson);
+            if (aArgs.Intersect(bArgs).Any())
+                return "contradicts";
+        }
+
         return "assumes";
     }
 

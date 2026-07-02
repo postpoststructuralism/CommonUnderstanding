@@ -1,0 +1,1 @@
+SELECT "Id", "CanonicalText", "ArgumentIdsJson" FROM "UnderstandingNodes" WHERE "ArgumentIdsJson" LIKE '%"Universal Basic Income"%' OR "CanonicalText" LIKE '%UBI%' OR "CanonicalText" LIKE '%Basic Income%' OR "CanonicalText" LIKE '%Renewable energy%' OR "CanonicalText" LIKE '%Climate change%';

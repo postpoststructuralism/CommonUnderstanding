@@ -1,0 +1,3 @@
+SELECT "Title", "RawText", "Status", "SubmittedBy" FROM "Arguments" WHERE "Title" = 'Universal Basic Income';
+SELECT c."Id", c."Text" FROM "Claims" c JOIN "Arguments" a ON a."Id" = c."ArgumentId" WHERE a."Title" = 'Universal Basic Income';
+SELECT p."Id", p."Text", p."Status", p."ConfidenceScore" FROM "Propositions" p JOIN "Claims" c ON c."Id" = p."ClaimId" JOIN "Arguments" a ON a."Id" = c."ArgumentId" WHERE a."Title" = 'Universal Basic Income';

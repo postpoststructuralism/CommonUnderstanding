@@ -1,0 +1,10 @@
+SELECT COUNT(*) as arg_count FROM "Arguments" WHERE "Title" = 'Universal Basic Income';
+SELECT COUNT(*) as node_count FROM "UnderstandingNodes";
+SELECT COUNT(*) as node_with_embedding FROM "UnderstandingNodes" WHERE "SemanticEmbedding" IS NOT NULL;
+SELECT "CanonicalText", "ArgumentIdsJson" FROM "UnderstandingNodes" WHERE "CanonicalText" LIKE '%UBI%' OR "CanonicalText" LIKE '%Basic Income%' OR "CanonicalText" LIKE '%disincentivizes%' OR "CanonicalText" LIKE '%poverty%';
+SELECT COUNT(*) as evidence_count FROM "EvidenceItems";
+SELECT "Direction", COUNT(*) FROM "EvidenceItems" GROUP BY "Direction";
+SELECT COUNT(*) as social_args FROM "SocialArguments";
+SELECT COUNT(*) as social_props FROM "SocialPropositions";
+SELECT COUNT(*) as arg_links FROM "ArgumentLinks";
+SELECT COUNT(*) as rebuttals FROM "SocialArgumentPropositions" WHERE "Role" = 3;

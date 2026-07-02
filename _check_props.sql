@@ -1,0 +1,1 @@
+SELECT p."Id", p."Text", p."ClaimId" FROM "Propositions" p WHERE p."Text" LIKE '%UBI%' OR p."Text" LIKE '%Basic Income%' OR p."Text" LIKE '%disincentivizes%';

@@ -1,0 +1,1 @@
+SELECT COUNT(*) AS contradict_edges FROM "UnderstandingEdges" WHERE "Relationship" = 'contradicts';

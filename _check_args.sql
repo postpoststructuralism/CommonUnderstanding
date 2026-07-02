@@ -1,0 +1,1 @@
+SELECT "Id", "Title" FROM "Arguments" WHERE "Id" IN (49, 50);

@@ -1,0 +1,1 @@
+SELECT "Id", "CanonicalText", "ArgumentIdsJson" FROM "UnderstandingNodes" WHERE "Id" IN (176, 177, 178);
