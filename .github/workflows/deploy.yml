@@ -41,15 +41,20 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Configure Linux runtime
+      run: |
+        az webapp config set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --linux-fx-version "DOTNETCORE|9.0"
+
     - name: Configure app settings
       run: |
         az webapp config appsettings set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --settings \
-            ASPNETCORE_ENVIRONMENT=Production \
-            OpenRouter__ApiKey="${{ secrets.OPENROUTER_API_KEY }}" \
-            Ollama__Endpoint="http://localhost:11434"
+            ASPNETCORE_ENVIRONMENT=Production
 
     - name: Deploy to Azure Web App
       run: |
