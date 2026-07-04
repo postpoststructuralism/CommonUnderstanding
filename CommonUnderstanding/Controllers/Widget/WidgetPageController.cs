@@ -11,29 +11,29 @@ public class WidgetPageController : Controller
 {
     public IActionResult Dashboard()
     {
-        return View();
+        return View("~/Views/Widget/Dashboard.cshtml");
     }
 
     [Route("Widget/Dashboard/{siteId}")]
     public IActionResult SiteDashboard(Guid siteId)
     {
-        return View("SiteDashboard", siteId);
+        return View("~/Views/Widget/SiteDashboard.cshtml", siteId);
     }
 
     public IActionResult Register()
     {
-        return View();
+        return View("~/Views/Widget/Register.cshtml");
     }
 
     [Route("Widget/Moderation/{siteId}")]
     public IActionResult Moderation(Guid siteId)
     {
-        return View("Moderation", siteId);
+        return View("~/Views/Widget/Moderation.cshtml", siteId);
     }
 
     [Route("Widget/Settings/{siteId}")]
     public IActionResult Settings(Guid siteId)
     {
-        return View("Settings", siteId);
+        return View("~/Views/Widget/Settings.cshtml", siteId);
     }
 }

@@ -173,9 +173,45 @@ main {
     border-radius: 999px;
     box-shadow: var(--cu-shadow-xs);
     backdrop-filter: blur(16px);
+    flex-wrap: wrap;
 }
 
+/* On smaller screens, let nav items wrap and adjust spacing */
+@media (max-width: 1199.98px) {
+    .cu-nav .container-fluid {
+        border-radius: 1.25rem;
+    }
+    .cu-nav .navbar-nav {
+        gap: 0.15rem;
+    }
+    .cu-nav .nav-link {
+        padding: 0.45rem 0.75rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* When navbar collapses (xl breakpoint), ensure dropdowns work properly */
+@media (max-width: 1199.98px) {
+    .cu-nav .navbar-collapse {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .cu-nav .navbar-nav {
+        padding-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .cu-nav .cu-nav-divider {
+        display: none;
+    }
+    .cu-nav .dropdown-menu.show {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+}
+
+/* Ensure navbar items don't overflow on any screen */
 .cu-nav .navbar-nav {
+    flex-wrap: wrap;
     gap: 0.35rem;
 }
 
@@ -277,6 +313,12 @@ main {
     box-shadow: var(--cu-shadow-sm);
     margin-top: 0.75rem;
     overflow: hidden;
+}
+
+/* Prevent dropdowns from going off-screen bottom */
+.cu-nav .dropdown-menu.show {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
 }
 
 .cu-nav .dropdown-item {

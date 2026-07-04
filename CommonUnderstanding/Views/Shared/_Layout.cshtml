@@ -38,7 +38,7 @@
     </header>
 
     <!-- NAVIGATION -->
-    <nav class="cu-nav navbar navbar-expand-lg navbar-dark">
+    <nav class="cu-nav navbar navbar-expand-xl navbar-dark">
         <div class="container-fluid">
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cuNavbarContent" 
                     aria-controls="cuNavbarContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -129,6 +129,13 @@
                                     <i class="bi bi-question-circle me-2"></i>How It Works
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header cu-dropdown-section">Monetization</h6></li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "WidgetPage" ? "active" : "")" asp-controller="WidgetPage" asp-action="Dashboard">
+                                    <i class="bi bi-chat-square-quote me-2"></i>Comments Widget
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -217,6 +224,12 @@
                                 <li>
                                     <a class="dropdown-item" asp-controller="Connections" asp-action="Index">
                                         <i class="bi bi-people me-1"></i>My Connections
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="WidgetPage" asp-action="Dashboard">
+                                        <i class="bi bi-chat-square-quote me-1"></i>Comments Widget
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>

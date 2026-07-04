@@ -27,10 +27,53 @@
     .linked-arg-card {
         border: 1px solid var(--bs-border-color);
         border-radius: 0.5rem;
-        padding: 0.75rem 1rem;
-        transition: box-shadow 0.15s ease;
+        padding: 0.85rem 1rem;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        background: var(--bs-body-bg);
     }
-    .linked-arg-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .linked-arg-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-color: var(--cu-secondary-blue);
+    }
+    .linked-arg-card .link-type-badge {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 600;
+    }
+    .link-type-supports { border-left: 3px solid #198754; }
+    .link-type-contradicts { border-left: 3px solid #dc3545; }
+    .link-type-refines { border-left: 3px solid #0d6efd; }
+    .link-type-extends { border-left: 3px solid #6f42c1; }
+    .link-type-reply { border-left: 3px solid #fd7e14; }
+    .linked-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--bs-border-color);
+    }
+    .linked-section-header .section-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+    .linked-section-outbound .section-icon { background: rgba(13,110,253,0.1); color: #0d6efd; }
+    .linked-section-inbound .section-icon { background: rgba(111,66,193,0.1); color: #6f42c1; }
+    .link-group-header {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cu-text-muted);
+        margin: 0.75rem 0 0.5rem;
+        padding-left: 0.25rem;
+    }
+    .link-group-header:first-child { margin-top: 0; }
     .reply-thread {
         border-left: 2px solid var(--bs-border-color);
         padding-left: 8px;
@@ -144,51 +187,131 @@
     </div>
 </div>
 
-<!-- Linked Arguments -->
+<!-- ── Linked Arguments ──────────────────────────────────────────────────── -->
 @if (Model.OutboundLinks.Any() || Model.InboundLinks.Any())
 {
-    <div class="row mt-4">
+    var outboundByType = Model.OutboundLinks.GroupBy(l => l.LinkType).ToDictionary(g => g.Key, g => g.ToList());
+    var inboundByType = Model.InboundLinks.GroupBy(l => l.LinkType).ToDictionary(g => g.Key, g => g.ToList());
+
+    static string LinkTypeIcon(LinkType t) => t switch
+    {
+        LinkType.Supports     => "bi-hand-thumbs-up",
+        LinkType.Contradicts  => "bi-x-octagon",
+        LinkType.Refines      => "bi-pencil-square",
+        LinkType.Extends      => "bi-plus-circle-dotted",
+        LinkType.Reply        => "bi-reply",
+        _                     => "bi-link-45deg"
+    };
+    static string LinkTypeColor(LinkType t) => t switch
+    {
+        LinkType.Supports     => "success",
+        LinkType.Contradicts  => "danger",
+        LinkType.Refines      => "primary",
+        LinkType.Extends      => "purple",
+        LinkType.Reply        => "warning",
+        _                     => "secondary"
+    };
+    static string LinkTypeLabel(LinkType t) => t switch
+    {
+        LinkType.Supports     => "Supports",
+        LinkType.Contradicts  => "Contradicts",
+        LinkType.Refines      => "Refines",
+        LinkType.Extends      => "Extends",
+        LinkType.Reply        => "Reply",
+        _                     => t.ToString()
+    };
+    static string LinkTypeBorderClass(LinkType t) => t switch
+    {
+        LinkType.Supports     => "link-type-supports",
+        LinkType.Contradicts  => "link-type-contradicts",
+        LinkType.Refines      => "link-type-refines",
+        LinkType.Extends      => "link-type-extends",
+        LinkType.Reply        => "link-type-reply",
+        _                     => ""
+    };
+
+    <div class="row mt-4 g-4">
         @if (Model.OutboundLinks.Any())
         {
-            <div class="col-md-6 mb-3">
-                <h6 class="text-uppercase text-muted small mb-2">
-                    <i class="bi bi-arrow-right me-1"></i>This argument references
-                </h6>
-                @foreach (var link in Model.OutboundLinks)
+            <div class="col-lg-6">
+                <div class="linked-section-header linked-section-outbound">
+                    <div class="section-icon"><i class="bi bi-arrow-right"></i></div>
+                    <div>
+                        <h6 class="mb-0 fw-bold">References</h6>
+                        <small class="text-muted">Arguments this one builds upon</small>
+                    </div>
+                    <span class="badge bg-secondary ms-auto">@Model.OutboundLinks.Count</span>
+                </div>
+                @foreach (var group in outboundByType.OrderBy(g => g.Key))
                 {
-                    <a asp-action="Detail" asp-route-id="@link.TargetArgumentId"
-                       class="linked-arg-card text-decoration-none text-reset d-block mb-2">
-                        <strong>@link.TargetArgument?.Title</strong>
-                        @if (link.TargetArgument?.ClaimProposition?.Text is not null)
-                        {
-                            var isTargetFollowUp = link.TargetArgument?.InboundLinks?.Any(l => l.LinkType == LinkType.Reply) == true;
-                            var targetClaim = isTargetFollowUp ? link.TargetArgument?.Title : link.TargetArgument?.ClaimProposition?.Text;
-                            <p class="text-muted small mb-0">@targetClaim</p>
-                        }
-                        <span class="badge bg-light text-dark mt-1">@link.LinkType</span>
-                    </a>
+                    <div class="link-group-header">
+                        <i class="bi @LinkTypeIcon(group.Key) me-1"></i>@LinkTypeLabel(group.Key)
+                        <span class="text-muted">(@group.Value.Count)</span>
+                    </div>
+                    @foreach (var link in group.Value)
+                    {
+                        <a asp-action="Detail" asp-route-id="@link.TargetArgumentId"
+                           class="linked-arg-card @LinkTypeBorderClass(link.LinkType) text-decoration-none text-reset d-block mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="d-block">@link.TargetArgument?.Title</strong>
+                                <span class="badge bg-@LinkTypeColor(link.LinkType) link-type-badge ms-2 flex-shrink-0">
+                                    <i class="bi @LinkTypeIcon(link.LinkType) me-1"></i>@LinkTypeLabel(link.LinkType)
+                                </span>
+                            </div>
+                            @if (link.TargetArgument?.ClaimProposition?.Text is not null)
+                            {
+                                var isTargetFollowUp = link.TargetArgument?.InboundLinks?.Any(l => l.LinkType == LinkType.Reply) == true;
+                                var targetClaim = isTargetFollowUp ? link.TargetArgument?.Title : link.TargetArgument?.ClaimProposition?.Text;
+                                <p class="text-muted small mb-0 mt-1">@targetClaim</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(link.Annotation))
+                            {
+                                <p class="text-muted small mb-0 mt-1 fst-italic">"@link.Annotation"</p>
+                            }
+                        </a>
+                    }
                 }
             </div>
         }
         @if (Model.InboundLinks.Any())
         {
-            <div class="col-md-6 mb-3">
-                <h6 class="text-uppercase text-muted small mb-2">
-                    <i class="bi bi-arrow-left me-1"></i>Arguments referencing this
-                </h6>
-                @foreach (var link in Model.InboundLinks)
+            <div class="col-lg-6">
+                <div class="linked-section-header linked-section-inbound">
+                    <div class="section-icon"><i class="bi bi-arrow-left"></i></div>
+                    <div>
+                        <h6 class="mb-0 fw-bold">Referenced By</h6>
+                        <small class="text-muted">Arguments that reference this one</small>
+                    </div>
+                    <span class="badge bg-secondary ms-auto">@Model.InboundLinks.Count</span>
+                </div>
+                @foreach (var group in inboundByType.OrderBy(g => g.Key))
                 {
-                    <a asp-action="Detail" asp-route-id="@link.SourceArgumentId"
-                       class="linked-arg-card text-decoration-none text-reset d-block mb-2">
-                        <strong>@link.SourceArgument?.Title</strong>
-                        @if (link.SourceArgument?.ClaimProposition?.Text is not null)
-                        {
-                            var isSourceFollowUp = link.SourceArgument?.InboundLinks?.Any(l => l.LinkType == LinkType.Reply) == true;
-                            var sourceClaim = isSourceFollowUp ? link.SourceArgument?.Title : link.SourceArgument?.ClaimProposition?.Text;
-                            <p class="text-muted small mb-0">@sourceClaim</p>
-                        }
-                        <span class="badge bg-light text-dark mt-1">@link.LinkType</span>
-                    </a>
+                    <div class="link-group-header">
+                        <i class="bi @LinkTypeIcon(group.Key) me-1"></i>@LinkTypeLabel(group.Key)
+                        <span class="text-muted">(@group.Value.Count)</span>
+                    </div>
+                    @foreach (var link in group.Value)
+                    {
+                        <a asp-action="Detail" asp-route-id="@link.SourceArgumentId"
+                           class="linked-arg-card @LinkTypeBorderClass(link.LinkType) text-decoration-none text-reset d-block mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="d-block">@link.SourceArgument?.Title</strong>
+                                <span class="badge bg-@LinkTypeColor(link.LinkType) link-type-badge ms-2 flex-shrink-0">
+                                    <i class="bi @LinkTypeIcon(link.LinkType) me-1"></i>@LinkTypeLabel(link.LinkType)
+                                </span>
+                            </div>
+                            @if (link.SourceArgument?.ClaimProposition?.Text is not null)
+                            {
+                                var isSourceFollowUp = link.SourceArgument?.InboundLinks?.Any(l => l.LinkType == LinkType.Reply) == true;
+                                var sourceClaim = isSourceFollowUp ? link.SourceArgument?.Title : link.SourceArgument?.ClaimProposition?.Text;
+                                <p class="text-muted small mb-0 mt-1">@sourceClaim</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(link.Annotation))
+                            {
+                                <p class="text-muted small mb-0 mt-1 fst-italic">"@link.Annotation"</p>
+                            }
+                        </a>
+                    }
                 }
             </div>
         }
