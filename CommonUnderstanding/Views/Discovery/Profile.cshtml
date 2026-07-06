@@ -3,437 +3,500 @@
 @{
     ViewData["Title"] = $"{Model.Name}'s Worldview Profile";
     var snapshot = Model.CurrentBeliefSnapshot;
+    var universePos = ViewBag.UniversePosition as CommonUnderstanding.Models.BeliefUniversePosition;
+    var allSystems = ViewBag.AllSystems as List<CommonUnderstanding.Models.BeliefSystem>;
+}
+
+@section Styles {
+<style>
+    .profile-hero { text-align:center; padding:2.5rem 1.5rem 2rem; margin-bottom:2rem; background:linear-gradient(135deg, rgba(var(--cu-primary-rgb),0.04) 0%, rgba(var(--cu-secondary-rgb),0.06) 100%); border:1px solid var(--cu-border-light); border-radius:var(--cu-border-radius-lg); }
+    .profile-hero h1 { font-family:var(--cu-font-display); font-size:2rem; font-weight:700; letter-spacing:-0.03em; color:var(--cu-primary-blue); margin-bottom:0.35rem; }
+    .profile-hero .hero-subtitle { color:var(--cu-text-muted); font-size:0.95rem; font-weight:500; }
+    .profile-hero .hero-stats { display:flex; justify-content:center; gap:2rem; margin-top:1.25rem; flex-wrap:wrap; }
+    .profile-hero .hero-stat { text-align:center; min-width:80px; }
+    .profile-hero .hero-stat-value { font-family:var(--cu-font-display); font-size:1.6rem; font-weight:700; color:var(--cu-secondary-blue); line-height:1.1; }
+    .profile-hero .hero-stat-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--cu-text-muted); margin-top:0.15rem; }
+
+    .ai-summary-card { background:linear-gradient(135deg, var(--cu-primary-blue) 0%, #1e3a5f 50%, var(--cu-secondary-blue) 100%); border:none; border-radius:var(--cu-border-radius-lg); padding:2rem; margin-bottom:1.75rem; color:#fff; box-shadow:0 16px 40px rgba(var(--cu-primary-rgb),0.22); }
+    .ai-summary-card .summary-header { display:flex; align-items:center; gap:0.6rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .ai-summary-card .summary-header h5 { margin:0; font-family:var(--cu-font-display); font-weight:700; font-size:1.1rem; letter-spacing:-0.02em; }
+    .ai-summary-card .summary-header .ai-badge { background:rgba(255,255,255,0.18); color:rgba(255,255,255,0.9); font-size:0.7rem; padding:0.25rem 0.65rem; border-radius:999px; font-weight:600; letter-spacing:0.04em; }
+    .ai-summary-card .regenerate-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:#fff; padding:0.4rem 0.9rem; border-radius:999px; font-size:0.78rem; font-weight:600; transition:all var(--cu-transition); cursor:pointer; }
+    .ai-summary-card .regenerate-btn:hover { background:rgba(255,255,255,0.25); border-color:rgba(255,255,255,0.4); }
+    .ai-summary-card .summary-text { font-size:1.02rem; line-height:1.75; opacity:0.95; }
+    .ai-summary-card .summary-text p { margin-bottom:0.6rem; }
+    .ai-summary-card .summary-text p:last-child { margin-bottom:0; }
+
+    .profile-section { background:var(--cu-surface); border:1px solid var(--cu-border-light); border-radius:var(--cu-border-radius); padding:1.5rem; margin-bottom:1.5rem; box-shadow:var(--cu-shadow-xs); backdrop-filter:blur(12px); }
+    .profile-section .section-header { display:flex; align-items:center; gap:0.6rem; margin-bottom:1.25rem; padding-bottom:0.85rem; border-bottom:1px solid var(--cu-border-light); }
+    .profile-section .section-header h5 { margin:0; font-family:var(--cu-font-display); font-weight:700; font-size:1.05rem; letter-spacing:-0.02em; color:var(--cu-primary-blue); }
+    .profile-section .section-header .section-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
+    .section-icon-confidence { background:rgba(25,135,84,0.12); color:#198754; }
+    .section-icon-values { background:rgba(var(--cu-accent-rgb),0.15); color:var(--cu-accent); }
+    .section-icon-morals { background:rgba(var(--cu-secondary-rgb),0.12); color:var(--cu-secondary-blue); }
+    .section-icon-dimensions { background:rgba(13,110,253,0.1); color:#0d6efd; }
+    .section-icon-stats { background:rgba(111,66,193,0.1); color:#6f42c1; }
+    .section-icon-universe { background:rgba(var(--cu-primary-rgb),0.1); color:var(--cu-primary-blue); }
+
+    .confidence-bar-wrapper { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .confidence-bar-wrapper .confidence-value { font-family:var(--cu-font-display); font-size:2rem; font-weight:700; color:#198754; min-width:70px; text-align:center; }
+    .confidence-bar-wrapper .confidence-bar-col { flex:1; min-width:200px; }
+    .confidence-bar-wrapper .confidence-bar { height:14px; border-radius:7px; background:rgba(0,0,0,0.06); overflow:hidden; }
+    .confidence-bar-wrapper .confidence-fill { height:100%; border-radius:7px; background:linear-gradient(90deg, #198754, #20c997); transition:width 0.6s ease; }
+    .confidence-bar-wrapper .confidence-label { font-size:0.75rem; color:var(--cu-text-muted); margin-top:0.35rem; }
+
+    .value-item { background:rgba(255,255,255,0.6); border:1px solid var(--cu-border-light); border-radius:0.75rem; padding:0.85rem 1rem; margin-bottom:0.6rem; transition:all var(--cu-transition); }
+    .value-item:hover { border-color:rgba(var(--cu-accent-rgb),0.25); box-shadow:var(--cu-shadow-xs); }
+    .value-item .value-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; }
+    .value-item .value-name { font-weight:700; font-size:0.9rem; color:var(--cu-text-dark); }
+    .value-item .value-confidence { font-size:0.7rem; font-weight:600; padding:0.2rem 0.55rem; border-radius:999px; background:rgba(var(--cu-secondary-rgb),0.1); color:var(--cu-secondary-blue); }
+    .value-item .value-bar { height:6px; border-radius:3px; background:rgba(0,0,0,0.06); overflow:hidden; }
+    .value-item .value-fill { height:100%; border-radius:3px; background:linear-gradient(90deg, var(--cu-accent), #d48a4a); transition:width 0.5s ease; }
+    .value-item .value-score { font-size:0.7rem; color:var(--cu-text-muted); margin-top:0.2rem; }
+
+    .moral-item { margin-bottom:1rem; }
+    .moral-item:last-child { margin-bottom:0; }
+    .moral-item .moral-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.3rem; }
+    .moral-item .moral-name { font-weight:700; font-size:0.88rem; color:var(--cu-text-dark); }
+    .moral-item .moral-desc { font-size:0.72rem; color:var(--cu-text-muted); font-weight:400; }
+    .moral-item .moral-score { font-family:var(--cu-font-display); font-weight:700; font-size:0.9rem; color:var(--cu-secondary-blue); }
+    .moral-item .moral-bar { height:10px; border-radius:5px; background:rgba(0,0,0,0.05); overflow:hidden; }
+    .moral-item .moral-fill { height:100%; border-radius:5px; transition:width 0.5s ease; }
+    .moral-fill-high { background:linear-gradient(90deg, #198754, #20c997); }
+    .moral-fill-mid { background:linear-gradient(90deg, var(--cu-secondary-blue), #20a89a); }
+    .moral-fill-low { background:linear-gradient(90deg, #6c757d, #adb5bd); }
+    .moral-item .moral-meta { font-size:0.7rem; color:var(--cu-text-muted); margin-top:0.15rem; }
+
+    .dimension-item { margin-bottom:1.1rem; }
+    .dimension-item:last-child { margin-bottom:0; }
+    .dimension-item .dim-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; flex-wrap:wrap; gap:0.3rem; }
+    .dimension-item .dim-name { font-weight:700; font-size:0.88rem; color:var(--cu-text-dark); }
+    .dimension-item .dim-category { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; padding:0.15rem 0.5rem; border-radius:999px; background:rgba(var(--cu-primary-rgb),0.06); color:var(--cu-text-muted); }
+    .dimension-item .dim-meta { font-size:0.7rem; color:var(--cu-text-muted); }
+    .dimension-item .dim-scale { position:relative; height:24px; border-radius:12px; background:linear-gradient(to right, rgba(var(--cu-accent-rgb),0.25), rgba(var(--cu-secondary-rgb),0.2), rgba(var(--cu-primary-rgb),0.25)); margin-top:0.25rem; }
+    .dimension-item .dim-marker { position:absolute; top:50%; transform:translate(-50%,-50%); }
+    .dimension-item .dim-dot { width:18px; height:18px; background:#fff; border:3px solid var(--cu-primary-blue); border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.18); }
+    .dimension-item .dim-labels { display:flex; justify-content:space-between; font-size:0.68rem; color:var(--cu-text-muted); margin-top:0.2rem; }
+
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.85rem; }
+    .stat-card { text-align:center; padding:1.1rem 0.75rem; background:rgba(255,255,255,0.6); border:1px solid var(--cu-border-light); border-radius:0.85rem; transition:all var(--cu-transition); }
+    .stat-card:hover { border-color:rgba(var(--cu-secondary-rgb),0.2); box-shadow:var(--cu-shadow-xs); }
+    .stat-card .stat-value { font-family:var(--cu-font-display); font-size:1.6rem; font-weight:700; line-height:1.1; }
+    .stat-card .stat-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--cu-text-muted); margin-top:0.25rem; }
+    .stat-color-primary { color:var(--cu-primary-blue); }
+    .stat-color-success { color:#198754; }
+    .stat-color-info { color:var(--cu-secondary-blue); }
+    .stat-color-warning { color:var(--cu-accent); }
+
+    .tag-list { display:flex; flex-wrap:wrap; gap:0.4rem; }
+    .tag-badge-warning { font-size:0.72rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:999px; background:rgba(var(--cu-accent-rgb),0.12); color:var(--cu-accent); }
+    .tag-badge-danger { font-size:0.72rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:999px; background:rgba(220,53,69,0.1); color:#dc3545; }
+
+    .universe-narrative { font-size:1rem; line-height:1.7; color:var(--cu-text-dark); margin-bottom:1.25rem; }
+    .belief-system-card { background:rgba(255,255,255,0.6); border:1px solid var(--cu-border-light); border-radius:0.75rem; padding:1rem 1.15rem; margin-bottom:0.6rem; transition:all var(--cu-transition); }
+    .belief-system-card:hover { border-color:rgba(var(--cu-primary-rgb),0.18); box-shadow:var(--cu-shadow-xs); }
+    .belief-system-card .bs-name { font-weight:700; font-size:0.9rem; color:var(--cu-primary-blue); }
+    .belief-system-card .bs-meta { font-size:0.72rem; color:var(--cu-text-muted); }
+    .belief-system-card .bs-desc { font-size:0.82rem; color:var(--cu-text-dark); margin-top:0.35rem; line-height:1.5; }
+
+    .profile-actions { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem; margin-top:0.5rem; margin-bottom:2rem; }
+    .profile-actions .cu-btn-primary, .profile-actions .cu-btn-secondary { width:100%; justify-content:center; padding:0.75rem 1rem; font-size:0.88rem; }
+
+    .empty-state { text-align:center; padding:3rem 2rem; background:var(--cu-surface); border:1px solid var(--cu-border-light); border-radius:var(--cu-border-radius); }
+    .empty-state h4 { font-family:var(--cu-font-display); color:var(--cu-primary-blue); margin-bottom:0.75rem; }
+    .empty-state p { color:var(--cu-text-muted); margin-bottom:1.5rem; }
+</style>
 }
 
 <div class="container mt-4">
     @Html.AntiForgeryToken()
     <div class="row">
-        <div class="col-md-10 offset-md-1">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-action="Question">Discovery</a></li>
-                    <li class="breadcrumb-item active">Your Profile</li>
-                </ol>
-            </nav>
+        <div class="col-lg-10 offset-lg-1">
 
-            <div class="text-center mb-4">
-                <h1 class="display-5">
-                    <i class="bi bi-person-badge"></i> @Model.Name's Worldview
-                </h1>
-                <p class="lead text-muted">
-                    Based on @Model.InteractionCount interactions • @Model.Stage stage
-                </p>
+            <div class="profile-hero">
+                <h1><i class="bi bi-person-badge me-2"></i>@Model.Name's Worldview</h1>
+                <p class="hero-subtitle">Based on @Model.InteractionCount interactions &middot; @Model.Stage stage</p>
+                @if (snapshot != null)
+                {
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <div class="hero-stat-value">@snapshot.OverallConfidence.ToString("P0")</div>
+                            <div class="hero-stat-label">Confidence</div>
+                        </div>
+                        @if (snapshot.Statistics != null)
+                        {
+                            <div class="hero-stat">
+                                <div class="hero-stat-value">@snapshot.Statistics.TotalEvidence</div>
+                                <div class="hero-stat-label">Data Points</div>
+                            </div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-value">@snapshot.Statistics.Consistency.ToString("P0")</div>
+                                <div class="hero-stat-label">Consistency</div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
 
             @if (snapshot == null)
             {
-                <div class="alert alert-info">
-                    <h4>Not enough data yet</h4>
-                    <p>Answer a few more questions to build your profile!</p>
-                    <a asp-action="Question" class="btn btn-primary">Continue Discovery</a>
+                <div class="empty-state">
+                    <h4><i class="bi bi-hourglass-split me-2"></i>Not enough data yet</h4>
+                    <p>Answer a few more questions to build your worldview profile!</p>
+                    <a asp-action="Question" class="cu-btn-primary">Continue Discovery</a>
                 </div>
             }
             else
             {
-                <!-- AI-Generated Worldview Summary (top of page) -->
+                <!-- AI-Generated Worldview Summary -->
                 @if (!string.IsNullOrEmpty(ViewBag.AiSummary as string))
                 {
-                    <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <div class="card-body text-white p-4">
-                            <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-stars fs-4 me-2"></i>
-                                <h5 class="mb-0">Your Worldview, in Summary</h5>
-                                <small class="ms-auto opacity-75 me-3">
-                                    <i class="bi bi-robot"></i> AI-generated
-                                </small>
-                                <button class="btn btn-sm btn-outline-light regenerate-summary-btn"
-                                        title="Regenerate your AI summary">
-                                    <i class="bi bi-arrow-repeat"></i> Regenerate
-                                </button>
-                            </div>
-                            <div id="ai-summary-content">
-                                @foreach (var paragraph in ((string)ViewBag.AiSummary).Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
-                                {
-                                    <p class="mb-2" style="font-size: 1.05rem; line-height: 1.7;">@paragraph</p>
-                                }
-                            </div>
-                            <div id="ai-summary-spinner" class="text-center d-none py-3">
-                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                <span>Regenerating your worldview summary...</span>
-                            </div>
+                    <div class="ai-summary-card">
+                        <div class="summary-header">
+                            <i class="bi bi-stars fs-5"></i>
+                            <h5>Your Worldview, in Summary</h5>
+                            <span class="ai-badge"><i class="bi bi-robot me-1"></i>AI-generated</span>
+                            <button class="regenerate-btn ms-auto regenerate-summary-btn" title="Regenerate your AI summary">
+                                <i class="bi bi-arrow-repeat"></i> Regenerate
+                            </button>
+                        </div>
+                        <div class="summary-text" id="ai-summary-text">
+                            @Html.Raw(ViewBag.AiSummary)
                         </div>
                     </div>
                 }
-
-                <!-- Universe Position Card (if available) -->
-                @if (ViewBag.UniversePosition != null)
-                {
-                    var position = (CommonUnderstanding.Models.BeliefUniversePosition)ViewBag.UniversePosition;
-                    <div class="card mb-4 border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="bi bi-globe"></i> Your Position in the Belief Universe</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="lead">@position.PositionNarrative</p>
-                            
-                            @if (position.NearestSystems?.Any() == true)
-                            {
-                                <hr />
-                                <h6 class="mb-3">Belief Systems Being Analyzed:</h6>
-                                @foreach (var match in position.NearestSystems.Take(5))
-                                {
-                                    var system = ViewBag.AllSystems != null ? 
-                                        ((List<CommonUnderstanding.Models.CanonicalBeliefSystem>)ViewBag.AllSystems)
-                                        .FirstOrDefault(s => s.Id == match.SystemId) : null;
-                                    
-                                    @if (system != null)
-                                    {
-                                        <div class="mb-3 p-3 border rounded">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div>
-                                                    <h6 class="mb-1">@system.Name</h6>
-                                                    <small class="text-muted">
-                                                        @system.Culture • @system.Era
-                                                    </small>
-                                                </div>
-                                                <div class="text-end">
-                                                    <small class="text-muted">Analyzing...</small>
-                                                </div>
-                                            </div>
-                                            <p class="small mb-0">@system.Description</p>
-                                        </div>
-                                    }
-                                }
-                                <div class="alert alert-info mt-3">
-                                    <small>
-                                        <i class="bi bi-info-circle"></i> Continue answering questions to calculate precise matches with these and other belief systems from around the world.
-                                    </small>
-                                </div>
-                            }
-                            
-                            @if (position.UniverseCoordinates?.Any() == true)
-                            {
-                                <hr />
-                                <h6 class="mb-3">Your Dimensional Profile:</h6>
-                                <div class="row">
-                                    @foreach (var coord in position.UniverseCoordinates.Take(8))
-                                    {
-                                        <div class="col-md-6 mb-2">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="small">@coord.Key</span>
-                                                <span class="badge bg-secondary">@coord.Value.ToString("F2")</span>
-                                            </div>
-                                            <div class="progress" style="height: 6px;">
-                                                <div class="progress-bar" style="width: @(((coord.Value + 1) / 2 * 100).ToString("F0"))%;"></div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-
-                <!-- Overall Confidence -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Model Confidence</h5>
-                        <div class="progress" style="height: 30px;">
-                            <div class="progress-bar bg-success progress-bar-striped" role="progressbar" 
-                                 style="width: @((snapshot.OverallConfidence * 100).ToString("F0"))%;">
-                                @snapshot.OverallConfidence.ToString("P0")
-                            </div>
-                        </div>
-                        <p class="small text-muted mt-2">
-                            How confident we are in our understanding of your worldview
-                        </p>
-                    </div>
-                </div>
 
                 <!-- Narrative Summary -->
                 @if (!string.IsNullOrEmpty(snapshot.NarrativeSummary))
                 {
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="bi bi-book"></i> Your Worldview Summary</h5>
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-universe">
+                                <i class="bi bi-chat-quote"></i>
+                            </div>
+                            <h5>Narrative Summary</h5>
                         </div>
-                        <div class="card-body">
-                            <p class="lead">@snapshot.NarrativeSummary</p>
-                        </div>
+                        <p class="universe-narrative">@snapshot.NarrativeSummary</p>
                     </div>
                 }
 
-                <!-- Core Values -->
-                @if (snapshot.Values.Any())
+                <!-- Universe Position -->
+                @if (universePos != null)
                 {
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-heart"></i> Your Core Values</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                @foreach (var value in snapshot.Values.Take(10))
-                                {
-                                    <div class="col-md-6 mb-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <strong>@value.Name</strong>
-                                            <span class="badge bg-info">
-                                                @value.Confidence.ToString("P0") confidence
-                                            </span>
-                                        </div>
-                                        <div class="progress mt-1" style="height: 8px;">
-                                            <div class="progress-bar" style="width: @((value.ImportanceScore * 10).ToString("F0"))%;">
-                                            </div>
-                                        </div>
-                                        <small class="text-muted">
-                                            Importance: @value.ImportanceScore.ToString("F1")/10
-                                        </small>
-                                    </div>
-                                }
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-universe">
+                                <i class="bi bi-globe-americas"></i>
                             </div>
+                            <h5>Your Position in the Belief Universe</h5>
                         </div>
+                        @if (!string.IsNullOrEmpty(universePos.PositionNarrative))
+                        {
+                            <p class="universe-narrative">@universePos.PositionNarrative</p>
+                        }
+                        @if (universePos.NearestSystems != null && universePos.NearestSystems.Any())
+                        {
+                            <h6 class="fw-bold mb-3" style="color:var(--cu-text-dark);">Nearest Belief Systems</h6>
+                            @foreach (var system in universePos.NearestSystems)
+                            {
+                                <div class="belief-system-card">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                        <div>
+                                            <div class="bs-name">@system.SystemName</div>
+                                            <div class="bs-meta">Match: @system.MatchPercentage.ToString("P0")</div>
+                                        </div>
+                                    </div>
+                                    @if (system.SharedValues != null && system.SharedValues.Any())
+                                    {
+                                        <div class="bs-desc">
+                                            <span class="fw-semibold">Shared values:</span>
+                                            @string.Join(", ", system.SharedValues)
+                                        </div>
+                                    }
+                                    @if (system.KeyDifferences != null && system.KeyDifferences.Any())
+                                    {
+                                        <div class="bs-desc">
+                                            <span class="fw-semibold">Key differences:</span>
+                                            @string.Join(", ", system.KeyDifferences)
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                        @if (allSystems != null && allSystems.Any())
+                        {
+                            <hr class="my-3" style="border-color:var(--cu-border-light);">
+                            <h6 class="fw-bold mb-3" style="color:var(--cu-text-dark);">Belief Systems Being Analyzed</h6>
+                            @foreach (var system in allSystems.Take(5))
+                            {
+                                <div class="belief-system-card">
+                                    <div class="bs-name">@system.Name</div>
+                                    @if (!string.IsNullOrEmpty(system.Description))
+                                    {
+                                        <div class="bs-desc">@system.Description</div>
+                                    }
+                                </div>
+                            }
+                            @if (allSystems.Count > 5)
+                            {
+                                <p class="text-muted mt-2 mb-0" style="font-size:0.82rem;">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Continue answering questions to calculate precise matches with these and @(allSystems.Count - 5) other belief systems from around the world.
+                                </p>
+                            }
+                        }
+                    </div>
+                }
+
+                <!-- Confidence -->
+                <div class="profile-section">
+                    <div class="section-header">
+                        <div class="section-icon section-icon-confidence">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h5>Overall Confidence</h5>
+                    </div>
+                    <div class="confidence-bar-wrapper">
+                        <div class="confidence-value">@snapshot.OverallConfidence.ToString("P0")</div>
+                        <div class="confidence-bar-col">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width:@(snapshot.OverallConfidence * 100)%"></div>
+                            </div>
+                            <div class="confidence-label">How confident the model is in this worldview assessment</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Core Values -->
+                @if (snapshot.Values != null && snapshot.Values.Any())
+                {
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-values">
+                                <i class="bi bi-star"></i>
+                            </div>
+                            <h5>Core Values</h5>
+                        </div>
+                        @foreach (var value in snapshot.Values)
+                        {
+                            <div class="value-item">
+                                <div class="value-header">
+                                    <span class="value-name">@value.Name</span>
+                                    <span class="value-confidence">@value.Confidence.ToString("P0")</span>
+                                </div>
+                                <div class="value-bar">
+                                    <div class="value-fill" style="width:@(value.Confidence * 100)%"></div>
+                                </div>
+                                <div class="value-score">Importance: @value.ImportanceScore.ToString("F1") / 10</div>
+                            </div>
+                        }
                     </div>
                 }
 
                 <!-- Moral Foundations -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Moral Foundations Profile</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="small text-muted mb-3">
-                            Based on Jonathan Haidt's Moral Foundations Theory
-                        </p>
+                @if (snapshot.MoralFoundations != null)
+                {
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-morals">
+                                <i class="bi bi-heart"></i>
+                            </div>
+                            <h5>Moral Foundations</h5>
+                        </div>
                         @{
-                            var foundations = new Dictionary<string, (string Name, string Description, Foundation Data)>
+                            var morals = new (string Name, string Desc, double Score, double Confidence)[]
                             {
-                                ["Care"] = ("Care/Harm", "Compassion, kindness, nurturing", snapshot.MoralFoundations.Care),
-                                ["Fairness"] = ("Fairness/Cheating", "Justice, rights, equality", snapshot.MoralFoundations.Fairness),
-                                ["Loyalty"] = ("Loyalty/Betrayal", "Group solidarity, patriotism", snapshot.MoralFoundations.Loyalty),
-                                ["Authority"] = ("Authority/Subversion", "Respect for hierarchy, tradition", snapshot.MoralFoundations.Authority),
-                                ["Sanctity"] = ("Sanctity/Degradation", "Purity, sacredness", snapshot.MoralFoundations.Sanctity),
-                                ["Liberty"] = ("Liberty/Oppression", "Freedom, autonomy", snapshot.MoralFoundations.Liberty)
+                                ("Care", "Compassion for the suffering of others", snapshot.MoralFoundations.Care.Score, snapshot.MoralFoundations.Care.Confidence),
+                                ("Fairness", "Proportionality and justice", snapshot.MoralFoundations.Fairness.Score, snapshot.MoralFoundations.Fairness.Confidence),
+                                ("Loyalty", "Obligations of group membership", snapshot.MoralFoundations.Loyalty.Score, snapshot.MoralFoundations.Loyalty.Confidence),
+                                ("Authority", "Respect for tradition and legitimate authority", snapshot.MoralFoundations.Authority.Score, snapshot.MoralFoundations.Authority.Confidence),
+                                ("Sanctity", "Abhorrence for disgusting things, foods, actions", snapshot.MoralFoundations.Sanctity.Score, snapshot.MoralFoundations.Sanctity.Confidence),
+                                ("Liberty", "Resentment of domination and coercion", snapshot.MoralFoundations.Liberty.Score, snapshot.MoralFoundations.Liberty.Confidence)
                             };
                         }
-                        @foreach (var kvp in foundations)
+                        @foreach (var moral in morals)
                         {
-                            var (name, desc, data) = kvp.Value;
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span><strong>@name</strong> <small class="text-muted">• @desc</small></span>
-                                    <span class="badge bg-secondary">@data.Score.ToString("F1")/10</span>
+                            var fillClass = moral.Score > 6.6 ? "moral-fill-high" : (moral.Score > 3.3 ? "moral-fill-mid" : "moral-fill-low");
+                            var moralBarPct = (moral.Score / 10.0) * 100;
+                            <div class="moral-item">
+                                <div class="moral-header">
+                                    <span>
+                                        <span class="moral-name">@moral.Name</span>
+                                        <span class="moral-desc ms-2">— @moral.Desc</span>
+                                    </span>
+                                    <span class="moral-score">@moral.Score.ToString("F1")</span>
                                 </div>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar @(data.Score > 7 ? "bg-success" : data.Score > 4 ? "bg-info" : "bg-secondary")" 
-                                         style="width: @((data.Score * 10).ToString("F0"))%;">
-                                    </div>
+                                <div class="moral-bar">
+                                    <div class="moral-fill @fillClass" style="width:@(moralBarPct)%"></div>
                                 </div>
-                                <small class="text-muted">
-                                    Confidence: @data.Confidence.ToString("P0") ± @data.StandardError.ToString("F1")
-                                </small>
+                                <div class="moral-meta">Confidence: @moral.Confidence.ToString("P0")</div>
                             </div>
                         }
                     </div>
-                </div>
+                }
 
                 <!-- Belief Dimensions -->
-                @if (snapshot.Dimensions.Any())
+                @if (snapshot.Dimensions != null && snapshot.Dimensions.Any())
                 {
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-sliders"></i> Belief Dimensions</h5>
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-dimensions">
+                                <i class="bi bi-compass"></i>
+                            </div>
+                            <h5>Belief Dimensions</h5>
                         </div>
-                        <div class="card-body">
-                            @foreach (var dimension in snapshot.Dimensions.OrderByDescending(d => d.Confidence).Take(15))
-                            {
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span>
-                                            <strong>@dimension.Name</strong>
-                                            <span class="badge bg-light text-dark">@dimension.Category</span>
-                                        </span>
-                                        <span class="text-muted small">
-                                            n=@dimension.SampleSize • @dimension.Confidence.ToString("P0") confidence
-                                        </span>
-                                    </div>
-                                    @if (dimension.Position.HasValue)
-                                    {
-                                        var position = dimension.Position.Value;
-                                        var positionPercent = ((position + 1) / 2.0 * 100);
-                                        <div class="position-indicator">
-                                            <div class="position-scale">
-                                                <div class="position-marker" style="left: @positionPercent.ToString("F1")%;">
-                                                    <div class="position-dot"></div>
-                                                </div>
-                                            </div>
-                                            <div class="d-flex justify-content-between small text-muted mt-1">
-                                                <span>Low</span>
-                                                <span>Moderate</span>
-                                                <span>High</span>
-                                            </div>
-                                        </div>
-                                    }
+                        @foreach (var dim in snapshot.Dimensions)
+                        {
+                            var dimPos = dim.Position ?? 0;
+                            var pct = (dimPos + 1) / 2 * 100;
+                            <div class="dimension-item">
+                                <div class="dim-header">
+                                    <span class="dim-name">@dim.Name</span>
+                                    <span class="dim-category">@dim.Category</span>
                                 </div>
-                            }
-                        </div>
+                                <div class="dim-scale">
+                                    <div class="dim-marker" style="left:@(pct)%">
+                                        <div class="dim-dot"></div>
+                                    </div>
+                                </div>
+                                <div class="dim-labels">
+                                    <span>-1.0</span>
+                                    <span>0.0</span>
+                                    <span>+1.0</span>
+                                </div>
+                                <div class="dim-meta">Position: @dimPos.ToString("F2") &middot; Confidence: @dim.Confidence.ToString("P0") &middot; Samples: @dim.SampleSize</div>
+                            </div>
+                        }
                     </div>
                 }
 
-                <!-- Statistics -->
+                <!-- Model Statistics -->
                 @if (snapshot.Statistics != null)
                 {
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-graph-up"></i> Model Statistics</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-3 text-center mb-3">
-                                    <h3 class="text-primary">@snapshot.Statistics.TotalEvidence</h3>
-                                    <small class="text-muted">Data Points</small>
-                                </div>
-                                <div class="col-md-3 text-center mb-3">
-                                    <h3 class="text-success">@snapshot.Statistics.Consistency.ToString("P0")</h3>
-                                    <small class="text-muted">Consistency</small>
-                                </div>
-                                <div class="col-md-3 text-center mb-3">
-                                    <h3 class="text-info">@snapshot.Statistics.SignalToNoise.ToString("F2")</h3>
-                                    <small class="text-muted">Signal/Noise</small>
-                                </div>
-                                <div class="col-md-3 text-center mb-3">
-                                    <h3 class="text-warning">@snapshot.Statistics.Entropy.ToString("F2")</h3>
-                                    <small class="text-muted">Entropy</small>
-                                </div>
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <div class="section-icon section-icon-stats">
+                                <i class="bi bi-graph-up-arrow"></i>
                             </div>
-
-                            @if (snapshot.Statistics.UncertainAreas.Any())
+                            <h5>Model Statistics</h5>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value stat-color-primary">@snapshot.Statistics.TotalEvidence</div>
+                                <div class="stat-label">Total Evidence</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value stat-color-success">@snapshot.Statistics.Consistency.ToString("P0")</div>
+                                <div class="stat-label">Consistency</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value stat-color-info">@snapshot.Statistics.Entropy.ToString("F2")</div>
+                                <div class="stat-label">Entropy</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value stat-color-warning">@snapshot.Statistics.SignalToNoise.ToString("F1")</div>
+                                <div class="stat-label">Signal/Noise</div>
+                            </div>
+                            @if (snapshot.Statistics.LastUpdated != default)
                             {
-                                <hr />
-                                <h6>Areas Needing More Data:</h6>
-                                <div class="d-flex flex-wrap gap-2">
+                                <div class="stat-card">
+                                    <div class="stat-value stat-color-primary" style="font-size:1rem;">@snapshot.Statistics.LastUpdated.ToString("MMM d, yyyy")</div>
+                                    <div class="stat-label">Last Updated</div>
+                                </div>
+                            }
+                        </div>
+                        @if (snapshot.Statistics.UncertainAreas != null && snapshot.Statistics.UncertainAreas.Any())
+                        {
+                            <div class="mt-3">
+                                <h6 class="fw-bold mb-2" style="color:var(--cu-text-dark); font-size:0.85rem;">Areas Needing More Data</h6>
+                                <div class="tag-list">
                                     @foreach (var area in snapshot.Statistics.UncertainAreas)
                                     {
-                                        <span class="badge bg-warning text-dark">@area</span>
+                                        <span class="tag-badge-warning">@area</span>
                                     }
                                 </div>
-                            }
-
-                            @if (snapshot.Statistics.DetectedContradictions.Any())
-                            {
-                                <hr />
-                                <h6>Potential Contradictions:</h6>
-                                <div class="d-flex flex-wrap gap-2">
+                            </div>
+                        }
+                        @if (snapshot.Statistics.DetectedContradictions != null && snapshot.Statistics.DetectedContradictions.Any())
+                        {
+                            <div class="mt-3">
+                                <h6 class="fw-bold mb-2" style="color:var(--cu-text-dark); font-size:0.85rem;">Detected Contradictions</h6>
+                                <div class="tag-list">
                                     @foreach (var contradiction in snapshot.Statistics.DetectedContradictions)
                                     {
-                                        <span class="badge bg-danger">@contradiction</span>
+                                        <span class="tag-badge-danger">@contradiction</span>
                                     }
                                 </div>
-                            }
-                        </div>
+                            </div>
+                        }
                     </div>
                 }
 
-                <!-- Actions -->
-                <div class="row mb-4">
-                    <div class="col-md-3 mb-2">
-                        <a asp-action="Question" class="btn btn-primary w-100">
-                            <i class="bi bi-arrow-right-circle"></i> Continue Discovery
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a asp-action="CompareToCanonical" class="btn btn-success w-100">
-                            <i class="bi bi-diagram-3"></i> Compare to Belief Systems
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a asp-action="Evolution" class="btn btn-info w-100">
-                            <i class="bi bi-clock-history"></i> View Evolution
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a asp-action="History" class="btn btn-secondary w-100">
-                            <i class="bi bi-list"></i> View Responses
-                        </a>
-                    </div>
+                <!-- Action Buttons -->
+                <div class="profile-actions">
+                    <a asp-action="Question" class="cu-btn-primary">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Continue Discovery
+                    </a>
+                    <a asp-action="CompareToCanonical" class="cu-btn-secondary">
+                        <i class="bi bi-diagram-3 me-2"></i>Compare to Canonical
+                    </a>
+                    <a asp-action="Evolution" class="cu-btn-secondary">
+                        <i class="bi bi-graph-up me-2"></i>Evolution
+                    </a>
+                    <a asp-action="History" class="cu-btn-secondary">
+                        <i class="bi bi-clock-history me-2"></i>History
+                    </a>
+                    <a asp-action="Index" class="cu-btn-secondary">
+                        <i class="bi bi-compass me-2"></i>Explore Topics
+                    </a>
+                    <a asp-controller="Social" asp-action="Feed" class="cu-btn-secondary">
+                        <i class="bi bi-people me-2"></i>Live Map
+                    </a>
                 </div>
             }
+
         </div>
     </div>
 </div>
 
-<style>
-    .position-indicator {
-        margin: 10px 0;
-    }
-
-    .position-scale {
-        position: relative;
-        height: 30px;
-        background: linear-gradient(to right, #e74c3c, #f39c12, #2ecc71);
-        border-radius: 15px;
-    }
-
-    .position-marker {
-        position: absolute;
-        top: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .position-dot {
-        width: 20px;
-        height: 20px;
-        background: white;
-        border: 3px solid #2c3e50;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-</style>
-
 @section Scripts {
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const btn = document.querySelector('.regenerate-summary-btn');
-        if (!btn) return;
+        const regenBtn = document.querySelector('.regenerate-summary-btn');
+        if (regenBtn) {
+            regenBtn.addEventListener('click', async function () {
+                const btn = this;
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Regenerating...';
 
-        btn.addEventListener('click', async function () {
-            const contentEl = document.getElementById('ai-summary-content');
-            const spinnerEl = document.getElementById('ai-summary-spinner');
+                try {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+                    const response = await fetch('/Discovery/RegenerateSummary', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': token
+                        }
+                    });
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Regenerating...';
-            contentEl.classList.add('opacity-50');
-            spinnerEl.classList.remove('d-none');
-
-            try {
-                const resp = await fetch('/Discovery/RegenerateSummary', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    if (response.ok) {
+                        const data = await response.json();
+                        const summaryEl = document.getElementById('ai-summary-text');
+                        if (summaryEl && data.summary) {
+                            summaryEl.innerHTML = data.summary;
+                        }
+                    } else {
+                        console.error('Failed to regenerate summary:', response.status);
                     }
-                });
-
-                if (!resp.ok) {
-                    throw new Error(`Server returned ${resp.status}`);
+                } catch (err) {
+                    console.error('Error regenerating summary:', err);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
                 }
-
-                const data = await resp.json();
-                if (data.summary) {
-                    const paragraphs = data.summary.split('\n\n').filter(p => p.trim());
-                    contentEl.innerHTML = paragraphs.map(p =>
-                        `<p class="mb-2" style="font-size: 1.05rem; line-height: 1.7;">${p}</p>`
-                    ).join('');
-                }
-            } catch (err) {
-                console.error('Failed to regenerate summary:', err);
-                contentEl.innerHTML = '<p class="mb-0 text-warning">Sorry, failed to regenerate. Please try again.</p>';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Regenerate';
-                contentEl.classList.remove('opacity-50');
-                spinnerEl.classList.add('d-none');
-            }
-        });
+            });
+        }
     });
 </script>
 }
