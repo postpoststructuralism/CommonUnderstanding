@@ -434,9 +434,13 @@
                             }
                             @if (!string.IsNullOrWhiteSpace(p.ProvisionalAssessment))
                             {
+                                // Phase 1: Categorical label instead of raw numeric percentage
+                                var aiCatLabel = (p.ProvisionalConfidence ?? 0.5) >= 0.7 ? "Well-supported"
+                                    : (p.ProvisionalConfidence ?? 0.5) >= 0.45 ? "Moderate support"
+                                    : "Needs evidence";
                                 <div class="mt-1 small text-muted">
                                     <i class="bi bi-robot me-1 text-info"></i>
-                                    AI assessment (<span class="fw-semibold text-@ConfBadge(p.ProvisionalConfidence ?? 0.5)">@((p.ProvisionalConfidence ?? 0.5).ToString("P0"))</span>):
+                                    AI assessment (<span class="fw-semibold">@aiCatLabel</span>):
                                     @p.ProvisionalAssessment
                                 </div>
                             }

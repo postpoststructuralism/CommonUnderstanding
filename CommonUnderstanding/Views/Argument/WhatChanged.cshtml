@@ -1,0 +1,204 @@
+@model CommonUnderstanding.Controllers.WhatChangedViewModel
+
+@{
+    ViewData["Title"] = "What Your Argument Added to the Map";
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">What Changed</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-8">
+
+        <!-- ── Hero / Headline ──────────────────────────────────────────────── -->
+        <div class="text-center mb-5">
+            <div class="mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="text-success" viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                </svg>
+            </div>
+            <h1 class="cu-page-heading mb-2">Here's what your argument added to the map.</h1>
+            <p class="text-muted lead" style="font-size: 1.05rem;">
+                Your central claim: <strong>"@Model.ClaimText"</strong>
+            </p>
+        </div>
+
+        <!-- ── New Propositions ─────────────────────────────────────────────── -->
+        @if (Model.NewPropositions.Any())
+        {
+            <div class="cu-card mb-4 border-success border-2">
+                <div class="cu-card-header bg-success text-white">
+                    <i class="bi bi-plus-circle me-1"></i> New Propositions Created
+                    <span class="badge bg-light text-dark ms-2">@Model.NewPropositions.Count</span>
+                </div>
+                <div class="cu-card-body">
+                    <p class="text-muted small mb-3">These are new ideas the AI extracted from your argument that didn't previously exist on the map.</p>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var prop in Model.NewPropositions)
+                        {
+                            <li class="list-group-item d-flex align-items-start gap-3">
+                                <i class="bi bi-dot text-success fs-4"></i>
+                                <div>
+                                    <p class="mb-1">@prop.Text</p>
+                                    <span class="badge bg-@(prop.ConfidenceScore >= 0.7 ? "success" : prop.ConfidenceScore >= 0.45 ? "warning" : "secondary") small">
+                                        @prop.Status
+                                    </span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- ── Strengthened Propositions ────────────────────────────────────── -->
+        @if (Model.StrengthenedPropositions.Any())
+        {
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
+                    <i class="bi bi-arrow-up-circle me-1"></i> Existing Propositions Strengthened
+                    <span class="badge bg-secondary ms-2">@Model.StrengthenedPropositions.Count</span>
+                </div>
+                <div class="cu-card-body">
+                    <p class="text-muted small mb-3">Your argument supports these existing claims on the map.</p>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var prop in Model.StrengthenedPropositions)
+                        {
+                            <li class="list-group-item d-flex align-items-start gap-3">
+                                <i class="bi bi-check-circle text-success"></i>
+                                <div>
+                                    <p class="mb-1">@prop.Text</p>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress" style="height:5px;width:100px;">
+                                            <div class="progress-bar bg-success" style="width:@((prop.ConfidenceScore * 100).ToString("F0"))%"></div>
+                                        </div>
+                                        <small class="text-muted">@prop.ConfidenceScore.ToString("P0") confidence</small>
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- ── Contested Propositions ───────────────────────────────────────── -->
+        @if (Model.ContestedPropositions.Any())
+        {
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
+                    <i class="bi bi-arrow-down-circle me-1"></i> Existing Propositions Contested
+                    <span class="badge bg-secondary ms-2">@Model.ContestedPropositions.Count</span>
+                </div>
+                <div class="cu-card-body">
+                    <p class="text-muted small mb-3">Your argument pushes back on these existing claims.</p>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var prop in Model.ContestedPropositions)
+                        {
+                            <li class="list-group-item d-flex align-items-start gap-3">
+                                <i class="bi bi-shield-exclamation text-warning"></i>
+                                <div>
+                                    <p class="mb-1">@prop.Text</p>
+                                    <span class="badge bg-warning text-dark small">Contested</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- ── Areas of Agreement ───────────────────────────────────────────── -->
+        @if (Model.AreasOfAgreement.Any())
+        {
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
+                    <i class="bi bi-people me-1"></i> Areas of Agreement
+                </div>
+                <div class="cu-card-body">
+                    <p class="text-muted small mb-3">You now agree with other contributors on these points.</p>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var area in Model.AreasOfAgreement)
+                        {
+                            <li class="list-group-item">
+                                <i class="bi bi-hand-thumbs-up text-primary me-2"></i>@area
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- ── New Questions ────────────────────────────────────────────────── -->
+        @if (Model.NewQuestions.Any())
+        {
+            <div class="cu-card mb-4">
+                <div class="cu-card-header">
+                    <i class="bi bi-question-circle me-1"></i> New Questions Opened
+                    <span class="badge bg-secondary ms-2">@Model.NewQuestions.Count</span>
+                </div>
+                <div class="cu-card-body">
+                    <p class="text-muted small mb-3">These assumptions surfaced by your argument haven't yet been supported by evidence on the map.</p>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var question in Model.NewQuestions)
+                        {
+                            <li class="list-group-item">
+                                <i class="bi bi-lightbulb text-warning me-2"></i>@question
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- ── Strongest Opposing View ──────────────────────────────────────── -->
+        @if (!string.IsNullOrWhiteSpace(Model.StrongestOpposingView))
+        {
+            <div class="cu-card mb-4 border-warning border-2">
+                <div class="cu-card-header bg-warning text-dark">
+                    <i class="bi bi-exclamation-diamond me-1"></i> Worth Reading — The Strongest Opposing View
+                </div>
+                <div class="cu-card-body">
+                    <p class="mb-0">@Model.StrongestOpposingView</p>
+                </div>
+            </div>
+        }
+
+        <!-- ── Empty State ──────────────────────────────────────────────────── -->
+        @if (!Model.NewPropositions.Any() && !Model.StrengthenedPropositions.Any() &&
+             !Model.ContestedPropositions.Any() && !Model.AreasOfAgreement.Any() &&
+             !Model.NewQuestions.Any() && string.IsNullOrWhiteSpace(Model.StrongestOpposingView))
+        {
+            <div class="cu-card mb-4 text-center py-4">
+                <div class="cu-card-body">
+                    <i class="bi bi-diagram-3 display-4 text-muted mb-3 d-block"></i>
+                    <h4 class="text-muted">Your argument has been added to the map.</h4>
+                    <p class="text-muted">As more people contribute, connections to your argument will emerge.</p>
+                </div>
+            </div>
+        }
+
+        <!-- ── Action Buttons ───────────────────────────────────────────────── -->
+        <div class="d-flex justify-content-center gap-3 mt-4 mb-5">
+            <a asp-action="View" asp-route-id="@Model.ArgumentId" class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-search me-2"></i>View the Full Analysis
+            </a>
+            <a asp-controller="CommonUnderstanding" asp-action="Index" class="btn btn-primary btn-lg">
+                <i class="bi bi-diagram-2 me-2"></i>See It on the Map
+            </a>
+        </div>
+
+        <div class="text-center mb-5">
+            <a asp-action="Submit" class="btn btn-outline-secondary">
+                <i class="bi bi-plus-circle me-1"></i>Add Another Perspective
+            </a>
+        </div>
+
+    </div>
+</div>

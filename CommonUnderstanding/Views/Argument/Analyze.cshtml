@@ -31,7 +31,7 @@
                     </svg>
                 </div>
 
-                <h3 class="mb-1">Decomposing Argument</h3>
+                <h3 class="mb-1">Analyzing Your Perspective</h3>
                 @if (!string.IsNullOrEmpty(argumentTitle))
                 {
                     <p class="text-muted mb-3"><em>@argumentTitle</em></p>
@@ -42,7 +42,7 @@
                     <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
                          role="progressbar" style="width: 2%; transition: width 0.4s ease;"></div>
                 </div>
-                <p id="statusLabel" class="text-muted small mt-3">Connecting to AI engine…</p>
+                <p id="statusLabel" class="text-muted small mt-3">Reading what you wrote…</p>
 
                 <div id="fallbackPanel" class="alert alert-warning mt-3 d-none text-start small">
                     <strong>Partial fallback in use.</strong>
@@ -148,7 +148,7 @@
         chainLog.scrollTop = chainLog.scrollHeight;
     }
 
-    logStep('Connecting to streaming analysis endpoint…');
+    logStep('Reading what you wrote…');
     trace('opening EventSource', { streamUrl });
 
     const evtSource = new EventSource(streamUrl);
@@ -199,7 +199,8 @@
             const pct = Math.max(5, Math.round((d.step / d.total) * 100));
             bar.style.width = pct + '%';
             label.textContent = d.label;
-            logStep(`<strong>Step ${d.step}/${d.total}:</strong> ${d.label}`);
+            // Phase 1: Narrative style — no "Step N/5" prefix
+            logStep(d.label);
         } catch (err) {
             traceError('failed to parse progress event payload', { raw: e.data, err });
         }
@@ -214,11 +215,11 @@
         bar.style.width = '100%';
         bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
         bar.classList.add('bg-success');
-        label.textContent = 'Analysis complete — redirecting…';
+        label.textContent = 'Analysis complete — reviewing your results…';
         spinner.classList.add('d-none');
         doneIcon.classList.remove('d-none');
 
-        logStep('<strong class="text-success">Analysis complete!</strong>', 'text-success');
+        logStep('<strong class="text-success">Analysis complete! Let\'s review what the AI found.</strong>', 'text-success');
 
         setTimeout(() => { window.location.href = d.redirectUrl; }, 800);
     });

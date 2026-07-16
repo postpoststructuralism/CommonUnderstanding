@@ -134,8 +134,15 @@
         <div class="d-flex gap-2">
             @if (Model.IsAIValidated)
             {
-                <span class="badge @(Model.AIValidityScore >= 0.7 ? "bg-success" : Model.AIValidityScore >= 0.4 ? "bg-warning text-dark" : "bg-danger")">
-                    <i class="bi bi-cpu"></i> AI: @(Math.Round((Model.AIValidityScore ?? 0) * 100))%
+                // Phase 1: Replace numeric AI confidence with categorical label per spec 4.5
+                var aiLabel = (Model.AIValidityScore ?? 0) >= 0.7 ? "Well-supported by cited evidence"
+                    : (Model.AIValidityScore ?? 0) >= 0.4 ? "Based on personal experience"
+                    : "Needs evidence";
+                var aiClass = (Model.AIValidityScore ?? 0) >= 0.7 ? "bg-success"
+                    : (Model.AIValidityScore ?? 0) >= 0.4 ? "bg-info text-dark"
+                    : "bg-warning text-dark";
+                <span class="badge @aiClass" title="AI assessment of evidential support">
+                    <i class="bi bi-cpu"></i> @aiLabel
                 </span>
             }
             @if (Model.IsShadowBanned)
@@ -1364,10 +1371,13 @@
         ).join('');
         const hasReplies = (reply.replyCount || 0) > 0;
         
-        // AI validation badge
-        const aiBadge = reply.isAIValidated && reply.aiValidityScore != null
-            ? `<span class="badge ${reply.aiValidityScore >= 0.7 ? 'bg-success' : reply.aiValidityScore >= 0.4 ? 'bg-warning text-dark' : 'bg-danger'} ms-2" style="font-size:0.65rem;">
-                   <i class="bi bi-cpu"></i> ${Math.round(reply.aiValidityScore * 100)}%
+        // AI validation badge — Phase 1: categorical label instead of numeric percentage
+        const aiLabel = reply.isAIValidated && reply.aiValidityScore != null
+            ? (reply.aiValidityScore >= 0.7 ? 'Well-supported' : reply.aiValidityScore >= 0.4 ? 'Experience-based' : 'Needs evidence')
+            : null;
+        const aiBadge = aiLabel
+            ? `<span class="badge ${reply.aiValidityScore >= 0.7 ? 'bg-success' : reply.aiValidityScore >= 0.4 ? 'bg-info text-dark' : 'bg-warning text-dark'} ms-2" style="font-size:0.65rem;" title="AI assessment">
+                   <i class="bi bi-cpu"></i> ${aiLabel}
                </span>`
             : '';
         

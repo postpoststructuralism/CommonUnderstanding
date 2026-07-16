@@ -1,0 +1,119 @@
+@model CommonUnderstanding.Controllers.ReviewViewModel
+
+@{
+    ViewData["Title"] = "Review Your Analysis";
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="cu-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Arguments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Review</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-8">
+
+        <!-- ── Headline ─────────────────────────────────────────────────────── -->
+        <div class="text-center mb-4">
+            <div class="mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="text-primary" viewBox="0 0 16 16">
+                    <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.854 2.56 2.683 9.732a.5.5 0 0 0-.122.244l-1.436 5.024a.5.5 0 0 0 .61.61l5.024-1.436a.5.5 0 0 0 .244-.122z"/>
+                    <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+                </svg>
+            </div>
+            <h1 class="cu-page-heading mb-2">Does this look right?</h1>
+            <p class="text-muted">
+                The AI extracted the following from what you wrote. You can confirm it as-is or make corrections before it's published to the map.
+            </p>
+        </div>
+
+        <!-- ── Review Form ──────────────────────────────────────────────────── -->
+        <div class="cu-card mb-4">
+            <div class="cu-card-header">
+                <i class="bi bi-bullseye me-1"></i> Your Central Claim
+            </div>
+            <div class="cu-card-body">
+                <form asp-action="Review" method="post" id="reviewForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ArgumentId" value="@Model.ArgumentId" />
+                    <input type="hidden" name="Action" id="reviewAction" value="publish" />
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-uppercase text-secondary">Central Claim</label>
+                        <textarea name="ClaimText" id="claimText" class="form-control" rows="3"
+                                  style="font-size: 1rem;">@Model.ClaimText</textarea>
+                        <div class="form-text">This is the main assertion the AI identified in your argument.</div>
+                    </div>
+
+                    @if (Model.Premises.Any())
+                    {
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small text-uppercase text-secondary">
+                                Supporting Points
+                                <span class="badge bg-secondary ms-1">@Model.Premises.Count</span>
+                            </label>
+                            <p class="text-muted small mb-2">These are the key premises the AI extracted from your reasoning.</p>
+                            @for (int i = 0; i < Model.Premises.Count; i++)
+                            {
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text text-muted small">@(i + 1)</span>
+                                    <input type="hidden" name="Premises[@i].Id" value="@Model.Premises[i].Id" />
+                                    <input type="text" name="Premises[@i].Text" class="form-control"
+                                           value="@Model.Premises[i].Text" />
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- ── Action Buttons ───────────────────────────────────── -->
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="publishBtn">
+                            <i class="bi bi-check-circle me-2"></i>Yes, Publish
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" id="editBtn">
+                            <i class="bi bi-pencil me-2"></i>Let Me Fix This
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ── Original Text Reference ──────────────────────────────────────── -->
+        <div class="cu-card mb-5">
+            <div class="cu-card-header d-flex justify-content-between">
+                <span><i class="bi bi-file-text me-1"></i> What You Wrote</span>
+                <button class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="collapse" data-bs-target="#originalText">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            <div class="collapse" id="originalText">
+                <div class="cu-card-body">
+                    <p class="mb-0 text-muted" style="white-space:pre-wrap; font-size: 0.9rem;">
+                        <!-- The original text isn't directly in the model, but the user just wrote it -->
+                        <em>Your original submission is shown on the full analysis page.</em>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // The "edit" button enables editing and changes the form action
+        document.getElementById('editBtn').addEventListener('click', function () {
+            document.getElementById('reviewAction').value = 'edit';
+            document.getElementById('reviewForm').submit();
+        });
+
+        // The "publish" button keeps action as "publish"
+        document.getElementById('publishBtn').addEventListener('click', function () {
+            document.getElementById('reviewAction').value = 'publish';
+        });
+    </script>
+}

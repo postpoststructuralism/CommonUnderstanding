@@ -8,8 +8,8 @@ namespace CommonUnderstanding.Data;
 
 /// <summary>
 /// Seeds the database with sample Phase 2 data for testing.
-/// Run via: dotnet run --seed
-/// Or call SeedAllAsync() from Program.cs during development.
+/// Phase 1 (4.6): Opt-in only — run with `dotnet run --seed` or set SEED_SAMPLE_DATA=true.
+/// No test data ships to production.
 /// </summary>
 public static class Phase2SeedData
 {

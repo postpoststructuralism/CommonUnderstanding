@@ -135,9 +135,9 @@ public class ArgumentController : Controller
         if (argument == null)
             return NotFound();
 
-        // If already decomposed and not a forced re-analysis, go straight to view
+        // If already decomposed and not a forced re-analysis, go to review screen
         if (!force && argument.Status == ArgumentStatus.Complete && argument.Claims.Any())
-            return RedirectToAction(nameof(View), new { id });
+            return RedirectToAction(nameof(Review), new { id });
 
         ViewBag.ArgumentId = id;
         ViewBag.ArgumentTitle = argument.Title;
@@ -215,15 +215,25 @@ public class ArgumentController : Controller
             await SendDebugAsync("Argument marked as decomposing", new { argumentId = argument.Id, status = argument.Status.ToString() });
 
             // ── Step 1-4: Decomposition with real-time progress ──────────────
-            await SendEventAsync("progress", new { step = 0, total = 5, label = "Starting AI decomposition…" });
+            // Phase 1: Narrative-style progress messages (not debug "Step N/5")
+            await SendEventAsync("progress", new { step = 0, total = 5, label = "Reading what you wrote…" });
             await SendDebugAsync("Starting decomposition service call", new { rawTextLength = argument.RawText?.Length ?? 0 });
 
             var decomposition = await _decompositionService.DecomposeAsync(
                 argument.RawText,
                 onProgress: async (label, step, total) =>
                 {
+                    // Translate internal labels to user-facing narrative
+                    var narrativeLabel = label switch
+                    {
+                        string s when s.Contains("Extracting central claim", StringComparison.OrdinalIgnoreCase)
+                            => "Identifying your central claim…",
+                        string s when s.Contains("Decomposing argument structure", StringComparison.OrdinalIgnoreCase)
+                            => "Looking at your reasoning — mapping out the supporting points…",
+                        _ => label
+                    };
                     await SendDebugAsync("Decomposition progress callback", new { step, total, label });
-                    await SendEventAsync("progress", new { step, total = 5, label });
+                    await SendEventAsync("progress", new { step, total = 5, label = narrativeLabel });
                 },
                 onDebug: async (message, details) =>
                 {
@@ -252,7 +262,7 @@ public class ArgumentController : Controller
             }
 
             // ── Step 3: Fallacy detection ────────────────────────────────────
-            await SendEventAsync("progress", new { step = 3, total = 5, label = "Detecting logical fallacies…" });
+            await SendEventAsync("progress", new { step = 3, total = 5, label = "Checking your reasoning for logical gaps…" });
             await SendDebugAsync("Starting validation service call");
             var validation = await _validationService.ValidateAsync(decomposition, argument.RawText, ct);
             await SendDebugAsync("Validation service call completed", new
@@ -263,7 +273,7 @@ public class ArgumentController : Controller
             });
 
             // ── Step 4: Persisting results ───────────────────────────────────
-            await SendEventAsync("progress", new { step = 4, total = 5, label = "Persisting results…" });
+            await SendEventAsync("progress", new { step = 4, total = 5, label = "Saving your argument structure…" });
             await SendDebugAsync("Persisting decomposition results");
             await PersistDecompositionAsync(argument, decomposition, validation);
 
@@ -273,7 +283,7 @@ public class ArgumentController : Controller
             await SendDebugAsync("Argument marked complete", new { argumentId = argument.Id });
 
             // ── Step 5: Adjudication + detailed narrative ────────────────────
-            await SendEventAsync("progress", new { step = 5, total = 5, label = "Running adjudication & generating analysis…" });
+            await SendEventAsync("progress", new { step = 5, total = 5, label = "Checking how your argument connects to the map…" });
             await SendDebugAsync("Starting adjudication service call");
             await _adjudicationEngine.AdjudicateAsync(
                 argument.Id,
@@ -285,8 +295,9 @@ public class ArgumentController : Controller
             await SendDebugAsync("Adjudication service call completed", new { argumentId = argument.Id });
 
             // ── Done ─────────────────────────────────────────────────────────
+            // Phase 1: Redirect to review-before-publish, then to "what changed"
             await SendDebugAsync("AnalyzeStream completed successfully", new { redirectId = id });
-            await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(View), new { id }) });
+            await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(Review), new { id }) });
         }
         catch (OperationCanceledException)
         {
@@ -311,6 +322,234 @@ public class ArgumentController : Controller
             }
             catch { /* client already gone */ }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  GET /Argument/WhatChanged/{id}  — Phase 1: "what changed" screen
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Shows the map delta caused by the user's contribution — what new
+    /// propositions were created, what existing ones were strengthened or
+    /// contested, and what the strongest opposing view is.
+    /// </summary>
+    public async Task<IActionResult> WhatChanged(int id)
+    {
+        var argument = await _db.Arguments
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Premises)
+            .Include(a => a.AdjudicationSummary)
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        if (argument == null)
+            return NotFound();
+
+        if (argument.Status != ArgumentStatus.Complete)
+            return RedirectToAction(nameof(Analyze), new { id });
+
+        var claim = argument.Claims.FirstOrDefault();
+        var premises = claim?.Premises.OrderBy(p => p.SortOrder).ToList() ?? new();
+
+        // Build the "what changed" view model
+        var model = new WhatChangedViewModel
+        {
+            ArgumentId = id,
+            ArgumentTitle = argument.Title,
+            ClaimText = claim?.Text ?? argument.Title,
+
+            // New propositions: all premises from this argument
+            NewPropositions = premises.Select(p => new WhatChangedProposition
+            {
+                Text = p.Text,
+                ConfidenceScore = p.ConfidenceScore,
+                Status = p.Status.ToString()
+            }).ToList(),
+
+            // Existing propositions strengthened/contested: query the graph
+            StrengthenedPropositions = new List<WhatChangedProposition>(),
+            ContestedPropositions = new List<WhatChangedProposition>(),
+            AreasOfAgreement = new List<string>(),
+            NewQuestions = new List<string>(),
+            StrongestOpposingView = null
+        };
+
+        // Query the Common Understanding graph for related propositions
+        try
+        {
+            var graphNodes = await _db.CommonUnderstandingNodes
+                .OrderByDescending(n => n.Confidence)
+                .ToListAsync();
+
+            foreach (var premise in premises)
+            {
+                var normalizedKey = NormalizeKeyForComparison(premise.Text);
+                var relatedNodes = graphNodes
+                    .Where(n => n.NormalizedKey != null &&
+                           (n.NormalizedKey.Contains(normalizedKey[..Math.Min(30, normalizedKey.Length)]) ||
+                            normalizedKey.Contains(n.NormalizedKey[..Math.Min(30, n.NormalizedKey.Length)])))
+                    .Where(n => n.ArgumentIdsJson != null && !n.ArgumentIdsJson.Contains(id.ToString()))
+                    .ToList();
+
+                foreach (var node in relatedNodes)
+                {
+                    if (node.Confidence >= 0.6)
+                    {
+                        model.StrengthenedPropositions.Add(new WhatChangedProposition
+                        {
+                            Text = node.Text,
+                            ConfidenceScore = node.Confidence,
+                            Status = node.Status.ToString(),
+                            NodeId = node.Id
+                        });
+                    }
+                    else if (node.Confidence < 0.4)
+                    {
+                        model.ContestedPropositions.Add(new WhatChangedProposition
+                        {
+                            Text = node.Text,
+                            ConfidenceScore = node.Confidence,
+                            Status = node.Status.ToString(),
+                            NodeId = node.Id
+                        });
+                    }
+                }
+            }
+
+            // Deduplicate
+            model.StrengthenedPropositions = model.StrengthenedPropositions
+                .GroupBy(p => p.Text)
+                .Select(g => g.First())
+                .Take(5)
+                .ToList();
+            model.ContestedPropositions = model.ContestedPropositions
+                .GroupBy(p => p.Text)
+                .Select(g => g.First())
+                .Take(5)
+                .ToList();
+
+            // Areas of agreement: high-confidence nodes that align
+            var highConfidenceNodes = graphNodes
+                .Where(n => n.Confidence >= 0.7 && n.Status == PropositionStatus.Settled)
+                .Take(3)
+                .ToList();
+
+            foreach (var node in highConfidenceNodes)
+            {
+                model.AreasOfAgreement.Add(node.Text);
+            }
+
+            // New questions: surfaced assumptions from the claim
+            if (claim?.Assumptions != null)
+            {
+                foreach (var assumption in claim.Assumptions)
+                {
+                    model.NewQuestions.Add(assumption.Text);
+                }
+            }
+
+            // Strongest opposing view: find a contested node with low confidence
+            var opposingNode = graphNodes
+                .Where(n => n.Status == PropositionStatus.Contested && n.Confidence < 0.5)
+                .OrderBy(n => n.Confidence)
+                .FirstOrDefault();
+
+            if (opposingNode != null)
+            {
+                model.StrongestOpposingView = opposingNode.Text;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not fully build WhatChanged view for argument {Id}", id);
+        }
+
+        return View(model);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  GET /Argument/Review/{id}  — Phase 1: review-before-publish
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Shows the extracted claim and premises for user review before publishing.
+    /// The user can confirm or edit the AI's extraction.
+    /// </summary>
+    public async Task<IActionResult> Review(int id)
+    {
+        var argument = await _db.Arguments
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Premises)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Assumptions)
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        if (argument == null)
+            return NotFound();
+
+        if (argument.Status != ArgumentStatus.Complete)
+            return RedirectToAction(nameof(Analyze), new { id });
+
+        var claim = argument.Claims.FirstOrDefault();
+        var model = new ReviewViewModel
+        {
+            ArgumentId = id,
+            ClaimText = claim?.Text ?? argument.Title,
+            ClaimType = claim?.ClaimType ?? "empirical",
+            Premises = claim?.Premises.OrderBy(p => p.SortOrder)
+                .Select(p => new ReviewPremise { Id = p.Id, Text = p.Text })
+                .ToList() ?? new()
+        };
+
+        return View(model);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  POST /Argument/Review/{id}  — Phase 1: confirm or edit extraction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Review(int id, ReviewViewModel model)
+    {
+        if (model.Action == "edit")
+        {
+            // User wants to edit — apply corrections
+            var argument = await _db.Arguments
+                .Include(a => a.Claims)
+                    .ThenInclude(c => c.Premises)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (argument == null) return NotFound();
+
+            var claim = argument.Claims.FirstOrDefault();
+            if (claim != null && !string.IsNullOrWhiteSpace(model.ClaimText))
+            {
+                claim.Text = model.ClaimText.Trim();
+                argument.Title = model.ClaimText.Length > 300
+                    ? model.ClaimText[..297] + "…"
+                    : model.ClaimText;
+
+                // Update premises if provided
+                if (model.Premises != null)
+                {
+                    foreach (var editedPremise in model.Premises)
+                    {
+                        var existing = claim.Premises.FirstOrDefault(p => p.Id == editedPremise.Id);
+                        if (existing != null && !string.IsNullOrWhiteSpace(editedPremise.Text))
+                        {
+                            existing.Text = editedPremise.Text.Trim();
+                        }
+                    }
+                }
+
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("User edited AI extraction for argument {Id}", id);
+            }
+
+            return RedirectToAction(nameof(WhatChanged), new { id });
+        }
+
+        // "publish" action — go straight to what-changed
+        return RedirectToAction(nameof(WhatChanged), new { id });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -753,6 +992,17 @@ public class ArgumentController : Controller
 
         await _db.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Normalizes text for fuzzy comparison against graph nodes.
+    /// </summary>
+    private static string NormalizeKeyForComparison(string text)
+    {
+        var normalized = System.Text.RegularExpressions.Regex.Replace(
+            text.ToLowerInvariant().Trim(), @"\s+", " ");
+        normalized = normalized.TrimEnd('.', ',', ';', ':', '!', '?');
+        return normalized.Length > 500 ? normalized[..500] : normalized;
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -811,4 +1061,51 @@ public class AddEvidenceModel
     public int? PublicationYear { get; set; }
     public string? AddedBy { get; set; }
     public bool AutoClassify { get; set; }
+}
+
+// ─────────────────────────────────────────────
+//  Phase 1 ViewModels
+// ─────────────────────────────────────────────
+
+/// <summary>
+/// ViewModel for the "What Changed" screen shown after analysis completes.
+/// </summary>
+public class WhatChangedViewModel
+{
+    public int ArgumentId { get; set; }
+    public string ArgumentTitle { get; set; } = string.Empty;
+    public string ClaimText { get; set; } = string.Empty;
+
+    public List<WhatChangedProposition> NewPropositions { get; set; } = new();
+    public List<WhatChangedProposition> StrengthenedPropositions { get; set; } = new();
+    public List<WhatChangedProposition> ContestedPropositions { get; set; } = new();
+    public List<string> AreasOfAgreement { get; set; } = new();
+    public List<string> NewQuestions { get; set; } = new();
+    public string? StrongestOpposingView { get; set; }
+}
+
+public class WhatChangedProposition
+{
+    public string Text { get; set; } = string.Empty;
+    public double ConfidenceScore { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public int? NodeId { get; set; }
+}
+
+/// <summary>
+/// ViewModel for the review-before-publish step.
+/// </summary>
+public class ReviewViewModel
+{
+    public int ArgumentId { get; set; }
+    public string ClaimText { get; set; } = string.Empty;
+    public string ClaimType { get; set; } = "empirical";
+    public List<ReviewPremise> Premises { get; set; } = new();
+    public string Action { get; set; } = "publish"; // "publish" or "edit"
+}
+
+public class ReviewPremise
+{
+    public int Id { get; set; }
+    public string Text { get; set; } = string.Empty;
 }

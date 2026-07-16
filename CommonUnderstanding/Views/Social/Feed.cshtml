@@ -209,10 +209,8 @@
         const wilson = Math.round((arg.wilsonScore || 0) * 100);
         const tagHtml = (arg.tags || []).map(t =>
             `<span class="badge bg-secondary me-1">${escHtml(t)}</span>`).join('');
-        const aiLabel = arg.isAIValidated
-            ? `<span class="badge validity-badge ${arg.aiValidityScore >= 0.7 ? 'bg-success' : arg.aiValidityScore >= 0.4 ? 'bg-warning text-dark' : 'bg-danger'} ms-1" title="AI validity">
-                   <i class="bi bi-cpu"></i> ${Math.round((arg.aiValidityScore||0)*100)}%
-               </span>` : '';
+        // Phase 1: AI confidence badge removed from card views per spec 4.5
+        const aiLabel = '';
         const userVote = arg.userVote?.vote?.toLowerCase() || '';
         const upActive   = userVote === 'up'   ? ' active-up' : '';
         const downActive = userVote === 'down' ? ' active-down' : '';
