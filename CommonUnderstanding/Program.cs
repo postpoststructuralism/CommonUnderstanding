@@ -34,6 +34,19 @@ builder.Services.AddSingleton<SingletonDbContextFactory>();
 // Add HttpContextAccessor for views that need Request access
 builder.Services.AddHttpContextAccessor();
 
+// Add response compression for API endpoints (reduces JSON payload size)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[] { "application/json", "text/json", "application/javascript", "text/css" };
+});
+
+// Add output caching for API endpoints (reduces repeated DB queries)
+builder.Services.AddOutputCache(options =>
+{
+    options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(30)));
+});
+
 // Add HttpClient for AI status monitoring
 builder.Services.AddHttpClient();
 
@@ -234,6 +247,8 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
+app.UseOutputCache();
 app.UseStaticFiles();
 app.UseRouting();
 

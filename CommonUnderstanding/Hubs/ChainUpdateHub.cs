@@ -1,7 +1,6 @@
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services.Social;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +23,6 @@ namespace CommonUnderstanding.Hubs;
 ///   "ChainLinkCreated"     — { chainId, link }
 ///   "ChainUpdated"         — full refresh signal
 /// </summary>
-[Authorize]
 public class ChainUpdateHub : Hub
 {
     private readonly SingletonDbContextFactory _dbFactory;

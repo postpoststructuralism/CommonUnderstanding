@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using CommonUnderstanding.Services;
 using CommonUnderstanding.Models;
 
@@ -44,7 +45,8 @@ public class UnderstandingGraphController : Controller
     {
         // Load only lightweight stats on initial page render.
         // Sidebar tab data (schemas, syntheses, bridges, blindspots) loads via AJAX.
-        var stats = await _graphService.GetStatisticsAsync();
+        // Use the fast count-only query to avoid loading full entities.
+        var stats = await _queryService.GetQuickStatsAsync();
         ViewBag.Statistics = stats;
         return View();
     }
@@ -127,6 +129,7 @@ public class UnderstandingGraphController : Controller
     /// Returns the full graph map as JSON for frontend visualization.
     /// </summary>
     [HttpGet("api/understanding-graph/map")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetMap()
     {
         var map = await _queryService.GetMapAsync();
@@ -137,6 +140,7 @@ public class UnderstandingGraphController : Controller
     /// Returns schema details as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/schemas")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetSchemas()
     {
         var schemas = await _queryService.GetAllSchemasAsync();
@@ -147,6 +151,7 @@ public class UnderstandingGraphController : Controller
     /// Returns schema nodes as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/schema/{id}/nodes")]
+    [OutputCache(Duration = 30, VaryByRouteValueNames = new[] { "id" })]
     public async Task<IActionResult> GetSchemaNodes(int id)
     {
         var nodes = await _queryService.GetSchemaNodesAsync(id);
@@ -157,6 +162,7 @@ public class UnderstandingGraphController : Controller
     /// Returns syntheses as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/syntheses")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetSyntheses()
     {
         var syntheses = await _queryService.GetAllSynthesesAsync();
@@ -167,6 +173,7 @@ public class UnderstandingGraphController : Controller
     /// Returns dialectical pairs as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/dialectical-pairs")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetDialecticalPairs(double minWeight = 0.3, int count = 50)
     {
         var pairs = await _queryService.GetDialecticalPairsAsync(minWeight, count);
@@ -177,6 +184,7 @@ public class UnderstandingGraphController : Controller
     /// Returns bridge nodes as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/bridge-nodes")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetBridgeNodes(int count = 20)
     {
         var bridges = await _queryService.GetBridgeNodesAsync(count);
@@ -187,6 +195,7 @@ public class UnderstandingGraphController : Controller
     /// Returns blindspots as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/blindspots")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetBlindspots(int count = 20)
     {
         var blindspots = await _queryService.GetBlindspotsAsync(count);
@@ -197,6 +206,7 @@ public class UnderstandingGraphController : Controller
     /// Returns snapshots as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/snapshots")]
+    [OutputCache(Duration = 30)]
     public async Task<IActionResult> GetSnapshots(int count = 20)
     {
         var snapshots = await _snapshotService.GetSnapshotsAsync(count);
@@ -207,6 +217,7 @@ public class UnderstandingGraphController : Controller
     /// Returns metric evolution as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/evolution/{metricName}")]
+    [OutputCache(Duration = 30, VaryByRouteValueNames = new[] { "metricName" })]
     public async Task<IActionResult> GetMetricEvolution(string metricName)
     {
         var evolution = await _snapshotService.GetMetricEvolutionAsync(metricName);

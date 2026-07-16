@@ -26,13 +26,44 @@ public class UnderstandingQueryService
     // ── Schema Queries ────────────────────────────────────────────────────
 
     /// <summary>
+    /// Gets quick counts for the initial page load — avoids loading any
+    /// entity data, just runs COUNT queries.
+    /// </summary>
+    public async Task<QuickStats> GetQuickStatsAsync()
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        // Run counts sequentially — DbContext is not thread-safe
+        var nodeCount = await db.UnderstandingNodes.CountAsync();
+        var edgeCount = await db.UnderstandingEdges.CountAsync();
+        var schemaCount = await db.ConceptualSchemas.CountAsync();
+        var synthesisCount = await db.DialecticalSyntheses.CountAsync();
+
+        return new QuickStats
+        {
+            NodeCount = nodeCount,
+            EdgeCount = edgeCount,
+            SchemaCount = schemaCount,
+            SynthesisCount = synthesisCount
+        };
+    }
+
+    /// <summary>
     /// Gets all schemas with member counts and coherence scores.
+    /// Uses a grouped count query instead of eager-loading all memberships.
     /// </summary>
     public async Task<List<SchemaSummary>> GetAllSchemasAsync()
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        return await db.ConceptualSchemas
-            .Include(s => s.Memberships)
+
+        // Get member counts via a single grouped query instead of Include()
+        var memberCounts = await db.SchemaMemberships
+            .GroupBy(m => m.SchemaId)
+            .Select(g => new { SchemaId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SchemaId, x => x.Count);
+
+        var schemas = await db.ConceptualSchemas
+            .OrderByDescending(s => s.Coherence)
             .Select(s => new SchemaSummary
             {
                 Id = s.Id,
@@ -41,12 +72,19 @@ public class UnderstandingQueryService
                 DiscoveryMethod = s.DiscoveryMethod,
                 Coherence = s.Coherence,
                 Stability = s.Stability,
-                MemberCount = s.Memberships.Count,
+                MemberCount = 0, // populated below
                 FactorIndex = s.FactorIndex,
                 DiscoveredAt = s.DiscoveredAt
             })
-            .OrderByDescending(s => s.MemberCount)
             .ToListAsync();
+
+        foreach (var schema in schemas)
+        {
+            schema.MemberCount = memberCounts.GetValueOrDefault(schema.Id, 0);
+        }
+
+        // Re-sort by member count after populating
+        return schemas.OrderByDescending(s => s.MemberCount).ToList();
     }
 
     /// <summary>
@@ -267,25 +305,21 @@ public class UnderstandingQueryService
     // ── Graph Map ─────────────────────────────────────────────────────────
 
     /// <summary>
+    /// <summary>
     /// Gets the full graph map for visualization — nodes, edges, schemas,
     /// and syntheses in a flat serializable structure.
+    /// Uses projections to avoid loading unnecessary columns and
+    /// limits results to keep the payload manageable.
     /// </summary>
-    public async Task<GraphMap> GetMapAsync()
+    public async Task<GraphMap> GetMapAsync(int maxNodes = 2000, int maxEdges = 5000)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        var nodes = await db.UnderstandingNodes.ToListAsync();
-        var edges = await db.UnderstandingEdges.ToListAsync();
-        var schemas = await db.ConceptualSchemas
-            .Include(s => s.Memberships)
-            .ToListAsync();
-        var syntheses = await db.DialecticalSyntheses
-            .Include(ds => ds.SynthesisNode)
-            .ToListAsync();
-
-        return new GraphMap
-        {
-            Nodes = nodes.Select(n => new GraphMapNode
+        // Use projections to select only needed columns — avoids loading
+        // SemanticEmbedding, GraphEmbedding, and other heavy columns.
+        var nodeQuery = db.UnderstandingNodes
+            .OrderByDescending(n => n.Confidence)
+            .Select(n => new GraphMapNode
             {
                 Id = n.Id,
                 Label = n.CanonicalText,
@@ -299,40 +333,84 @@ public class UnderstandingQueryService
                 Status = n.Status.ToString(),
                 EvidenceCount = n.EvidenceCount,
                 CreatedAt = n.FirstSeenAt
-            }).ToList(),
+            });
 
-            Edges = edges.Select(e => new GraphMapEdge
+        var nodes = maxNodes > 0
+            ? await nodeQuery.Take(maxNodes).ToListAsync()
+            : await nodeQuery.ToListAsync();
+
+        // Only load edges that connect the loaded nodes
+        var loadedNodeIds = nodes.Select(n => n.Id).ToHashSet();
+        var edgeQuery = db.UnderstandingEdges
+            .Where(e => loadedNodeIds.Contains(e.SourceNodeId) || loadedNodeIds.Contains(e.TargetNodeId))
+            .OrderByDescending(e => e.Weight)
+            .Select(e => new GraphMapEdge
             {
                 Id = e.Id,
                 SourceId = e.SourceNodeId,
                 TargetId = e.TargetNodeId,
                 EdgeType = e.Relationship,
                 Weight = e.Weight
-            }).ToList(),
+            });
 
-            Schemas = schemas.Select(s => new GraphMapSchema
+        var edges = maxEdges > 0
+            ? await edgeQuery.Take(maxEdges).ToListAsync()
+            : await edgeQuery.ToListAsync();
+
+        // Schemas: use projection, avoid Include(Memberships)
+        var schemaMemberships = await db.SchemaMemberships
+            .Select(m => new { m.SchemaId, m.NodeId })
+            .ToListAsync();
+
+        var membershipLookup = schemaMemberships
+            .GroupBy(m => m.SchemaId)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.NodeId).ToList());
+
+        var schemas = await db.ConceptualSchemas
+            .OrderByDescending(s => s.Coherence)
+            .Select(s => new GraphMapSchema
             {
                 Id = s.Id,
                 Label = s.Label,
                 DiscoveryMethod = s.DiscoveryMethod,
                 Coherence = s.Coherence,
                 Stability = s.Stability,
-                MemberNodeIds = s.Memberships.Select(m => m.NodeId).ToList()
-            }).ToList(),
+                MemberNodeIds = new List<int>() // populated below
+            })
+            .ToListAsync();
 
-            Syntheses = syntheses.Select(ds => new GraphMapSynthesis
+        foreach (var schema in schemas)
+        {
+            schema.MemberNodeIds = membershipLookup.GetValueOrDefault(schema.Id, new List<int>());
+        }
+
+        // Syntheses: use projection
+        var syntheses = await db.DialecticalSyntheses
+            .OrderByDescending(ds => ds.Depth)
+            .Select(ds => new GraphMapSynthesis
             {
                 Id = ds.Id,
                 SynthesisNodeId = ds.SynthesisNodeId,
                 Depth = ds.Depth,
                 ResolutionNarrative = ds.ResolutionNarrative,
                 IsAccepted = ds.IsAccepted
-            }).ToList(),
+            })
+            .ToListAsync();
 
+        // Compute stats efficiently
+        var totalNodeCount = await db.UnderstandingNodes.CountAsync();
+        var totalEdgeCount = await db.UnderstandingEdges.CountAsync();
+
+        return new GraphMap
+        {
+            Nodes = nodes,
+            Edges = edges,
+            Schemas = schemas,
+            Syntheses = syntheses,
             Statistics = new GraphMapStatistics
             {
-                NodeCount = nodes.Count,
-                EdgeCount = edges.Count,
+                NodeCount = totalNodeCount,
+                EdgeCount = totalEdgeCount,
                 SchemaCount = schemas.Count,
                 SynthesisCount = syntheses.Count,
                 AverageConfidence = nodes.Any() ? Math.Round(nodes.Average(n => n.Confidence), 4) : 0,
@@ -370,6 +448,14 @@ public class UnderstandingQueryService
 }
 
 // ── Supporting types ─────────────────────────────────────────────────────────
+
+public class QuickStats
+{
+    public int NodeCount { get; set; }
+    public int EdgeCount { get; set; }
+    public int SchemaCount { get; set; }
+    public int SynthesisCount { get; set; }
+}
 
 public class SchemaSummary
 {

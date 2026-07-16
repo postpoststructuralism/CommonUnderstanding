@@ -1,431 +1,406 @@
-@{
+﻿@{
     ViewData["Title"] = "Chain Builder";
 }
 
 @section Styles {
-<link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.css" />
 <style>
-    #chainCanvas {
-        width: 100%;
-        height: 500px;
-        border: 1px solid var(--bs-border-color);
-        border-radius: 0.5rem;
-        background: var(--bs-body-bg);
-    }
-    .arg-search-item { cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.25rem; }
-    .arg-search-item:hover { background: var(--bs-secondary-bg); }
-    .link-type-badge { font-size: 0.72rem; }
-    .node-info-panel { min-height: 80px; }
-    #saveChainBtn:disabled { opacity: 0.6; }
+    .cb-wrap { display:flex; height:calc(100vh - 60px); gap:0; min-height:0; margin:-1rem; margin-top:0; }
+    .cb-side { width:280px; min-width:280px; background:#fff; border-right:1px solid var(--cu-border-light); display:flex; flex-direction:column; overflow:hidden; }
+    .cb-side-hd { padding:14px 16px; border-bottom:1px solid var(--cu-border-light); background:linear-gradient(135deg,rgba(15,118,110,0.06),rgba(192,122,63,0.04)); }
+    .cb-side-hd h1 { font-size:16px; font-weight:600; color:var(--cu-primary-blue); margin:0; }
+    .cb-side-hd p { font-size:11px; color:var(--cu-text-muted); margin:4px 0 0; }
+    .cb-search { padding:10px 12px; border-bottom:1px solid var(--cu-border-light); }
+    .cb-search input { font-size:13px; border-radius:6px; }
+    .cb-search-results { max-height:200px; overflow-y:auto; }
+    .cb-sr-item { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:12px; transition:background .15s; }
+    .cb-sr-item:hover { background:rgba(15,118,110,0.06); }
+    .cb-sr-item strong { color:var(--cu-primary-blue); }
+    .cb-sr-item small { color:var(--cu-text-muted); }
+    .cb-chain-info { padding:10px 12px; border-bottom:1px solid var(--cu-border-light); }
+    .cb-chain-info summary { font-size:13px; font-weight:600; color:var(--cu-secondary-blue); cursor:pointer; }
+    .cb-chain-info .info-row { font-size:11px; color:var(--cu-text-muted); margin:3px 0; }
+    .cb-links { flex:1; overflow-y:auto; padding:8px 12px; }
+    .cb-links h3 { font-size:12px; font-weight:600; color:var(--cu-text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+    .cb-link-item { display:flex; align-items:center; gap:6px; padding:6px 8px; margin-bottom:4px; border-radius:6px; background:#f8f9fa; font-size:11px; }
+    .cb-link-item .badge { font-size:10px; }
+    .cb-link-item .btn-sm { font-size:10px; padding:0 4px; }
+    .cb-link-type-Supports { border-left:3px solid #198754; }
+    .cb-link-type-Contradicts { border-left:3px solid #dc3545; }
+    .cb-link-type-Refines { border-left:3px solid #fd7e14; }
+    .cb-link-type-Extends { border-left:3px solid #0d6efd; }
+    .cb-main { flex:1; display:flex; flex-direction:column; min-width:0; background:var(--cu-background); }
+    .cb-toolbar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid var(--cu-border-light); flex-wrap:wrap; }
+    .cb-toolbar select { font-size:12px; width:130px; }
+    .cb-tb-btn { font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--cu-border-light); background:#fff; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .cb-tb-btn:hover { background:var(--cu-background); }
+    .cb-tb-btn.on { background:var(--cu-secondary-blue); color:#fff; border-color:var(--cu-secondary-blue); }
+    .cb-tb-btn.accent { background:var(--cu-accent); color:#fff; border-color:var(--cu-accent); }
+    .cb-link-status { font-size:11px; padding:3px 8px; border-radius:10px; }
+    .cb-link-status.off { background:#e9ecef; color:#6c757d; }
+    .cb-link-status.on { background:#d1f2eb; color:#0f766e; font-weight:600; }
+    .cb-graph { flex:1; min-height:0; }
+    .cb-legend { display:flex; gap:12px; padding:6px 12px; background:#fff; border-top:1px solid var(--cu-border-light); font-size:10px; flex-wrap:wrap; }
+    .cb-legend span { display:flex; align-items:center; gap:4px; }
+    .cb-legend .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+    .cb-nodeinfo { padding:8px 12px; background:#fff; border-top:1px solid var(--cu-border-light); font-size:12px; color:var(--cu-text-muted); min-height:36px; display:none; }
+    .cb-nodeinfo.active { display:block; }
+    .cb-nodeinfo strong { color:var(--cu-primary-blue); }
+    .cb-empty { display:flex; align-items:center; justify-content:center; height:100%; color:var(--cu-text-muted); font-size:14px; flex-direction:column; gap:8px; }
+    .cb-empty i { font-size:48px; opacity:.3; }
+    @@media (max-width:800px) { .cb-wrap { flex-direction:column; } .cb-side { width:100%; min-width:0; max-height:40vh; } }
 </style>
 }
 
-<div class="cu-workspace-hero mb-4">
-    <div class="cu-workspace-hero-content">
-        <div>
-            <span class="cu-workspace-tag"><i class="bi bi-diagram-3"></i> Social</span>
-            <h1 class="cu-page-heading mt-3 mb-2">Chain Builder</h1>
-            <p class="cu-workspace-lead mb-0">
-                Link arguments into directed acyclic graphs. Circular logic is automatically rejected.
-            </p>
+<div class="cb-wrap">
+    <div class="cb-side">
+        <div class="cb-side-hd">
+            <h1><i class="bi bi-diagram-3"></i> Chain Builder</h1>
+            <p>Connect arguments into reasoning chains</p>
+        </div>
+        <div class="cb-search">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search arguments to add..." autocomplete="off">
+            <div id="searchResults" class="cb-search-results mt-1"></div>
+        </div>
+        <details class="cb-chain-info" id="chainInfoBlock" open>
+            <summary>Chain Info</summary>
+            <div class="info-row"><strong>ID:</strong> <span id="chainIdDisplay">-</span></div>
+            <div class="info-row"><strong>Nodes:</strong> <span id="chainNodeCount">0</span></div>
+            <div class="info-row"><strong>Links:</strong> <span id="chainLinkCount">0</span></div>
+            <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="saveChainBtn" disabled><i class="bi bi-save"></i> Save</button></div>
+        </details>
+        <div class="cb-links" id="linksList">
+            <h3>Links</h3>
+            <div id="linksTableBody" class="text-muted" style="font-size:11px">No links yet. Use Link Mode to connect nodes.</div>
         </div>
     </div>
-</div>
-
-<div class="row g-3">
-    <!-- Left panel: chain metadata + argument search -->
-    <div class="col-lg-3">
-        <div class="card h-100">
-            <div class="card-body d-flex flex-column gap-3">
-                <div>
-                    <label class="form-label fw-semibold">Chain Title</label>
-                    <input id="chainTitle" class="form-control form-control-sm" placeholder="e.g. Climate policy arguments" />
-                </div>
-                <div>
-                    <label class="form-label fw-semibold">Description</label>
-                    <textarea id="chainDesc" class="form-control form-control-sm" rows="2" placeholder="Optional…"></textarea>
-                </div>
-                <div>
-                    <label class="form-label fw-semibold">Tags</label>
-                    <input id="chainTags" class="form-control form-control-sm" placeholder="comma-separated" />
-                </div>
-
-                <hr class="my-0" />
-
-                <div>
-                    <label class="form-label fw-semibold">Add Argument to Chain</label>
-                    <div class="input-group input-group-sm">
-                        <input id="argSearchInput" class="form-control" placeholder="Search arguments…" />
-                        <button class="btn btn-outline-secondary" id="argSearchBtn">
-                            <i class="bi bi-search"></i>
-                        </button>
-                    </div>
-                    <div id="argSearchResults" class="list-group mt-1" style="max-height:200px;overflow-y:auto;font-size:0.85rem;"></div>
-                </div>
-
-                <hr class="my-0" />
-
-                <!-- Link creation panel -->
-                <div>
-                    <label class="form-label fw-semibold">Add Link</label>
-                    <p class="text-muted small mb-1">Click two nodes in the graph, then choose link type.</p>
-                    <div id="linkSelectionStatus" class="small text-muted mb-2">No nodes selected.</div>
-                    <select id="linkType" class="form-select form-select-sm mb-2">
-                        <option value="Supports">Supports</option>
-                        <option value="Contradicts">Contradicts</option>
-                        <option value="Refines">Refines</option>
-                        <option value="Extends">Extends</option>
-                    </select>
-                    <button id="addLinkBtn" class="btn btn-sm btn-outline-primary w-100" disabled>
-                        <i class="bi bi-arrow-right-circle"></i> Add Link
-                    </button>
-                </div>
-
-                <div class="mt-auto">
-                    <div id="chainSaveError" class="alert alert-danger alert-sm d-none p-2 small"></div>
-                    <button id="saveChainBtn" class="btn btn-success w-100">
-                        <span class="spinner-border spinner-border-sm d-none me-1" id="saveChainSpinner"></span>
-                        <i class="bi bi-floppy"></i> Save Chain
-                    </button>
-                </div>
-            </div>
+    <div class="cb-main">
+        <div class="cb-toolbar">
+            <select id="linkTypeSelect" class="form-select form-select-sm">
+                <option value="Supports">Supports</option>
+                <option value="Contradicts">Contradicts</option>
+                <option value="Refines">Refines</option>
+                <option value="Extends">Extends</option>
+            </select>
+            <button id="linkModeBtn" class="cb-tb-btn" title="Toggle Link Mode: click two nodes to connect them">Link Mode</button>
+            <span id="linkSelectionStatus" class="cb-link-status off">Select source node</span>
+            <button id="physicsBtn" class="cb-tb-btn" title="Toggle physics simulation">Physics</button>
+            <button id="layoutBtn" class="cb-tb-btn" title="Auto-arrange nodes">Layout</button>
+            <button id="resetBtn" class="cb-tb-btn" title="Clear graph">Reset</button>
         </div>
-    </div>
-
-    <!-- Right panel: vis-network canvas -->
-    <div class="col-lg-9">
-        <div id="chainCanvas"></div>
-        <!-- Selected node info -->
-        <div class="card mt-2">
-            <div class="card-body node-info-panel py-2">
-                <div id="nodeInfo" class="text-muted small">Click a node to see argument details.</div>
-            </div>
+        <div id="graphContainer" class="cb-graph"></div>
+        <div class="cb-legend">
+            <span><span class="dot" style="background:#198754"></span> Supports</span>
+            <span><span class="dot" style="background:#dc3545"></span> Contradicts</span>
+            <span><span class="dot" style="background:#fd7e14"></span> Refines</span>
+            <span><span class="dot" style="background:#0d6efd"></span> Extends</span>
         </div>
-        <!-- Links table -->
-        <div class="mt-2">
-            <h6 class="text-muted mb-2"><i class="bi bi-link-45deg"></i> Links in this chain</h6>
-            <div id="linksTable" class="small">
-                <span class="text-muted">No links yet.</span>
-            </div>
-        </div>
+        <div id="nodeInfoBar" class="cb-nodeinfo"></div>
     </div>
 </div>
 
 @section Scripts {
-<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 <script>
-(function () {
-    'use strict';
+(function() {
+    var nodes = new vis.DataSet([]);
+    var edges = new vis.DataSet([]);
+    var network = null;
+    var linkModeActive = false;
+    var selectedNodes = [];
+    var linksData = [];
+    var argMap = {};
+    var existingChainId = null;
+    var colorMap = { Supports: '#198754', Contradicts: '#dc3545', Refines: '#fd7e14', Extends: '#0d6efd' };
 
-    // ── State ─────────────────────────────────────────────────────────────────
-    const nodes     = new vis.DataSet();
-    const edges     = new vis.DataSet();
-    const argMap    = {};       // id → argument object
-    const linksData = [];       // { from, to, type }
-    let selectedNodes = [];     // up to 2 nodes for link creation
-    let existingChainId = null; // set when editing a saved chain
+    var container = document.getElementById('graphContainer');
+    var data = { nodes: nodes, edges: edges };
+    var options = {
+        physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -40, centralGravity: 0.005, springLength: 150, springConstant: 0.08 } },
+        edges: { arrows: { to: { enabled: true, scaleFactor: 0.8 } }, smooth: { type: 'curvedCW', roundness: 0.2 }, font: { size: 10, color: '#666' } },
+        nodes: { shape: 'box', margin: 8, widthConstraint: { maximum: 180 }, font: { size: 12, face: 'system-ui' }, borderWidth: 2, shadow: { enabled: true, size: 3 } },
+        interaction: { hover: true, tooltipDelay: 200 }
+    };
+    network = new vis.Network(container, data, options);
 
-    // ── vis-network ───────────────────────────────────────────────────────────
-    const container = document.getElementById('chainCanvas');
-    const network   = new vis.Network(container, { nodes, edges }, {
-        physics: { barnesHut: { gravitationalConstant: -3000 } },
-        edges: {
-            arrows: { to: { enabled: true, scaleFactor: 0.6 } },
-            smooth: { type: 'curvedCW', roundness: 0.2 }
-        },
-        nodes: { shape: 'box', font: { size: 13 }, widthConstraint: { maximum: 160 } },
-        interaction: { multiselect: true }
-    });
-
-    network.on('selectNode', params => {
-        const id = params.nodes[0];
-        selectedNodes = network.getSelectedNodes().slice(0, 2);
-        updateLinkSelection();
-        showNodeInfo(id);
-    });
-    network.on('deselectNode', () => {
-        selectedNodes = network.getSelectedNodes().slice(0, 2);
-        updateLinkSelection();
-    });
-
-    function updateLinkSelection() {
-        const status = document.getElementById('linkSelectionStatus');
-        const addBtn = document.getElementById('addLinkBtn');
-        if (selectedNodes.length === 2) {
-            status.textContent = `Source: ${truncate(argMap[selectedNodes[0]]?.title, 30)} → Target: ${truncate(argMap[selectedNodes[1]]?.title, 30)}`;
-            addBtn.disabled = false;
-        } else if (selectedNodes.length === 1) {
-            status.textContent = `Selected: ${truncate(argMap[selectedNodes[0]]?.title, 40)}. Click another node.`;
-            addBtn.disabled = true;
-        } else {
-            status.textContent = 'No nodes selected.';
-            addBtn.disabled = true;
+    network.on('click', function(params) {
+        if (params.nodes.length === 1) {
+            var nodeId = params.nodes[0];
+            if (linkModeActive) {
+                selectedNodes.push(nodeId);
+                if (selectedNodes.length === 2) {
+                    createLink(selectedNodes[0], selectedNodes[1]);
+                    selectedNodes = [];
+                    updateLinkUI();
+                } else { updateLinkUI(); }
+            } else { showNodeInfo(nodeId); }
+        } else if (params.nodes.length === 0) {
+            selectedNodes = [];
+            updateLinkUI();
+            document.getElementById('nodeInfoBar').classList.remove('active');
         }
-    }
-
-    function showNodeInfo(id) {
-        const arg = argMap[id];
-        if (!arg) return;
-        document.getElementById('nodeInfo').innerHTML = `
-            <strong>${escHtml(arg.title)}</strong><br/>
-            <span>${escHtml(truncate(arg.claimText || '', 200))}</span><br/>
-            <span class="text-muted">${(arg.tags || []).map(t => `<span class="badge bg-secondary me-1">${escHtml(t)}</span>`).join('')}</span>
-        `;
-    }
-
-    // ── Argument search ───────────────────────────────────────────────────────
-    document.getElementById('argSearchBtn').addEventListener('click', searchArguments);
-    document.getElementById('argSearchInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter') searchArguments();
     });
 
-    async function searchArguments() {
-        const query = document.getElementById('argSearchInput').value.trim();
-        // Empty query lists recent public arguments; a query filters by tag (backend supports tag filtering).
-        const tagParam = query ? `&tags=${encodeURIComponent(query)}` : '';
-        const res  = await fetch(`/api/arguments?limit=15&sort=hot${tagParam}`);
-        const data = await res.json();
-        renderSearchResults(data.items || []);
-    }
-
-    // Populate with recent arguments on load.
-    searchArguments();
-
-    function renderSearchResults(items) {
-        const el = document.getElementById('argSearchResults');
-        if (items.length === 0) {
-            el.innerHTML = '<div class="list-group-item small text-muted">No results.</div>';
-            return;
+    network.on('doubleClick', function(params) {
+        if (params.nodes.length === 1) {
+            window.open('/Social/Argument/' + params.nodes[0], '_blank');
         }
-        el.innerHTML = items.map(a => `
-            <div class="list-group-item arg-search-item" data-id="${a.id}">
-                <strong>${escHtml(truncate(a.title, 50))}</strong><br/>
-                <small class="text-muted">${escHtml(truncate(a.claimText || '', 80))}</small>
-            </div>`).join('');
+    });
 
-        el.querySelectorAll('.arg-search-item').forEach(item => {
-            const arg = items.find(a => a.id === item.dataset.id);
-            item.addEventListener('click', () => addArgToGraph(arg));
-        });
+    document.getElementById('linkModeBtn').addEventListener('click', function() {
+        linkModeActive = !linkModeActive;
+        this.classList.toggle('on', linkModeActive);
+        selectedNodes = [];
+        updateLinkUI();
+    });
+
+    function updateLinkUI() {
+        var s = document.getElementById('linkSelectionStatus');
+        if (!linkModeActive) { s.className = 'cb-link-status off'; s.textContent = 'Link mode off'; }
+        else if (selectedNodes.length === 0) { s.className = 'cb-link-status on'; s.textContent = 'Click source node'; }
+        else { s.className = 'cb-link-status on'; s.textContent = 'Now click target node'; }
     }
 
-    function addArgToGraph(arg) {
-        if (nodes.get(arg.id)) return; // already in graph
-        argMap[arg.id] = arg;
-        nodes.add({
-            id: arg.id,
-            label: truncate(arg.title, 25),
-            title: arg.claimText || arg.title,
-            color: arg.isAIValidated ? { background: '#d4edda', border: '#28a745' } : undefined
-        });
-        // If collaborating on a saved chain, broadcast the addition to co-editors.
-        if (existingChainId && hub.state === 'Connected')
-            hub.invoke('NotifyArgumentAdded', existingChainId, arg.id).catch(() => {});
-    }
-
-    // ── Add link ──────────────────────────────────────────────────────────────
-    document.getElementById('addLinkBtn').addEventListener('click', async () => {
-        const [from, to] = selectedNodes;
-        const type = document.getElementById('linkType').value;
+    function createLink(from, to) {
         if (from === to) return;
-
-        // Cycle check: does a path already exist from `to` back to `from`?
-        if (wouldCreateCycle(from, to)) {
-            alert('This link would create a circular argument chain. Please choose a different target.');
-            return;
-        }
-
-        const edgeId = `${from}→${to}`;
-        if (edges.get(edgeId)) return;
-
-        const colorMap = { Supports: '#198754', Contradicts: '#dc3545', Refines: '#fd7e14', Extends: '#0d6efd' };
-        edges.add({ id: edgeId, from, to, label: type, color: colorMap[type] || '#888', font: { size: 10 } });
-        linksData.push({ from, to, type, edgeId });
+        if (wouldCreateCycle(from, to)) { alert('Cannot create this link: it would create a circular chain.'); return; }
+        var edgeId = from + '->' + to;
+        if (edges.get(edgeId)) { alert('This link already exists.'); return; }
+        var linkType = document.getElementById('linkTypeSelect').value;
+        var color = colorMap[linkType] || '#888';
+        edges.add({ id: edgeId, from: from, to: to, label: linkType, color: { color: color, highlight: color }, arrows: { to: { enabled: true } }, font: { size: 10, color: '#666' } });
+        linksData.push({ from: from, to: to, type: linkType, edgeId: edgeId });
         renderLinksTable();
-        network.unselectAll();
-    });
+        updateStats();
+        if (existingChainId) saveChain();
+    }
 
     function wouldCreateCycle(from, to) {
-        // BFS: can we reach `from` starting from `to`?
-        const visited = new Set();
-        const queue   = [to];
-        while (queue.length) {
-            const cur = queue.shift();
-            if (cur === from) return true;
-            if (visited.has(cur)) continue;
-            visited.add(cur);
-            edges.get().filter(e => e.from === cur).forEach(e => queue.push(e.to));
+        var adj = {};
+        nodes.getIds().forEach(function(id) { adj[id] = []; });
+        edges.get().forEach(function(e) { if (adj[e.from]) adj[e.from].push(e.to); });
+        if (adj[from]) adj[from].push(to);
+        var visited = {}, recStack = {};
+        function dfs(v) {
+            visited[v] = true; recStack[v] = true;
+            for (var i = 0; i < (adj[v] || []).length; i++) {
+                var w = adj[v][i];
+                if (!visited[w] && dfs(w)) return true;
+                if (recStack[w]) return true;
+            }
+            recStack[v] = false;
+            return false;
         }
+        for (var k in adj) { if (!visited[k] && dfs(k)) return true; }
         return false;
     }
 
-    function renderLinksTable() {
-        const el = document.getElementById('linksTable');
-        if (linksData.length === 0) {
-            el.innerHTML = '<span class="text-muted">No links yet.</span>';
-            return;
-        }
-        el.innerHTML = linksData.map(l => {
-            const colorMap = { Supports: 'success', Contradicts: 'danger', Refines: 'warning', Extends: 'primary' };
-            return `<div class="d-flex align-items-center gap-2 mb-1">
-                <span>${escHtml(truncate(argMap[l.from]?.title || l.from, 25))}</span>
-                <span class="badge bg-${colorMap[l.type]||'secondary'} link-type-badge">${l.type}</span>
-                <span>${escHtml(truncate(argMap[l.to]?.title || l.to, 25))}</span>
-                <button class="btn btn-link btn-sm text-danger p-0 ms-1 remove-link-btn" data-edge="${l.edgeId}">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>`;
-        }).join('');
+    function showNodeInfo(nodeId) {
+        var a = argMap[nodeId];
+        var bar = document.getElementById('nodeInfoBar');
+        bar.classList.add('active');
+        bar.innerHTML = '<strong>' + escHtml(a.title || nodeId) + '</strong> &middot; ' + escHtml(a.type || 'argument') + ' &middot; <a href="/Social/Argument/' + nodeId + '" target="_blank">Open <i class="bi bi-box-arrow-up-right"></i></a>';
+    }
 
-        el.querySelectorAll('.remove-link-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const edgeId = btn.dataset.edge;
-                edges.remove(edgeId);
-                const idx = linksData.findIndex(l => l.edgeId === edgeId);
-                if (idx !== -1) linksData.splice(idx, 1);
-                renderLinksTable();
+    var searchTimer = null;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        var q = this.value.trim();
+        if (q.length < 2) { document.getElementById('searchResults').innerHTML = ''; return; }
+        searchTimer = setTimeout(function() { searchArguments(q); }, 300);
+    });
+
+    function searchArguments(q) {
+        fetch('/api/arguments/search?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(results) { renderSearchResults(results); })
+            .catch(function(e) { console.error('Search error:', e); });
+    }
+
+    function renderSearchResults(results) {
+        var div = document.getElementById('searchResults');
+        if (!results || results.length === 0) { div.innerHTML = '<div class="cb-sr-item text-muted">No results</div>'; return; }
+        div.innerHTML = results.map(function(a) {
+            return '<div class="cb-sr-item" data-id="' + escAttr(a.id) + '" data-title="' + escAttr(a.title) + '" data-type="' + escAttr(a.type || '') + '">' +
+                '<strong>' + escHtml(a.title || a.id) + '</strong><br><small>' + escHtml(a.type || 'argument') + '</small></div>';
+        }).join('');
+        div.querySelectorAll('.cb-sr-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                addArgToGraph(this.dataset.id, this.dataset.title, this.dataset.type);
+                div.innerHTML = '';
+                document.getElementById('searchInput').value = '';
             });
         });
     }
 
-    // ── SignalR (live collaboration) ──────────────────────────────────────────
-    const hub = new signalR.HubConnectionBuilder()
-        .withUrl('/hubs/chains')
-        .withAutomaticReconnect()
-        .build();
+    function addArgToGraph(id, title, type) {
+        if (nodes.get(id)) return;
+        var color = type === 'premise' ? '#c07a3f' : type === 'conclusion' ? '#0f766e' : '#162131';
+        nodes.add({ id: id, label: truncate(title || id, 40), color: { background: '#fff', border: color, highlight: { background: '#f8f9fa', border: color } }, title: title });
+        argMap[id] = { title: title, type: type };
+        updateStats();
+        if (existingChainId) saveChain();
+    }
 
-    // Server → client events (see ChainUpdateHub).
-    hub.on('ChainArgumentAdded', ({ argument }) => {
-        if (!argument || nodes.get(argument.id)) return;
-        argMap[argument.id] = argument;
-        nodes.add({ id: argument.id, label: truncate(argument.title, 25), title: argument.claimText || argument.title });
-    });
-    hub.on('ChainArgumentRemoved', ({ argumentId }) => {
-        if (nodes.get(argumentId)) nodes.remove(argumentId);
-    });
-    hub.on('ChainLinkCreated', ({ link }) => {
-        if (!link) return;
-        const from = link.sourceArgumentId, to = link.targetArgumentId, type = link.linkType;
-        const edgeId = `${from}→${to}`;
-        if (!edges.get(edgeId)) {
-            edges.add({ id: edgeId, from, to, label: type });
-            linksData.push({ from, to, type, edgeId });
-            renderLinksTable();
-        }
-    });
+    function renderLinksTable() {
+        var div = document.getElementById('linksTableBody');
+        if (linksData.length === 0) { div.innerHTML = '<span class="text-muted" style="font-size:11px">No links yet. Use Link Mode to connect nodes.</span>'; return; }
+        div.innerHTML = linksData.map(function(l, i) {
+            var fromTitle = (argMap[l.from] && argMap[l.from].title) || l.from;
+            var toTitle = (argMap[l.to] && argMap[l.to].title) || l.to;
+            return '<div class="cb-link-item cb-link-type-' + escAttr(l.type) + '">' +
+                '<span class="badge bg-' + (l.type === 'Supports' ? 'success' : l.type === 'Contradicts' ? 'danger' : l.type === 'Refines' ? 'warning' : 'primary') + '">' + escHtml(l.type) + '</span>' +
+                '<span>' + escHtml(truncate(fromTitle, 20)) + ' <i class="bi bi-arrow-right"></i> ' + escHtml(truncate(toTitle, 20)) + '</span>' +
+                '<button class="btn btn-sm btn-outline-danger ms-auto" data-edge="' + escAttr(l.edgeId) + '" title="Remove link"><i class="bi bi-x"></i></button>' +
+                '</div>';
+        }).join('');
+        div.querySelectorAll('button[data-edge]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var edgeId = this.dataset.edge;
+                edges.remove(edgeId);
+                linksData = linksData.filter(function(l) { return l.edgeId !== edgeId; });
+                renderLinksTable();
+                updateStats();
+                if (existingChainId) saveChain();
+            });
+        });
+    }
 
-    hub.start()
-        .then(() => { if (existingChainId) hub.invoke('JoinChainSession', existingChainId).catch(() => {}); })
-        .catch(() => {});
+    function updateStats() {
+        document.getElementById('chainNodeCount').textContent = nodes.getIds().length;
+        document.getElementById('chainLinkCount').textContent = linksData.length;
+        document.getElementById('saveChainBtn').disabled = (nodes.getIds().length === 0);
+    }
 
-    // ── Save chain ────────────────────────────────────────────────────────────
+    // --- Save ---
     document.getElementById('saveChainBtn').addEventListener('click', saveChain);
 
-    async function saveChain() {
-        const title       = document.getElementById('chainTitle').value.trim();
-        const description = document.getElementById('chainDesc').value.trim();
-        const tags        = document.getElementById('chainTags').value.split(',').map(t => t.trim()).filter(Boolean);
-        const errEl       = document.getElementById('chainSaveError');
-        const spinner     = document.getElementById('saveChainSpinner');
-
-        errEl.classList.add('d-none');
-
-        if (!title) {
-            errEl.textContent = 'Chain title is required.';
-            errEl.classList.remove('d-none');
-            return;
-        }
-        if (nodes.length === 0) {
-            errEl.textContent = 'Add at least one argument to the chain.';
-            errEl.classList.remove('d-none');
-            return;
-        }
-
-        spinner.classList.remove('d-none');
-        document.getElementById('saveChainBtn').disabled = true;
-
-        try {
-            const argumentIds = nodes.getIds();
-
-            if (existingChainId) {
-                // Editing: update metadata only (argument membership managed via add/remove endpoints).
-                const res = await fetch(`/api/argumentchains/${existingChainId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, description, tags, isPublic: true })
-                });
-                if (!res.ok) throw new Error(await describeError(res));
-            } else {
-                // Creating: backend requires a rootArgumentId + the argument list (links are separate).
-                const rootArgumentId = computeRootArgument(argumentIds);
-                const res = await fetch('/api/argumentchains', {
+    function saveChain() {
+        var ids = nodes.getIds();
+        if (ids.length === 0) return;
+        if (existingChainId) {
+            // Update existing chain: add any missing arguments
+            var promises = ids.map(function(argId) {
+                return fetch('/api/argumentchains/' + existingChainId + '/arguments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, description, tags, rootArgumentId, argumentIds, isPublic: true })
+                    body: JSON.stringify({ argumentId: argId })
                 });
-                if (!res.ok) throw new Error(await describeError(res));
-                const data = await res.json();
-                existingChainId = data.id;
-
-                // Persist each link via the dedicated link API (server enforces cycle detection).
-                await persistLinks();
-
-                // Join the live collaboration session for this chain.
-                if (hub.state === 'Connected')
-                    hub.invoke('JoinChainSession', existingChainId).catch(() => {});
-            }
-
-            alert('Chain saved. ID: ' + existingChainId);
-        } catch (err) {
-            errEl.textContent = 'Save failed: ' + err.message;
-            errEl.classList.remove('d-none');
-        }
-
-        spinner.classList.add('d-none');
-        document.getElementById('saveChainBtn').disabled = false;
-    }
-
-    // The root is a node with no incoming edges; fall back to the first node.
-    function computeRootArgument(argumentIds) {
-        const hasIncoming = new Set(linksData.map(l => l.to));
-        const root = argumentIds.find(id => !hasIncoming.has(id));
-        return root || argumentIds[0];
-    }
-
-    async function persistLinks() {
-        for (const l of linksData) {
-            try {
-                const res = await fetch('/api/argumentlinks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sourceArgumentId: l.from,
-                        targetArgumentId: l.to,
-                        linkType: l.type
-                    })
-                });
-                if (res.ok && hub.state === 'Connected') {
-                    const link = await res.json();
-                    hub.invoke('NotifyLinkCreated', existingChainId, link).catch(() => {});
+            });
+            Promise.all(promises).then(function() {
+                document.getElementById('chainIdDisplay').textContent = existingChainId;
+            }).catch(function(e) { console.error('Save error:', e); });
+        } else {
+            // Create new chain
+            fetch('/api/argumentchains', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: 'Untitled Chain',
+                    rootArgumentId: ids[0],
+                    argumentIds: ids,
+                    isPublic: false
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.id) {
+                    existingChainId = data.id;
+                    document.getElementById('chainIdDisplay').textContent = data.id;
                 }
-            } catch { /* skip individual link failures; chain itself already saved */ }
+            })
+            .catch(function(e) { console.error('Save error:', e); });
         }
     }
 
-    async function describeError(res) {
-        const body = await res.json().catch(() => ({}));
-        return body.detail || body.title || `HTTP ${res.status}`;
+    // --- Toolbar buttons ---
+    document.getElementById('physicsBtn').addEventListener('click', function() {
+        var enabled = network.physics.options.enabled;
+        network.setOptions({ physics: { enabled: !enabled } });
+        this.classList.toggle('on', !enabled);
+    });
+
+    document.getElementById('layoutBtn').addEventListener('click', function() {
+        network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        if (confirm('Clear all nodes and links from the graph?')) {
+            nodes.clear();
+            edges.clear();
+            linksData = [];
+            argMap = {};
+            existingChainId = null;
+            document.getElementById('chainIdDisplay').textContent = '-';
+            renderLinksTable();
+            updateStats();
+            document.getElementById('nodeInfoBar').classList.remove('active');
+        }
+    });
+
+    // --- SignalR ---
+    var hub = new signalR.HubConnectionBuilder().withUrl('/hubs/chains').build();
+    hub.on('ChainUpdated', function(chainId, data) {
+        if (chainId !== existingChainId) return;
+        nodes.clear(); edges.clear(); linksData = []; argMap = {};
+        (data.arguments || []).forEach(function(a) { addArgToGraph(a.id, a.title, a.type); });
+        (data.links || []).forEach(function(l) {
+            var edgeId = l.sourceArgumentId + '->' + l.targetArgumentId;
+            var color = colorMap[l.linkType] || '#888';
+            edges.add({ id: edgeId, from: l.sourceArgumentId, to: l.targetArgumentId, label: l.linkType, color: { color: color, highlight: color }, arrows: { to: { enabled: true } }, font: { size: 10, color: '#666' } });
+            linksData.push({ from: l.sourceArgumentId, to: l.targetArgumentId, type: l.linkType, edgeId: edgeId });
+        });
+        renderLinksTable();
+        updateStats();
+    });
+    hub.start().catch(function(err) { console.error('SignalR connection failed:', err); });
+
+    // --- Helpers ---
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function escAttr(s) { return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function truncate(s, n) { return (s || '').length > n ? s.substring(0, n) + '...' : s; }
+
+    // --- Load existing chain if ID in URL ---
+    var urlParams = new URLSearchParams(window.location.search);
+    var chainIdFromUrl = urlParams.get('id');
+    if (chainIdFromUrl) {
+        fetch('/api/argumentchains/' + encodeURIComponent(chainIdFromUrl))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data && data.id) {
+                    existingChainId = data.id;
+                    document.getElementById('chainIdDisplay').textContent = data.id;
+                    (data.arguments || []).forEach(function(a) { addArgToGraph(a.id, a.title, a.type || 'argument'); });
+                    // Load links for this chain's arguments
+                    var ids = (data.arguments || []).map(function(a) { return a.id; });
+                    if (ids.length > 0) {
+                        ids.forEach(function(sourceId) {
+                            fetch('/api/argumentlinks?sourceId=' + sourceId)
+                                .then(function(r) { return r.json(); })
+                                .then(function(linkData) {
+                                    (linkData.items || []).forEach(function(l) {
+                                        if (ids.indexOf(l.targetArgumentId) === -1) return;
+                                        var edgeId = l.sourceArgumentId + '->' + l.targetArgumentId;
+                                        var color = colorMap[l.linkType] || '#888';
+                                        if (!edges.get(edgeId)) {
+                                            edges.add({ id: edgeId, from: l.sourceArgumentId, to: l.targetArgumentId, label: l.linkType, color: { color: color, highlight: color }, arrows: { to: { enabled: true } }, font: { size: 10, color: '#666' } });
+                                            linksData.push({ from: l.sourceArgumentId, to: l.targetArgumentId, type: l.linkType, edgeId: edgeId });
+                                        }
+                                    });
+                                    renderLinksTable();
+                                    updateStats();
+                                })
+                                .catch(function() {});
+                        });
+                    }
+                    renderLinksTable();
+                    updateStats();
+                }
+            })
+            .catch(function(e) { console.error('Load chain error:', e); });
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    function escHtml(str) {
-        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function truncate(str, n) {
-        str = String(str ?? '');
-        return str.length > n ? str.slice(0, n) + '…' : str;
-    }
-})();
-</script>
+    updateStats();
+})();</script>
 }

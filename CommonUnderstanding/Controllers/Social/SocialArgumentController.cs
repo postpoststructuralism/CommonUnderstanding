@@ -114,6 +114,38 @@ public class SocialArgumentController : ControllerBase
     }
 
     /// <summary>
+    /// Search public arguments by title (for Chain Builder).
+    /// </summary>
+    [HttpGet("search")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchArguments(
+        [FromQuery] string q,
+        [FromQuery] int limit = 20,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+            return Ok(Array.Empty<object>());
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var results = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.IsPublic && !a.IsShadowBanned && EF.Functions.ILike(a.Title, $"%{q}%"))
+            .OrderByDescending(a => a.WilsonScore)
+            .Take(Math.Min(limit, 50))
+            .Select(a => new
+            {
+                id = a.Id,
+                title = a.Title,
+                type = a.SourceArgumentId != null ? "argument" : "post",
+                wilsonScore = a.WilsonScore
+            })
+            .ToListAsync(ct);
+
+        return Ok(results);
+    }
+
+    /// <summary>
     /// Get paginated follow-up arguments for a parent argument
     /// </summary>
     [HttpGet("{id:guid}/follow-ups")]
