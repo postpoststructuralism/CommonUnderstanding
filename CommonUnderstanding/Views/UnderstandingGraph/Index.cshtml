@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Understanding Graph — Schema Explorer";
     var stats = ViewBag.Statistics as QuickStats;
+    var isHomePage = ViewBag.IsHomePage as bool? ?? false;
 }
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.css" />
@@ -341,7 +342,9 @@
 </div>
 
 <div class="graph-container">
-    <!-- Sidebar -->
+    <!-- Sidebar — hidden on homepage -->
+    @if (!isHomePage)
+    {
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>🔬 Schema Explorer</h1>
@@ -408,6 +411,7 @@
             </div>
         </div>
     </div>
+    }
 
     <!-- Visualization -->
     <div class="visualization">
@@ -469,103 +473,50 @@
     let allNodes = [];
     let allEdges = [];
     let currentHighlight = null;
+    let physicsEnabled = false;
 
-    // ── Tab switching ──
+    // ── Tab switching (safe: sidebar may be hidden on homepage) ──
     document.querySelectorAll('.sidebar-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
-            document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+            const target = document.getElementById('tab-' + tab.dataset.tab);
+            if (target) target.style.display = '';
         });
     });
 
-    // ── Search ──
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        const q = e.target.value.toLowerCase();
-        if (!q) {
-            resetView();
-            return;
-        }
-        const matchingIds = allNodes
-            .filter(n => n.label.toLowerCase().includes(q))
-            .map(n => n.id);
-        highlightNodes(matchingIds);
-    });
-
-    // ── Load graph data ──
-    async function loadGraph() {
-        const loadingEl = document.getElementById('graph-loading');
-        try {
-            loadingEl.classList.remove('hidden');
-            const res = await fetch('/api/understanding-graph/map');
-            const data = await res.json();
-
-            allNodes = data.nodes.map(n => ({
-                id: n.id,
-                label: n.label.length > 30 ? n.label.substring(0, 30) + '…' : n.label,
-                title: `<strong>${n.label}</strong><br/>
-                         Confidence: ${n.confidence.toFixed(3)}<br/>
-                         Centrality: ${n.degreeCentrality.toFixed(3)}<br/>
-                         Betweenness: ${n.betweennessCentrality.toFixed(3)}<br/>
-                         Clustering: ${n.clusteringCoefficient.toFixed(3)}<br/>
-                         Dialectical Temp: ${n.dialecticalTemperature.toFixed(3)}<br/>
-                         Controversy: ${n.controversyScore.toFixed(3)}<br/>
-                         Status: ${n.status}<br/>
-                         Evidence: ${n.evidenceCount}`,
-                value: Math.max(5, (n.degreeCentrality || 0.1) * 30),
-                color: getNodeColor(n),
-                group: n.status
-            }));
-
-            allEdges = data.edges.map(e => ({
-                id: e.id,
-                from: e.sourceId,
-                to: e.targetId,
-                label: e.edgeType,
-                value: Math.max(0.5, e.weight),
-                color: {
-                    color: '#0f766e',
-                    opacity: Math.min(1, Math.max(0.2, e.weight || 0.3))
-                },
-                width: Math.max(0.5, (e.weight || 0.5) * 3)
-            }));
-
-            nodes.clear();
-            edges.clear();
-            nodes.add(allNodes);
-            edges.add(allEdges);
-
-            drawNetwork();
-            loadingEl.classList.add('hidden');
-        } catch (err) {
-            console.error('Failed to load graph:', err);
-            loadingEl.classList.add('hidden');
-        }
+    // ── Search (safe: search box may be hidden on homepage) ──
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            if (!q) {
+                resetView();
+                return;
+            }
+            const matchingIds = allNodes
+                .filter(n => n.label.toLowerCase().includes(q))
+                .map(n => n.id);
+            highlightNodes(matchingIds);
+        });
     }
 
-    function getNodeColor(n) {
-        if (n.dialecticalTemperature > 0.7) return { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
-        if (n.controversyScore > 0.6) return { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
-        if (n.confidence > 0.7) return { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
-        if (n.schemaEntropy > 0.5) return { background: '#7c3aed', border: '#a78bfa', highlight: { background: '#a78bfa', border: '#7c3aed' } };
-        return { background: '#0f766e', border: '#14b8a6', highlight: { background: '#14b8a6', border: '#0f766e' } };
-    }
-
-    // ── Draw network ──
+    // ── Draw network instantly (empty canvas, no data yet) ──
     function drawNetwork() {
         const container = document.getElementById('graph-network');
         const options = {
             physics: {
+                enabled: false,  // start frozen — enable after data loads
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
-                    gravitationalConstant: -40,
-                    centralGravity: 0.005,
-                    springLength: 120,
-                    springConstant: 0.04,
+                    gravitationalConstant: -50,
+                    centralGravity: 0.003,
+                    springLength: 200,
+                    springConstant: 0.03,
                     damping: 0.4
                 },
-                stabilization: { iterations: 200 }
+                stabilization: { iterations: 200, fit: true }
             },
             layout: {
                 improvedLayout: true
@@ -575,7 +526,7 @@
                 font: { size: 9, color: '#667487', strokeWidth: 0 }
             },
             nodes: {
-                font: { size: 10, color: '#17202f', strokeWidth: 0 },
+                font: { size: 0, color: '#17202f', strokeWidth: 0 },
                 borderWidth: 1.5,
                 size: 12,
                 shape: 'dot'
@@ -609,6 +560,199 @@
                 window.location.href = '/UnderstandingGraph/Node/' + params.nodes[0];
             }
         });
+    }
+
+    // ── Enable physics after all data is loaded ──
+    function enablePhysics() {
+        if (physicsEnabled) return;
+        physicsEnabled = true;
+        if (network) {
+            // Listen for stabilization BEFORE starting physics
+            network.once('stabilized', () => {
+                doPostStabilizeZoom();
+            });
+            network.setOptions({ physics: { enabled: true } });
+            network.startSimulation();
+            
+            // Fallback: if stabilized doesn't fire within 10s, do it anyway
+            setTimeout(() => {
+                if (network && physicsEnabled) {
+                    doPostStabilizeZoom();
+                }
+            }, 10000);
+        }
+    }
+    
+    function doPostStabilizeZoom() {
+        if (window._zoomDone) return;
+        window._zoomDone = true;
+        network.fit({ animation: { duration: 600, easingFunction: 'easeInOutQuad' } });
+        // After fit animation completes, zoom out to show all nodes with margin
+        setTimeout(() => {
+            network.moveTo({
+                scale: 0.25,
+                animation: { duration: 400, easingFunction: 'easeInOutQuad' }
+            });
+            // Reveal labels
+            setTimeout(() => {
+                nodes.forEach(n => {
+                    nodes.update({ id: n.id, font: { size: 10, color: '#17202f', strokeWidth: 0 } });
+                });
+            }, 500);
+        }, 700);
+    }
+
+    // ── Load graph data (non-blocking: canvas is already visible) ──
+    async function loadGraph() {
+        const loadingEl = document.getElementById('graph-loading');
+
+        // Hide spinner immediately — the empty canvas is already rendered
+        if (loadingEl) loadingEl.classList.add('hidden');
+
+        try {
+            // Phase 1: Fetch root nodes
+            const rootRes = await fetch('/api/understanding-graph/roots?count=150');
+            if (!rootRes.ok) throw new Error(`Roots API returned ${rootRes.status}`);
+            const rootData = await rootRes.json();
+
+            if (rootData.statistics) {
+                const statNodes = document.getElementById('stat-nodes');
+                if (statNodes) statNodes.textContent = rootData.statistics.nodeCount || 0;
+            }
+
+            const rootMappedNodes = (rootData.nodes || []).map(mapNode);
+            const rootMappedEdges = (rootData.edges || []).map(mapEdge);
+
+            allNodes.push(...rootMappedNodes);
+            allEdges.push(...rootMappedEdges);
+
+            // Add all root data at once
+            nodes.add(rootMappedNodes);
+            edges.add(rootMappedEdges);
+
+            // Phase 2: Fetch leaf nodes
+            const rootIds = (rootData.nodes || []).map(n => n.id);
+            if (rootIds.length > 0) {
+                try {
+                    const leafRes = await fetch('/api/understanding-graph/leaves', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rootNodeIds: rootIds, maxNodes: 2000 })
+                    });
+                    if (!leafRes.ok) throw new Error(`Leaves API returned ${leafRes.status}`);
+                    const leafData = await leafRes.json();
+
+                    if (leafData.nodes && leafData.nodes.length > 0) {
+                        const leafMappedNodes = leafData.nodes.map(mapNode);
+                        const leafMappedEdges = (leafData.edges || []).map(mapEdge);
+
+                        // Dedup before adding
+                        const existingIds = new Set(allNodes.map(n => n.id));
+                        const existingEdgeIds = new Set(allEdges.map(e => e.id));
+
+                        const newNodes = leafMappedNodes.filter(n => !existingIds.has(n.id));
+                        const newEdges = leafMappedEdges.filter(e => !existingEdgeIds.has(e.id));
+
+                        newNodes.forEach(n => allNodes.push(n));
+                        newEdges.forEach(e => allEdges.push(e));
+
+                        nodes.add(newNodes);
+                        edges.add(newEdges);
+                    }
+                } catch (leafErr) {
+                    console.warn('Leaf nodes load failed (non-critical):', leafErr);
+                }
+            }
+
+            // All data loaded — enable physics for layout
+            enablePhysics();
+        } catch (err) {
+            console.error('Failed to load graph:', err);
+            if (loadingEl) {
+                loadingEl.classList.remove('hidden');
+                loadingEl.innerHTML = '<div style="text-align:center;color:#dc2626;"><p>⚠️ Failed to load graph</p><p style="font-size:12px;">Check that the server is running and the database is accessible.</p></div>';
+            }
+        }
+    }
+
+    // ── Stream nodes into vis in chunks using rAF to avoid blocking ──
+    function streamAddNodes(nodeList, chunkSize) {
+        return new Promise(resolve => {
+            let i = 0;
+            function addChunk() {
+                const chunk = nodeList.slice(i, i + chunkSize);
+                if (chunk.length > 0) {
+                    nodes.add(chunk);
+                    i += chunkSize;
+                    requestAnimationFrame(addChunk);
+                } else {
+                    resolve();
+                }
+            }
+            addChunk();
+        });
+    }
+
+    function streamAddEdges(edgeList, chunkSize) {
+        return new Promise(resolve => {
+            let i = 0;
+            function addChunk() {
+                const chunk = edgeList.slice(i, i + chunkSize);
+                if (chunk.length > 0) {
+                    edges.add(chunk);
+                    i += chunkSize;
+                    requestAnimationFrame(addChunk);
+                } else {
+                    resolve();
+                }
+            }
+            addChunk();
+        });
+    }
+
+    // ── Map raw node/edge data to vis format ──
+    function mapNode(n) {
+        const label = n.label || '(unnamed)';
+        return {
+            id: n.id,
+            label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
+            title: `<strong>${escHtml(label)}</strong><br/>
+                     Confidence: ${(n.confidence ?? 0).toFixed(3)}<br/>
+                     Centrality: ${(n.degreeCentrality ?? 0).toFixed(3)}<br/>
+                     Betweenness: ${(n.betweennessCentrality ?? 0).toFixed(3)}<br/>
+                     Clustering: ${(n.clusteringCoefficient ?? 0).toFixed(3)}<br/>
+                     Dialectical Temp: ${(n.dialecticalTemperature ?? 0).toFixed(3)}<br/>
+                     Controversy: ${(n.controversyScore ?? 0).toFixed(3)}<br/>
+                     Status: ${n.status || 'Unknown'}<br/>
+                     Evidence: ${n.evidenceCount ?? 0}`,
+            value: Math.max(5, (n.degreeCentrality || 0.1) * 30),
+            color: getNodeColor(n),
+            group: n.status || 'Unknown',
+            argumentIdsJson: n.argumentIdsJson || '[]'
+        };
+    }
+
+    function mapEdge(e) {
+        return {
+            id: e.id,
+            from: e.sourceId,
+            to: e.targetId,
+            label: e.edgeType,
+            value: Math.max(0.5, e.weight),
+            color: {
+                color: '#0f766e',
+                opacity: Math.min(1, Math.max(0.2, e.weight || 0.3))
+            },
+            width: Math.max(0.5, (e.weight || 0.5) * 3)
+        };
+    }
+
+    function getNodeColor(n) {
+        if (n.dialecticalTemperature > 0.7) return { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
+        if (n.controversyScore > 0.6) return { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
+        if (n.confidence > 0.7) return { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
+        if (n.schemaEntropy > 0.5) return { background: '#7c3aed', border: '#a78bfa', highlight: { background: '#a78bfa', border: '#7c3aed' } };
+        return { background: '#0f766e', border: '#14b8a6', highlight: { background: '#14b8a6', border: '#0f766e' } };
     }
 
     // ── Helpers ──
@@ -700,8 +844,25 @@
     }
 
     function showNodeDetail(nodeId) {
-        // Could show a detail panel — for now navigate to node page
-        // window.location.href = '/UnderstandingGraph/Node/' + nodeId;
+        // Find the node to check for linked SocialArguments
+        const node = allNodes.find(n => n.id === nodeId);
+        if (node && node.argumentIdsJson) {
+            try {
+                const argIds = JSON.parse(node.argumentIdsJson);
+                if (Array.isArray(argIds) && argIds.length > 0) {
+                    // Only use GUIDs (contain hyphens) — legacy argument IDs are plain integers
+                    const guidArgId = argIds.find(id => typeof id === 'string' && id.includes('-'));
+                    if (guidArgId) {
+                        window.location.href = '/SocialView/Detail/' + guidArgId;
+                        return;
+                    }
+                }
+            } catch (e) {
+                // Fall through to node detail page on parse error
+            }
+        }
+        // Fallback: navigate to the UnderstandingGraph node detail page
+        window.location.href = '/UnderstandingGraph/Node/' + nodeId;
     }
 
     // ── Color by metric ──
@@ -756,6 +917,9 @@
 
     // ── Controls setup ──
     document.addEventListener('DOMContentLoaded', () => {
+        // ── Draw the empty canvas IMMEDIATELY — zero lag ──
+        drawNetwork();
+
         // Color metric dropdown
         document.getElementById('color-metric').addEventListener('change', (e) => {
             recolorByMetric(e.target.value);
@@ -806,12 +970,16 @@
             }
         });
 
+        // Start loading data AFTER canvas is rendered
         loadGraph();
         loadSidebarData();
     });
 
-    // ── Lazy-load sidebar data ──
+    // ── Lazy-load sidebar data (only if sidebar is present) ──
     async function loadSidebarData() {
+        // Skip if sidebar elements don't exist (e.g., homepage)
+        if (!document.getElementById('stat-schemas')) return;
+
         try {
             const [schemas, syntheses, bridges, blindspots] = await Promise.all([
                 fetch('/api/understanding-graph/schemas').then(r => r.json()),

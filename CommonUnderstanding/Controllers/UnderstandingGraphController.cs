@@ -137,6 +137,33 @@ public class UnderstandingGraphController : Controller
     }
 
     /// <summary>
+    /// Returns only root nodes (high-confidence, high-centrality) for fast initial render.
+    /// The frontend loads these first, then streams in leaf nodes.
+    /// </summary>
+    [HttpGet("api/understanding-graph/roots")]
+    [OutputCache(Duration = 60)]
+    public async Task<IActionResult> GetRootNodes(int count = 150)
+    {
+        var map = await _queryService.GetRootNodesAsync(count);
+        return Json(map);
+    }
+
+    /// <summary>
+    /// Returns leaf nodes (everything except the given root IDs) for progressive loading.
+    /// </summary>
+    [HttpPost("api/understanding-graph/leaves")]
+    [OutputCache(Duration = 30)]
+    public async Task<IActionResult> GetLeafNodes([FromBody] LeafNodesRequest request)
+    {
+        if (request.RootNodeIds == null || request.RootNodeIds.Count == 0)
+            return Json(new GraphMap()); // nothing to add
+
+        var rootIdSet = new HashSet<int>(request.RootNodeIds);
+        var map = await _queryService.GetLeafNodesAsync(rootIdSet, request.MaxNodes > 0 ? request.MaxNodes : 2000);
+        return Json(map);
+    }
+
+    /// <summary>
     /// Returns schema details as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/schemas")]
@@ -415,4 +442,13 @@ public class UnderstandingGraphController : Controller
             return Json(new { success = false, message = ex.Message });
         }
     }
+}
+
+/// <summary>
+/// Request DTO for progressive leaf-node loading.
+/// </summary>
+public class LeafNodesRequest
+{
+    public List<int> RootNodeIds { get; set; } = new();
+    public int MaxNodes { get; set; } = 2000;
 }

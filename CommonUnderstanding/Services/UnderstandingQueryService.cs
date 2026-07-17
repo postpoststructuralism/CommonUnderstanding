@@ -2,6 +2,7 @@ using System.Text.Json;
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace CommonUnderstanding.Services;
 
@@ -13,13 +14,20 @@ namespace CommonUnderstanding.Services;
 public class UnderstandingQueryService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<UnderstandingQueryService> _logger;
+
+    private static readonly TimeSpan MapCacheDuration = TimeSpan.FromMinutes(5);
+    private const string MapCacheKey = "graph:map:full";
+    private const string RootNodesCacheKey = "graph:map:roots";
 
     public UnderstandingQueryService(
         IDbContextFactory<ApplicationDbContext> contextFactory,
+        IMemoryCache cache,
         ILogger<UnderstandingQueryService> logger)
     {
         _contextFactory = contextFactory;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -313,6 +321,170 @@ public class UnderstandingQueryService
     /// </summary>
     public async Task<GraphMap> GetMapAsync(int maxNodes = 2000, int maxEdges = 5000)
     {
+        // Try cache first
+        if (_cache.TryGetValue(MapCacheKey, out GraphMap? cached) && cached != null)
+        {
+            _logger.LogDebug("Graph map served from cache: {NodeCount} nodes, {EdgeCount} edges",
+                cached.Nodes.Count, cached.Edges.Count);
+            return cached;
+        }
+
+        var map = await BuildMapAsync(maxNodes, maxEdges);
+        _cache.Set(MapCacheKey, map, MapCacheDuration);
+        _logger.LogInformation("Graph map built and cached: {NodeCount} nodes, {EdgeCount} edges",
+            map.Nodes.Count, map.Edges.Count);
+        return map;
+    }
+
+    /// <summary>
+    /// Invalidates the graph map cache — call after mutations (new nodes, edges, schemas, etc.).
+    /// </summary>
+    public void InvalidateMapCache()
+    {
+        _cache.Remove(MapCacheKey);
+        _cache.Remove(RootNodesCacheKey);
+    }
+
+    /// <summary>
+    /// Gets only the "root" nodes — high-confidence, high-centrality nodes that form the
+    /// skeleton of the graph. These are the least likely to change and give immediate
+    /// visual structure. The frontend loads these first, then streams in leaf nodes.
+    /// </summary>
+    public async Task<GraphMap> GetRootNodesAsync(int count = 150)
+    {
+        if (_cache.TryGetValue(RootNodesCacheKey, out GraphMap? cached) && cached != null)
+            return cached;
+
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        // Root nodes: high confidence + high centrality, ordered by degree centrality desc.
+        // These are the "backbone" propositions that everything else connects to.
+        var nodes = await db.UnderstandingNodes
+            .Where(n => n.Confidence >= 0.4 && n.DegreeCentrality >= 0.005)
+            .OrderByDescending(n => n.DegreeCentrality)
+            .ThenByDescending(n => n.Confidence)
+            .Take(count)
+            .Select(n => new GraphMapNode
+            {
+                Id = n.Id,
+                Label = n.CanonicalText,
+                Confidence = n.Confidence,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                DialecticalTemperature = n.DialecticalTemperature,
+                ControversyScore = n.ControversyScore,
+                SchemaEntropy = n.SchemaEntropy,
+                Status = n.Status.ToString(),
+                EvidenceCount = n.EvidenceCount,
+                CreatedAt = n.FirstSeenAt,
+                ArgumentIdsJson = n.ArgumentIdsJson
+            })
+            .ToListAsync();
+
+        var loadedNodeIds = nodes.Select(n => n.Id).ToHashSet();
+
+        // Only edges between root nodes — keeps the skeleton clean
+        var edges = await db.UnderstandingEdges
+            .Where(e => loadedNodeIds.Contains(e.SourceNodeId) && loadedNodeIds.Contains(e.TargetNodeId))
+            .OrderByDescending(e => e.Weight)
+            .Take(500)
+            .Select(e => new GraphMapEdge
+            {
+                Id = e.Id,
+                SourceId = e.SourceNodeId,
+                TargetId = e.TargetNodeId,
+                EdgeType = e.Relationship,
+                Weight = e.Weight
+            })
+            .ToListAsync();
+
+        var totalNodeCount = await db.UnderstandingNodes.CountAsync();
+        var totalEdgeCount = await db.UnderstandingEdges.CountAsync();
+
+        var map = new GraphMap
+        {
+            Nodes = nodes,
+            Edges = edges,
+            Schemas = new(),  // not needed for root view
+            Syntheses = new(),
+            Statistics = new GraphMapStatistics
+            {
+                NodeCount = totalNodeCount,
+                EdgeCount = totalEdgeCount,
+                SchemaCount = 0,
+                SynthesisCount = 0,
+                AverageConfidence = nodes.Any() ? Math.Round(nodes.Average(n => n.Confidence), 4) : 0,
+                AverageDialecticalTemperature = nodes.Any() ? Math.Round(nodes.Average(n => n.DialecticalTemperature), 4) : 0,
+                AverageControversy = nodes.Any() ? Math.Round(nodes.Average(n => n.ControversyScore), 4) : 0
+            }
+        };
+
+        _cache.Set(RootNodesCacheKey, map, MapCacheDuration);
+        return map;
+    }
+
+    /// <summary>
+    /// Gets leaf nodes — nodes NOT in the provided root set. Used for progressive loading.
+    /// </summary>
+    public async Task<GraphMap> GetLeafNodesAsync(HashSet<int> rootNodeIds, int maxNodes = 2000)
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        var nodes = await db.UnderstandingNodes
+            .Where(n => !rootNodeIds.Contains(n.Id))
+            .OrderByDescending(n => n.Confidence)
+            .Take(maxNodes)
+            .Select(n => new GraphMapNode
+            {
+                Id = n.Id,
+                Label = n.CanonicalText,
+                Confidence = n.Confidence,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                DialecticalTemperature = n.DialecticalTemperature,
+                ControversyScore = n.ControversyScore,
+                SchemaEntropy = n.SchemaEntropy,
+                Status = n.Status.ToString(),
+                EvidenceCount = n.EvidenceCount,
+                CreatedAt = n.FirstSeenAt,
+                ArgumentIdsJson = n.ArgumentIdsJson
+            })
+            .ToListAsync();
+
+        var allNodeIds = rootNodeIds.Concat(nodes.Select(n => n.Id)).ToHashSet();
+
+        // Edges where at least one endpoint is a leaf (the other can be root or leaf)
+        var edges = await db.UnderstandingEdges
+            .Where(e => allNodeIds.Contains(e.SourceNodeId) && allNodeIds.Contains(e.TargetNodeId))
+            .OrderByDescending(e => e.Weight)
+            .Take(5000)
+            .Select(e => new GraphMapEdge
+            {
+                Id = e.Id,
+                SourceId = e.SourceNodeId,
+                TargetId = e.TargetNodeId,
+                EdgeType = e.Relationship,
+                Weight = e.Weight
+            })
+            .ToListAsync();
+
+        return new GraphMap
+        {
+            Nodes = nodes,
+            Edges = edges,
+            Schemas = new(),
+            Syntheses = new(),
+            Statistics = new GraphMapStatistics()
+        };
+    }
+
+    /// <summary>
+    /// Builds the full graph map from the database (uncached).
+    /// </summary>
+    private async Task<GraphMap> BuildMapAsync(int maxNodes = 2000, int maxEdges = 5000)
+    {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
         // Use projections to select only needed columns — avoids loading
@@ -332,7 +504,8 @@ public class UnderstandingQueryService
                 SchemaEntropy = n.SchemaEntropy,
                 Status = n.Status.ToString(),
                 EvidenceCount = n.EvidenceCount,
-                CreatedAt = n.FirstSeenAt
+                CreatedAt = n.FirstSeenAt,
+                ArgumentIdsJson = n.ArgumentIdsJson
             });
 
         var nodes = maxNodes > 0
@@ -576,6 +749,7 @@ public class GraphMapNode
     public string Status { get; set; } = string.Empty;
     public int EvidenceCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string ArgumentIdsJson { get; set; } = "[]";
 }
 
 public class GraphMapEdge

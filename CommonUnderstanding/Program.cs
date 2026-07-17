@@ -17,6 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddControllersWithViews();
 
+// In-memory caching for graph map, stats, etc.
+builder.Services.AddMemoryCache();
+
 // Add EF Core with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -275,7 +278,7 @@ app.MapControllerRoute(
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=SocialView}/{action=Feed}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");
