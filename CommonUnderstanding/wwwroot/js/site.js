@@ -92,12 +92,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add smooth scroll behavior to anchor links
     initSmoothScroll();
     
-    // Initialize tooltips if Bootstrap is available
+    // Initialize tooltips if Bootstrap is available AND tooltips exist on the page
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+        if (tooltipTriggerList.length > 0) {
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
     }
     
     console.log('GC Design System initialized');

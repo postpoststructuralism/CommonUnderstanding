@@ -252,6 +252,58 @@ public class UnderstandingGraphController : Controller
     }
 
     /// <summary>
+    /// Returns a single node's detail as JSON for the slide-in panel.
+    /// Uses a lightweight projection — no heavy embedding vectors.
+    /// </summary>
+    [HttpGet("api/understanding-graph/node/{id}")]
+    [OutputCache(Duration = 15, VaryByRouteValueNames = new[] { "id" })]
+    public async Task<IActionResult> GetNodeDetail(int id)
+    {
+        var node = await _graphService.GetNodeWithEdgesAsync(id);
+        if (node == null) return NotFound(new { error = "Node not found" });
+
+        return Json(new
+        {
+            node.Id,
+            node.CanonicalText,
+            node.Status,
+            node.Confidence,
+            node.DegreeCentrality,
+            node.BetweennessCentrality,
+            node.ClusteringCoefficient,
+            node.PageRank,
+            node.EigenvectorCentrality,
+            node.DialecticalTemperature,
+            node.ControversyScore,
+            node.SchemaEntropy,
+            node.EvidenceCount,
+            node.FirstSeenAt,
+            SchemaMemberships = node.SchemaMemberships.Select(m => new
+            {
+                m.SchemaId,
+                SchemaLabel = m.Schema?.Label ?? "Unknown",
+                m.Weight
+            }),
+            OutboundEdges = node.OutboundEdges.Select(e => new
+            {
+                e.Id,
+                e.TargetNodeId,
+                TargetNode = e.TargetNode != null ? new { e.TargetNode.Id, e.TargetNode.CanonicalText } : null,
+                e.Relationship,
+                e.Weight
+            }),
+            InboundEdges = node.InboundEdges.Select(e => new
+            {
+                e.Id,
+                e.SourceNodeId,
+                SourceNode = e.SourceNode != null ? new { e.SourceNode.Id, e.SourceNode.CanonicalText } : null,
+                e.Relationship,
+                e.Weight
+            })
+        });
+    }
+
+    /// <summary>
     /// Triggers a new snapshot capture.
     /// </summary>
     [HttpPost("api/understanding-graph/capture-snapshot")]

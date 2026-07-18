@@ -321,6 +321,94 @@
         background: var(--cu-border-light);
         border-radius: 3px;
     }
+
+    /* ── Slide-in Node Detail Panel ── */
+    .node-detail-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 420px;
+        max-width: 90vw;
+        height: 100%;
+        background: #fff;
+        border-left: 1px solid var(--cu-border-light);
+        box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        animation: slideInRight 0.25s ease-out;
+        overflow: hidden;
+    }
+    @@keyframes slideInRight {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+    .node-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--cu-border-light);
+        background: linear-gradient(135deg, rgba(var(--cu-secondary-rgb), 0.06), rgba(var(--cu-accent-rgb), 0.04));
+    }
+    .node-detail-header h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--cu-primary-blue);
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 320px;
+    }
+    .node-detail-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--cu-text-muted);
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        transition: color 0.15s;
+    }
+    .node-detail-close:hover { color: var(--cu-primary-blue); }
+    .node-detail-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .node-detail-body .meta-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--cu-border-light);
+    }
+    .node-detail-body .meta-label {
+        color: var(--cu-text-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .node-detail-body .meta-value {
+        font-weight: 600;
+        color: var(--cu-primary-blue);
+        font-size: 13px;
+    }
+    .node-detail-body .section-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--cu-secondary-blue);
+        margin: 16px 0 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--cu-border-light);
+    }
+    .node-detail-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--cu-border-light);
+        text-align: center;
+    }
 </style>
 
 <!-- ── Pipeline Action Panel ── -->
@@ -460,6 +548,23 @@
             <div class="graph-loading" id="graph-loading">
                 <div class="spinner"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Slide-in Node Detail Panel (loads via AJAX — no full page navigation) -->
+    <div id="node-detail-panel" class="node-detail-panel" style="display:none;">
+        <div class="node-detail-header">
+            <h3 id="node-detail-title">Node Detail</h3>
+            <button class="node-detail-close" onclick="closeNodeDetail()" title="Close">×</button>
+        </div>
+        <div class="node-detail-body" id="node-detail-body">
+            <div style="text-align:center;padding:40px;color:var(--cu-text-muted);">
+                <div class="spinner"></div>
+                <p style="margin-top:12px;">Loading...</p>
+            </div>
+        </div>
+        <div class="node-detail-actions">
+            <a id="node-detail-full-link" href="#" class="btn btn-sm btn-outline-primary" style="border-radius:0.7rem;">Open Full Page →</a>
         </div>
     </div>
 </div>
@@ -847,25 +952,78 @@
     }
 
     function showNodeDetail(nodeId) {
-        // Find the node to check for linked SocialArguments
-        const node = allNodes.find(n => n.id === nodeId);
-        if (node && node.argumentIdsJson) {
-            try {
-                const argIds = JSON.parse(node.argumentIdsJson);
-                if (Array.isArray(argIds) && argIds.length > 0) {
-                    // Only use GUIDs (contain hyphens) — legacy argument IDs are plain integers
-                    const guidArgId = argIds.find(id => typeof id === 'string' && id.includes('-'));
-                    if (guidArgId) {
-                        window.location.href = '/SocialView/Detail/' + guidArgId;
-                        return;
-                    }
-                }
-            } catch (e) {
-                // Fall through to node detail page on parse error
-            }
-        }
-        // Fallback: navigate to the UnderstandingGraph node detail page
-        window.location.href = '/UnderstandingGraph/Node/' + nodeId;
+        // Show slide-in panel immediately with loading state
+        const panel = document.getElementById('node-detail-panel');
+        const body = document.getElementById('node-detail-body');
+        const title = document.getElementById('node-detail-title');
+        const fullLink = document.getElementById('node-detail-full-link');
+        
+        // Set the full page link
+        fullLink.href = '/UnderstandingGraph/Node/' + nodeId;
+        
+        // Show panel with loading spinner
+        title.textContent = 'Loading...';
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--cu-text-muted);"><div class="spinner"></div><p style="margin-top:12px;">Loading node details...</p></div>';
+        panel.style.display = 'flex';
+        
+        // Fetch node details via AJAX (fast — no full page reload)
+        fetch('/api/understanding-graph/node/' + nodeId)
+            .then(r => {
+                if (!r.ok) throw new Error('Node not found');
+                return r.json();
+            })
+            .then(node => {
+                title.textContent = node.canonicalText && node.canonicalText.length > 50 
+                    ? node.canonicalText.substring(0, 50) + '…' 
+                    : (node.canonicalText || 'Node ' + nodeId);
+                
+                const statusBadge = node.status === 'Settled' 
+                    ? '<span class="badge" style="background:rgba(15,118,110,0.12);color:#0f766e;">Settled</span>'
+                    : node.status === 'Contested'
+                    ? '<span class="badge" style="background:rgba(192,122,63,0.12);color:#c07a3f;">Contested</span>'
+                    : '<span class="badge" style="background:rgba(102,116,135,0.12);color:#667487;">' + (node.status || 'Unknown') + '</span>';
+                
+                body.innerHTML = 
+                    '<p style="font-size:14px;color:var(--cu-primary-blue);margin-bottom:16px;">' + escHtml(node.canonicalText || '') + '</p>' +
+                    '<div class="meta-row"><span class="meta-label">Status</span><span class="meta-value">' + statusBadge + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Confidence</span><span class="meta-value">' + (node.confidence || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Degree Centrality</span><span class="meta-value">' + (node.degreeCentrality || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Betweenness</span><span class="meta-value">' + (node.betweennessCentrality || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Clustering</span><span class="meta-value">' + (node.clusteringCoefficient || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">PageRank</span><span class="meta-value">' + (node.pageRank || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Dialectical Temp</span><span class="meta-value">' + (node.dialecticalTemperature || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Controversy</span><span class="meta-value">' + (node.controversyScore || 0).toFixed(3) + '</span></div>' +
+                    '<div class="meta-row"><span class="meta-label">Evidence Count</span><span class="meta-value">' + (node.evidenceCount || 0) + '</span></div>' +
+                    (node.schemaMemberships && node.schemaMemberships.length > 0 
+                        ? '<div class="section-label">Schema Memberships</div>' + 
+                          node.schemaMemberships.map(m => 
+                            '<div class="meta-row"><span><a href="/UnderstandingGraph/Schema/' + m.schemaId + '" style="color:var(--cu-secondary-blue);">' + escHtml(m.schemaLabel || 'Schema ' + m.schemaId) + '</a></span><span style="font-size:12px;color:var(--cu-text-muted);">Weight: ' + (m.weight || 0).toFixed(3) + '</span></div>'
+                          ).join('')
+                        : '') +
+                    (node.outboundEdges && node.outboundEdges.length > 0
+                        ? '<div class="section-label">Outbound Edges (' + node.outboundEdges.length + ')</div>' +
+                          node.outboundEdges.slice(0, 10).map(e =>
+                            '<div class="meta-row"><span style="font-size:12px;">→ ' + escHtml(e.targetNode?.canonicalText || 'Node ' + e.targetNodeId) + '</span><span style="font-size:11px;color:var(--cu-text-muted);">' + escHtml(e.relationship || '') + ' (' + (e.weight || 0).toFixed(2) + ')</span></div>'
+                          ).join('') +
+                          (node.outboundEdges.length > 10 ? '<p style="font-size:11px;color:var(--cu-text-muted);text-align:center;">+ ' + (node.outboundEdges.length - 10) + ' more — <a href=\'/UnderstandingGraph/Node/' + nodeId + '\'>see full page</a></p>' : '')
+                        : '') +
+                    (node.inboundEdges && node.inboundEdges.length > 0
+                        ? '<div class="section-label">Inbound Edges (' + node.inboundEdges.length + ')</div>' +
+                          node.inboundEdges.slice(0, 10).map(e =>
+                            '<div class="meta-row"><span style="font-size:12px;">← ' + escHtml(e.sourceNode?.canonicalText || 'Node ' + e.sourceNodeId) + '</span><span style="font-size:11px;color:var(--cu-text-muted);">' + escHtml(e.relationship || '') + ' (' + (e.weight || 0).toFixed(2) + ')</span></div>'
+                          ).join('') +
+                          (node.inboundEdges.length > 10 ? '<p style="font-size:11px;color:var(--cu-text-muted);text-align:center;">+ ' + (node.inboundEdges.length - 10) + ' more — <a href=\'/UnderstandingGraph/Node/' + nodeId + '\'>see full page</a></p>' : '')
+                        : '');
+            })
+            .catch(err => {
+                console.error('Failed to load node detail:', err);
+                title.textContent = 'Error';
+                body.innerHTML = '<p style="color:#dc2626;">Failed to load node details. <a href=\'/UnderstandingGraph/Node/' + nodeId + '\'>Open full page instead</a>.</p>';
+            });
+    }
+    
+    function closeNodeDetail() {
+        document.getElementById('node-detail-panel').style.display = 'none';
     }
 
     // ── Color by metric ──

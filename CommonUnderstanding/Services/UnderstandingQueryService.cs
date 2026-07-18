@@ -102,17 +102,18 @@ public class UnderstandingQueryService
     public async Task<List<NodeSchemaMembership>> GetSchemaForNodeAsync(int nodeId)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
+        // Use projection to avoid loading full Schema entity with all navigation properties
         var memberships = await db.SchemaMemberships
-            .Include(m => m.Schema)
             .Where(m => m.NodeId == nodeId)
+            .Select(m => new NodeSchemaMembership
+            {
+                SchemaId = m.SchemaId,
+                SchemaLabel = m.Schema.Label,
+                Weight = m.Weight
+            })
             .ToListAsync();
 
-        return memberships.Select(m => new NodeSchemaMembership
-        {
-            SchemaId = m.SchemaId,
-            SchemaLabel = m.Schema?.Label ?? "Unknown",
-            Weight = m.Weight
-        }).ToList();
+        return memberships;
     }
 
     /// <summary>
@@ -121,21 +122,22 @@ public class UnderstandingQueryService
     public async Task<List<SchemaNodeDetail>> GetSchemaNodesAsync(int schemaId)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
+        // Use projection to avoid loading heavy embedding vectors from UnderstandingNode
         var memberships = await db.SchemaMemberships
-            .Include(m => m.Node)
             .Where(m => m.SchemaId == schemaId)
             .OrderByDescending(m => m.Weight)
+            .Select(m => new SchemaNodeDetail
+            {
+                NodeId = m.NodeId,
+                CanonicalText = m.Node.CanonicalText,
+                Confidence = m.Node.Confidence,
+                Weight = m.Weight,
+                DegreeCentrality = m.Node.DegreeCentrality,
+                DialecticalTemperature = m.Node.DialecticalTemperature
+            })
             .ToListAsync();
 
-        return memberships.Select(m => new SchemaNodeDetail
-        {
-            NodeId = m.NodeId,
-            CanonicalText = m.Node?.CanonicalText ?? "Unknown",
-            Confidence = m.Node?.Confidence ?? 0,
-            Weight = m.Weight,
-            DegreeCentrality = m.Node?.DegreeCentrality ?? 0,
-            DialecticalTemperature = m.Node?.DialecticalTemperature ?? 0
-        }).ToList();
+        return memberships;
     }
 
     // ── Dialectical Queries ───────────────────────────────────────────────
@@ -148,23 +150,23 @@ public class UnderstandingQueryService
         double minWeight = 0.3, int count = 50)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        var edges = await db.UnderstandingEdges
-            .Include(e => e.SourceNode)
-            .Include(e => e.TargetNode)
+        // Use projection to avoid loading heavy embedding vectors from SourceNode/TargetNode
+        var pairs = await db.UnderstandingEdges
             .Where(e => e.Weight >= minWeight)
             .OrderByDescending(e => e.Weight)
             .Take(count)
+            .Select(e => new DialecticalPair
+            {
+                SourceId = e.SourceNodeId,
+                SourceLabel = e.SourceNode.CanonicalText,
+                TargetId = e.TargetNodeId,
+                TargetLabel = e.TargetNode.CanonicalText,
+                Relationship = e.Relationship,
+                Weight = e.Weight
+            })
             .ToListAsync();
 
-        return edges.Select(e => new DialecticalPair
-        {
-            SourceId = e.SourceNodeId,
-            SourceLabel = e.SourceNode?.CanonicalText ?? "Unknown",
-            TargetId = e.TargetNodeId,
-            TargetLabel = e.TargetNode?.CanonicalText ?? "Unknown",
-            Relationship = e.Relationship,
-            Weight = e.Weight
-        }).ToList();
+        return pairs;
     }
 
     /// <summary>
@@ -174,25 +176,42 @@ public class UnderstandingQueryService
     public async Task<SynthesisChain?> GetSynthesisChainAsync(int synthesisId)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
+        // Use projection to avoid loading heavy embedding vectors from SynthesisNode
         var synthesis = await db.DialecticalSyntheses
-            .Include(ds => ds.SynthesisNode)
-            .FirstOrDefaultAsync(ds => ds.Id == synthesisId);
+            .Where(ds => ds.Id == synthesisId)
+            .Select(ds => new
+            {
+                ds.Id,
+                ds.ParentNodeIdsJson,
+                ds.SynthesisNodeId,
+                SynthesisLabel = ds.SynthesisNode.CanonicalText,
+                ds.Depth,
+                ds.ResolutionNarrative,
+                ds.IsAccepted,
+                ds.CreatedAt
+            })
+            .FirstOrDefaultAsync();
 
         if (synthesis == null) return null;
 
         // Parse parent node IDs from JSON
         var parentNodeIds = JsonSerializer.Deserialize<List<int>>(synthesis.ParentNodeIdsJson) ?? new();
-        var parentNodes = parentNodeIds.Count > 0
-            ? await db.UnderstandingNodes.Where(n => parentNodeIds.Contains(n.Id)).ToListAsync()
-            : new List<UnderstandingNode>();
+        
+        // Only load CanonicalText for parent nodes — skip embeddings
+        var parentLabels = parentNodeIds.Count > 0
+            ? await db.UnderstandingNodes
+                .Where(n => parentNodeIds.Contains(n.Id))
+                .Select(n => n.CanonicalText)
+                .ToListAsync()
+            : new List<string>();
 
         return new SynthesisChain
         {
             SynthesisId = synthesis.Id,
             ParentNodeIds = parentNodeIds,
-            ParentLabels = parentNodes.Select(n => n.CanonicalText).ToList(),
+            ParentLabels = parentLabels,
             SynthesisNodeId = synthesis.SynthesisNodeId,
-            SynthesisLabel = synthesis.SynthesisNode?.CanonicalText ?? "Unknown",
+            SynthesisLabel = synthesis.SynthesisLabel,
             Depth = synthesis.Depth,
             ResolutionNarrative = synthesis.ResolutionNarrative,
             IsAccepted = synthesis.IsAccepted,
@@ -206,26 +225,30 @@ public class UnderstandingQueryService
     public async Task<List<SynthesisSummary>> GetAllSynthesesAsync()
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
+        // Use projection to avoid loading heavy embedding vectors from SynthesisNode
         var syntheses = await db.DialecticalSyntheses
-            .Include(ds => ds.SynthesisNode)
             .OrderByDescending(ds => ds.Depth)
             .ThenByDescending(ds => ds.CreatedAt)
-            .ToListAsync();
-
-        return syntheses.Select(ds =>
-        {
-            var parentNodeIds = JsonSerializer.Deserialize<List<int>>(ds.ParentNodeIdsJson) ?? new();
-            return new SynthesisSummary
+            .Select(ds => new SynthesisSummary
             {
                 Id = ds.Id,
-                ParentNodeIds = parentNodeIds,
-                SynthesisLabel = ds.SynthesisNode?.CanonicalText ?? "Unknown",
+                ParentNodeIds = new List<int>(), // populated below
+                SynthesisLabel = ds.SynthesisNode.CanonicalText,
                 Depth = ds.Depth,
                 ResolutionNarrative = ds.ResolutionNarrative,
                 IsAccepted = ds.IsAccepted,
-                CreatedAt = ds.CreatedAt
-            };
-        }).ToList();
+                CreatedAt = ds.CreatedAt,
+                ParentNodeIdsJson = ds.ParentNodeIdsJson
+            })
+            .ToListAsync();
+
+        // Parse JSON in-memory (avoids loading full entities)
+        foreach (var s in syntheses)
+        {
+            s.ParentNodeIds = JsonSerializer.Deserialize<List<int>>(s.ParentNodeIdsJson) ?? new();
+        }
+
+        return syntheses;
     }
 
     // ── Bridge Nodes ──────────────────────────────────────────────────────
@@ -687,6 +710,7 @@ public class SynthesisSummary
 {
     public int Id { get; set; }
     public List<int> ParentNodeIds { get; set; } = new();
+    public string ParentNodeIdsJson { get; set; } = "[]";
     public string SynthesisLabel { get; set; } = string.Empty;
     public int Depth { get; set; }
     public string ResolutionNarrative { get; set; } = string.Empty;
