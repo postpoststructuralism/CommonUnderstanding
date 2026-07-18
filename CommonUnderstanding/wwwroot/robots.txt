@@ -1,0 +1,10 @@
+User-agent: *
+# Disallow all API routes from crawling — these are JSON endpoints
+# that trigger expensive database queries and should not be indexed.
+Disallow: /api/
+
+# Allow everything else (pages, static assets, etc.)
+Allow: /
+
+# Sitemap location (if you have one)
+# Sitemap: https://yourdomain.com/sitemap.xml

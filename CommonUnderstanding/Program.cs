@@ -252,6 +252,7 @@ else
 app.UseHttpsRedirection();
 app.UseResponseCompression();
 app.UseOutputCache();
+app.UseMiddleware<CommonUnderstanding.Middleware.ApiRobotsTagMiddleware>();
 app.UseStaticFiles();
 app.UseRouting();
 
