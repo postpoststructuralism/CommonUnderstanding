@@ -712,6 +712,52 @@ public class ArgumentController : Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    //  POST /Argument/SubmitInline  — contextual inline contribution
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Accepts an argument submitted inline from a context page (proposition,
+    /// graph node, schema, navigator, or map region). Creates a draft argument
+    /// and returns JSON with the argument ID and analysis URL for the client
+    /// to redirect to.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> SubmitInline([FromBody] InlineContributionModel model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { error = "Please provide at least 30 characters of argument text." });
+
+        var rawText = model.ArgumentText.Trim();
+        var firstSentenceEnd = rawText.IndexOfAny(new[] { '.', '!', '?' });
+        var provisionalTitle = firstSentenceEnd > 0 && firstSentenceEnd <= 120
+            ? rawText[..firstSentenceEnd].Trim()
+            : rawText[..Math.Min(80, rawText.Length)].Trim();
+        if (provisionalTitle.Length > 100)
+            provisionalTitle = provisionalTitle[..97] + "…";
+
+        var argument = new Argument
+        {
+            Title = provisionalTitle,
+            RawText = rawText,
+            SubmittedBy = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            Status = ArgumentStatus.Draft
+        };
+
+        _db.Arguments.Add(argument);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Inline argument {Id} submitted from {ContextType}:{ContextId} ({ContextLabel})",
+            argument.Id, model.ContextType, model.ContextId, model.ContextLabel);
+
+        return Json(new
+        {
+            argumentId = argument.Id,
+            analyzeUrl = Url.Action(nameof(Analyze), new { id = argument.Id })
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     //  POST /Argument/Delete/{id}
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1108,4 +1154,23 @@ public class ReviewPremise
 {
     public int Id { get; set; }
     public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// ViewModel for inline contextual argument submission from proposition,
+/// graph node, schema, navigator, or map region pages.
+/// </summary>
+public class InlineContributionModel
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MinLength(30, ErrorMessage = "Please provide at least 30 characters of argument text.")]
+    public string ArgumentText { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string ContextType { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string ContextId { get; set; } = string.Empty;
+
+    public string? ContextLabel { get; set; }
 }

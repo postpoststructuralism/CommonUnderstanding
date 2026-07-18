@@ -1,0 +1,103 @@
+@* 
+    Inline "What do you think?" contribution input.
+    Usage: @await Html.PartialAsync("_InlineContribution", (contextLabel, contextType, contextId))
+    - contextLabel: Human-readable label for the context (e.g., "remote work productivity")
+    - contextType: "Proposition", "Node", "Schema", "Navigator", "MapRegion"
+    - contextId: The ID of the entity being viewed
+*@
+@model (string ContextLabel, string ContextType, string ContextId)
+
+@{
+    var placeholder = Model.ContextType switch
+    {
+        "Proposition" => $"What do you think about \"{Model.ContextLabel}\"? Share your reasoning, evidence, or counter-argument…",
+        "Node" => $"Add your perspective on \"{Model.ContextLabel}\"…",
+        "Schema" => $"What's your view on the \"{Model.ContextLabel}\" schema?",
+        "Navigator" => "Add your perspective on this dialectical relationship…",
+        "MapRegion" => "What do you think about this region of the map?",
+        _ => "What do you think about this?"
+    };
+    var headingLabel = Model.ContextType switch
+    {
+        "Proposition" => $"What do you think about this?",
+        "Node" => $"Add your perspective on {Model.ContextLabel}",
+        "Schema" => $"Add your perspective on the {Model.ContextLabel} schema",
+        "Navigator" => "Add your perspective",
+        "MapRegion" => "Add your perspective on this map region",
+        _ => "What do you think?"
+    };
+}
+
+<div class="inline-contribution" id="inline-contribution-@Model.ContextId">
+    <div class="card border-0 shadow-sm" style="border-radius: 0.75rem;">
+        <div class="card-body p-3">
+            <!-- Collapsed trigger -->
+            <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex align-items-center gap-2"
+                    id="inline-trigger-@Model.ContextId"
+                    onclick="toggleInlineContribution('@Model.ContextId')"
+                    style="border-radius: 0.5rem; border-style: dashed;">
+                <i class="bi bi-chat-left-text"></i>
+                <span>@headingLabel</span>
+                <i class="bi bi-chevron-down ms-auto" id="inline-chevron-@Model.ContextId"></i>
+            </button>
+
+            <!-- Expanded form (hidden by default) -->
+            <div id="inline-form-@Model.ContextId" style="display: none; margin-top: 0.75rem;">
+                <form id="inlineContributionForm-@Model.ContextId" onsubmit="return submitInlineContribution('@Model.ContextId', event)">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="contextType" value="@Model.ContextType" />
+                    <input type="hidden" name="contextId" value="@Model.ContextId" />
+                    <input type="hidden" name="contextLabel" value="@Model.ContextLabel" />
+
+                    <div class="mb-3">
+                        <textarea class="form-control font-monospace"
+                                  name="argumentText"
+                                  id="inline-textarea-@Model.ContextId"
+                                  rows="5"
+                                  style="font-size: 0.875rem; line-height: 1.6; resize: vertical;"
+                                  placeholder="@placeholder"
+                                  maxlength="10000"
+                                  required></textarea>
+                        <div class="d-flex justify-content-between mt-1">
+                            <span class="form-text text-muted" style="font-size: 0.75rem;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Your contribution will be analyzed and added to the map
+                            </span>
+                            <span class="text-muted" style="font-size: 0.75rem;">
+                                <span id="inline-charcount-@Model.ContextId">0</span> / 10,000
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="toggleInlineContribution('@Model.ContextId')">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-sm btn-primary" id="inline-submit-btn-@Model.ContextId">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" id="inline-spinner-@Model.ContextId"></span>
+                            <i class="bi bi-send me-1"></i>Add to The Map
+                        </button>
+                    </div>
+
+                    <div id="inline-result-@Model.ContextId" class="mt-2" style="display: none;"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // Character counter
+    const textarea = document.getElementById('inline-textarea-@Model.ContextId');
+    const counter = document.getElementById('inline-charcount-@Model.ContextId');
+    if (textarea && counter) {
+        textarea.addEventListener('input', function() {
+            counter.textContent = this.value.length.toLocaleString();
+        });
+    }
+})();
+</script>

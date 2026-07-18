@@ -200,3 +200,14 @@
         <p style="color:var(--text-secondary);">Schema not found.</p>
     }
 </div>
+
+@{
+    var schemaLabel = schema?.Label ?? "this schema";
+    if (schemaLabel.Length > 80) { schemaLabel = schemaLabel[..77] + "…"; }
+}
+@await Html.PartialAsync("_InlineContribution",
+    (ContextLabel: schemaLabel, ContextType: "Schema", ContextId: (schema?.Id ?? 0).ToString()))
+
+@section Scripts {
+<script src="~/js/inline-contribution.js"></script>
+}

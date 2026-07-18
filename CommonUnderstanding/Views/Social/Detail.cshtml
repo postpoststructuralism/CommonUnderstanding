@@ -1014,6 +1014,16 @@
     </div>
 }
 
+@{
+    // ── Inline "What do you think?" contribution ─────────────────────────
+    var contextLabel = Model.ClaimProposition?.Text
+        ?? Model.Title
+        ?? "this argument";
+    if (contextLabel.Length > 80) { contextLabel = contextLabel[..77] + "…"; }
+}
+@await Html.PartialAsync("_InlineContribution",
+    (ContextLabel: contextLabel, ContextType: "Proposition", ContextId: Model.Id.ToString()))
+
 <div id="replies" class="mt-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">
@@ -1115,6 +1125,7 @@
 </div>
 
 @section Scripts {
+<script src="~/js/inline-contribution.js"></script>
 <!-- ── Vote Modal ─────────────────────────────────────────────────────────── -->
 <div class="modal fade" id="voteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">

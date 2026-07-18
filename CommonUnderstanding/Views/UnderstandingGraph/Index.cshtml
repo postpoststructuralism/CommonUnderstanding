@@ -464,6 +464,9 @@
     </div>
 </div>
 
+@await Html.PartialAsync("_InlineContribution",
+    (ContextLabel: "the understanding graph", ContextType: "MapRegion", ContextId: "schema-explorer"))
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 <script>
     // ── State ──
@@ -1111,3 +1114,7 @@
         }
     }
 </script>
+
+@section Scripts {
+<script src="~/js/inline-contribution.js"></script>
+}

@@ -192,3 +192,14 @@
         <p style="color:var(--text-secondary);">Node not found.</p>
     }
 </div>
+
+@{
+    var nodeLabel = node?.CanonicalText ?? "this node";
+    if (nodeLabel.Length > 80) { nodeLabel = nodeLabel[..77] + "…"; }
+}
+@await Html.PartialAsync("_InlineContribution",
+    (ContextLabel: nodeLabel, ContextType: "Node", ContextId: (node?.Id ?? 0).ToString()))
+
+@section Scripts {
+<script src="~/js/inline-contribution.js"></script>
+}

@@ -328,6 +328,9 @@
     </div>
 </div>
 
+@await Html.PartialAsync("_InlineContribution",
+    (ContextLabel: "dialectical relationships", ContextType: "Navigator", ContextId: "navigator"))
+
 <script>
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -338,3 +341,7 @@
         });
     });
 </script>
+
+@section Scripts {
+<script src="~/js/inline-contribution.js"></script>
+}
