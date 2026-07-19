@@ -587,6 +587,7 @@
     let allNodes = [];
     let allEdges = [];
     let physicsEnabled = false;
+    let physicsResumeTimer = null;
     const MAX_TOTAL_NODES = 2000;           // cap total DOM nodes for smooth rendering
     const VIEWPORT_ZOOM_THRESHOLD = 0.6;    // only fetch real data when zoomed in this far
     const VIEWPORT_FETCH_DEBOUNCE_MS = 250; // rate-limit viewport fetches
@@ -629,7 +630,8 @@
         const container = document.getElementById('graph-network');
         const options = {
             physics: {
-                enabled: false,  // turned on briefly by enablePhysics() to lay out nodes
+                enabled: false,  // enabled after data loads and kept running while idle
+                minVelocity: 0,
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
                     gravitationalConstant: -50,
@@ -638,10 +640,7 @@
                     springConstant: 0.03,
                     damping: 0.4
                 },
-                // The layout pass runs hidden behind the loading spinner
-                // (see enablePhysics/doPostStabilizeZoom). fit:false so vis
-                // doesn't auto-move the camera while it's hidden — we do a
-                // single, non-animated fit ourselves once it's done.
+                // Keep vis from moving the camera during layout.
                 stabilization: { iterations: 200, fit: false }
             },
             layout: {
@@ -701,6 +700,27 @@
         // ── Viewport-aware loading: fetch real data when zoomed in ──
         network.on('zoom', () => scheduleViewportFetch());
         network.on('dragEnd', () => scheduleViewportFetch());
+
+        // Pause movement while the user manipulates the graph, then resume
+        // once interaction has stopped. minVelocity: 0 keeps the resumed
+        // simulation from automatically settling and shutting itself down.
+        const pausePhysicsForInteraction = () => {
+            if (physicsResumeTimer) clearTimeout(physicsResumeTimer);
+            if (network && physicsEnabled) network.stopSimulation();
+        };
+        const resumePhysicsAfterInteraction = () => {
+            if (physicsResumeTimer) clearTimeout(physicsResumeTimer);
+            physicsResumeTimer = setTimeout(() => {
+                if (network && physicsEnabled) network.startSimulation();
+            }, 750);
+        };
+        container.addEventListener('pointerdown', pausePhysicsForInteraction);
+        container.addEventListener('pointerup', resumePhysicsAfterInteraction);
+        container.addEventListener('pointercancel', resumePhysicsAfterInteraction);
+        container.addEventListener('wheel', () => {
+            pausePhysicsForInteraction();
+            resumePhysicsAfterInteraction();
+        }, { passive: true });
     }
 
     // ── Debounced hover preview fetch ──
@@ -804,13 +824,10 @@
 
     // ── Three-tier load: manifest → skeleton → synthetic → render ──
     async function loadGraph() {
-        // Keep the loading spinner visible until the graph is fully laid out
-        // and the camera is framed — this hides the physics simulation
-        // entirely so there's no visible zoom/pan animation at all.
+        // Keep the loading spinner visible until all graph data is ready.
         var loadingEl = document.getElementById('graph-loading');
 
         // Reset state for fresh load
-        window._zoomDone = false;
         physicsEnabled = false;
         try {
             // Tier 1: Fetch skeleton manifest to get the current versioned file URL
@@ -859,11 +876,16 @@
                 if (syEdges.length > 0) edges.add(syEdges);
             }
 
-            // The nodes have no pre-baked x/y positions, so physics must run
-            // once to lay them out — otherwise every node stacks in the same
-            // spot. Run that layout pass hidden behind the loading spinner,
-            // then freeze physics and fit the camera with no animation, so
-            // the user only ever sees the final, fully-laid-out graph.
+            // Start with a wide, fixed camera so the visible physics layout
+            // never begins close-up. Do not fit the camera again after this.
+            network.moveTo({ position: { x: 0, y: 0 }, scale: 0.35, animation: false });
+            if (loadingEl) loadingEl.classList.add('hidden');
+
+            nodes.forEach(n => {
+                nodes.update({ id: n.id, font: { size: 10, color: '#17202f', strokeWidth: 0 } });
+            });
+
+            // Keep the layout moving while the camera stays fixed.
             enablePhysics();
         } catch (err) {
             console.error('Failed to load graph:', err);
@@ -879,49 +901,9 @@
         if (physicsEnabled) return;
         physicsEnabled = true;
         if (network) {
-            // The graph stays hidden behind the loading overlay for the entire
-            // simulation, so the camera position during layout doesn't matter
-            // — nobody sees it move. Listen for stabilization BEFORE starting.
-            network.once('stabilized', () => {
-                doPostStabilizeZoom();
-            });
             network.setOptions({ physics: { enabled: true } });
             network.startSimulation();
-
-            // Fallback: if stabilized doesn't fire within 10s, do it anyway
-            setTimeout(() => {
-                if (network && physicsEnabled) {
-                    doPostStabilizeZoom();
-                }
-            }, 10000);
         }
-    }
-
-    function doPostStabilizeZoom() {
-        if (window._zoomDone) return;
-        window._zoomDone = true;
-
-        // Freeze physics so nodes stop drifting before we compute the view
-        network.setOptions({ physics: { enabled: false } });
-        physicsEnabled = false;
-
-        // Frame the whole graph instantly — no animation, no intermediate
-        // zoom-in/zoom-out. fit() with an explicit node-id list is guaranteed
-        // to include every node, and offset adds pixel padding so node
-        // circles aren't flush against the edges.
-        var allIds = nodes.getIds();
-        if (allIds.length > 0) {
-            network.fit({ nodes: allIds, offset: 60, animation: false });
-        }
-
-        // Labels are already at full size (set in options), nothing to reveal.
-        nodes.forEach(n => {
-            nodes.update({ id: n.id, font: { size: 10, color: '#17202f', strokeWidth: 0 } });
-        });
-
-        // Now that the camera is correctly framed, reveal the graph.
-        var loadingEl = document.getElementById('graph-loading');
-        if (loadingEl) loadingEl.classList.add('hidden');
     }
 
     // ── Map static (pre-baked) node data to vis format ──
