@@ -261,43 +261,59 @@ public class UnderstandingQueryService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        // Single query: nodes belonging to multiple schemas with their labels
-        var bridgeData = await db.SchemaMemberships
+        var bridgeCounts = await db.SchemaMemberships
             .GroupBy(m => m.NodeId)
             .Where(g => g.Count() > 1)
             .Select(g => new
             {
                 NodeId = g.Key,
                 SchemaCount = g.Count(),
-                AvgWeight = g.Average(m => m.Weight),
-                SchemaIds = g.Select(m => m.SchemaId).ToList()
+                AvgWeight = g.Average(m => m.Weight)
             })
             .OrderByDescending(x => x.SchemaCount)
             .ThenByDescending(x => x.AvgWeight)
             .Take(count)
-            .Join(
-                db.UnderstandingNodes,
-                bc => bc.NodeId,
-                n => n.Id,
-                (bc, n) => new { bc, n }
-            )
             .ToListAsync();
 
-        // Batch-load all schema labels
-        var allSchemaIds = bridgeData.SelectMany(b => b.bc.SchemaIds).Distinct().ToList();
+        var nodeIds = bridgeCounts.Select(b => b.NodeId).ToList();
+        var nodes = await db.UnderstandingNodes
+            .Where(n => nodeIds.Contains(n.Id))
+            .Select(n => new
+            {
+                n.Id,
+                n.CanonicalText,
+                n.BetweennessCentrality,
+                n.DegreeCentrality,
+                n.DialecticalTemperature
+            })
+            .ToDictionaryAsync(n => n.Id);
+
+        var memberships = await db.SchemaMemberships
+            .Where(m => nodeIds.Contains(m.NodeId))
+            .Select(m => new { m.NodeId, m.SchemaId })
+            .ToListAsync();
+        var schemaIdsByNode = memberships
+            .GroupBy(m => m.NodeId)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.SchemaId).ToList());
+
+        var allSchemaIds = memberships.Select(m => m.SchemaId).Distinct().ToList();
         var schemaLabels = await db.ConceptualSchemas
             .Where(s => allSchemaIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => s.Label);
 
-        return bridgeData.Select(b => new BridgeNode
+        return bridgeCounts
+            .Where(b => nodes.ContainsKey(b.NodeId))
+            .Select(b => new BridgeNode
         {
-            NodeId = b.bc.NodeId,
-            CanonicalText = b.n.CanonicalText,
-            SchemaCount = b.bc.SchemaCount,
-            SchemaLabels = b.bc.SchemaIds.Select(id => schemaLabels.GetValueOrDefault(id, "Unknown")).ToList(),
-            BetweennessCentrality = b.n.BetweennessCentrality,
-            DegreeCentrality = b.n.DegreeCentrality,
-            DialecticalTemperature = b.n.DialecticalTemperature
+            NodeId = b.NodeId,
+            CanonicalText = nodes[b.NodeId].CanonicalText,
+            SchemaCount = b.SchemaCount,
+            SchemaLabels = schemaIdsByNode.GetValueOrDefault(b.NodeId, new List<int>())
+                .Select(id => schemaLabels.GetValueOrDefault(id, "Unknown"))
+                .ToList(),
+            BetweennessCentrality = nodes[b.NodeId].BetweennessCentrality,
+            DegreeCentrality = nodes[b.NodeId].DegreeCentrality,
+            DialecticalTemperature = nodes[b.NodeId].DialecticalTemperature
         }).ToList();
     }
 
