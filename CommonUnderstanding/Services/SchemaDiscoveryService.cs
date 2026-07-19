@@ -49,37 +49,46 @@ public class SchemaDiscoveryService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        var nodes = await db.UnderstandingNodes
+        // Use projection to load ONLY the columns we need (Id, SemanticEmbedding, SchemaIdsJson).
+        // Avoids loading CanonicalText, GraphEmbedding, SchwartzVector, MoralFoundationsVector,
+        // and other heavy columns that waste DB egress bandwidth.
+        var nodeProjections = await db.UnderstandingNodes
             .Where(n => n.SemanticEmbedding != null)
+            .Select(n => new
+            {
+                n.Id,
+                n.SemanticEmbedding,
+                n.SchemaIdsJson
+            })
             .ToListAsync();
 
-        if (nodes.Count < MinClusterSize)
+        if (nodeProjections.Count < MinClusterSize)
         {
-            _logger.LogInformation("Too few nodes ({Count}) for clustering; need at least {Min}.", nodes.Count, MinClusterSize);
+            _logger.LogInformation("Too few nodes ({Count}) for clustering; need at least {Min}.", nodeProjections.Count, MinClusterSize);
             return new List<ConceptualSchema>();
         }
 
-        k = Math.Min(k, nodes.Count / MinClusterSize);
+        k = Math.Min(k, nodeProjections.Count / MinClusterSize);
         if (k < 1) k = 1;
 
-        _logger.LogInformation("Running k-means clustering: {Nodes} nodes, {K} clusters.", nodes.Count, k);
+        _logger.LogInformation("Running k-means clustering: {Nodes} nodes, {K} clusters.", nodeProjections.Count, k);
 
         // Build data matrix: nodes x embedding dimensions
-        int dims = nodes[0].SemanticEmbedding!.Length;
-        var data = Matrix<double>.Build.Dense(nodes.Count, dims);
-        for (int i = 0; i < nodes.Count; i++)
+        int dims = nodeProjections[0].SemanticEmbedding!.Length;
+        var data = Matrix<double>.Build.Dense(nodeProjections.Count, dims);
+        for (int i = 0; i < nodeProjections.Count; i++)
             for (int j = 0; j < dims; j++)
-                data[i, j] = nodes[i].SemanticEmbedding![j];
+                data[i, j] = nodeProjections[i].SemanticEmbedding![j];
 
         // K-means++ initialization
         var centroids = KMeansPlusPlusInit(data, k);
-        var assignments = new int[nodes.Count];
+        var assignments = new int[nodeProjections.Count];
 
         for (int iter = 0; iter < maxIterations; iter++)
         {
             // Assignment step
             bool changed = false;
-            for (int i = 0; i < nodes.Count; i++)
+            for (int i = 0; i < nodeProjections.Count; i++)
             {
                 int best = 0;
                 double bestDist = double.MaxValue;
@@ -96,7 +105,7 @@ public class SchemaDiscoveryService
             // Update step
             for (int c = 0; c < k; c++)
             {
-                var members = Enumerable.Range(0, nodes.Count).Where(i => assignments[i] == c).ToList();
+                var members = Enumerable.Range(0, nodeProjections.Count).Where(i => assignments[i] == c).ToList();
                 if (members.Count == 0) continue;
                 var sum = Vector<double>.Build.Dense(dims, 0);
                 foreach (var idx in members) sum += data.Row(idx);
@@ -108,13 +117,14 @@ public class SchemaDiscoveryService
         var schemas = new List<ConceptualSchema>();
         for (int c = 0; c < k; c++)
         {
-            var memberIndices = Enumerable.Range(0, nodes.Count).Where(i => assignments[i] == c).ToList();
+            var memberIndices = Enumerable.Range(0, nodeProjections.Count).Where(i => assignments[i] == c).ToList();
             if (memberIndices.Count < MinClusterSize) continue;
 
-            var memberNodes = memberIndices.Select(i => nodes[i]).ToList();
+            var memberProjections = memberIndices.Select(i => nodeProjections[i]).ToList();
+            var memberEmbeddings = memberProjections.Select(p => p.SemanticEmbedding!).ToList();
 
             // Compute coherence: average pairwise cosine similarity within cluster
-            double coherence = ComputeClusterCoherence(memberNodes);
+            double coherence = ComputeClusterCoherenceFromEmbeddings(memberEmbeddings);
 
             if (coherence < MinCoherence)
             {
@@ -124,8 +134,8 @@ public class SchemaDiscoveryService
 
             var schema = new ConceptualSchema
             {
-                Label = $"Schema {c + 1} ({memberNodes.Count} propositions)",
-                Description = $"Automatically discovered cluster of {memberNodes.Count} semantically related propositions.",
+                Label = $"Schema {c + 1} ({memberProjections.Count} propositions)",
+                Description = $"Automatically discovered cluster of {memberProjections.Count} semantically related propositions.",
                 DiscoveryMethod = "k_means",
                 Coherence = Math.Round(coherence, 4),
                 Stability = 0.0, // Computed across multiple runs
@@ -138,9 +148,9 @@ public class SchemaDiscoveryService
             await db.SaveChangesAsync(); // Save to get schema.Id
 
             // Create membership records
-            foreach (var member in memberNodes)
+            foreach (var member in memberProjections)
             {
-                double weight = ComputeMembershipWeight(member, centroids[c], data.Row(nodes.IndexOf(member)));
+                double weight = ComputeMembershipWeightFromEmbedding(member, centroids[c], data.Row(nodeProjections.IndexOf(member)));
                 db.SchemaMemberships.Add(new SchemaMembership
                 {
                     NodeId = member.Id,
@@ -153,12 +163,14 @@ public class SchemaDiscoveryService
                 if (!schemaIds.Contains(schema.Id))
                 {
                     schemaIds.Add(schema.Id);
-                    member.SchemaIdsJson = JsonSerializer.Serialize(schemaIds);
+                    // Update via raw SQL to avoid loading full entity
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"UnderstandingNodes\" SET \"SchemaIdsJson\" = {0} WHERE \"Id\" = {1}",
+                        JsonSerializer.Serialize(schemaIds), member.Id);
                 }
             }
 
-            // Save memberships and node updates for this schema immediately
-            // to avoid accumulating massive batches that can crash the process
+            // Save memberships for this schema immediately
             await db.SaveChangesAsync();
 
             schemas.Add(schema);
@@ -180,26 +192,39 @@ public class SchemaDiscoveryService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        var nodes = await db.UnderstandingNodes.ToListAsync();
-        var edges = await db.UnderstandingEdges.ToListAsync();
+        // Use projection to load ONLY needed columns — avoids loading heavy
+        // embedding columns (GraphEmbedding, SchwartzVector, MoralFoundationsVector)
+        // and large text fields (CanonicalText, DimensionalCoordinatesJson, etc.)
+        var nodeProjections = await db.UnderstandingNodes
+            .Select(n => new
+            {
+                n.Id,
+                n.SemanticEmbedding,
+                n.SchemaIdsJson
+            })
+            .ToListAsync();
 
-        if (nodes.Count < MinClusterSize)
+        var edgeProjections = await db.UnderstandingEdges
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId, e.Weight })
+            .ToListAsync();
+
+        if (nodeProjections.Count < MinClusterSize)
         {
-            _logger.LogInformation("Too few nodes ({Count}) for spectral clustering.", nodes.Count);
+            _logger.LogInformation("Too few nodes ({Count}) for spectral clustering.", nodeProjections.Count);
             return new List<ConceptualSchema>();
         }
 
-        k = Math.Min(k, nodes.Count / MinClusterSize);
+        k = Math.Min(k, nodeProjections.Count / MinClusterSize);
         if (k < 1) k = 1;
 
-        _logger.LogInformation("Running spectral clustering: {Nodes} nodes, {K} clusters.", nodes.Count, k);
+        _logger.LogInformation("Running spectral clustering: {Nodes} nodes, {K} clusters.", nodeProjections.Count, k);
 
-        int n = nodes.Count;
-        var idIndex = nodes.Select((node, idx) => (node.Id, idx)).ToDictionary(x => x.Id, x => x.idx);
+        int n = nodeProjections.Count;
+        var idIndex = nodeProjections.Select((node, idx) => (node.Id, idx)).ToDictionary(x => x.Id, x => x.idx);
 
         // Build weighted adjacency matrix W
         var W = Matrix<double>.Build.Dense(n, n, 0);
-        foreach (var edge in edges)
+        foreach (var edge in edgeProjections)
         {
             if (idIndex.TryGetValue(edge.SourceNodeId, out int si) &&
                 idIndex.TryGetValue(edge.TargetNodeId, out int ti))
@@ -293,13 +318,14 @@ public class SchemaDiscoveryService
             var memberIndices = Enumerable.Range(0, n).Where(i => assignments[i] == c).ToList();
             if (memberIndices.Count < MinClusterSize) continue;
 
-            var memberNodes = memberIndices.Select(i => nodes[i]).ToList();
-            double coherence = ComputeClusterCoherence(memberNodes);
+            var memberProjections = memberIndices.Select(i => nodeProjections[i]).ToList();
+            var memberEmbeddings = memberProjections.Select(p => p.SemanticEmbedding!).ToList();
+            double coherence = ComputeClusterCoherenceFromEmbeddings(memberEmbeddings);
             if (coherence < MinCoherence) continue;
 
             var schema = new ConceptualSchema
             {
-                Label = $"Spectral Schema {c + 1} ({memberNodes.Count} propositions)",
+                Label = $"Spectral Schema {c + 1} ({memberProjections.Count} propositions)",
                 Description = $"Discovered via spectral clustering on graph Laplacian.",
                 DiscoveryMethod = "spectral_clustering",
                 Coherence = Math.Round(coherence, 4),
@@ -311,15 +337,21 @@ public class SchemaDiscoveryService
             db.ConceptualSchemas.Add(schema);
             await db.SaveChangesAsync();
 
-            foreach (var member in memberNodes)
+            foreach (var member in memberProjections)
             {
                 db.SchemaMemberships.Add(new SchemaMembership
                 {
                     NodeId = member.Id, SchemaId = schema.Id,
-                    Weight = Math.Round(1.0 / memberNodes.Count, 4)
+                    Weight = Math.Round(1.0 / memberProjections.Count, 4)
                 });
                 var schemaIds = DeserializeIntList(member.SchemaIdsJson);
-                if (!schemaIds.Contains(schema.Id)) { schemaIds.Add(schema.Id); member.SchemaIdsJson = JsonSerializer.Serialize(schemaIds); }
+                if (!schemaIds.Contains(schema.Id))
+                {
+                    schemaIds.Add(schema.Id);
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"UnderstandingNodes\" SET \"SchemaIdsJson\" = {0} WHERE \"Id\" = {1}",
+                        JsonSerializer.Serialize(schemaIds), member.Id);
+                }
             }
             // Save memberships for this schema immediately
             await db.SaveChangesAsync();
@@ -427,7 +459,43 @@ public class SchemaDiscoveryService
         return pairs > 0 ? totalSim / pairs : 0;
     }
 
+    /// <summary>
+    /// Computes cluster coherence from projected node embeddings only.
+    /// Avoids loading full UnderstandingNode entities to save DB egress.
+    /// </summary>
+    private static double ComputeClusterCoherenceFromEmbeddings(
+        List<float[]> embeddings)
+    {
+        if (embeddings.Count < 2) return 1.0;
+        double totalSim = 0;
+        int pairs = 0;
+        for (int i = 0; i < embeddings.Count; i++)
+        {
+            for (int j = i + 1; j < embeddings.Count; j++)
+            {
+                if (embeddings[i] != null && embeddings[j] != null)
+                {
+                    totalSim += CosineSimilarity(embeddings[i], embeddings[j]);
+                    pairs++;
+                }
+            }
+        }
+        return pairs > 0 ? totalSim / pairs : 0;
+    }
+
     private static double ComputeMembershipWeight(UnderstandingNode node, Vector<double> centroid, Vector<double> point)
+    {
+        double dist = (point - centroid).L2Norm();
+        if (dist < 1e-12) return 1.0;
+        return Math.Max(0, Math.Min(1, 1.0 / (1.0 + dist)));
+    }
+
+    /// <summary>
+    /// Computes membership weight from embedding vector.
+    /// Avoids loading full UnderstandingNode entity.
+    /// </summary>
+    private static double ComputeMembershipWeightFromEmbedding(
+        object nodeProjection, Vector<double> centroid, Vector<double> point)
     {
         double dist = (point - centroid).L2Norm();
         if (dist < 1e-12) return 1.0;

@@ -87,6 +87,9 @@ builder.Services.AddScoped<WorldviewSummaryService>();
 builder.Services.AddSingleton<RuntimeAiConfigService>();
 builder.Services.AddSingleton<AiRequestTraceRecorder>();
 
+// Register AI usage policy (egress budget enforcement)
+builder.Services.AddScoped<AiUsagePolicyService>();
+
 // Register Semantic Kernel and Belief Analysis services
 builder.Services.AddSingleton<SemanticKernelService>();
 

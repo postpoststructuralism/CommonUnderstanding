@@ -6,6 +6,7 @@ using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services.Social;
 using MathNet.Numerics.LinearAlgebra;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CommonUnderstanding.Services;
 
@@ -371,31 +372,45 @@ public partial class UnderstandingGraphService
     public async Task RecomputeTopologyMetricsAsync()
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        var nodes = await db.UnderstandingNodes.ToListAsync();
-        var edges = await db.UnderstandingEdges.ToListAsync();
-        if (nodes.Count == 0) return;
+
+        // Use projections to load ONLY the columns needed for topology computation.
+        // Avoids loading SemanticEmbedding (~6KB/row), GraphEmbedding, SchwartzVector,
+        // MoralFoundationsVector, CanonicalText, and other heavy columns.
+        var nodeIds = await db.UnderstandingNodes
+            .Select(n => n.Id)
+            .ToListAsync();
+
+        var edgeProjections = await db.UnderstandingEdges
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId, e.Weight, e.Relationship })
+            .ToListAsync();
+
+        if (nodeIds.Count == 0) return;
+
         var adj = new Dictionary<int, HashSet<int>>();
-        foreach (var n in nodes) adj[n.Id] = new HashSet<int>();
-        foreach (var e in edges)
+        foreach (var id in nodeIds) adj[id] = new HashSet<int>();
+        foreach (var e in edgeProjections)
             if (adj.ContainsKey(e.SourceNodeId) && adj.ContainsKey(e.TargetNodeId))
             { adj[e.SourceNodeId].Add(e.TargetNodeId); adj[e.TargetNodeId].Add(e.SourceNodeId); }
-        int nCount = nodes.Count;
-        var idList = nodes.Select(n => n.Id).ToList();
-        var idIndex = idList.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
 
-        foreach (var node in nodes)
-            node.DegreeCentrality = nCount > 1 ? (double)adj[node.Id].Count / (nCount - 1) : 0;
+        int nCount = nodeIds.Count;
+        var idIndex = nodeIds.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
 
+        // Degree centrality
+        var degreeCentrality = new Dictionary<int, double>();
+        foreach (var id in nodeIds)
+            degreeCentrality[id] = nCount > 1 ? (double)adj[id].Count / (nCount - 1) : 0;
+
+        // Betweenness centrality (Brandes algorithm)
         var betweenness = new Dictionary<int, double>();
-        foreach (var id in idList) betweenness[id] = 0;
-        foreach (var s in idList)
+        foreach (var id in nodeIds) betweenness[id] = 0;
+        foreach (var s in nodeIds)
         {
             var stack = new Stack<int>();
             var pred = new Dictionary<int, List<int>>();
             var sigma = new Dictionary<int, double>();
             var dist = new Dictionary<int, double>();
             var delta = new Dictionary<int, double>();
-            foreach (var t in idList) { pred[t] = new List<int>(); sigma[t] = 0; dist[t] = -1; delta[t] = 0; }
+            foreach (var t in nodeIds) { pred[t] = new List<int>(); sigma[t] = 0; dist[t] = -1; delta[t] = 0; }
             sigma[s] = 1; dist[s] = 0;
             var q = new Queue<int>(); q.Enqueue(s);
             while (q.Count > 0)
@@ -415,67 +430,127 @@ public partial class UnderstandingGraphService
             }
         }
         double maxBetw = betweenness.Values.Max();
-        foreach (var node in nodes)
-            node.BetweennessCentrality = maxBetw > 0 ? betweenness[node.Id] / maxBetw : 0;
+        var betweennessCentrality = new Dictionary<int, double>();
+        foreach (var id in nodeIds)
+            betweennessCentrality[id] = maxBetw > 0 ? betweenness[id] / maxBetw : 0;
 
-        foreach (var node in nodes)
+        // Clustering coefficient
+        var clusteringCoefficient = new Dictionary<int, double>();
+        foreach (var id in nodeIds)
         {
-            var nb = adj[node.Id].ToList(); int k = nb.Count;
-            if (k < 2) { node.ClusteringCoefficient = 0; continue; }
+            var nb = adj[id].ToList(); int k = nb.Count;
+            if (k < 2) { clusteringCoefficient[id] = 0; continue; }
             int tri = 0;
             for (int i = 0; i < k; i++) for (int j = i + 1; j < k; j++) if (adj[nb[i]].Contains(nb[j])) tri++;
-            node.ClusteringCoefficient = (double)(2 * tri) / (k * (k - 1));
+            clusteringCoefficient[id] = (double)(2 * tri) / (k * (k - 1));
         }
 
+        // PageRank
         double damp = 0.85;
         var pr = new Dictionary<int, double>();
-        foreach (var id in idList) pr[id] = 1.0 / nCount;
+        foreach (var id in nodeIds) pr[id] = 1.0 / nCount;
         for (int iter = 0; iter < 30; iter++)
         {
             var npr = new Dictionary<int, double>();
             double dSum = 0;
-            foreach (var id in idList) if (adj[id].Count == 0) dSum += pr[id];
-            foreach (var id in idList)
+            foreach (var id in nodeIds) if (adj[id].Count == 0) dSum += pr[id];
+            foreach (var id in nodeIds)
             {
                 double sum = 0;
-                foreach (var nid in idList) if (adj[nid].Contains(id)) sum += pr[nid] / adj[nid].Count;
+                foreach (var nid in nodeIds) if (adj[nid].Contains(id)) sum += pr[nid] / adj[nid].Count;
                 npr[id] = (1.0 - damp) / nCount + damp * (sum + dSum / nCount);
             }
             pr = npr;
         }
-        foreach (var node in nodes) node.PageRank = pr[node.Id];
 
-        foreach (var node in nodes)
-            node.ControversyScore = Math.Round((node.PageRank * 2 + node.BetweennessCentrality + (1 - node.ClusteringCoefficient)) / 4, 4);
+        // Controversy score
+        var controversyScore = new Dictionary<int, double>();
+        foreach (var id in nodeIds)
+            controversyScore[id] = Math.Round((pr[id] * 2 + betweennessCentrality[id] + (1 - clusteringCoefficient[id])) / 4, 4);
 
-        foreach (var node in nodes)
+        // Dialectical temperature
+        var dialecticalTemperature = new Dictionary<int, double>();
+        foreach (var id in nodeIds)
         {
-            var ne = edges.Where(e => e.SourceNodeId == node.Id || e.TargetNodeId == node.Id).ToList();
-            if (ne.Count < 2) { node.DialecticalTemperature = 0; continue; }
+            var ne = edgeProjections.Where(e => e.SourceNodeId == id || e.TargetNodeId == id).ToList();
+            if (ne.Count < 2) { dialecticalTemperature[id] = 0; continue; }
             var rc = ne.GroupBy(e => e.Relationship).ToDictionary(g => g.Key, g => g.Count());
             double tot = ne.Count, ent = 0;
             foreach (var c in rc.Values) { double p = c / tot; ent -= p * Math.Log(p, 2); }
-            node.DialecticalTemperature = Math.Round(ent / Math.Log(rc.Count + 1, 2), 4);
+            dialecticalTemperature[id] = Math.Round(ent / Math.Log(rc.Count + 1, 2), 4);
         }
 
+        // Eigenvector centrality
         var adjM = Matrix<double>.Build.Dense(nCount, nCount, 0);
-        foreach (var e in edges)
+        foreach (var e in edgeProjections)
             if (idIndex.TryGetValue(e.SourceNodeId, out int si) && idIndex.TryGetValue(e.TargetNodeId, out int ti))
             { adjM[si, ti] = e.Weight; adjM[ti, si] = e.Weight; }
         var ev = Vector<double>.Build.Dense(nCount, 1.0 / Math.Sqrt(nCount));
         for (int iter = 0; iter < 20; iter++) { ev = adjM * ev; double norm = ev.L2Norm(); if (norm > 1e-12) ev /= norm; }
-        for (int i = 0; i < nCount; i++) nodes[i].EigenvectorCentrality = Math.Round(Math.Abs(ev[i]), 6);
+        var eigenvectorCentrality = new Dictionary<int, double>();
+        for (int i = 0; i < nCount; i++) eigenvectorCentrality[nodeIds[i]] = Math.Round(Math.Abs(ev[i]), 6);
 
-        foreach (var node in nodes)
+        // Schema entropy (still needs schema memberships, but those are lightweight)
+        var schemaEntropy = new Dictionary<int, double>();
+        var allMemberships = await db.SchemaMemberships
+            .Select(m => new { m.NodeId, m.Weight })
+            .ToListAsync();
+        var membershipByNode = allMemberships.GroupBy(m => m.NodeId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var id in nodeIds)
         {
-            var mems = await db.SchemaMemberships.Where(m => m.NodeId == node.Id).ToListAsync();
-            if (mems.Count < 2) { node.SchemaEntropy = 0; continue; }
+            if (!membershipByNode.TryGetValue(id, out var mems) || mems.Count < 2)
+            { schemaEntropy[id] = 0; continue; }
             double tw = mems.Sum(m => m.Weight), en = 0;
             foreach (var m in mems) { double p = m.Weight / tw; en -= p * Math.Log(p, 2); }
-            node.SchemaEntropy = Math.Round(en / Math.Log(mems.Count, 2), 4);
+            schemaEntropy[id] = Math.Round(en / Math.Log(mems.Count, 2), 4);
         }
-        await db.SaveChangesAsync();
-        _logger.LogInformation("Topology metrics recomputed for {Count} nodes.", nodes.Count);
+
+        // Bulk update via raw SQL to avoid loading full entities
+        // Use a single UPDATE per metric for efficiency
+        var updateSql = @"
+            UPDATE ""UnderstandingNodes""
+            SET ""DegreeCentrality"" = c.""DegreeCentrality"",
+                ""BetweennessCentrality"" = c.""BetweennessCentrality"",
+                ""ClusteringCoefficient"" = c.""ClusteringCoefficient"",
+                ""PageRank"" = c.""PageRank"",
+                ""ControversyScore"" = c.""ControversyScore"",
+                ""DialecticalTemperature"" = c.""DialecticalTemperature"",
+                ""EigenvectorCentrality"" = c.""EigenvectorCentrality"",
+                ""SchemaEntropy"" = c.""SchemaEntropy""
+            FROM (VALUES {0}) AS c(""Id"", ""DegreeCentrality"", ""BetweennessCentrality"", ""ClusteringCoefficient"",
+                ""PageRank"", ""ControversyScore"", ""DialecticalTemperature"", ""EigenvectorCentrality"", ""SchemaEntropy"")
+            WHERE ""UnderstandingNodes"".""Id"" = c.""Id""";
+
+        // Build VALUES clause in batches of 500 to avoid parameter limits
+        const int batchSize = 500;
+        for (int batch = 0; batch < nodeIds.Count; batch += batchSize)
+        {
+            var batchIds = nodeIds.Skip(batch).Take(batchSize).ToList();
+            var valuesList = new List<string>();
+            var parameters = new List<Npgsql.NpgsqlParameter>();
+
+            for (int i = 0; i < batchIds.Count; i++)
+            {
+                var id = batchIds[i];
+                var baseIdx = i * 9;
+                valuesList.Add($"(@p{baseIdx}, @p{baseIdx + 1}, @p{baseIdx + 2}, @p{baseIdx + 3}, @p{baseIdx + 4}, @p{baseIdx + 5}, @p{baseIdx + 6}, @p{baseIdx + 7}, @p{baseIdx + 8})");
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx}", id));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 1}", degreeCentrality[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 2}", betweennessCentrality[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 3}", clusteringCoefficient[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 4}", pr[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 5}", controversyScore[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 6}", dialecticalTemperature[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 7}", eigenvectorCentrality[id]));
+                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 8}", schemaEntropy[id]));
+            }
+
+            var formattedSql = string.Format(updateSql, string.Join(", ", valuesList));
+            await db.Database.ExecuteSqlRawAsync(formattedSql, parameters);
+        }
+
+        _logger.LogInformation("Topology metrics recomputed for {Count} nodes (projection-based, no heavy column load).", nodeIds.Count);
     }
 
     // ── Migration ─────────────────────────────────────────────────────────
@@ -523,41 +598,203 @@ public partial class UnderstandingGraphService
     public async Task<List<UnderstandingNode>> GetAllNodesAsync()
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        return await db.UnderstandingNodes.OrderByDescending(n => n.Confidence).ToListAsync();
+        // Exclude heavy embedding columns — they're not needed for list views
+        return await db.UnderstandingNodes
+            .AsNoTracking()
+            .OrderByDescending(n => n.Confidence)
+            .Select(n => new UnderstandingNode
+            {
+                Id = n.Id,
+                CanonicalText = n.CanonicalText,
+                NormalizedKey = n.NormalizedKey,
+                Status = n.Status,
+                Confidence = n.Confidence,
+                EvidenceCount = n.EvidenceCount,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                EigenvectorCentrality = n.EigenvectorCentrality,
+                PageRank = n.PageRank,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                ControversyScore = n.ControversyScore,
+                DialecticalTemperature = n.DialecticalTemperature,
+                SchemaEntropy = n.SchemaEntropy,
+                ArgumentIdsJson = n.ArgumentIdsJson,
+                UserIdsJson = n.UserIdsJson,
+                SchemaIdsJson = n.SchemaIdsJson,
+                Version = n.Version,
+                FirstSeenAt = n.FirstSeenAt,
+                LastUpdatedAt = n.LastUpdatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task<UnderstandingNode?> GetNodeWithEdgesAsync(int nodeId)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        return await db.UnderstandingNodes.Include(n => n.OutboundEdges).ThenInclude(e => e.TargetNode)
-            .Include(n => n.InboundEdges).ThenInclude(e => e.SourceNode)
-            .Include(n => n.SchemaMemberships).ThenInclude(m => m.Schema)
-            .FirstOrDefaultAsync(n => n.Id == nodeId);
+        
+        // Use AsNoTracking + projection to avoid loading heavy embedding vectors
+        // for the node itself and all connected nodes. The .Include().ThenInclude()
+        // chain was causing a cartesian explosion loading SemanticEmbedding (1536 floats),
+        // GraphEmbedding (128 floats), etc. for every connected entity.
+        var node = await db.UnderstandingNodes
+            .AsNoTracking()
+            .Where(n => n.Id == nodeId)
+            .Select(n => new UnderstandingNode
+            {
+                Id = n.Id,
+                CanonicalText = n.CanonicalText,
+                NormalizedKey = n.NormalizedKey,
+                Status = n.Status,
+                Confidence = n.Confidence,
+                EvidenceCount = n.EvidenceCount,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                EigenvectorCentrality = n.EigenvectorCentrality,
+                PageRank = n.PageRank,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                ControversyScore = n.ControversyScore,
+                DialecticalTemperature = n.DialecticalTemperature,
+                SchemaEntropy = n.SchemaEntropy,
+                ArgumentIdsJson = n.ArgumentIdsJson,
+                UserIdsJson = n.UserIdsJson,
+                SchemaIdsJson = n.SchemaIdsJson,
+                Version = n.Version,
+                FirstSeenAt = n.FirstSeenAt,
+                LastUpdatedAt = n.LastUpdatedAt,
+                // Only load edge metadata — skip heavy SourceNode/TargetNode embeddings
+                OutboundEdges = n.OutboundEdges.Select(e => new UnderstandingEdge
+                {
+                    Id = e.Id,
+                    SourceNodeId = e.SourceNodeId,
+                    TargetNodeId = e.TargetNodeId,
+                    Relationship = e.Relationship,
+                    Weight = e.Weight,
+                    BaseWeight = e.BaseWeight,
+                    ProvenanceJson = e.ProvenanceJson,
+                    ReinforcementCount = e.ReinforcementCount,
+                    CreatedAt = e.CreatedAt,
+                    LastReinforcedAt = e.LastReinforcedAt,
+                    // Only load the label for display — skip embeddings
+                    TargetNode = new UnderstandingNode
+                    {
+                        Id = e.TargetNode.Id,
+                        CanonicalText = e.TargetNode.CanonicalText,
+                        Status = e.TargetNode.Status,
+                        Confidence = e.TargetNode.Confidence
+                    }
+                }).ToList(),
+                InboundEdges = n.InboundEdges.Select(e => new UnderstandingEdge
+                {
+                    Id = e.Id,
+                    SourceNodeId = e.SourceNodeId,
+                    TargetNodeId = e.TargetNodeId,
+                    Relationship = e.Relationship,
+                    Weight = e.Weight,
+                    BaseWeight = e.BaseWeight,
+                    ProvenanceJson = e.ProvenanceJson,
+                    ReinforcementCount = e.ReinforcementCount,
+                    CreatedAt = e.CreatedAt,
+                    LastReinforcedAt = e.LastReinforcedAt,
+                    SourceNode = new UnderstandingNode
+                    {
+                        Id = e.SourceNode.Id,
+                        CanonicalText = e.SourceNode.CanonicalText,
+                        Status = e.SourceNode.Status,
+                        Confidence = e.SourceNode.Confidence
+                    }
+                }).ToList(),
+                SchemaMemberships = n.SchemaMemberships.Select(m => new SchemaMembership
+                {
+                    NodeId = m.NodeId,
+                    SchemaId = m.SchemaId,
+                    Weight = m.Weight,
+                    Schema = new ConceptualSchema
+                    {
+                        Id = m.Schema.Id,
+                        Label = m.Schema.Label,
+                        Description = m.Schema.Description,
+                        DiscoveryMethod = m.Schema.DiscoveryMethod,
+                        Coherence = m.Schema.Coherence,
+                        Stability = m.Schema.Stability
+                    }
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return node;
     }
 
     public async Task<List<UnderstandingNode>> SearchNodesAsync(string query)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
         if (string.IsNullOrWhiteSpace(query)) return await GetAllNodesAsync();
+        
+        // Use EF.Functions.ILike for database-side case-insensitive search
+        // Fall back to Contains for each term if ILike is not available
         var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var all = await db.UnderstandingNodes.ToListAsync();
-        return all.Where(n => terms.Any(t => n.CanonicalText.Contains(t, StringComparison.OrdinalIgnoreCase)))
-                  .OrderByDescending(n => n.Confidence).ToList();
+        
+        IQueryable<UnderstandingNode> q = db.UnderstandingNodes.AsNoTracking();
+        foreach (var term in terms)
+        {
+            var t = term; // capture for closure
+            q = q.Where(n => EF.Functions.ILike(n.CanonicalText, $"%{t}%"));
+        }
+        
+        return await q
+            .OrderByDescending(n => n.Confidence)
+            .Select(n => new UnderstandingNode
+            {
+                Id = n.Id,
+                CanonicalText = n.CanonicalText,
+                NormalizedKey = n.NormalizedKey,
+                Status = n.Status,
+                Confidence = n.Confidence,
+                EvidenceCount = n.EvidenceCount,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                EigenvectorCentrality = n.EigenvectorCentrality,
+                PageRank = n.PageRank,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                ControversyScore = n.ControversyScore,
+                DialecticalTemperature = n.DialecticalTemperature,
+                SchemaEntropy = n.SchemaEntropy,
+                ArgumentIdsJson = n.ArgumentIdsJson,
+                UserIdsJson = n.UserIdsJson,
+                SchemaIdsJson = n.SchemaIdsJson,
+                Version = n.Version,
+                FirstSeenAt = n.FirstSeenAt,
+                LastUpdatedAt = n.LastUpdatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task<GraphStatistics> GetStatisticsAsync()
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        var nodes = await db.UnderstandingNodes.ToListAsync();
+        // Use database-side aggregation instead of loading all nodes into memory
+        var stats = await db.UnderstandingNodes
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalNodes = g.Count(),
+                SettledCount = g.Count(n => n.Status == PropositionStatus.Settled),
+                ContestedCount = g.Count(n => n.Status == PropositionStatus.Contested),
+                UnknownCount = g.Count(n => n.Status == PropositionStatus.Unknown),
+                UnevaluatedCount = g.Count(n => n.Status == PropositionStatus.Unevaluated),
+                AverageConfidence = g.Average(n => n.Confidence),
+                TotalEvidenceItems = g.Sum(n => n.EvidenceCount)
+            })
+            .FirstOrDefaultAsync();
+
         return new GraphStatistics
         {
-            TotalNodes = nodes.Count,
-            SettledCount = nodes.Count(n => n.Status == PropositionStatus.Settled),
-            ContestedCount = nodes.Count(n => n.Status == PropositionStatus.Contested),
-            UnknownCount = nodes.Count(n => n.Status == PropositionStatus.Unknown),
-            UnevaluatedCount = nodes.Count(n => n.Status == PropositionStatus.Unevaluated),
-            AverageConfidence = nodes.Any() ? nodes.Average(n => n.Confidence) : 0.5,
-            TotalEvidenceItems = nodes.Sum(n => n.EvidenceCount)
+            TotalNodes = stats?.TotalNodes ?? 0,
+            SettledCount = stats?.SettledCount ?? 0,
+            ContestedCount = stats?.ContestedCount ?? 0,
+            UnknownCount = stats?.UnknownCount ?? 0,
+            UnevaluatedCount = stats?.UnevaluatedCount ?? 0,
+            AverageConfidence = stats?.AverageConfidence ?? 0.5,
+            TotalEvidenceItems = stats?.TotalEvidenceItems ?? 0
         };
     }
 

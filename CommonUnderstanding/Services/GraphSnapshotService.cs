@@ -44,38 +44,60 @@ public class GraphSnapshotService
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        var nodes = await db.UnderstandingNodes.ToListAsync();
-        var edges = await db.UnderstandingEdges.ToListAsync();
-        var schemas = await db.ConceptualSchemas
-            .Include(s => s.Memberships)
+        // Use COUNT and AVG queries instead of loading all entities.
+        // This avoids transferring heavy embedding columns (SemanticEmbedding ~6KB/row,
+        // GraphEmbedding, SchwartzVector, MoralFoundationsVector) over the network.
+        var nodeCount = await db.UnderstandingNodes.CountAsync();
+        var edgeCount = await db.UnderstandingEdges.CountAsync();
+        var schemaCount = await db.ConceptualSchemas.CountAsync();
+
+        // Aggregate stats via SQL — much cheaper than loading all rows
+        var stats = await db.UnderstandingNodes
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                AvgConfidence = g.Average(n => n.Confidence),
+                AvgDegreeCentrality = g.Average(n => n.DegreeCentrality),
+                AvgBetweennessCentrality = g.Average(n => n.BetweennessCentrality),
+                AvgClusteringCoefficient = g.Average(n => n.ClusteringCoefficient),
+                AvgDialecticalTemperature = g.Average(n => n.DialecticalTemperature),
+                AvgControversyScore = g.Average(n => n.ControversyScore),
+                AvgSchemaEntropy = g.Average(n => n.SchemaEntropy),
+                TotalEvidenceCount = g.Sum(n => n.EvidenceCount),
+                SettledCount = g.Count(n => n.Status == PropositionStatus.Settled),
+                ContestedCount = g.Count(n => n.Status == PropositionStatus.Contested),
+                UnknownCount = g.Count(n => n.Status == PropositionStatus.Unknown),
+                UnevaluatedCount = g.Count(n => n.Status == PropositionStatus.Unevaluated)
+            })
+            .FirstOrDefaultAsync();
+
+        double avgConfidence = stats?.AvgConfidence ?? 0;
+        double avgCentrality = stats?.AvgDegreeCentrality ?? 0;
+        double avgBetweenness = stats?.AvgBetweennessCentrality ?? 0;
+        double avgClustering = stats?.AvgClusteringCoefficient ?? 0;
+        double avgDialecticalTemp = stats?.AvgDialecticalTemperature ?? 0;
+        double avgControversy = stats?.AvgControversyScore ?? 0;
+        double avgSchemaEntropy = stats?.AvgSchemaEntropy ?? 0;
+        int totalEvidenceCount = stats?.TotalEvidenceCount ?? 0;
+        int settledCount = stats?.SettledCount ?? 0;
+        int contestedCount = stats?.ContestedCount ?? 0;
+        int unknownCount = stats?.UnknownCount ?? 0;
+        int unevaluatedCount = stats?.UnevaluatedCount ?? 0;
+
+        int possibleEdges = nodeCount * (nodeCount - 1) / 2;
+        double density = possibleEdges > 0 ? (double)edgeCount / possibleEdges : 0;
+
+        // Schema inventory — only load IDs (lightweight)
+        var schemaIds = await db.ConceptualSchemas
+            .Select(s => s.Id)
             .ToListAsync();
 
-        _logger.LogInformation("Capturing graph snapshot: {N} nodes, {E} edges, {S} schemas.",
-            nodes.Count, edges.Count, schemas.Count);
+        var synthesisIds = await db.DialecticalSyntheses
+            .Select(ds => ds.Id)
+            .ToListAsync();
 
-        // Compute graph-level metrics
-        double avgConfidence = nodes.Any() ? nodes.Average(n => n.Confidence) : 0;
-        double avgCentrality = nodes.Any() ? nodes.Average(n => n.DegreeCentrality) : 0;
-        double avgBetweenness = nodes.Any() ? nodes.Average(n => n.BetweennessCentrality) : 0;
-        double avgClustering = nodes.Any() ? nodes.Average(n => n.ClusteringCoefficient) : 0;
-        double avgDialecticalTemp = nodes.Any() ? nodes.Average(n => n.DialecticalTemperature) : 0;
-        double avgControversy = nodes.Any() ? nodes.Average(n => n.ControversyScore) : 0;
-        double avgSchemaEntropy = nodes.Any() ? nodes.Average(n => n.SchemaEntropy) : 0;
-
-        int possibleEdges = nodes.Count * (nodes.Count - 1) / 2;
-        double density = possibleEdges > 0 ? (double)edges.Count / possibleEdges : 0;
-
-        // Schema inventory
-        var schemaInventory = schemas.Select(s => new
-        {
-            s.Id,
-            s.Label,
-            s.DiscoveryMethod,
-            s.Coherence,
-            s.Stability,
-            MemberCount = s.Memberships.Count,
-            s.FactorIndex
-        }).ToList();
+        _logger.LogInformation("Capturing graph snapshot (projection-based): {N} nodes, {E} edges, {S} schemas.",
+            nodeCount, edgeCount, schemaCount);
 
         // Compute delta from previous snapshot
         var previous = await db.GraphSnapshots
@@ -85,9 +107,9 @@ public class GraphSnapshotService
         var snapshot = new GraphSnapshot
         {
             Label = label ?? $"Snapshot {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
-            NodeCount = nodes.Count,
-            EdgeCount = edges.Count,
-            SchemaCount = schemas.Count,
+            NodeCount = nodeCount,
+            EdgeCount = edgeCount,
+            SchemaCount = schemaCount,
             TopologySummaryJson = JsonSerializer.Serialize(new
             {
                 averageConfidence = Math.Round(avgConfidence, 4),
@@ -98,19 +120,18 @@ public class GraphSnapshotService
                 averageControversyScore = Math.Round(avgControversy, 4),
                 averageSchemaEntropy = Math.Round(avgSchemaEntropy, 4),
                 graphDensity = Math.Round(density, 6),
-                totalEvidenceCount = nodes.Sum(n => n.EvidenceCount),
-                settledCount = nodes.Count(n => n.Status == PropositionStatus.Settled),
-                contestedCount = nodes.Count(n => n.Status == PropositionStatus.Contested),
-                unknownCount = nodes.Count(n => n.Status == PropositionStatus.Unknown),
-                unevaluatedCount = nodes.Count(n => n.Status == PropositionStatus.Unevaluated),
+                totalEvidenceCount,
+                settledCount,
+                contestedCount,
+                unknownCount,
+                unevaluatedCount,
                 previousSnapshotId = previous?.Id,
-                nodeDelta = previous != null ? nodes.Count - previous.NodeCount : 0,
-                edgeDelta = previous != null ? edges.Count - previous.EdgeCount : 0,
-                schemaDelta = previous != null ? schemas.Count - previous.SchemaCount : 0
+                nodeDelta = previous != null ? nodeCount - previous.NodeCount : 0,
+                edgeDelta = previous != null ? edgeCount - previous.EdgeCount : 0,
+                schemaDelta = previous != null ? schemaCount - previous.SchemaCount : 0
             }),
-            SchemaIdsJson = JsonSerializer.Serialize(schemas.Select(s => s.Id).ToList()),
-            SynthesisIdsJson = JsonSerializer.Serialize(
-                await db.DialecticalSyntheses.Select(ds => ds.Id).ToListAsync()),
+            SchemaIdsJson = JsonSerializer.Serialize(schemaIds),
+            SynthesisIdsJson = JsonSerializer.Serialize(synthesisIds),
             AverageDialecticalTemperature = Math.Round(avgDialecticalTemp, 4),
             GraphDensity = Math.Round(density, 6)
         };
