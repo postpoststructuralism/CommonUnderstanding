@@ -338,29 +338,6 @@ app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
 // Widget SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 
-// Minimal API fallback for skeleton-manifest (workaround for attribute routing issue)
-app.MapGet("/api/understanding-graph/skeleton-manifest", (HttpContext context) =>
-{
-    var dataDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "data");
-    if (!Directory.Exists(dataDir))
-    {
-        var webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "data");
-        if (Directory.Exists(webRoot))
-            dataDir = webRoot;
-    }
-    if (!Directory.Exists(dataDir))
-        return Results.Json(new { version = "none" });
-
-    var manifestPath = Path.Combine(dataDir, "skeleton-manifest.json");
-    if (!File.Exists(manifestPath))
-        return Results.Json(new { version = "none" });
-
-    var json = File.ReadAllText(manifestPath);
-    var manifest = System.Text.Json.JsonSerializer.Deserialize<CommonUnderstanding.Models.SkeletonManifest>(
-        json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-    return Results.Json(manifest ?? new CommonUnderstanding.Models.SkeletonManifest { Version = "none" });
-});
-
 // Minimal API fallback for node preview (workaround for attribute routing issue)
 app.MapGet("/api/understanding-graph/node/{id}/preview", async (HttpContext context, int id) =>
 {

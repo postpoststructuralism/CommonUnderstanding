@@ -17,6 +17,7 @@ public class UnderstandingGraphController : Controller
     private readonly GraphSnapshotService _snapshotService;
     private readonly SchemaDiscoveryService _schemaService;
     private readonly DialecticalSynthesisService _synthesisService;
+    private readonly SkeletonGeneratorService _skeletonGenerator;
     private readonly ILogger<UnderstandingGraphController> _logger;
 
     public UnderstandingGraphController(
@@ -25,6 +26,7 @@ public class UnderstandingGraphController : Controller
         GraphSnapshotService snapshotService,
         SchemaDiscoveryService schemaService,
         DialecticalSynthesisService synthesisService,
+        SkeletonGeneratorService skeletonGenerator,
         ILogger<UnderstandingGraphController> logger)
     {
         _graphService = graphService;
@@ -32,6 +34,7 @@ public class UnderstandingGraphController : Controller
         _snapshotService = snapshotService;
         _schemaService = schemaService;
         _synthesisService = synthesisService;
+        _skeletonGenerator = skeletonGenerator;
         _logger = logger;
     }
 
@@ -150,6 +153,7 @@ public class UnderstandingGraphController : Controller
 
     /// <summary>
     /// Returns leaf nodes (everything except the given root IDs) for progressive loading.
+    /// If ViewportNodeIds is provided, only returns nodes in that set (viewport-scoped fetch).
     /// </summary>
     [HttpPost("api/understanding-graph/leaves")]
     [OutputCache(Duration = 30)]
@@ -159,7 +163,19 @@ public class UnderstandingGraphController : Controller
             return Json(new GraphMap()); // nothing to add
 
         var rootIdSet = new HashSet<int>(request.RootNodeIds);
-        var map = await _queryService.GetLeafNodesAsync(rootIdSet, request.MaxNodes > 0 ? request.MaxNodes : 2000);
+        GraphMap map;
+
+        if (request.ViewportNodeIds != null && request.ViewportNodeIds.Count > 0)
+        {
+            // Viewport-scoped: only fetch the specific nodes the client asked for
+            var viewportIdSet = new HashSet<int>(request.ViewportNodeIds);
+            map = await _queryService.GetLeafNodesByViewportAsync(rootIdSet, viewportIdSet, request.MaxNodes > 0 ? request.MaxNodes : 2000);
+        }
+        else
+        {
+            map = await _queryService.GetLeafNodesAsync(rootIdSet, request.MaxNodes > 0 ? request.MaxNodes : 2000);
+        }
+
         return Json(map);
     }
 
@@ -304,6 +320,48 @@ public class UnderstandingGraphController : Controller
     }
 
     /// <summary>
+    /// Returns a lightweight node preview for hover tooltips — only id, label, status, confidence.
+    /// Clients cache results in a Map to avoid re-fetching on repeated hovers.
+    /// </summary>
+    [HttpGet("api/understanding-graph/node/{id}/preview")]
+    [OutputCache(Duration = 60, VaryByRouteValueNames = new[] { "id" })]
+    public async Task<IActionResult> GetNodePreview(int id)
+    {
+        var preview = await _queryService.GetNodePreviewAsync(id);
+        if (preview == null) return NotFound(new { error = "Node not found" });
+        return Json(preview);
+    }
+
+    /// <summary>
+    /// Returns the current skeleton manifest — tells the client which versioned
+    /// static JSON file to fetch. Enables cache-busting on rebuild without redeploy.
+    /// </summary>
+    [HttpGet("api/understanding-graph/skeleton-manifest")]
+    [OutputCache(Duration = 30)]
+    public IActionResult GetSkeletonManifest()
+    {
+        var dataDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "data");
+        // Fallback: if not found at current directory, try the web root path
+        if (!Directory.Exists(dataDir))
+        {
+            var webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "data");
+            if (Directory.Exists(webRoot))
+                dataDir = webRoot;
+        }
+        if (!Directory.Exists(dataDir))
+            return Json(new SkeletonManifest { Version = "none" });
+
+        var manifestPath = Path.Combine(dataDir, "skeleton-manifest.json");
+        if (!System.IO.File.Exists(manifestPath))
+            return Json(new SkeletonManifest { Version = "none" });
+
+        var json = System.IO.File.ReadAllText(manifestPath);
+        var manifest = System.Text.Json.JsonSerializer.Deserialize<SkeletonManifest>(json,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        return Json(manifest ?? new SkeletonManifest { Version = "none" });
+    }
+
+    /// <summary>
     /// Triggers a new snapshot capture.
     /// </summary>
     [HttpPost("api/understanding-graph/capture-snapshot")]
@@ -440,6 +498,10 @@ public class UnderstandingGraphController : Controller
             // Step 7: Capture snapshot
             var snapshot = await _snapshotService.CaptureSnapshotAsync($"Rebuild {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
 
+            // Step 8: Regenerate the static skeleton before reporting success so
+            // request-scoped services remain available and the next reload is current.
+            await _skeletonGenerator.GenerateAsync();
+
             return Json(new
             {
                 success = true,
@@ -510,28 +572,4 @@ public class LeafNodesRequest
     /// already in the client-side DataSet.
     /// </summary>
     public List<int>? ViewportNodeIds { get; set; }
-}
-
-/// <summary>
-/// Lightweight node preview for hover tooltips — avoids the full detail payload.
-/// </summary>
-public class NodePreviewResponse
-{
-    public int Id { get; set; }
-    public string Label { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public double Confidence { get; set; }
-}
-
-/// <summary>
-/// Manifest for the precomputed static skeleton file.
-/// The client fetches this first to know which versioned file to load.
-/// </summary>
-public class SkeletonManifest
-{
-    public string Url { get; set; } = string.Empty;
-    public string Version { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; }
-    public int NodeCount { get; set; }
-    public int EdgeCount { get; set; }
 }
