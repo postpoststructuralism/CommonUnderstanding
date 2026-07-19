@@ -20,6 +20,22 @@ builder.Services.AddControllersWithViews();
 // In-memory caching for graph map, stats, etc.
 builder.Services.AddMemoryCache();
 
+// Distributed cache (Redis) for horizontally-scaled App Service instances.
+// Falls back to in-memory if no Redis connection string is configured.
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "CommonUnderstanding_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
 // Add EF Core with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -164,6 +180,13 @@ builder.Services.AddScoped<UnderstandingQueryService>();
 // Phase 3c: Background schema discovery worker
 builder.Services.AddHostedService<SchemaDiscoveryWorker>();
 
+// Phase 3d: Skeleton generation — precomputes static JSON for zero-DB-cost initial render
+builder.Services.AddScoped<SkeletonGeneratorService>();
+builder.Services.AddHostedService<SkeletonBackgroundService>();
+
+// Synthetic filler generator — one-time procedural decoration
+builder.Services.AddSingleton<SyntheticFillerGenerator>();
+
 // Register Multi-User Convergence services (Phase 6)
 builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
@@ -254,6 +277,20 @@ app.UseResponseCompression();
 app.UseOutputCache();
 app.UseMiddleware<CommonUnderstanding.Middleware.ApiRobotsTagMiddleware>();
 app.UseStaticFiles();
+
+// Static data files (skeleton JSON, synthetic filler) — cache aggressively
+// since they are versioned and regenerated nightly.
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"), "data")),
+    RequestPath = "/data",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers["Cache-Control"] = "public, max-age=86400, immutable";
+    }
+});
+
 app.UseRouting();
 
 app.Use(async (context, next) =>
@@ -271,6 +308,8 @@ app.Use(async (context, next) =>
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllers();  // Enable attribute-routed API controllers
 
 app.MapControllerRoute(
     name: "understandingGraph",
@@ -294,6 +333,39 @@ app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
 // Widget SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 
+// Minimal API fallback for skeleton-manifest (workaround for attribute routing issue)
+app.MapGet("/api/understanding-graph/skeleton-manifest", (HttpContext context) =>
+{
+    var dataDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "data");
+    if (!Directory.Exists(dataDir))
+    {
+        var webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "data");
+        if (Directory.Exists(webRoot))
+            dataDir = webRoot;
+    }
+    if (!Directory.Exists(dataDir))
+        return Results.Json(new { version = "none" });
+
+    var manifestPath = Path.Combine(dataDir, "skeleton-manifest.json");
+    if (!File.Exists(manifestPath))
+        return Results.Json(new { version = "none" });
+
+    var json = File.ReadAllText(manifestPath);
+    var manifest = System.Text.Json.JsonSerializer.Deserialize<CommonUnderstanding.Models.SkeletonManifest>(
+        json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    return Results.Json(manifest ?? new CommonUnderstanding.Models.SkeletonManifest { Version = "none" });
+});
+
+// Minimal API fallback for node preview (workaround for attribute routing issue)
+app.MapGet("/api/understanding-graph/node/{id}/preview", async (HttpContext context, int id) =>
+{
+    var queryService = context.RequestServices.GetRequiredService<UnderstandingQueryService>();
+    var preview = await queryService.GetNodePreviewAsync(id);
+    if (preview == null)
+        return Results.NotFound(new { error = "Node not found" });
+    return Results.Json(preview);
+});
+
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())
 {
@@ -310,6 +382,25 @@ using (var scope = app.Services.CreateScope())
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         await Phase2SeedData.SeedAllAsync(db, logger);
     }
+}
+
+// ── CLI: Generate synthetic filler JSON (one-time) ──
+if (args.Contains("--generate-synthetic-filler"))
+{
+    var generator = app.Services.GetRequiredService<SyntheticFillerGenerator>();
+    generator.Generate();
+    Console.WriteLine("Synthetic filler generation complete. Exiting.");
+    return;
+}
+
+// ── CLI: Generate skeleton JSON (one-time, for testing) ──
+if (args.Contains("--generate-skeleton"))
+{
+    using var scope = app.Services.CreateScope();
+    var skeletonService = scope.ServiceProvider.GetRequiredService<SkeletonGeneratorService>();
+    await skeletonService.GenerateAsync(CancellationToken.None);
+    Console.WriteLine("Skeleton generation complete. Exiting.");
+    return;
 }
 
 app.Run();

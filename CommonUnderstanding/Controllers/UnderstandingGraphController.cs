@@ -503,4 +503,35 @@ public class LeafNodesRequest
 {
     public List<int> RootNodeIds { get; set; } = new();
     public int MaxNodes { get; set; } = 2000;
+    /// <summary>
+    /// Optional: if provided, only return nodes whose IDs are in this list.
+    /// Used for viewport-scoped loading — the client sends the IDs of nodes
+    /// currently visible in the viewport, and we return only those that aren't
+    /// already in the client-side DataSet.
+    /// </summary>
+    public List<int>? ViewportNodeIds { get; set; }
+}
+
+/// <summary>
+/// Lightweight node preview for hover tooltips — avoids the full detail payload.
+/// </summary>
+public class NodePreviewResponse
+{
+    public int Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+}
+
+/// <summary>
+/// Manifest for the precomputed static skeleton file.
+/// The client fetches this first to know which versioned file to load.
+/// </summary>
+public class SkeletonManifest
+{
+    public string Url { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public DateTime GeneratedAt { get; set; }
+    public int NodeCount { get; set; }
+    public int EdgeCount { get; set; }
 }

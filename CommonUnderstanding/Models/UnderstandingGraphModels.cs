@@ -251,3 +251,29 @@ public class GraphSnapshot
 
     public DateTime CapturedAt { get; set; } = DateTime.UtcNow;
 }
+
+// ── API DTOs ────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Lightweight node preview for hover tooltips — avoids the full detail payload.
+/// </summary>
+public class NodePreviewResponse
+{
+    public int Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+}
+
+/// <summary>
+/// Manifest for the precomputed static skeleton file.
+/// The client fetches this first to know which versioned file to load.
+/// </summary>
+public class SkeletonManifest
+{
+    public string Url { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public DateTime GeneratedAt { get; set; }
+    public int NodeCount { get; set; }
+    public int EdgeCount { get; set; }
+}

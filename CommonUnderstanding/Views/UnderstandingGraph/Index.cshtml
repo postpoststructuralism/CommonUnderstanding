@@ -574,14 +574,22 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 <script>
-    // ── State ──
+    // ── Three-tier loading state ──
     let network = null;
     let nodes = new vis.DataSet([]);
     let edges = new vis.DataSet([]);
     let allNodes = [];
     let allEdges = [];
-    let currentHighlight = null;
     let physicsEnabled = false;
+    const MAX_TOTAL_NODES = 2000;           // cap total DOM nodes for smooth rendering
+    const VIEWPORT_ZOOM_THRESHOLD = 0.6;    // only fetch real data when zoomed in this far
+    const VIEWPORT_FETCH_DEBOUNCE_MS = 250; // rate-limit viewport fetches
+    let skeletonNodeIds = new Set();        // IDs from the static skeleton
+    let syntheticNodeIds = new Set();       // IDs from the synthetic filler
+    let loadedRealNodeIds = new Set();      // IDs fetched via viewport or interaction
+    let hoverCache = new Map();             // nodeId -> { id, label, status, confidence }
+    let viewportFetchTimer = null;
+    let lastViewportFetchNodes = new Set(); // track what we last fetched to skip duplicates
 
     // ── Tab switching (safe: sidebar may be hidden on homepage) ──
     document.querySelectorAll('.sidebar-tab').forEach(tab => {
@@ -615,7 +623,7 @@
         const container = document.getElementById('graph-network');
         const options = {
             physics: {
-                enabled: false,  // start frozen — enable after data loads
+                enabled: false,  // physics stays OFF — all positions are pre-baked
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
                     gravitationalConstant: -50,
@@ -668,6 +676,187 @@
                 window.location.href = '/UnderstandingGraph/Node/' + params.nodes[0];
             }
         });
+
+        // ── Hover: show tooltip with debounced preview fetch ──
+        let hoverTimer = null;
+        network.on('hoverNode', (params) => {
+            const nodeId = params.node;
+            if (hoverTimer) clearTimeout(hoverTimer);
+            hoverTimer = setTimeout(() => fetchHoverPreview(nodeId), 200);
+        });
+        network.on('blurNode', () => {
+            if (hoverTimer) clearTimeout(hoverTimer);
+        });
+
+        // ── Viewport-aware loading: fetch real data when zoomed in ──
+        network.on('zoom', () => scheduleViewportFetch());
+        network.on('dragEnd', () => scheduleViewportFetch());
+    }
+
+    // ── Debounced hover preview fetch ──
+    async function fetchHoverPreview(nodeId) {
+        // Skip synthetic nodes — they have no server-side data
+        if (syntheticNodeIds.has(nodeId)) return;
+        // Skip if already cached
+        if (hoverCache.has(nodeId)) return;
+
+        try {
+            const res = await fetch(`/api/understanding-graph/node/${nodeId}/preview`);
+            if (res.ok) {
+                const preview = await res.json();
+                hoverCache.set(nodeId, preview);
+            }
+        } catch (err) {
+            // Silently ignore — hover previews are non-critical
+        }
+    }
+
+    // ── Schedule a debounced viewport fetch ──
+    function scheduleViewportFetch() {
+        if (viewportFetchTimer) clearTimeout(viewportFetchTimer);
+        viewportFetchTimer = setTimeout(() => doViewportFetch(), VIEWPORT_FETCH_DEBOUNCE_MS);
+    }
+
+    async function doViewportFetch() {
+        if (!network) return;
+        var scale = network.getScale();
+        // Only fetch real data when zoomed in past threshold
+        if (scale < VIEWPORT_ZOOM_THRESHOLD) return;
+
+        // Compute visible bounding box in canvas coordinates
+        var viewPos = network.getViewPosition();
+        var canvasWidth = network.canvas.frame.canvas.clientWidth;
+        var canvasHeight = network.canvas.frame.canvas.clientHeight;
+        var topLeft = network.DOMtoCanvas({ x: 0, y: 0 });
+        var bottomRight = network.DOMtoCanvas({ x: canvasWidth, y: canvasHeight });
+
+        // Find all non-synthetic nodes currently visible in the viewport
+        var visibleIds = [];
+        var allNodeData = nodes.get();
+        for (var i = 0; i < allNodeData.length; i++) {
+            var n = allNodeData[i];
+            // Skip synthetic nodes and nodes already loaded as real data
+            if (syntheticNodeIds.has(n.id)) continue;
+            if (loadedRealNodeIds.has(n.id)) continue;
+            // Check if node position falls within viewport
+            if (n.x >= topLeft.x && n.x <= bottomRight.x && n.y >= topLeft.y && n.y <= bottomRight.y) {
+                visibleIds.push(n.id);
+            }
+        }
+
+        if (visibleIds.length === 0) return;
+
+        // Skip if same set of nodes as last fetch
+        var idKey = visibleIds.sort().join(',');
+        if (idKey === lastViewportFetchNodes.join(',')) return;
+        lastViewportFetchNodes = visibleIds;
+
+        // Cap to remaining capacity
+        var remaining = MAX_TOTAL_NODES - loadedRealNodeIds.size - skeletonNodeIds.size - syntheticNodeIds.size;
+        if (remaining <= 0) return;
+        if (visibleIds.length > remaining) visibleIds = visibleIds.slice(0, remaining);
+
+        try {
+            var leafRes = await fetch('/api/understanding-graph/leaves', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rootNodeIds: Array.from(skeletonNodeIds),
+                    maxNodes: remaining,
+                    viewportNodeIds: visibleIds
+                })
+            });
+            if (!leafRes.ok) return;
+            var leafData = await leafRes.json();
+
+            if (leafData.nodes && leafData.nodes.length > 0) {
+                var leafMappedNodes = leafData.nodes.map(mapNode);
+                var leafMappedEdges = (leafData.edges || []).map(mapEdge);
+
+                // Dedup before adding
+                var existingIds = new Set(allNodes.map(function(n) { return n.id; }));
+                var existingEdgeIds = new Set(allEdges.map(function(e) { return e.id; }));
+
+                var newNodes = leafMappedNodes.filter(function(n) { return !existingIds.has(n.id); });
+                var newEdges = leafMappedEdges.filter(function(e) { return !existingEdgeIds.has(e.id); });
+
+                newNodes.forEach(function(n) { allNodes.push(n); loadedRealNodeIds.add(n.id); });
+                newEdges.forEach(function(e) { allEdges.push(e); });
+
+                // Incremental merge — never setData() which would discard skeleton+synthetic
+                nodes.add(newNodes);
+                edges.add(newEdges);
+            }
+        } catch (err) {
+            console.warn('Viewport fetch failed (non-critical):', err);
+        }
+    }
+
+    // ── Three-tier load: manifest → skeleton → synthetic → render ──
+    async function loadGraph() {
+        var loadingEl = document.getElementById('graph-loading');
+        if (loadingEl) loadingEl.classList.add('hidden');
+
+        // Reset state for fresh load
+        window._zoomDone = false;
+        physicsEnabled = false;
+        try {
+            // Tier 1: Fetch skeleton manifest to get the current versioned file URL
+            var manifestRes = await fetch('/api/understanding-graph/skeleton-manifest');
+            if (!manifestRes.ok) throw new Error('Manifest API returned ' + manifestRes.status);
+            var manifest = await manifestRes.json();
+
+            // Tier 2: Fetch static skeleton JSON (zero DB cost — served as static file)
+            var skeletonPromise = Promise.resolve(null);
+            if (manifest.version && manifest.version !== 'none') {
+                skeletonPromise = fetch(manifest.url).then(function(r) { return r.json(); });
+            }
+
+            // Tier 3: Fetch synthetic filler JSON (zero DB cost — static file)
+            var fillerPromise = fetch('/data/synthetic-filler.json')
+                .then(function(r) { return r.json(); })
+                .catch(function() { return null; }); // filler is optional
+
+            var _a = await Promise.all([skeletonPromise, fillerPromise]),
+                skeletonData = _a[0], fillerData = _a[1];
+
+            // ── Render skeleton ──
+            if (skeletonData && skeletonData.nodes) {
+                var skNodes = skeletonData.nodes.map(mapStaticNode);
+                var skEdges = (skeletonData.edges || []).map(mapStaticEdge);
+                skNodes.forEach(function(n) { allNodes.push(n); skeletonNodeIds.add(n.id); });
+                skEdges.forEach(function(e) { allEdges.push(e); });
+                nodes.add(skNodes);
+                edges.add(skEdges);
+
+                var statNodes = document.getElementById('stat-nodes');
+                if (statNodes) statNodes.textContent = skeletonData.nodes.length || 0;
+            }
+
+            // ── Render synthetic filler ──
+            if (fillerData && fillerData.nodes) {
+                var syNodes = fillerData.nodes
+                    .map(mapStaticNode)
+                    .filter(function(n) { return !skeletonNodeIds.has(n.id); });
+                var syEdges = (fillerData.edges || [])
+                    .map(mapStaticEdge)
+                    .filter(function(e) { return !skeletonNodeIds.has(e.id); });
+                syNodes.forEach(function(n) { allNodes.push(n); syntheticNodeIds.add(n.id); });
+                syEdges.forEach(function(e) { allEdges.push(e); });
+                if (syNodes.length > 0) nodes.add(syNodes);
+                if (syEdges.length > 0) edges.add(syEdges);
+            }
+
+            // All positions are pre-baked and fixed.
+            // Enable physics for the initial layout animation, then freeze.
+            enablePhysics();
+        } catch (err) {
+            console.error('Failed to load graph:', err);
+            if (loadingEl) {
+                loadingEl.classList.remove('hidden');
+                loadingEl.innerHTML = '<div style="text-align:center;color:#dc2626;"><p>\u26a0\ufe0f Failed to load graph</p><p style="font-size:12px;">Check that the server is running and the database is accessible.</p></div>';
+            }
+        }
     }
 
     // ── Enable physics after all data is loaded ──
@@ -710,115 +899,54 @@
         }, 700);
     }
 
-    // ── Load graph data (non-blocking: canvas is already visible) ──
-    async function loadGraph() {
-        const loadingEl = document.getElementById('graph-loading');
-
-        // Hide spinner immediately — the empty canvas is already rendered
-        if (loadingEl) loadingEl.classList.add('hidden');
-
-        try {
-            // Phase 1: Fetch root nodes
-            const rootRes = await fetch('/api/understanding-graph/roots?count=150');
-            if (!rootRes.ok) throw new Error(`Roots API returned ${rootRes.status}`);
-            const rootData = await rootRes.json();
-
-            if (rootData.statistics) {
-                const statNodes = document.getElementById('stat-nodes');
-                if (statNodes) statNodes.textContent = rootData.statistics.nodeCount || 0;
-            }
-
-            const rootMappedNodes = (rootData.nodes || []).map(mapNode);
-            const rootMappedEdges = (rootData.edges || []).map(mapEdge);
-
-            allNodes.push(...rootMappedNodes);
-            allEdges.push(...rootMappedEdges);
-
-            // Add all root data at once
-            nodes.add(rootMappedNodes);
-            edges.add(rootMappedEdges);
-
-            // Phase 2: Fetch leaf nodes
-            const rootIds = (rootData.nodes || []).map(n => n.id);
-            if (rootIds.length > 0) {
-                try {
-                    const leafRes = await fetch('/api/understanding-graph/leaves', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rootNodeIds: rootIds, maxNodes: 2000 })
-                    });
-                    if (!leafRes.ok) throw new Error(`Leaves API returned ${leafRes.status}`);
-                    const leafData = await leafRes.json();
-
-                    if (leafData.nodes && leafData.nodes.length > 0) {
-                        const leafMappedNodes = leafData.nodes.map(mapNode);
-                        const leafMappedEdges = (leafData.edges || []).map(mapEdge);
-
-                        // Dedup before adding
-                        const existingIds = new Set(allNodes.map(n => n.id));
-                        const existingEdgeIds = new Set(allEdges.map(e => e.id));
-
-                        const newNodes = leafMappedNodes.filter(n => !existingIds.has(n.id));
-                        const newEdges = leafMappedEdges.filter(e => !existingEdgeIds.has(e.id));
-
-                        newNodes.forEach(n => allNodes.push(n));
-                        newEdges.forEach(e => allEdges.push(e));
-
-                        nodes.add(newNodes);
-                        edges.add(newEdges);
-                    }
-                } catch (leafErr) {
-                    console.warn('Leaf nodes load failed (non-critical):', leafErr);
-                }
-            }
-
-            // All data loaded — enable physics for layout
-            enablePhysics();
-        } catch (err) {
-            console.error('Failed to load graph:', err);
-            if (loadingEl) {
-                loadingEl.classList.remove('hidden');
-                loadingEl.innerHTML = '<div style="text-align:center;color:#dc2626;"><p>⚠️ Failed to load graph</p><p style="font-size:12px;">Check that the server is running and the database is accessible.</p></div>';
-            }
-        }
+    // ── Map static (pre-baked) node data to vis format ──
+    function mapStaticNode(n) {
+        // Handle both PascalCase (skeleton JSON) and camelCase (synthetic filler)
+        var id = n.id !== undefined ? n.id : n.Id;
+        var label = n.label || n.Label || '(unnamed)';
+        var confidence = n.confidence !== undefined ? n.confidence : (n.Confidence !== undefined ? n.Confidence : 0);
+        var degreeCentrality = n.degreeCentrality !== undefined ? n.degreeCentrality : (n.DegreeCentrality !== undefined ? n.DegreeCentrality : 0);
+        var status = n.status || n.Status || 'Unknown';
+        var evidenceCount = n.evidenceCount !== undefined ? n.evidenceCount : (n.EvidenceCount !== undefined ? n.EvidenceCount : 0);
+        var argumentIdsJson = n.argumentIdsJson || n.ArgumentIdsJson || '[]';
+        return {
+            id: id,
+            label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
+            title: '<strong>' + escHtml(label) + '</strong><br/>' +
+                   'Confidence: ' + confidence.toFixed(3) + '<br/>' +
+                   'Centrality: ' + degreeCentrality.toFixed(3) + '<br/>' +
+                   'Status: ' + status + '<br/>' +
+                   'Evidence: ' + evidenceCount,
+            value: Math.max(5, (degreeCentrality || 0.1) * 30),
+            color: getNodeColor({ confidence: confidence, status: status, dialecticalTemperature: n.dialecticalTemperature || n.DialecticalTemperature || 0, controversyScore: n.controversyScore || n.ControversyScore || 0, schemaEntropy: n.schemaEntropy || n.SchemaEntropy || 0 }),
+            group: status,
+            argumentIdsJson: argumentIdsJson
+            // NOTE: Do NOT pass x/y from skeleton — let physics do the layout for visible motion
+        };
     }
 
-    // ── Stream nodes into vis in chunks using rAF to avoid blocking ──
-    function streamAddNodes(nodeList, chunkSize) {
-        return new Promise(resolve => {
-            let i = 0;
-            function addChunk() {
-                const chunk = nodeList.slice(i, i + chunkSize);
-                if (chunk.length > 0) {
-                    nodes.add(chunk);
-                    i += chunkSize;
-                    requestAnimationFrame(addChunk);
-                } else {
-                    resolve();
-                }
-            }
-            addChunk();
-        });
+    function mapStaticEdge(e) {
+        // Handle both PascalCase (skeleton JSON) and camelCase (synthetic filler)
+        var id = e.id !== undefined ? e.id : e.Id;
+        var sourceId = e.sourceId !== undefined ? e.sourceId : e.SourceId;
+        var targetId = e.targetId !== undefined ? e.targetId : e.TargetId;
+        var edgeType = e.edgeType || e.EdgeType || 'supports';
+        var weight = e.weight !== undefined ? e.weight : (e.Weight !== undefined ? e.Weight : 0.5);
+        return {
+            id: id,
+            from: sourceId,
+            to: targetId,
+            label: edgeType,
+            value: Math.max(0.5, weight),
+            color: {
+                color: '#0f766e',
+                opacity: Math.min(1, Math.max(0.2, weight || 0.3))
+            },
+            width: Math.max(0.5, (weight || 0.5) * 3)
+        };
     }
 
-    function streamAddEdges(edgeList, chunkSize) {
-        return new Promise(resolve => {
-            let i = 0;
-            function addChunk() {
-                const chunk = edgeList.slice(i, i + chunkSize);
-                if (chunk.length > 0) {
-                    edges.add(chunk);
-                    i += chunkSize;
-                    requestAnimationFrame(addChunk);
-                } else {
-                    resolve();
-                }
-            }
-            addChunk();
-        });
-    }
-
-    // ── Map raw node/edge data to vis format ──
+    // ── Map raw node/edge data to vis format (used for real data from API) ──
     function mapNode(n) {
         const label = n.label || '(unnamed)';
         return {
@@ -1120,13 +1248,12 @@
             document.getElementById('color-metric').value = 'default';
             document.getElementById('weight-filter').value = '0';
             document.getElementById('weight-label').textContent = '0';
-            document.getElementById('toggle-physics').classList.add('active');
+            document.getElementById('toggle-physics').classList.remove('active');
             document.getElementById('toggle-labels').classList.remove('active');
             recolorByMetric('default');
             applyWeightFilter(0);
             if (network) {
-                network.setOptions({ physics: { enabled: true } });
-                network.startSimulation();
+                // Physics stays off — all positions are pre-baked and fixed
                 network.fit({ animation: true });
             }
         });

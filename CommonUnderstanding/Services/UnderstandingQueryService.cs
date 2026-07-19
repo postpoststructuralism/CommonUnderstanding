@@ -504,6 +504,88 @@ public class UnderstandingQueryService
     }
 
     /// <summary>
+    /// Gets leaf nodes scoped to a specific set of candidate IDs (viewport-scoped fetch).
+    /// Only returns nodes in viewportNodeIds that are NOT already in rootNodeIds.
+    /// </summary>
+    public async Task<GraphMap> GetLeafNodesByViewportAsync(HashSet<int> rootNodeIds, HashSet<int> viewportNodeIds, int maxNodes = 2000)
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        // Only fetch nodes that are in the viewport AND not already loaded as roots
+        var candidateIds = viewportNodeIds.Where(id => !rootNodeIds.Contains(id)).ToHashSet();
+        if (candidateIds.Count == 0)
+            return new GraphMap { Nodes = new(), Edges = new(), Schemas = new(), Syntheses = new(), Statistics = new() };
+
+        var nodes = await db.UnderstandingNodes
+            .Where(n => candidateIds.Contains(n.Id))
+            .OrderByDescending(n => n.Confidence)
+            .Take(maxNodes)
+            .Select(n => new GraphMapNode
+            {
+                Id = n.Id,
+                Label = n.CanonicalText,
+                Confidence = n.Confidence,
+                DegreeCentrality = n.DegreeCentrality,
+                BetweennessCentrality = n.BetweennessCentrality,
+                ClusteringCoefficient = n.ClusteringCoefficient,
+                DialecticalTemperature = n.DialecticalTemperature,
+                ControversyScore = n.ControversyScore,
+                SchemaEntropy = n.SchemaEntropy,
+                Status = n.Status.ToString(),
+                EvidenceCount = n.EvidenceCount,
+                CreatedAt = n.FirstSeenAt,
+                ArgumentIdsJson = n.ArgumentIdsJson
+            })
+            .ToListAsync();
+
+        var allNodeIds = rootNodeIds.Concat(nodes.Select(n => n.Id)).ToHashSet();
+
+        var edges = await db.UnderstandingEdges
+            .Where(e => allNodeIds.Contains(e.SourceNodeId) && allNodeIds.Contains(e.TargetNodeId))
+            .OrderByDescending(e => e.Weight)
+            .Take(5000)
+            .Select(e => new GraphMapEdge
+            {
+                Id = e.Id,
+                SourceId = e.SourceNodeId,
+                TargetId = e.TargetNodeId,
+                EdgeType = e.Relationship,
+                Weight = e.Weight
+            })
+            .ToListAsync();
+
+        return new GraphMap
+        {
+            Nodes = nodes,
+            Edges = edges,
+            Schemas = new(),
+            Syntheses = new(),
+            Statistics = new GraphMapStatistics()
+        };
+    }
+
+    /// <summary>
+    /// Returns a lightweight node preview for hover tooltips.
+    /// Only fetches id, label, status, confidence — avoids the full detail payload.
+    /// </summary>
+    public async Task<NodePreviewResponse?> GetNodePreviewAsync(int nodeId)
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+        var node = await db.UnderstandingNodes
+            .Where(n => n.Id == nodeId)
+            .Select(n => new NodePreviewResponse
+            {
+                Id = n.Id,
+                Label = n.CanonicalText,
+                Status = n.Status.ToString(),
+                Confidence = n.Confidence
+            })
+            .FirstOrDefaultAsync();
+
+        return node;
+    }
+
+    /// <summary>
     /// Builds the full graph map from the database (uncached).
     /// </summary>
     private async Task<GraphMap> BuildMapAsync(int maxNodes = 2000, int maxEdges = 5000)
