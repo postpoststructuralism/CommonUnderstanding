@@ -157,10 +157,13 @@ public class SchemaDiscoveryService
                 }
             }
 
+            // Save memberships and node updates for this schema immediately
+            // to avoid accumulating massive batches that can crash the process
+            await db.SaveChangesAsync();
+
             schemas.Add(schema);
         }
 
-        await db.SaveChangesAsync();
         _logger.LogInformation("K-means discovery complete: {Count} schemas created.", schemas.Count);
         return schemas;
     }
@@ -318,10 +321,11 @@ public class SchemaDiscoveryService
                 var schemaIds = DeserializeIntList(member.SchemaIdsJson);
                 if (!schemaIds.Contains(schema.Id)) { schemaIds.Add(schema.Id); member.SchemaIdsJson = JsonSerializer.Serialize(schemaIds); }
             }
+            // Save memberships for this schema immediately
+            await db.SaveChangesAsync();
             schemas.Add(schema);
         }
 
-        await db.SaveChangesAsync();
         _logger.LogInformation("Spectral discovery complete: {Count} schemas.", schemas.Count);
         return schemas;
     }

@@ -412,6 +412,8 @@
 </style>
 
 <!-- ── Pipeline Action Panel ── -->
+@if (!isHomePage)
+{
 <div class="pipeline-panel" style="display:flex;align-items:center;gap:10px;padding:10px 20px;background:linear-gradient(135deg,rgba(var(--cu-secondary-rgb),0.08),rgba(var(--cu-accent-rgb),0.06));border-bottom:1px solid var(--cu-border-light);flex-wrap:wrap;">
     <span style="font-size:13px;font-weight:600;color:var(--cu-primary-blue);white-space:nowrap;">🧪 Analysis Pipeline</span>
     <button class="btn btn-sm btn-outline-secondary pipeline-btn" data-action="run-pipeline" style="border-radius:0.7rem;font-size:12px;display:inline-flex;align-items:center;gap:4px;" onclick="runPipeline('run-pipeline')">
@@ -428,6 +430,7 @@
     </button>
     <span id="pipeline-status" style="font-size:12px;color:var(--cu-text-muted);margin-left:auto;">Ready</span>
 </div>
+}
 
 <div class="graph-container">
     <!-- Sidebar — hidden on homepage -->
@@ -503,6 +506,8 @@
 
     <!-- Visualization -->
     <div class="visualization">
+        @if (!isHomePage)
+        {
         <div class="graph-controls">
             <div class="ctrl-group">
                 <label>Color by:</label>
@@ -544,6 +549,7 @@
                 <span class="badge" style="background:var(--cu-border-light);color:var(--cu-text-muted);">Unevaluated</span>
             </span>
         </div>
+        }
         <div id="graph-network">
             <div class="graph-loading" id="graph-loading">
                 <div class="spinner"></div>
@@ -1209,54 +1215,75 @@
         // ── Draw the empty canvas IMMEDIATELY — zero lag ──
         drawNetwork();
 
-        // Color metric dropdown
-        document.getElementById('color-metric').addEventListener('change', (e) => {
-            recolorByMetric(e.target.value);
-        });
+        // Color metric dropdown (may not exist on homepage)
+        const colorMetric = document.getElementById('color-metric');
+        if (colorMetric) {
+            colorMetric.addEventListener('change', (e) => {
+                recolorByMetric(e.target.value);
+            });
+        }
 
-        // Weight filter slider
-        document.getElementById('weight-filter').addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            document.getElementById('weight-label').textContent = val.toFixed(2);
-            applyWeightFilter(val);
-        });
+        // Weight filter slider (may not exist on homepage)
+        const weightFilter = document.getElementById('weight-filter');
+        if (weightFilter) {
+            weightFilter.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                const weightLabel = document.getElementById('weight-label');
+                if (weightLabel) weightLabel.textContent = val.toFixed(2);
+                applyWeightFilter(val);
+            });
+        }
 
-        // Toggle physics
-        document.getElementById('toggle-physics').addEventListener('click', (e) => {
-            const btn = e.currentTarget;
-            const enabled = btn.classList.toggle('active');
-            if (network) {
-                network.setOptions({ physics: { enabled: enabled } });
-                if (enabled) network.startSimulation();
-                else network.stopSimulation();
-            }
-        });
+        // Toggle physics (may not exist on homepage)
+        const togglePhysics = document.getElementById('toggle-physics');
+        if (togglePhysics) {
+            togglePhysics.addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                const enabled = btn.classList.toggle('active');
+                if (network) {
+                    network.setOptions({ physics: { enabled: enabled } });
+                    if (enabled) network.startSimulation();
+                    else network.stopSimulation();
+                }
+            });
+        }
 
-        // Toggle edge labels
-        document.getElementById('toggle-labels').addEventListener('click', (e) => {
-            const btn = e.currentTarget;
-            const show = btn.classList.toggle('active');
-            if (network) {
-                edges.forEach(edge => {
-                    edges.update({ id: edge.id, label: show ? edge.label : '' });
-                });
-            }
-        });
+        // Toggle edge labels (may not exist on homepage)
+        const toggleLabels = document.getElementById('toggle-labels');
+        if (toggleLabels) {
+            toggleLabels.addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                const show = btn.classList.toggle('active');
+                if (network) {
+                    edges.forEach(edge => {
+                        edges.update({ id: edge.id, label: show ? edge.label : '' });
+                    });
+                }
+            });
+        }
 
-        // Reset view
-        document.getElementById('reset-view').addEventListener('click', () => {
-            document.getElementById('color-metric').value = 'default';
-            document.getElementById('weight-filter').value = '0';
-            document.getElementById('weight-label').textContent = '0';
-            document.getElementById('toggle-physics').classList.remove('active');
-            document.getElementById('toggle-labels').classList.remove('active');
-            recolorByMetric('default');
-            applyWeightFilter(0);
-            if (network) {
-                // Physics stays off — all positions are pre-baked and fixed
-                network.fit({ animation: true });
-            }
-        });
+        // Reset view (may not exist on homepage)
+        const resetViewBtn = document.getElementById('reset-view');
+        if (resetViewBtn) {
+            resetViewBtn.addEventListener('click', () => {
+                const cm = document.getElementById('color-metric');
+                const wf = document.getElementById('weight-filter');
+                const wl = document.getElementById('weight-label');
+                const tp = document.getElementById('toggle-physics');
+                const tl = document.getElementById('toggle-labels');
+                if (cm) cm.value = 'default';
+                if (wf) wf.value = '0';
+                if (wl) wl.textContent = '0';
+                if (tp) tp.classList.remove('active');
+                if (tl) tl.classList.remove('active');
+                recolorByMetric('default');
+                applyWeightFilter(0);
+                if (network) {
+                    // Physics stays off — all positions are pre-baked and fixed
+                    network.fit({ animation: true });
+                }
+            });
+        }
 
         // Start loading data AFTER canvas is rendered
         loadGraph();

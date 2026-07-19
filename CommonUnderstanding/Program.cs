@@ -38,12 +38,14 @@ else
 
 // Add EF Core with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions => npgsqlOptions.MaxBatchSize(20)));
 
 // EF Core DbContext factory for use in SignalR hubs and background workers
 // Must be Scoped so it can consume the Scoped DbContextOptions registered by AddDbContext
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions => npgsqlOptions.MaxBatchSize(20)),
     ServiceLifetime.Scoped);
 
 // Singleton-safe wrapper for workers and hubhttps://localhost:44347/#s that can't consume Scoped services
