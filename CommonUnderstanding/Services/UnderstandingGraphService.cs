@@ -64,30 +64,82 @@ public partial class UnderstandingGraphService
 
         await using var db = await _contextFactory.CreateDbContextAsync();
 
-        // Sync legacy Arguments
-        var arguments = await db.Arguments
-            .Include(a => a.Claims).ThenInclude(c => c.Premises)
+        // Sync legacy Arguments — use projection to avoid loading full entity graphs
+        var argProjections = await db.Arguments
+            .Select(a => new
+            {
+                a.Id,
+                Premises = a.Claims.SelectMany(c => c.Premises.Select(p => new
+                {
+                    p.Text,
+                    p.Status,
+                    p.ConfidenceScore,
+                    p.EvidenceCount
+                }))
+            })
             .ToListAsync();
-        _logger.LogInformation("Syncing {Count} legacy arguments...", arguments.Count);
-        foreach (var argument in arguments)
+        _logger.LogInformation("Syncing {Count} legacy arguments...", argProjections.Count);
+        foreach (var arg in argProjections)
         {
-            foreach (var claim in argument.Claims)
-                foreach (var prop in claim.Premises)
-                    await UpsertNodeAsync(db, prop, argument.Id);
-            await DetectEdgesForArgumentAsync(db, argument);
+            foreach (var p in arg.Premises)
+            {
+                // Create lightweight Proposition-like object for UpsertNodeAsync
+                var prop = new Proposition
+                {
+                    Text = p.Text,
+                    Status = p.Status,
+                    ConfidenceScore = p.ConfidenceScore,
+                    EvidenceCount = p.EvidenceCount
+                };
+                await UpsertNodeAsync(db, prop, arg.Id);
+            }
+            // DetectEdgesForArgumentAsync needs the full Argument for Claims→Premises navigation
+            // Load it on-demand (only needed when ≥2 premises exist)
+            if (arg.Premises.Count() >= 2)
+            {
+                var argument = await db.Arguments
+                    .Include(a => a.Claims).ThenInclude(c => c.Premises)
+                    .FirstOrDefaultAsync(a => a.Id == arg.Id);
+                if (argument != null)
+                    await DetectEdgesForArgumentAsync(db, argument);
+            }
         }
 
-        // Sync SocialArguments
-        var socialArgs = await db.SocialArguments
-            .Include(x => x.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+        // Sync SocialArguments — use projection to avoid loading full entity graphs
+        var saProjections = await db.SocialArguments
+            .Select(sa => new
+            {
+                sa.Id,
+                Propositions = sa.ArgumentPropositions
+                    .Where(ap => ap.Proposition != null)
+                    .Select(ap => new
+                    {
+                        ap.Proposition!.Text,
+                        ap.Proposition.Embedding
+                    })
+            })
             .ToListAsync();
-        _logger.LogInformation("Syncing {Count} social arguments...", socialArgs.Count);
-        foreach (var sa in socialArgs)
+        _logger.LogInformation("Syncing {Count} social arguments...", saProjections.Count);
+        foreach (var sa in saProjections)
         {
-            foreach (var ap in sa.ArgumentPropositions)
-                if (ap.Proposition != null)
-                    await UpsertNodeFromSocialPropositionAsync(db, ap.Proposition, sa.Id);
-            await DetectEdgesForSocialArgumentAsync(db, sa);
+            foreach (var p in sa.Propositions)
+            {
+                var prop = new SocialProposition
+                {
+                    Text = p.Text,
+                    Embedding = p.Embedding
+                };
+                await UpsertNodeFromSocialPropositionAsync(db, prop, sa.Id);
+            }
+            // DetectEdgesForSocialArgumentAsync needs full navigation — load on-demand
+            if (sa.Propositions.Count() >= 2)
+            {
+                var socialArg = await db.SocialArguments
+                    .Include(x => x.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+                    .FirstOrDefaultAsync(x => x.Id == sa.Id);
+                if (socialArg != null)
+                    await DetectEdgesForSocialArgumentAsync(db, socialArg);
+            }
         }
 
         _logger.LogInformation("Bulk sync complete.");
@@ -98,16 +150,41 @@ public partial class UnderstandingGraphService
     public async Task DetectEdgesAsync(double similarityThreshold = 0.75)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
-        var nodes = await db.UnderstandingNodes.Where(n => n.SemanticEmbedding != null).ToListAsync();
-        _logger.LogInformation("Detecting edges among {Count} nodes (threshold={Threshold})", nodes.Count, similarityThreshold);
-        int created = 0;
-        for (int i = 0; i < nodes.Count; i++)
-            for (int j = i + 1; j < nodes.Count; j++)
+
+        // Use projection to load ONLY the columns needed for the O(n²) loop.
+        // Avoids loading CanonicalText, GraphEmbedding, SchwartzVector, MoralFoundationsVector,
+        // DimensionalCoordinatesJson, and other heavy columns.
+        var nodeProjections = await db.UnderstandingNodes
+            .Where(n => n.SemanticEmbedding != null)
+            .Select(n => new
             {
-                var a = nodes[i]; var b = nodes[j];
-                if (await db.UnderstandingEdges.AnyAsync(e =>
-                    (e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
-                    (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id))) continue;
+                n.Id,
+                n.SemanticEmbedding,
+                n.ArgumentIdsJson,
+                n.Status
+            })
+            .ToListAsync();
+
+        // Pre-load ALL existing edge pairs into a HashSet for O(1) lookup.
+        // This eliminates the per-pair AnyAsync DB round-trip (was ~50M queries for 10K nodes).
+        var existingPairs = await db.UnderstandingEdges
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId })
+            .ToListAsync();
+        var edgeSet = new HashSet<(int, int)>();
+        foreach (var e in existingPairs)
+        {
+            edgeSet.Add((e.SourceNodeId, e.TargetNodeId));
+            edgeSet.Add((e.TargetNodeId, e.SourceNodeId)); // undirected
+        }
+
+        _logger.LogInformation("Detecting edges among {Count} nodes (threshold={Threshold})",
+            nodeProjections.Count, similarityThreshold);
+        int created = 0;
+        for (int i = 0; i < nodeProjections.Count; i++)
+            for (int j = i + 1; j < nodeProjections.Count; j++)
+            {
+                var a = nodeProjections[i]; var b = nodeProjections[j];
+                if (edgeSet.Contains((a.Id, b.Id))) continue;
                 var aArgs = DeserializeIntList(a.ArgumentIdsJson);
                 var bArgs = DeserializeIntList(b.ArgumentIdsJson);
                 bool shareContext = aArgs.Intersect(bArgs).Any();
@@ -115,7 +192,9 @@ public partial class UnderstandingGraphService
                     ? CosineSimilarity(a.SemanticEmbedding, b.SemanticEmbedding) : 0;
                 if (sim >= similarityThreshold || shareContext)
                 {
-                    var rel = DetermineRelationship(a, b, sim);
+                    // DetermineRelationship needs Status and ArgumentIdsJson (already in projection)
+                    var rel = DetermineRelationshipFromProjection(a.Id, a.Status, a.ArgumentIdsJson,
+                        b.Id, b.Status, b.ArgumentIdsJson, sim);
                     var w = shareContext ? Math.Min(1.0, sim + 0.1) : sim;
                     db.UnderstandingEdges.Add(new UnderstandingEdge
                     {
@@ -137,6 +216,42 @@ public partial class UnderstandingGraphService
     }
 
     /// <summary>
+    /// Lightweight version of DetermineRelationship that works with projections
+    /// instead of full UnderstandingNode entities.
+    /// </summary>
+    private static string DetermineRelationshipFromProjection(
+        int nodeAId, PropositionStatus statusA, string? argsJsonA,
+        int nodeBId, PropositionStatus statusB, string? argsJsonB,
+        double similarity)
+    {
+        if (similarity >= 0.85) return "supports";
+        if (similarity >= 0.65) return "refines";
+        if (similarity >= 0.45) return "qualifies";
+
+        // Low similarity but shared argument context → likely contradiction
+        if (similarity < 0.30)
+        {
+            var aArgs = DeserializeIntList(argsJsonA);
+            var bArgs = DeserializeIntList(argsJsonB);
+            if (aArgs.Intersect(bArgs).Any())
+                return "contradicts";
+        }
+
+        // One contested, one settled with moderate-low similarity → contradiction signal
+        if (similarity < 0.55 &&
+            ((statusA == PropositionStatus.Contested && statusB == PropositionStatus.Settled) ||
+             (statusA == PropositionStatus.Settled && statusB == PropositionStatus.Contested)))
+        {
+            var aArgs = DeserializeIntList(argsJsonA);
+            var bArgs = DeserializeIntList(argsJsonB);
+            if (aArgs.Intersect(bArgs).Any())
+                return "contradicts";
+        }
+
+        return "assumes";
+    }
+
+    /// <summary>
     /// Scans for additional contradiction signals that pure semantic similarity
     /// may miss. Uses three strategies:
     ///
@@ -152,55 +267,75 @@ public partial class UnderstandingGraphService
         await using var db = await _contextFactory.CreateDbContextAsync();
         int created = 0;
 
+        // Pre-load edge set for O(1) existence checks (shared across all strategies)
+        var existingPairs = await db.UnderstandingEdges
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId, e.Relationship })
+            .ToListAsync();
+        var contradictionSet = new HashSet<(int, int)>();
+        var anyEdgeSet = new HashSet<(int, int)>();
+        foreach (var e in existingPairs)
+        {
+            var pair = (Math.Min(e.SourceNodeId, e.TargetNodeId), Math.Max(e.SourceNodeId, e.TargetNodeId));
+            anyEdgeSet.Add(pair);
+            if (e.Relationship == "contradicts")
+                contradictionSet.Add(pair);
+        }
+
         // ── Strategy 1: Evidence direction ────────────────────────────────
-        // Find nodes that have evidence items with opposing directions
-        var nodesWithEvidence = await db.UnderstandingNodes
+        // Use projection to load only needed columns (no embeddings)
+        var nodeProjections = await db.UnderstandingNodes
             .Where(n => n.SemanticEmbedding != null)
+            .Select(n => new
+            {
+                n.Id,
+                n.ArgumentIdsJson
+            })
             .ToListAsync();
 
-        // For each pair of nodes, check if they share an argument context
-        // and have evidence pointing in opposite directions
-        for (int i = 0; i < nodesWithEvidence.Count; i++)
-        {
-            for (int j = i + 1; j < nodesWithEvidence.Count; j++)
-            {
-                var a = nodesWithEvidence[i];
-                var b = nodesWithEvidence[j];
+        // Pre-load all evidence directions in a single query to avoid N+1
+        var evidenceDirections = await db.EvidenceItems
+            .Select(ei => new { ei.Proposition.Claim.ArgumentId, ei.Direction })
+            .Distinct()
+            .ToListAsync();
+        var directionsByArg = evidenceDirections
+            .GroupBy(e => e.ArgumentId)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.Direction).ToHashSet());
 
-                // Skip if contradiction edge already exists (but allow upgrading non-contradiction edges)
-                if (await db.UnderstandingEdges.AnyAsync(e =>
-                    ((e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
-                     (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id))
-                    && e.Relationship == "contradicts"))
+        for (int i = 0; i < nodeProjections.Count; i++)
+        {
+            for (int j = i + 1; j < nodeProjections.Count; j++)
+            {
+                var a = nodeProjections[i];
+                var b = nodeProjections[j];
+
+                var pairKey = (Math.Min(a.Id, b.Id), Math.Max(a.Id, b.Id));
+                if (contradictionSet.Contains(pairKey))
                     continue;
 
-                // Check if they share argument context
                 var aArgs = DeserializeIntList(a.ArgumentIdsJson);
                 var bArgs = DeserializeIntList(b.ArgumentIdsJson);
-                bool shareContext = aArgs.Intersect(bArgs).Any();
-                if (!shareContext) continue;
+                var sharedArgs = aArgs.Intersect(bArgs).ToList();
+                if (sharedArgs.Count == 0) continue;
 
-                // Check evidence direction via the legacy Proposition/EvidenceItem tables
-                foreach (var argId in aArgs.Intersect(bArgs))
+                // Check evidence direction via pre-loaded dictionary (O(1) instead of N+1 DB query)
+                foreach (var argId in sharedArgs)
                 {
-                    var evidenceDirections = await db.EvidenceItems
-                        .Where(ei => ei.Proposition.Claim.ArgumentId == argId)
-                        .Select(ei => ei.Direction)
-                        .Distinct()
-                        .ToListAsync();
-
-                    bool hasSupports = evidenceDirections.Contains(EvidenceDirection.Supports);
-                    bool hasOpposes = evidenceDirections.Contains(EvidenceDirection.Opposes);
+                    if (!directionsByArg.TryGetValue(argId, out var directions)) continue;
+                    bool hasSupports = directions.Contains(EvidenceDirection.Supports);
+                    bool hasOpposes = directions.Contains(EvidenceDirection.Opposes);
 
                     if (hasSupports && hasOpposes)
                     {
                         // Remove any existing non-contradiction edge between these nodes
-                        var existingEdge = await db.UnderstandingEdges
-                            .FirstOrDefaultAsync(e =>
-                                (e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
-                                (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id));
-                        if (existingEdge != null)
-                            db.UnderstandingEdges.Remove(existingEdge);
+                        if (anyEdgeSet.Contains(pairKey))
+                        {
+                            var existingEdge = await db.UnderstandingEdges
+                                .FirstOrDefaultAsync(e =>
+                                    (e.SourceNodeId == a.Id && e.TargetNodeId == b.Id) ||
+                                    (e.SourceNodeId == b.Id && e.TargetNodeId == a.Id));
+                            if (existingEdge != null)
+                                db.UnderstandingEdges.Remove(existingEdge);
+                        }
 
                         db.UnderstandingEdges.Add(new UnderstandingEdge
                         {
@@ -219,70 +354,79 @@ public partial class UnderstandingGraphService
                             LastReinforcedAt = DateTime.UtcNow
                         });
                         created++;
-                        break; // One contradiction edge per pair is enough
+                        contradictionSet.Add(pairKey);
+                        anyEdgeSet.Add(pairKey);
+                        break;
                     }
                 }
             }
         }
 
         // ── Strategy 2: Social argument Contradicts links ─────────────────
-        // Find ArgumentLinks with LinkType.Contradicts and create contradiction
-        // edges between the propositions of the linked arguments
-        var contradictLinks = await db.Set<CommonUnderstanding.Models.Social.ArgumentLink>()
+        // Use projection to avoid loading full entity graphs
+        var contradictLinkProjections = await db.Set<CommonUnderstanding.Models.Social.ArgumentLink>()
             .Where(al => al.LinkType == CommonUnderstanding.Models.Social.LinkType.Contradicts)
-            .Include(al => al.SourceArgument).ThenInclude(sa => sa.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
-            .Include(al => al.TargetArgument).ThenInclude(sa => sa.ArgumentPropositions).ThenInclude(ap => ap.Proposition)
+            .Select(al => new
+            {
+                al.Id,
+                al.SourceArgumentId,
+                al.TargetArgumentId,
+                SourcePropTexts = al.SourceArgument.ArgumentPropositions
+                    .Where(ap => ap.Proposition != null)
+                    .Select(ap => ap.Proposition!.Text),
+                TargetPropTexts = al.TargetArgument.ArgumentPropositions
+                    .Where(ap => ap.Proposition != null)
+                    .Select(ap => ap.Proposition!.Text)
+            })
             .ToListAsync();
 
-        foreach (var link in contradictLinks)
+        // Pre-load all relevant UnderstandingNode keys for batch lookup
+        var allPropTexts = contradictLinkProjections
+            .SelectMany(l => l.SourcePropTexts.Concat(l.TargetPropTexts))
+            .Select(t => NormalizeKey(t))
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct()
+            .ToList();
+
+        var nodeLookup = allPropTexts.Count > 0
+            ? await db.UnderstandingNodes
+                .Where(n => allPropTexts.Contains(n.NormalizedKey))
+                .Select(n => new { n.Id, n.NormalizedKey })
+                .ToDictionaryAsync(n => n.NormalizedKey, n => n.Id)
+            : new Dictionary<string, int>();
+
+        foreach (var link in contradictLinkProjections)
         {
-            var sourceProps = link.SourceArgument?.ArgumentPropositions?
-                .Select(ap => ap.Proposition)
-                .Where(p => p != null)
-                .ToList() ?? new();
-
-            var targetProps = link.TargetArgument?.ArgumentPropositions?
-                .Select(ap => ap.Proposition)
-                .Where(p => p != null)
-                .ToList() ?? new();
-
-            foreach (var sp in sourceProps)
+            foreach (var spText in link.SourcePropTexts)
             {
-                foreach (var tp in targetProps)
+                var sourceKey = NormalizeKey(spText);
+                if (string.IsNullOrWhiteSpace(sourceKey) || !nodeLookup.TryGetValue(sourceKey, out int sourceNodeId))
+                    continue;
+
+                foreach (var tpText in link.TargetPropTexts)
                 {
-                    if (sp == null || tp == null) continue;
-
-                    var sourceKey = NormalizeKey(sp.Text);
-                    var targetKey = NormalizeKey(tp.Text);
-                    if (string.IsNullOrWhiteSpace(sourceKey) || string.IsNullOrWhiteSpace(targetKey))
+                    var targetKey = NormalizeKey(tpText);
+                    if (string.IsNullOrWhiteSpace(targetKey) || !nodeLookup.TryGetValue(targetKey, out int targetNodeId))
                         continue;
 
-                    var sourceNode = await db.UnderstandingNodes
-                        .FirstOrDefaultAsync(n => n.NormalizedKey == sourceKey);
-                    var targetNode = await db.UnderstandingNodes
-                        .FirstOrDefaultAsync(n => n.NormalizedKey == targetKey);
-
-                    if (sourceNode == null || targetNode == null) continue;
-
-                    // Skip if contradiction edge already exists
-                    if (await db.UnderstandingEdges.AnyAsync(e =>
-                        ((e.SourceNodeId == sourceNode.Id && e.TargetNodeId == targetNode.Id) ||
-                         (e.SourceNodeId == targetNode.Id && e.TargetNodeId == sourceNode.Id))
-                        && e.Relationship == "contradicts"))
+                    var pairKey = (Math.Min(sourceNodeId, targetNodeId), Math.Max(sourceNodeId, targetNodeId));
+                    if (contradictionSet.Contains(pairKey))
                         continue;
 
-                    // Remove any existing non-contradiction edge between these nodes
-                    var existingEdge2 = await db.UnderstandingEdges
-                        .FirstOrDefaultAsync(e =>
-                            (e.SourceNodeId == sourceNode.Id && e.TargetNodeId == targetNode.Id) ||
-                            (e.SourceNodeId == targetNode.Id && e.TargetNodeId == sourceNode.Id));
-                    if (existingEdge2 != null)
-                        db.UnderstandingEdges.Remove(existingEdge2);
+                    if (anyEdgeSet.Contains(pairKey))
+                    {
+                        var existingEdge2 = await db.UnderstandingEdges
+                            .FirstOrDefaultAsync(e =>
+                                (e.SourceNodeId == sourceNodeId && e.TargetNodeId == targetNodeId) ||
+                                (e.SourceNodeId == targetNodeId && e.TargetNodeId == sourceNodeId));
+                        if (existingEdge2 != null)
+                            db.UnderstandingEdges.Remove(existingEdge2);
+                    }
 
                     db.UnderstandingEdges.Add(new UnderstandingEdge
                     {
-                        SourceNodeId = sourceNode.Id,
-                        TargetNodeId = targetNode.Id,
+                        SourceNodeId = sourceNodeId,
+                        TargetNodeId = targetNodeId,
                         Relationship = "contradicts",
                         Weight = 0.75,
                         BaseWeight = 0.75,
@@ -297,56 +441,67 @@ public partial class UnderstandingGraphService
                         LastReinforcedAt = DateTime.UtcNow
                     });
                     created++;
+                    contradictionSet.Add(pairKey);
+                    anyEdgeSet.Add(pairKey);
                 }
             }
         }
 
         // ── Strategy 3: Rebuttal propositions ─────────────────────────────
-        // SocialPropositionType.Rebuttal propositions contradict the claim
-        // of the argument they belong to
-        var rebuttalProps = await db.Set<CommonUnderstanding.Models.Social.SocialArgumentProposition>()
+        var rebuttalProjections = await db.Set<CommonUnderstanding.Models.Social.SocialArgumentProposition>()
             .Where(ap => ap.Role == CommonUnderstanding.Models.Social.SocialPropositionType.Rebuttal)
-            .Include(ap => ap.Argument).ThenInclude(a => a.ClaimProposition)
-            .Include(ap => ap.Proposition)
+            .Select(ap => new
+            {
+                ap.ArgumentId,
+                RebuttalText = ap.Proposition.Text,
+                ClaimText = ap.Argument.ClaimProposition.Text
+            })
             .ToListAsync();
 
-        foreach (var rp in rebuttalProps)
-        {
-            var rebuttalProp = rp.Proposition;
-            var claimProp = rp.Argument?.ClaimProposition;
-            if (rebuttalProp == null || claimProp == null) continue;
+        // Batch lookup for rebuttal and claim nodes
+        var rebuttalTexts = rebuttalProjections
+            .SelectMany(r => new[] { r.RebuttalText, r.ClaimText })
+            .Select(t => NormalizeKey(t))
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct()
+            .ToList();
 
-            var rebuttalKey = NormalizeKey(rebuttalProp.Text);
-            var claimKey = NormalizeKey(claimProp.Text);
+        var rebuttalNodeLookup = rebuttalTexts.Count > 0
+            ? await db.UnderstandingNodes
+                .Where(n => rebuttalTexts.Contains(n.NormalizedKey))
+                .Select(n => new { n.Id, n.NormalizedKey })
+                .ToDictionaryAsync(n => n.NormalizedKey, n => n.Id)
+            : new Dictionary<string, int>();
+
+        foreach (var rp in rebuttalProjections)
+        {
+            var rebuttalKey = NormalizeKey(rp.RebuttalText);
+            var claimKey = NormalizeKey(rp.ClaimText);
             if (string.IsNullOrWhiteSpace(rebuttalKey) || string.IsNullOrWhiteSpace(claimKey))
                 continue;
-
-            var rebuttalNode = await db.UnderstandingNodes
-                .FirstOrDefaultAsync(n => n.NormalizedKey == rebuttalKey);
-            var claimNode = await db.UnderstandingNodes
-                .FirstOrDefaultAsync(n => n.NormalizedKey == claimKey);
-
-            if (rebuttalNode == null || claimNode == null) continue;
-
-            // Skip if contradiction edge already exists
-            if (await db.UnderstandingEdges.AnyAsync(e =>
-                ((e.SourceNodeId == rebuttalNode.Id && e.TargetNodeId == claimNode.Id) ||
-                 (e.SourceNodeId == claimNode.Id && e.TargetNodeId == rebuttalNode.Id))
-                && e.Relationship == "contradicts"))
+            if (!rebuttalNodeLookup.TryGetValue(rebuttalKey, out int rebuttalNodeId))
+                continue;
+            if (!rebuttalNodeLookup.TryGetValue(claimKey, out int claimNodeId))
                 continue;
 
-            // Remove any existing non-contradiction edge between these nodes
-            var existingEdge3 = await db.UnderstandingEdges
-                .FirstOrDefaultAsync(e =>
-                    (e.SourceNodeId == rebuttalNode.Id && e.TargetNodeId == claimNode.Id) ||
-                    (e.SourceNodeId == claimNode.Id && e.TargetNodeId == rebuttalNode.Id));
-            if (existingEdge3 != null)
-                db.UnderstandingEdges.Remove(existingEdge3);
+            var pairKey = (Math.Min(rebuttalNodeId, claimNodeId), Math.Max(rebuttalNodeId, claimNodeId));
+            if (contradictionSet.Contains(pairKey))
+                continue;
+
+            if (anyEdgeSet.Contains(pairKey))
+            {
+                var existingEdge3 = await db.UnderstandingEdges
+                    .FirstOrDefaultAsync(e =>
+                        (e.SourceNodeId == rebuttalNodeId && e.TargetNodeId == claimNodeId) ||
+                        (e.SourceNodeId == claimNodeId && e.TargetNodeId == rebuttalNodeId));
+                if (existingEdge3 != null)
+                    db.UnderstandingEdges.Remove(existingEdge3);
+            }
 
             db.UnderstandingEdges.Add(new UnderstandingEdge
             {
-                SourceNodeId = rebuttalNode.Id,
-                TargetNodeId = claimNode.Id,
+                SourceNodeId = rebuttalNodeId,
+                TargetNodeId = claimNodeId,
                 Relationship = "contradicts",
                 Weight = 0.8,
                 BaseWeight = 0.8,
@@ -360,6 +515,8 @@ public partial class UnderstandingGraphService
                 LastReinforcedAt = DateTime.UtcNow
             });
             created++;
+            contradictionSet.Add(pairKey);
+            anyEdgeSet.Add(pairKey);
         }
 
         await db.SaveChangesAsync();

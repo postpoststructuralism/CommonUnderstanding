@@ -88,22 +88,24 @@ public class EmbeddingBackfillWorker : BackgroundService
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        var worldviews = await db.Worldviews
-            .Include(w => w.WorldviewChains)
-                .ThenInclude(wc => wc.ArgumentChain)
+        // Use projection to avoid loading full WorldviewChain and ArgumentChain entities
+        var worldviewProjections = await db.Worldviews
             .Where(w => w.Embedding == null)
             .Take(10)
+            .Select(w => new
+            {
+                w.Id,
+                ArgumentIds = w.WorldviewChains
+                    .Where(wc => wc.ArgumentChain != null)
+                    .SelectMany(wc => wc.ArgumentChain.ArgumentIds)
+            })
             .ToListAsync(ct);
 
-        if (worldviews.Count == 0) return 0;
+        if (worldviewProjections.Count == 0) return 0;
 
-        foreach (var wv in worldviews)
+        foreach (var wv in worldviewProjections)
         {
-            var argIds = wv.WorldviewChains
-                .SelectMany(wc => wc.ArgumentChain?.ArgumentIds ?? Array.Empty<Guid>())
-                .Distinct()
-                .ToList();
-
+            var argIds = wv.ArgumentIds.Distinct().ToList();
             if (argIds.Count == 0) continue;
 
             var embeddings = await db.SocialArguments
@@ -114,10 +116,14 @@ public class EmbeddingBackfillWorker : BackgroundService
 
             var centroid = ScoringAlgorithms.ComputeCentroid(embeddings);
             if (centroid is not null)
-                wv.Embedding = centroid;
+            {
+                var worldview = await db.Worldviews.FindAsync(new object[] { wv.Id }, ct);
+                if (worldview != null)
+                    worldview.Embedding = centroid;
+            }
         }
 
         await db.SaveChangesAsync(ct);
-        return worldviews.Count;
+        return worldviewProjections.Count;
     }
 }

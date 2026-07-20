@@ -93,13 +93,21 @@ public class EpistemicScoringService
 
         // Compute vote accuracy: what fraction of this user's votes matched community consensus?
         int matchingConsensus = 0;
+
+        // Pre-load all votes for the user's voted arguments in a single query (avoids N+1)
+        var relevantArgIds = userVotes.Select(v => v.ArgumentId).Distinct().ToList();
+        var allVotesByArg = await db.ArgumentVotes
+            .AsNoTracking()
+            .Where(v => relevantArgIds.Contains(v.ArgumentId))
+            .ToListAsync(ct);
+        var votesLookup = allVotesByArg
+            .GroupBy(v => v.ArgumentId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var vote in userVotes.Where(v => v.Vote != VoteValue.Abstain))
         {
-            // Get all votes on this argument to determine consensus direction
-            var allVotesOnArg = await db.ArgumentVotes
-                .AsNoTracking()
-                .Where(v => v.ArgumentId == vote.ArgumentId)
-                .ToListAsync(ct);
+            if (!votesLookup.TryGetValue(vote.ArgumentId, out var allVotesOnArg))
+                continue;
 
             if (allVotesOnArg.Count < 3) continue; // Insufficient data for consensus
 

@@ -169,7 +169,8 @@ public class GraphSnapshotService
     // ── Query ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Gets all snapshots, most recent first.
+    /// Gets all snapshots, most recent first. Uses projection to avoid loading
+    /// large JSON blob columns (TopologySummaryJson, SchemaIdsJson, SynthesisIdsJson).
     /// </summary>
     public async Task<List<GraphSnapshot>> GetSnapshotsAsync(int count = 20)
     {
@@ -177,17 +178,31 @@ public class GraphSnapshotService
         return await db.GraphSnapshots
             .OrderByDescending(s => s.CapturedAt)
             .Take(count)
+            .Select(s => new GraphSnapshot
+            {
+                Id = s.Id,
+                Label = s.Label,
+                NodeCount = s.NodeCount,
+                EdgeCount = s.EdgeCount,
+                SchemaCount = s.SchemaCount,
+                CapturedAt = s.CapturedAt,
+                AverageDialecticalTemperature = s.AverageDialecticalTemperature,
+                GraphDensity = s.GraphDensity
+            })
             .ToListAsync();
     }
 
     /// <summary>
     /// Gets the evolution of a specific metric across snapshots.
+    /// Uses projection + Take() to limit data transfer.
     /// </summary>
     public async Task<List<MetricEvolution>> GetMetricEvolutionAsync(string metricName)
     {
         await using var db = await _contextFactory.CreateDbContextAsync();
         var snapshots = await db.GraphSnapshots
             .OrderBy(s => s.CapturedAt)
+            .Take(200) // Reasonable limit for a chart
+            .Select(s => new { s.Id, s.CapturedAt, s.Label, s.TopologySummaryJson })
             .ToListAsync();
 
         var evolution = new List<MetricEvolution>();
@@ -216,7 +231,7 @@ public class GraphSnapshotService
 
     /// <summary>
     /// Gets the schema evolution — how schema membership changed between
-    /// the last two snapshots.
+    /// the last two snapshots. Uses projection to avoid loading JSON blobs.
     /// </summary>
     public async Task<SchemaEvolutionResult?> GetSchemaEvolutionAsync()
     {
@@ -224,6 +239,16 @@ public class GraphSnapshotService
         var snapshots = await db.GraphSnapshots
             .OrderByDescending(s => s.CapturedAt)
             .Take(2)
+            .Select(s => new
+            {
+                s.Id,
+                s.CapturedAt,
+                s.NodeCount,
+                s.EdgeCount,
+                s.SchemaCount,
+                s.AverageDialecticalTemperature,
+                s.GraphDensity
+            })
             .ToListAsync();
 
         if (snapshots.Count < 2) return null;

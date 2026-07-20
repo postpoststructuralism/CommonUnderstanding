@@ -100,7 +100,6 @@ public class EpistemicScoringWorker : BackgroundService
         // Find users who have voted in the last 24 hours but may not have a profile
         var recentVoters = await db.ArgumentVotes
             .AsNoTracking()
-            .Include(v => v.Argument)
             .Where(v => v.CreatedAt >= DateTime.UtcNow.AddHours(-24))
             .Select(v => new { v.UserId, Domain = v.Argument.Tags.Length > 0 ? v.Argument.Tags[0] : "General" })
             .Distinct()

@@ -375,20 +375,30 @@ public class SchemaDiscoveryService
         await using var db = await _contextFactory.CreateDbContextAsync();
         var schemas = await db.ConceptualSchemas
             .Where(s => s.Label.StartsWith("Schema") || s.Label.StartsWith("Spectral"))
-            .Include(s => s.Memberships).ThenInclude(m => m.Node)
             .ToListAsync();
+
+        if (schemas.Count == 0) return;
 
         _logger.LogInformation("Labeling {Count} schemas via LLM.", schemas.Count);
 
+        // Load membership texts in a single projection query — avoids Include/ThenInclude
+        // which was loading full UnderstandingNode entities with all embedding vectors.
+        var schemaIds = schemas.Select(s => s.Id).ToList();
+        var membershipTexts = await db.SchemaMemberships
+            .Where(m => schemaIds.Contains(m.SchemaId))
+            .OrderByDescending(m => m.Weight)
+            .Select(m => new { m.SchemaId, m.Node.CanonicalText, m.Weight })
+            .ToListAsync();
+
+        var textsBySchema = membershipTexts
+            .GroupBy(m => m.SchemaId)
+            .ToDictionary(g => g.Key, g => g.Take(10).Select(m =>
+                $"  - \"{m.CanonicalText}\" (weight: {m.Weight:F2})").ToList());
+
         foreach (var schema in schemas)
         {
-            var texts = schema.Memberships
-                .OrderByDescending(m => m.Weight)
-                .Take(10)
-                .Select(m => $"  - \"{m.Node.CanonicalText}\" (weight: {m.Weight:F2})")
-                .ToList();
-
-            if (texts.Count == 0) continue;
+            if (!textsBySchema.TryGetValue(schema.Id, out var texts) || texts.Count == 0)
+                continue;
 
             // Store the member texts in description for now; LLM labeling
             // will be implemented when SemanticKernelService integration is added.

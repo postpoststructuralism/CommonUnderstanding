@@ -100,19 +100,41 @@ public partial class UnderstandingGraphService
         var propositions = argument.Claims.SelectMany(c => c.Premises).ToList();
         if (propositions.Count < 2) return;
         var keys = propositions.Select(p => NormalizeKey(p.Text)).Where(k => !string.IsNullOrWhiteSpace(k)).ToList();
-        var nodes = await db.UnderstandingNodes.Where(n => keys.Contains(n.NormalizedKey)).ToListAsync();
-        int created = 0;
-        for (int i = 0; i < nodes.Count; i++)
-            for (int j = i + 1; j < nodes.Count; j++)
+
+        // Use projection to load only needed columns — skip heavy embeddings
+        var nodeProjections = await db.UnderstandingNodes
+            .Where(n => keys.Contains(n.NormalizedKey))
+            .Select(n => new
             {
-                if (await db.UnderstandingEdges.AnyAsync(e =>
-                    (e.SourceNodeId == nodes[i].Id && e.TargetNodeId == nodes[j].Id) ||
-                    (e.SourceNodeId == nodes[j].Id && e.TargetNodeId == nodes[i].Id))) continue;
-                double sim = (nodes[i].SemanticEmbedding != null && nodes[j].SemanticEmbedding != null)
-                    ? CosineSimilarity(nodes[i].SemanticEmbedding, nodes[j].SemanticEmbedding) : 0.5;
+                n.Id,
+                n.SemanticEmbedding
+            })
+            .ToListAsync();
+
+        // Pre-load existing edge pairs into HashSet for O(1) lookup
+        var nodeIds = nodeProjections.Select(n => n.Id).ToHashSet();
+        var existingPairs = await db.UnderstandingEdges
+            .Where(e => nodeIds.Contains(e.SourceNodeId) && nodeIds.Contains(e.TargetNodeId))
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId })
+            .ToListAsync();
+        var edgeSet = new HashSet<(int, int)>();
+        foreach (var e in existingPairs)
+        {
+            edgeSet.Add((e.SourceNodeId, e.TargetNodeId));
+            edgeSet.Add((e.TargetNodeId, e.SourceNodeId));
+        }
+
+        int created = 0;
+        for (int i = 0; i < nodeProjections.Count; i++)
+            for (int j = i + 1; j < nodeProjections.Count; j++)
+            {
+                var a = nodeProjections[i]; var b = nodeProjections[j];
+                if (edgeSet.Contains((a.Id, b.Id))) continue;
+                double sim = (a.SemanticEmbedding != null && b.SemanticEmbedding != null)
+                    ? CosineSimilarity(a.SemanticEmbedding, b.SemanticEmbedding) : 0.5;
                 db.UnderstandingEdges.Add(new UnderstandingEdge
                 {
-                    SourceNodeId = nodes[i].Id, TargetNodeId = nodes[j].Id,
+                    SourceNodeId = a.Id, TargetNodeId = b.Id,
                     Relationship = sim > 0.7 ? "supports" : "qualifies",
                     Weight = Math.Round(sim, 4), BaseWeight = Math.Round(sim, 4),
                     ProvenanceJson = JsonSerializer.Serialize(new { detectedBy = "argument_co_occurrence", argumentId = argument.Id }),
@@ -128,19 +150,41 @@ public partial class UnderstandingGraphService
         var props = socialArg.ArgumentPropositions?.Select(ap => ap.Proposition).Where(p => p != null).ToList();
         if (props == null || props.Count < 2) return;
         var keys = props.Select(p => NormalizeKey(p!.Text)).Where(k => !string.IsNullOrWhiteSpace(k)).ToList();
-        var nodes = await db.UnderstandingNodes.Where(n => keys.Contains(n.NormalizedKey)).ToListAsync();
-        int created = 0;
-        for (int i = 0; i < nodes.Count; i++)
-            for (int j = i + 1; j < nodes.Count; j++)
+
+        // Use projection to load only needed columns — skip heavy embeddings
+        var nodeProjections = await db.UnderstandingNodes
+            .Where(n => keys.Contains(n.NormalizedKey))
+            .Select(n => new
             {
-                if (await db.UnderstandingEdges.AnyAsync(e =>
-                    (e.SourceNodeId == nodes[i].Id && e.TargetNodeId == nodes[j].Id) ||
-                    (e.SourceNodeId == nodes[j].Id && e.TargetNodeId == nodes[i].Id))) continue;
-                double sim = (nodes[i].SemanticEmbedding != null && nodes[j].SemanticEmbedding != null)
-                    ? CosineSimilarity(nodes[i].SemanticEmbedding, nodes[j].SemanticEmbedding) : 0.5;
+                n.Id,
+                n.SemanticEmbedding
+            })
+            .ToListAsync();
+
+        // Pre-load existing edge pairs into HashSet for O(1) lookup
+        var nodeIds = nodeProjections.Select(n => n.Id).ToHashSet();
+        var existingPairs = await db.UnderstandingEdges
+            .Where(e => nodeIds.Contains(e.SourceNodeId) && nodeIds.Contains(e.TargetNodeId))
+            .Select(e => new { e.SourceNodeId, e.TargetNodeId })
+            .ToListAsync();
+        var edgeSet = new HashSet<(int, int)>();
+        foreach (var e in existingPairs)
+        {
+            edgeSet.Add((e.SourceNodeId, e.TargetNodeId));
+            edgeSet.Add((e.TargetNodeId, e.SourceNodeId));
+        }
+
+        int created = 0;
+        for (int i = 0; i < nodeProjections.Count; i++)
+            for (int j = i + 1; j < nodeProjections.Count; j++)
+            {
+                var a = nodeProjections[i]; var b = nodeProjections[j];
+                if (edgeSet.Contains((a.Id, b.Id))) continue;
+                double sim = (a.SemanticEmbedding != null && b.SemanticEmbedding != null)
+                    ? CosineSimilarity(a.SemanticEmbedding, b.SemanticEmbedding) : 0.5;
                 db.UnderstandingEdges.Add(new UnderstandingEdge
                 {
-                    SourceNodeId = nodes[i].Id, TargetNodeId = nodes[j].Id,
+                    SourceNodeId = a.Id, TargetNodeId = b.Id,
                     Relationship = sim > 0.7 ? "supports" : "qualifies",
                     Weight = Math.Round(sim, 4), BaseWeight = Math.Round(sim, 4),
                     ProvenanceJson = JsonSerializer.Serialize(new { detectedBy = "social_argument_co_occurrence", socialArgumentId = socialArg.Id }),
