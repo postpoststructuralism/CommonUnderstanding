@@ -338,16 +338,6 @@ app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
 // Widget SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 
-// Minimal API fallback for node preview (workaround for attribute routing issue)
-app.MapGet("/api/understanding-graph/node/{id}/preview", async (HttpContext context, int id) =>
-{
-    var queryService = context.RequestServices.GetRequiredService<UnderstandingQueryService>();
-    var preview = await queryService.GetNodePreviewAsync(id);
-    if (preview == null)
-        return Results.NotFound(new { error = "Node not found" });
-    return Results.Json(preview);
-});
-
 // Apply EF Core migrations at startup (creates tables if they don't exist)
 using (var scope = app.Services.CreateScope())
 {

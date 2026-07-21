@@ -582,7 +582,7 @@ public class UnderstandingQueryService
 
     /// <summary>
     /// Returns a lightweight node preview for hover tooltips.
-    /// Only fetches id, label, status, confidence — avoids the full detail payload.
+    /// Includes id, label, status, confidence, argument IDs, and the first linked SocialArgument GUID.
     /// </summary>
     public async Task<NodePreviewResponse?> GetNodePreviewAsync(int nodeId)
     {
@@ -594,9 +594,52 @@ public class UnderstandingQueryService
                 Id = n.Id,
                 Label = n.CanonicalText,
                 Status = n.Status.ToString(),
-                Confidence = n.Confidence
+                Confidence = n.Confidence,
+                ArgumentIdsJson = n.ArgumentIdsJson
             })
             .FirstOrDefaultAsync();
+
+        if (node != null && !string.IsNullOrEmpty(node.ArgumentIdsJson))
+        {
+            // Resolve the first argument ID to a SocialArgument GUID.
+            // ArgumentIdsJson may contain either:
+            //   - int values (analytical Argument.Id → look up SocialArgument by SourceArgumentId)
+            //   - GUID strings (SocialArgument.Id directly, as stored in the skeleton)
+            try
+            {
+                using var doc = JsonDocument.Parse(node.ArgumentIdsJson);
+                var root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+                {
+                    var first = root[0];
+                    if (first.ValueKind == JsonValueKind.String)
+                    {
+                        // Try parsing as GUID directly
+                        var guidStr = first.GetString();
+                        if (Guid.TryParse(guidStr, out var guid))
+                        {
+                            // Verify it exists and is public
+                            var exists = await db.SocialArguments
+                                .AnyAsync(sa => sa.Id == guid && sa.IsPublic);
+                            if (exists)
+                                node.SocialArgumentId = guid;
+                        }
+                    }
+                    else if (first.ValueKind == JsonValueKind.Number && first.TryGetInt32(out var argId))
+                    {
+                        var socialArg = await db.SocialArguments
+                            .Where(sa => sa.SourceArgumentId == argId && sa.IsPublic)
+                            .Select(sa => (Guid?)sa.Id)
+                            .FirstOrDefaultAsync();
+                        node.SocialArgumentId = socialArg;
+                    }
+                }
+            }
+            catch
+            {
+                // If JSON parsing fails, just leave SocialArgumentId null
+            }
+        }
 
         return node;
     }
