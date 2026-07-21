@@ -34,6 +34,7 @@
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <span class="claim-state-badge">@stateLabel</span>
             <span class="text-muted small">Updated @focus.UpdatedAt.ToString("MMM d, yyyy")</span>
+            <a asp-controller="UnderstandingGraph" asp-action="Evolution" class="ms-auto small"><i class="bi bi-clock-history me-1"></i>View map history</a>
         </div>
         <p class="text-uppercase text-muted fw-semibold small mb-2">The state of this claim</p>
         <h1 class="claim-title mb-0">@Model.Proposition.Text</h1>

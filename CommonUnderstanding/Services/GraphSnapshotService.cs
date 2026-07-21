@@ -193,6 +193,182 @@ public class GraphSnapshotService
     }
 
     /// <summary>
+    /// Builds the reader-facing version history from consecutive snapshots.
+    /// </summary>
+    public async Task<GraphEvolutionViewModel> GetEvolutionHistoryAsync(int count = 50, int? nodeId = null, int? schemaId = null)
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync();
+        var snapshots = await db.GraphSnapshots
+            .OrderByDescending(s => s.CapturedAt)
+            .Take(count)
+            .Select(s => new GraphSnapshot
+            {
+                Id = s.Id,
+                Label = s.Label,
+                NodeCount = s.NodeCount,
+                EdgeCount = s.EdgeCount,
+                SchemaCount = s.SchemaCount,
+                CapturedAt = s.CapturedAt,
+                AverageDialecticalTemperature = s.AverageDialecticalTemperature,
+                GraphDensity = s.GraphDensity
+            })
+            .ToListAsync();
+
+        var chronological = snapshots.OrderBy(s => s.CapturedAt).ToList();
+        if (chronological.Count == 0)
+        {
+            return new GraphEvolutionViewModel();
+        }
+
+        var historyStart = chronological[0].CapturedAt.AddDays(-7);
+        var historyEnd = chronological[^1].CapturedAt;
+        var nodeQuery = db.UnderstandingNodes.AsNoTracking().AsQueryable();
+        if (nodeId.HasValue)
+        {
+            nodeQuery = nodeQuery.Where(n => n.Id == nodeId.Value);
+        }
+        else if (schemaId.HasValue)
+        {
+            nodeQuery = nodeQuery.Where(n => n.SchemaMemberships.Any(m => m.SchemaId == schemaId.Value));
+        }
+
+        var contentNodes = await nodeQuery
+            .Where(n => n.FirstSeenAt <= historyEnd && n.LastUpdatedAt >= historyStart)
+            .Select(n => new ZeitgeistClaim
+            {
+                Id = n.Id,
+                Text = n.CanonicalText,
+                FirstSeenAt = n.FirstSeenAt,
+                LastUpdatedAt = n.LastUpdatedAt,
+                Attention = n.DegreeCentrality + n.ControversyScore + n.DialecticalTemperature
+            })
+            .ToListAsync();
+
+        var nodeIds = contentNodes.Select(n => n.Id).ToList();
+        var memberships = await db.SchemaMemberships
+            .AsNoTracking()
+            .Where(m => nodeIds.Contains(m.NodeId))
+            .Select(m => new ZeitgeistMembership
+            {
+                NodeId = m.NodeId,
+                Label = m.Schema.Label,
+                Weight = m.Weight
+            })
+            .ToListAsync();
+
+        var contributions = nodeId.HasValue || schemaId.HasValue
+            ? new List<ZeitgeistContribution>()
+            : await db.SocialArguments
+                .AsNoTracking()
+                .Where(a => a.IsPublic && !a.IsShadowBanned && a.UpdatedAt >= historyStart && a.CreatedAt <= historyEnd)
+                .Select(a => new ZeitgeistContribution
+                {
+                    Title = a.Title,
+                    Claim = a.ClaimProposition != null ? a.ClaimProposition.Text : a.Title,
+                    Tags = a.Tags,
+                    CreatedAt = a.CreatedAt,
+                    UpdatedAt = a.UpdatedAt,
+                    Attention = a.ReplyCount + a.UpvoteCount + a.DownvoteCount
+                })
+                .ToListAsync();
+
+        var moments = new List<GraphEvolutionMoment>();
+        for (var index = 0; index < chronological.Count; index++)
+        {
+            var current = chronological[index];
+            var previous = index > 0 ? chronological[index - 1] : null;
+            var intervalStart = previous?.CapturedAt ?? current.CapturedAt.AddDays(-7);
+            moments.Add(new GraphEvolutionMoment
+            {
+                Snapshot = current,
+                NodeDelta = previous is null ? 0 : current.NodeCount - previous.NodeCount,
+                EdgeDelta = previous is null ? 0 : current.EdgeCount - previous.EdgeCount,
+                SchemaDelta = previous is null ? 0 : current.SchemaCount - previous.SchemaCount,
+                TemperatureDelta = previous is null ? 0 : current.AverageDialecticalTemperature - previous.AverageDialecticalTemperature,
+                Content = BuildZeitgeistSummary(intervalStart, current.CapturedAt, contentNodes, memberships, contributions)
+            });
+        }
+
+        var weekStart = DateTime.UtcNow.AddDays(-7);
+        var weeklyMoments = moments.Where(m => m.Snapshot.CapturedAt >= weekStart).ToList();
+        return new GraphEvolutionViewModel
+        {
+            Moments = moments.OrderByDescending(m => m.Snapshot.CapturedAt).ToList(),
+            Digest = new GraphEvolutionDigest
+            {
+                StartDate = weekStart,
+                EndDate = DateTime.UtcNow,
+                SnapshotCount = weeklyMoments.Count,
+                NodeDelta = weeklyMoments.Sum(m => m.NodeDelta),
+                EdgeDelta = weeklyMoments.Sum(m => m.EdgeDelta),
+                SchemaDelta = weeklyMoments.Sum(m => m.SchemaDelta),
+                TemperatureDelta = weeklyMoments.Sum(m => m.TemperatureDelta),
+                Content = BuildZeitgeistSummary(weekStart, DateTime.UtcNow, contentNodes, memberships, contributions)
+            }
+        };
+    }
+
+    private static ZeitgeistSummary BuildZeitgeistSummary(
+        DateTime start,
+        DateTime end,
+        IReadOnlyCollection<ZeitgeistClaim> nodes,
+        IReadOnlyCollection<ZeitgeistMembership> memberships,
+        IReadOnlyCollection<ZeitgeistContribution> contributions)
+    {
+        var activeNodes = nodes
+            .Where(n => (n.FirstSeenAt > start && n.FirstSeenAt <= end) || (n.LastUpdatedAt > start && n.LastUpdatedAt <= end))
+            .OrderByDescending(n => n.Attention)
+            .ToList();
+        var activeNodeIds = activeNodes.Select(n => n.Id).ToHashSet();
+        var activeContributions = contributions
+            .Where(c => (c.CreatedAt > start && c.CreatedAt <= end) || (c.UpdatedAt > start && c.UpdatedAt <= end))
+            .OrderByDescending(c => c.Attention)
+            .ToList();
+
+        var themes = activeContributions
+            .SelectMany(c => c.Tags)
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag.Trim())
+            .Concat(memberships
+                .Where(m => activeNodeIds.Contains(m.NodeId) && !string.IsNullOrWhiteSpace(m.Label))
+                .OrderByDescending(m => m.Weight)
+                .Select(m => m.Label.Trim()))
+            .Where(IsMeaningfulTheme)
+            .GroupBy(topic => topic, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key)
+            .Take(3)
+            .Select(group => new ZeitgeistTheme { Name = group.Key, ActivityCount = group.Count() })
+            .ToList();
+
+        var notableClaims = activeContributions
+            .Select(c => string.IsNullOrWhiteSpace(c.Claim) ? c.Title : c.Claim)
+            .Concat(activeNodes.Select(n => n.Text))
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        return new ZeitgeistSummary
+        {
+            Themes = themes,
+            NotableClaims = notableClaims,
+            ContributionCount = activeContributions.Count,
+            NewClaimCount = activeNodes.Count(n => n.FirstSeenAt > start && n.FirstSeenAt <= end),
+            UpdatedClaimCount = activeNodes.Count(n => n.FirstSeenAt <= start && n.LastUpdatedAt > start && n.LastUpdatedAt <= end)
+        };
+    }
+
+    private static bool IsMeaningfulTheme(string theme)
+    {
+        if (!theme.StartsWith("Schema ", StringComparison.OrdinalIgnoreCase)) return true;
+
+        var suffix = theme["Schema ".Length..];
+        var identifier = suffix.Split(' ', '(', StringSplitOptions.RemoveEmptyEntries)[0];
+        return !int.TryParse(identifier, out _);
+    }
+
+    /// <summary>
     /// Gets the evolution of a specific metric across snapshots.
     /// Uses projection + Take() to limit data transfer.
     /// </summary>
@@ -294,4 +470,74 @@ public class SchemaEvolutionResult
     public int SchemaGrowth { get; set; }
     public double TemperatureChange { get; set; }
     public double DensityChange { get; set; }
+}
+
+public class GraphEvolutionViewModel
+{
+    public List<GraphEvolutionMoment> Moments { get; set; } = new();
+    public GraphEvolutionDigest Digest { get; set; } = new();
+}
+
+public class GraphEvolutionMoment
+{
+    public GraphSnapshot Snapshot { get; set; } = null!;
+    public int NodeDelta { get; set; }
+    public int EdgeDelta { get; set; }
+    public int SchemaDelta { get; set; }
+    public double TemperatureDelta { get; set; }
+    public ZeitgeistSummary Content { get; set; } = new();
+}
+
+public class GraphEvolutionDigest
+{
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public int SnapshotCount { get; set; }
+    public int NodeDelta { get; set; }
+    public int EdgeDelta { get; set; }
+    public int SchemaDelta { get; set; }
+    public double TemperatureDelta { get; set; }
+    public ZeitgeistSummary Content { get; set; } = new();
+}
+
+public class ZeitgeistSummary
+{
+    public List<ZeitgeistTheme> Themes { get; set; } = new();
+    public List<string> NotableClaims { get; set; } = new();
+    public int ContributionCount { get; set; }
+    public int NewClaimCount { get; set; }
+    public int UpdatedClaimCount { get; set; }
+    public bool HasActivity => ContributionCount > 0 || NewClaimCount > 0 || UpdatedClaimCount > 0;
+}
+
+public class ZeitgeistTheme
+{
+    public string Name { get; set; } = string.Empty;
+    public int ActivityCount { get; set; }
+}
+
+internal class ZeitgeistClaim
+{
+    public int Id { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public DateTime FirstSeenAt { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+    public double Attention { get; set; }
+}
+
+internal class ZeitgeistMembership
+{
+    public int NodeId { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public double Weight { get; set; }
+}
+
+internal class ZeitgeistContribution
+{
+    public string Title { get; set; } = string.Empty;
+    public string Claim { get; set; } = string.Empty;
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public int Attention { get; set; }
 }

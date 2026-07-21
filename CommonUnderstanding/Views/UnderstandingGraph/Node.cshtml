@@ -107,6 +107,7 @@
     @if (node != null)
     {
         <div class="node-header">
+            <a asp-action="Evolution" asp-route-nodeId="@node.Id" class="float-end small"><i class="bi bi-clock-history me-1"></i>View history</a>
             <h1>@node.CanonicalText</h1>
 
             <div class="node-content">@node.CanonicalText</div>

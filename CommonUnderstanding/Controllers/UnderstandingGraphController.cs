@@ -113,17 +113,14 @@ public class UnderstandingGraphController : Controller
     // ── Evolution Timeline ────────────────────────────────────────────────
 
     /// <summary>
-    /// Evolution timeline page — shows graph snapshots and metric evolution.
+    /// Evolution timeline page — presents snapshots as the map's version history.
     /// </summary>
-    public async Task<IActionResult> Evolution()
+    public async Task<IActionResult> Evolution(int? nodeId = null, int? schemaId = null)
     {
-        var snapshots = await _snapshotService.GetSnapshotsAsync(50);
-        var evolution = await _snapshotService.GetSchemaEvolutionAsync();
-
-        ViewBag.Snapshots = snapshots;
-        ViewBag.Evolution = evolution;
-
-        return View();
+        var model = await _snapshotService.GetEvolutionHistoryAsync(50, nodeId, schemaId);
+        ViewBag.NodeId = nodeId;
+        ViewBag.SchemaId = schemaId;
+        return View(model);
     }
 
     // ── JSON API Endpoints ────────────────────────────────────────────────

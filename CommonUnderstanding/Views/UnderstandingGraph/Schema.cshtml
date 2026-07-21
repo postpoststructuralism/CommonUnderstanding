@@ -111,6 +111,7 @@
     @if (schema != null)
     {
         <div class="schema-header">
+            <a asp-action="Evolution" asp-route-schemaId="@schema.Id" class="float-end small"><i class="bi bi-clock-history me-1"></i>View region history</a>
             <h1>@schema.Label</h1>
             @if (!string.IsNullOrEmpty(schema.Description))
             {

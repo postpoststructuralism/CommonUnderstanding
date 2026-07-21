@@ -1,357 +1,168 @@
+@model CommonUnderstanding.Services.GraphEvolutionViewModel
 @{
-    var snapshots = ViewBag.Snapshots as List<CommonUnderstanding.Models.GraphSnapshot> ?? new();
-    var evolution = ViewBag.Evolution as CommonUnderstanding.Services.SchemaEvolutionResult;
-    ViewData["Title"] = "Graph Evolution";
+    ViewData["Title"] = "How this understanding evolved";
+    var contextLabel = ViewBag.NodeId is not null ? "This proposition" : ViewBag.SchemaId is not null ? "This map region" : "The whole map";
+    var latest = Model.Moments.FirstOrDefault()?.Snapshot;
+}
+
+<div class="history-page container-xl py-4 py-lg-5">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a asp-action="Index">The Live Map</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Conversation evolution</li>
+        </ol>
+    </nav>
+
+    <header class="history-header">
+        <p class="eyebrow mb-2">@contextLabel · Shifts in understanding</p>
+        <h1>How the conversation is changing</h1>
+        <p class="lead">The ideas drawing attention, the claims shaping discussion, and the questions entering the shared understanding over time.</p>
+        @if (latest is not null)
+        {
+            <p class="current-state"><span>Current state</span> @latest.NodeCount.ToString("N0") propositions · @latest.EdgeCount.ToString("N0") relationships · @latest.SchemaCount.ToString("N0") regions</p>
+        }
+    </header>
+
+    <section class="digest-band" aria-labelledby="digest-heading">
+        <div>
+            <p class="eyebrow">State of the Map</p>
+            <h2 id="digest-heading">This week's digest</h2>
+            <p>@Model.Digest.StartDate.ToString("MMMM d")–@Model.Digest.EndDate.ToString("MMMM d, yyyy")</p>
+        </div>
+        @if (Model.Digest.SnapshotCount == 0)
+        {
+            <p class="digest-empty">No new state of the shared understanding was recorded this week.</p>
+        }
+        else
+        {
+            <div class="digest-story">
+                <p class="digest-lead">@SummaryLead(Model.Digest.Content)</p>
+                @if (Model.Digest.Content.Themes.Count > 0)
+                {
+                    <div class="theme-list" aria-label="Themes drawing attention">
+                        @foreach (var theme in Model.Digest.Content.Themes)
+                        {
+                            <span>@theme.Name</span>
+                        }
+                    </div>
+                }
+                @if (Model.Digest.Content.NotableClaims.Count > 0)
+                {
+                    <p class="digest-claim"><span>At the center of the conversation</span> @Model.Digest.Content.NotableClaims[0]</p>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="history-section" aria-labelledby="timeline-heading">
+        <div class="section-heading">
+            <div><p class="eyebrow">From newest to oldest</p><h2 id="timeline-heading">Changes in the zeitgeist</h2></div>
+            <button class="metric-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#metricInspector" aria-expanded="false" aria-controls="metricInspector"><i class="bi bi-graph-up"></i> Inspect metrics</button>
+        </div>
+
+        <div class="collapse metric-inspector" id="metricInspector">
+            <div class="metric-toolbar"><label for="chart-metric">Measure</label><select id="chart-metric"><option value="NodeCount">Propositions</option><option value="EdgeCount">Relationships</option><option value="SchemaCount">Map regions</option><option value="AverageDialecticalTemperature">Unresolved tension</option><option value="GraphDensity">Connection density</option></select></div>
+            <canvas id="evolution-chart" aria-label="Selected map metric over time"></canvas>
+        </div>
+
+        @if (Model.Moments.Count == 0)
+        {
+            <div class="empty-history"><i class="bi bi-clock-history"></i><h3>The first version has not been published yet</h3><p>Once a snapshot is captured, changes to the shared understanding will appear here.</p></div>
+        }
+        else
+        {
+            <ol class="version-timeline">
+                @foreach (var moment in Model.Moments)
+                {
+                    <li>
+                        <div class="version-date"><time datetime="@moment.Snapshot.CapturedAt.ToString("O")">@moment.Snapshot.CapturedAt.ToString("MMM d")</time><span>@moment.Snapshot.CapturedAt.ToString("yyyy")</span></div>
+                        <article>
+                            <div class="version-title"><span>Recorded @moment.Snapshot.CapturedAt.ToString("h:mm tt")</span><h3>@MomentHeading(moment.Content)</h3></div>
+                            <p class="narrative">@SummaryLead(moment.Content)</p>
+                            @if (moment.Content.Themes.Count > 0)
+                            {
+                                <div class="theme-list timeline-themes">
+                                    @foreach (var theme in moment.Content.Themes)
+                                    {
+                                        <span>@theme.Name</span>
+                                    }
+                                </div>
+                            }
+                            @if (moment.Content.NotableClaims.Count > 0)
+                            {
+                                <div class="notable-claims">
+                                    <p>Claims shaping this moment</p>
+                                    <ul>
+                                        @foreach (var claim in moment.Content.NotableClaims)
+                                        {
+                                            <li>@claim</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                            <details class="map-delta">
+                                <summary>How the map recorded this shift</summary>
+                                <dl class="change-list">
+                                    <div class="@(moment.NodeDelta > 0 ? "gain" : moment.NodeDelta < 0 ? "loss" : "steady")"><dt>Propositions</dt><dd>@FormatDelta(moment.NodeDelta)</dd></div>
+                                    <div class="@(moment.EdgeDelta > 0 ? "gain" : moment.EdgeDelta < 0 ? "loss" : "steady")"><dt>Relationships</dt><dd>@FormatDelta(moment.EdgeDelta)</dd></div>
+                                    <div class="@(moment.SchemaDelta > 0 ? "gain" : moment.SchemaDelta < 0 ? "loss" : "steady")"><dt>Regions</dt><dd>@FormatDelta(moment.SchemaDelta)</dd></div>
+                                </dl>
+                            </details>
+                        </article>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</div>
+
+@functions {
+    private static string FormatDelta(int value) => value > 0 ? $"+{value:N0}" : value.ToString("N0");
+
+    private static string MomentHeading(CommonUnderstanding.Services.ZeitgeistSummary summary)
+    {
+        if (summary.Themes.Count > 0) return $"Attention gathered around {summary.Themes[0].Name}";
+        if (summary.NewClaimCount > 0) return "New claims entered the shared understanding";
+        if (summary.UpdatedClaimCount > 0) return "Existing claims were reconsidered";
+        return "The conversation held its shape";
+    }
+
+    private static string SummaryLead(CommonUnderstanding.Services.ZeitgeistSummary summary)
+    {
+        if (!summary.HasActivity) return "No content-level shift was captured in this interval. The shared understanding remained broadly stable.";
+
+        var activity = new List<string>();
+        if (summary.ContributionCount > 0) activity.Add($"{summary.ContributionCount:N0} public contribution{(summary.ContributionCount == 1 ? "" : "s")}");
+        if (summary.NewClaimCount > 0) activity.Add($"{summary.NewClaimCount:N0} new claim{(summary.NewClaimCount == 1 ? "" : "s")}");
+        if (summary.UpdatedClaimCount > 0) activity.Add($"{summary.UpdatedClaimCount:N0} reconsidered claim{(summary.UpdatedClaimCount == 1 ? "" : "s")}");
+
+        var opening = summary.Themes.Count > 0
+            ? $"Discussion concentrated around {NaturalJoin(summary.Themes.Select(theme => theme.Name).ToList())}."
+            : "The shared understanding continued to develop.";
+        return $"{opening} This period brought {NaturalJoin(activity)} into the map.";
+    }
+
+    private static string NaturalJoin(IReadOnlyList<string> items)
+    {
+        if (items.Count == 0) return "new activity";
+        if (items.Count == 1) return items[0];
+        if (items.Count == 2) return $"{items[0]} and {items[1]}";
+        return $"{string.Join(", ", items.Take(items.Count - 1))}, and {items[^1]}";
+    }
 }
 
 <style>
-    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
-
-    .page-header { margin-bottom: 24px; }
-    .page-header h1 { font-size: 24px; font-weight: 600; color: var(--cu-primary-blue); }
-    .page-header p { color: var(--cu-text-muted); font-size: 14px; margin-top: 4px; }
-
-    .evolution-summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 12px;
-        margin-bottom: 24px;
-    }
-
-    .evo-card {
-        background: #fff;
-        border: 1px solid var(--cu-border-light);
-        border-radius: var(--cu-border-radius);
-        padding: 14px;
-        text-align: center;
-        box-shadow: var(--cu-shadow-xs);
-    }
-
-    .evo-card .value { font-size: 22px; font-weight: 700; color: var(--cu-primary-blue); }
-    .evo-card .label { font-size: 11px; color: var(--cu-text-muted); margin-top: 4px; }
-    .evo-card .delta { font-size: 12px; font-weight: 600; margin-top: 2px; }
-
-    .section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--cu-primary-blue);
-        margin: 24px 0 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--cu-border-light);
-    }
-
-    .snapshot-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: #fff;
-        border: 1px solid var(--cu-border-light);
-        border-radius: var(--cu-border-radius);
-        overflow: hidden;
-        box-shadow: var(--cu-shadow-xs);
-    }
-
-    .snapshot-table th {
-        background: var(--cu-background);
-        padding: 10px 14px;
-        text-align: left;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--cu-text-muted);
-        border-bottom: 1px solid var(--cu-border-light);
-    }
-
-    .snapshot-table td {
-        padding: 10px 14px;
-        font-size: 13px;
-        color: var(--cu-text-dark);
-        border-bottom: 1px solid var(--cu-border-light);
-    }
-
-    .snapshot-table tr:hover td { background: rgba(var(--cu-secondary-rgb), 0.04); }
-    .snapshot-table tr:last-child td { border-bottom: none; }
-
-    .back-link {
-        display: inline-block;
-        margin-bottom: 16px;
-        color: var(--cu-secondary-blue);
-        text-decoration: none;
-        font-size: 13px;
-    }
-
-    .back-link:hover { text-decoration: underline; color: var(--cu-primary-blue); }
-
-    .btn-group {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 20px;
-    }
-
-    .positive { color: var(--cu-secondary-blue); }
-    .negative { color: #c0392b; }
-    .neutral { color: var(--cu-text-muted); }
-
-    /* ── Chart ── */
-    .chart-container {
-        background: #fff;
-        border: 1px solid var(--cu-border-light);
-        border-radius: var(--cu-border-radius);
-        padding: 16px;
-        margin-bottom: 20px;
-        position: relative;
-        box-shadow: var(--cu-shadow-xs);
-    }
-
-    .chart-container canvas {
-        width: 100% !important;
-        height: 250px !important;
-    }
-
-    .chart-controls {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-    }
-
-    .chart-controls select,
-    .chart-controls button {
-        background: #fff;
-        border: 1px solid var(--cu-border-light);
-        border-radius: 0.5rem;
-        color: var(--cu-text-dark);
-        padding: 4px 10px;
-        font-size: 12px;
-        outline: none;
-        cursor: pointer;
-    }
-
-    .chart-controls select:focus { border-color: var(--cu-secondary-blue); }
-    .chart-controls button:hover { border-color: var(--cu-secondary-blue); }
+    .history-page{--ink:#17221d;--muted:#667169;--line:#d8ded9;--paper:#f3f5f0;--green:#286848;--red:#a04438;color:var(--ink);max-width:1120px}.history-header{max-width:850px;padding:2rem 0 4rem}.eyebrow{color:var(--muted);font-size:.73rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.history-header h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2.5rem,5.5vw,4.75rem);letter-spacing:0;line-height:1.02;margin:0 0 1.25rem}.history-header .lead{color:var(--muted);font-size:1.15rem;line-height:1.6;max-width:720px}.current-state{border-top:1px solid var(--line);font-size:.86rem;margin-top:2rem;padding-top:1rem}.current-state span{font-weight:700;margin-right:.75rem}.digest-band{align-items:start;background:#24342d;color:#f7f8f4;display:grid;gap:2rem;grid-template-columns:minmax(200px,.75fr) minmax(0,2fr);padding:2rem 2.25rem}.digest-band .eyebrow,.digest-band p{color:#c9d1cb;margin-bottom:.25rem}.digest-band h2{font-family:Georgia,"Times New Roman",serif;font-size:1.75rem;margin:0}.digest-story{border-left:1px solid #506058;min-width:0;padding-left:2rem}.digest-lead{font-family:Georgia,"Times New Roman",serif!important;font-size:1.3rem;line-height:1.5;margin:0 0 1rem!important}.digest-claim{border-top:1px solid #506058;line-height:1.55;margin-top:1.25rem!important;padding-top:1rem}.digest-claim span{color:#fff;display:block;font-size:.7rem;font-weight:700;margin-bottom:.35rem;text-transform:uppercase}.theme-list{display:flex;flex-wrap:wrap;gap:.5rem}.theme-list span{background:#3b4c44;border:1px solid #66776e;border-radius:2px;color:#fff;font-size:.75rem;max-width:100%;overflow-wrap:anywhere;padding:.35rem .6rem}.timeline-themes{margin:1rem 0}.timeline-themes span{background:#edf2ed;border-color:#cbd6ce;color:var(--green)}.notable-claims{border-left:3px solid #8cab98;margin:1.25rem 0;padding-left:1rem}.notable-claims>p{color:var(--muted);font-size:.7rem;font-weight:700;margin-bottom:.5rem;text-transform:uppercase}.notable-claims ul{margin:0;padding-left:1.1rem}.notable-claims li{font-family:Georgia,"Times New Roman",serif;line-height:1.5;margin-bottom:.35rem}.history-section{padding:4rem 0}.section-heading{align-items:center;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;padding-bottom:1.25rem}.section-heading h2{font-family:Georgia,"Times New Roman",serif;margin:0}.metric-toggle{background:transparent;border:1px solid #9ba69e;border-radius:3px;color:var(--ink);padding:.55rem .85rem}.metric-inspector{background:var(--paper);border-bottom:1px solid var(--line);padding:1.5rem}.metric-toolbar{align-items:center;display:flex;gap:.75rem;margin-bottom:1rem}.metric-toolbar label{font-size:.8rem;font-weight:700}.metric-toolbar select{background:#fff;border:1px solid #aeb8b1;border-radius:2px;padding:.45rem}.metric-inspector canvas{display:block;height:220px;max-width:100%;width:100%}.version-timeline{list-style:none;margin:0;padding:0}.version-timeline>li{display:grid;grid-template-columns:110px minmax(0,1fr)}.version-date{border-right:1px solid var(--line);padding:2rem 1.5rem 2rem 0;text-align:right}.version-date time{display:block;font-weight:700}.version-date span{color:var(--muted);font-size:.75rem}.version-timeline article{padding:2rem 0 2.25rem 2.5rem}.version-title>span{color:var(--muted);font-size:.72rem;text-transform:uppercase}.version-title h3{font-family:Georgia,"Times New Roman",serif;font-size:1.55rem;margin:.25rem 0 .75rem}.narrative{color:#46534b;line-height:1.65;max-width:760px}.map-delta{border-top:1px solid var(--line);margin-top:1.25rem;padding-top:.8rem}.map-delta summary{color:var(--muted);cursor:pointer;font-size:.78rem;font-weight:700}.change-list{display:flex;gap:1rem;margin:1rem 0 0}.change-list div{background:var(--paper);min-width:110px;padding:.65rem .8rem}.change-list dt{color:var(--muted);font-size:.7rem}.change-list dd{font-weight:700;margin:0}.change-list .gain dd{color:var(--green)}.change-list .loss dd{color:var(--red)}.empty-history{text-align:center;padding:5rem 1rem}.empty-history i{font-size:2rem}
+    @@media(max-width:767px){.history-header{padding:1rem 0 2.5rem}.digest-band{grid-template-columns:minmax(0,1fr);padding:1.5rem}.digest-story{min-width:0}.theme-list span{max-width:100%;overflow-wrap:anywhere}.digest-metrics{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:1.25rem}.section-heading{align-items:start;gap:1rem}.version-timeline>li{grid-template-columns:70px minmax(0,1fr)}.version-date{padding-right:1rem}.version-timeline article{padding-left:1.5rem}.change-list{align-items:start;flex-direction:column}}
 </style>
 
-<div class="container">
-    <a href="/UnderstandingGraph" class="back-link">← Back to Schema Explorer</a>
-
-    <div class="page-header">
-        <h1>📈 Graph Evolution</h1>
-        <p>Track how the Understanding Graph grows and changes over time</p>
-    </div>
-
-    <div class="btn-group">
-        <button class="btn" onclick="captureSnapshot()">📸 Capture Snapshot</button>
-        <button class="btn" onclick="runFullCapture()">🔄 Full Capture Pipeline</button>
-    </div>
-
-    @if (evolution != null)
-    {
-        <h2 class="section-title">Latest Changes</h2>
-        <div class="evolution-summary">
-            <div class="evo-card">
-                <div class="value @(evolution.NodeGrowth >= 0 ? "positive" : "negative")">@(evolution.NodeGrowth >= 0 ? "+" : "")@evolution.NodeGrowth</div>
-                <div class="label">Nodes</div>
-            </div>
-            <div class="evo-card">
-                <div class="value @(evolution.EdgeGrowth >= 0 ? "positive" : "negative")">@(evolution.EdgeGrowth >= 0 ? "+" : "")@evolution.EdgeGrowth</div>
-                <div class="label">Edges</div>
-            </div>
-            <div class="evo-card">
-                <div class="value @(evolution.SchemaGrowth >= 0 ? "positive" : "negative")">@(evolution.SchemaGrowth >= 0 ? "+" : "")@evolution.SchemaGrowth</div>
-                <div class="label">Schemas</div>
-            </div>
-            <div class="evo-card">
-                <div class="value @(evolution.TemperatureChange <= 0 ? "positive" : "negative")">@(evolution.TemperatureChange >= 0 ? "+" : "")@evolution.TemperatureChange.ToString("F3")</div>
-                <div class="label">Δ Dialectical Temp</div>
-            </div>
-            <div class="evo-card">
-                <div class="value @(evolution.DensityChange >= 0 ? "positive" : "negative")">@(evolution.DensityChange >= 0 ? "+" : "")@evolution.DensityChange.ToString("F6")</div>
-                <div class="label">Δ Density</div>
-            </div>
-        </div>
-    }
-
-    @if (snapshots.Count >= 2)
-    {
-        <h2 class="section-title">Metric Evolution</h2>
-        <div class="chart-container">
-            <div class="chart-controls">
-                <select id="chart-metric">
-                    <option value="NodeCount">Nodes</option>
-                    <option value="EdgeCount">Edges</option>
-                    <option value="SchemaCount">Schemas</option>
-                    <option value="AverageDialecticalTemperature">Avg Dialectical Temp</option>
-                    <option value="GraphDensity">Graph Density</option>
-                </select>
-                <button onclick="renderChart()">🔄 Refresh</button>
-            </div>
-            <canvas id="evolution-chart"></canvas>
-        </div>
-    }
-
-    <h2 class="section-title">Snapshot History (@snapshots.Count)</h2>
-    @if (snapshots.Count == 0)
-    {
-        <p style="color:var(--text-secondary);">No snapshots captured yet. Click "Capture Snapshot" to create the first one.</p>
-    }
-    else
-    {
-        <table class="snapshot-table">
-            <thead>
-                <tr>
-                    <th>Label</th>
-                    <th>Captured</th>
-                    <th>Nodes</th>
-                    <th>Edges</th>
-                    <th>Schemas</th>
-                    <th>Avg Temp</th>
-                    <th>Density</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var snap in snapshots)
-                {
-                    <tr>
-                        <td>@snap.Label</td>
-                        <td style="font-size:12px;">@snap.CapturedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td>@snap.NodeCount</td>
-                        <td>@snap.EdgeCount</td>
-                        <td>@snap.SchemaCount</td>
-                        <td>@snap.AverageDialecticalTemperature.ToString("F3")</td>
-                        <td>@snap.GraphDensity.ToString("F6")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-</div>
-
+@section Scripts {
 <script>
-    // ── Snapshot data for charting ──
-    const snapshotData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(snapshots.Select(s => new {
-        s.Label, s.NodeCount, s.EdgeCount, s.SchemaCount,
-        s.AverageDialecticalTemperature, s.GraphDensity,
-        CapturedAt = s.CapturedAt.ToString("yyyy-MM-dd")
-    })));
-
-    function renderChart() {
-        const canvas = document.getElementById('evolution-chart');
-        if (!canvas || snapshotData.length < 2) return;
-        const ctx = canvas.getContext('2d');
-        const metric = document.getElementById('chart-metric').value;
-        const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.parentElement.getBoundingClientRect();
-        const w = rect.width - 32;
-        const h = 250;
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        canvas.style.width = w + 'px';
-        canvas.style.height = h + 'px';
-        ctx.scale(dpr, dpr);
-
-        const values = snapshotData.map(s => s[metric]);
-        const labels = snapshotData.map(s => s.CapturedAt);
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const range = max - min || 1;
-        const padding = { top: 20, bottom: 30, left: 50, right: 20 };
-        const chartW = w - padding.left - padding.right;
-        const chartH = h - padding.top - padding.bottom;
-
-        // Clear
-        ctx.clearRect(0, 0, w, h);
-
-        // Grid lines
-        ctx.strokeStyle = '#30363d';
-        ctx.lineWidth = 0.5;
-        for (let i = 0; i <= 4; i++) {
-            const y = padding.top + (chartH / 4) * i;
-            ctx.beginPath();
-            ctx.moveTo(padding.left, y);
-            ctx.lineTo(w - padding.right, y);
-            ctx.stroke();
-            const val = max - (range / 4) * i;
-            ctx.fillStyle = '#8b949e';
-            ctx.font = '10px -apple-system, sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText(val.toFixed(3), padding.left - 6, y + 3);
-        }
-
-        // Line
-        ctx.beginPath();
-        ctx.strokeStyle = '#58a6ff';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        values.forEach((v, i) => {
-            const x = padding.left + (i / (values.length - 1)) * chartW;
-            const y = padding.top + chartH - ((v - min) / range) * chartH;
-            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-
-        // Fill under line
-        ctx.lineTo(padding.left + chartW, padding.top + chartH);
-        ctx.lineTo(padding.left, padding.top + chartH);
-        ctx.closePath();
-        const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
-        grad.addColorStop(0, 'rgba(88,166,255,0.2)');
-        grad.addColorStop(1, 'rgba(88,166,255,0.02)');
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Data points
-        values.forEach((v, i) => {
-            const x = padding.left + (i / (values.length - 1)) * chartW;
-            const y = padding.top + chartH - ((v - min) / range) * chartH;
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fillStyle = '#58a6ff';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        });
-
-        // X-axis labels
-        const step = Math.max(1, Math.floor(labels.length / 6));
-        labels.forEach((label, i) => {
-            if (i % step !== 0 && i !== labels.length - 1) return;
-            const x = padding.left + (i / (labels.length - 1)) * chartW;
-            ctx.fillStyle = '#8b949e';
-            ctx.font = '9px -apple-system, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(label, x, h - padding.bottom + 16);
-        });
-    }
-
-    // Render chart on load if canvas exists
-    document.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('evolution-chart')) {
-            // Small delay to ensure layout is settled
-            setTimeout(renderChart, 100);
-        }
-    });
-
-    async function captureSnapshot() {
-        try {
-            const res = await fetch('/api/understanding-graph/capture-snapshot', { method: 'POST' });
-            const data = await res.json();
-            alert(`Snapshot captured: ${data.label} (ID: ${data.id})`);
-            location.reload();
-        } catch (err) {
-            alert('Failed to capture snapshot: ' + err.message);
-        }
-    }
-
-    async function runFullCapture() {
-        if (!confirm('Run full capture pipeline? This will recompute metrics and rediscover schemas.')) return;
-        try {
-            const res = await fetch('/api/understanding-graph/run-full-capture', { method: 'POST' });
-            const data = await res.json();
-            alert(`Full capture complete: ${data.label} (ID: ${data.id})`);
-            location.reload();
-        } catch (err) {
-            alert('Failed to run full capture: ' + err.message);
-        }
-    }
+    const snapshotData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Moments.OrderBy(m => m.Snapshot.CapturedAt).Select(m => new { m.Snapshot.NodeCount, m.Snapshot.EdgeCount, m.Snapshot.SchemaCount, m.Snapshot.AverageDialecticalTemperature, m.Snapshot.GraphDensity, CapturedAt = m.Snapshot.CapturedAt.ToString("MMM d") })));
+    const metricSelect = document.getElementById('chart-metric');
+    const metricPanel = document.getElementById('metricInspector');
+    metricSelect?.addEventListener('change', renderChart);
+    metricPanel?.addEventListener('shown.bs.collapse', renderChart);
+    function renderChart(){const canvas=document.getElementById('evolution-chart');if(!canvas||snapshotData.length<2)return;const context=canvas.getContext('2d');const values=snapshotData.map(item=>item[metricSelect.value]);const ratio=window.devicePixelRatio||1;const width=canvas.parentElement.clientWidth-48;const height=220;canvas.width=width*ratio;canvas.height=height*ratio;context.scale(ratio,ratio);const minimum=Math.min(...values);const maximum=Math.max(...values);const range=maximum-minimum||1;const padding={top:15,right:15,bottom:30,left:45};const chartWidth=width-padding.left-padding.right;const chartHeight=height-padding.top-padding.bottom;context.clearRect(0,0,width,height);context.strokeStyle='#d8ded9';for(let index=0;index<=3;index++){const y=padding.top+(chartHeight/3)*index;context.beginPath();context.moveTo(padding.left,y);context.lineTo(width-padding.right,y);context.stroke()}context.beginPath();context.strokeStyle='#286848';context.lineWidth=2;values.forEach((value,index)=>{const x=padding.left+(index/(values.length-1))*chartWidth;const y=padding.top+chartHeight-((value-minimum)/range)*chartHeight;index===0?context.moveTo(x,y):context.lineTo(x,y)});context.stroke();values.forEach((value,index)=>{const x=padding.left+(index/(values.length-1))*chartWidth;const y=padding.top+chartHeight-((value-minimum)/range)*chartHeight;context.beginPath();context.arc(x,y,3,0,Math.PI*2);context.fillStyle='#286848';context.fill()});context.fillStyle='#667169';context.font='11px sans-serif';context.textAlign='center';snapshotData.forEach((item,index)=>{if(index!==0&&index!==snapshotData.length-1&&snapshotData.length>4)return;const x=padding.left+(index/(snapshotData.length-1))*chartWidth;context.fillText(item.CapturedAt,x,height-8)})}
 </script>
+}
