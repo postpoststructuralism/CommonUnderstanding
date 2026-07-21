@@ -24,7 +24,7 @@ public class FeedController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPublicFeed(
         [FromQuery] int limit = 20,
-        [FromQuery] string sort = "hot",
+        [FromQuery] string sort = "recent",
         [FromQuery] string? domain = null,
         [FromQuery] string? tags = null,
         CancellationToken ct = default)

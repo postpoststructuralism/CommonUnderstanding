@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Social Feed";
+    ViewData["Title"] = "Latest Contributions";
 }
 
 @section Styles {
@@ -37,21 +37,28 @@
 </style>
 }
 
+<header class="mb-4">
+    <h1 class="h2 mb-1">Latest Contributions</h1>
+    <p class="text-muted mb-0">A chronological and structural view of recent additions to the map.</p>
+</header>
+
 <!-- Sort + filter toolbar -->
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-    <span class="text-muted small me-1">Sort:</span>
-    <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="hot">
-        <i class="bi bi-fire"></i> Hot
-    </button>
-    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="wilson">
-        <i class="bi bi-graph-up"></i> Top
-    </button>
-    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="recent">
+    <span class="text-muted small me-1">Show:</span>
+    <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="recent">
         <i class="bi bi-clock"></i> New
     </button>
-    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="controversial">
-        <i class="bi bi-lightning"></i> Controversial
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="updated">
+        <i class="bi bi-arrow-repeat"></i> Recently updated on the map
     </button>
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="underrepresented">
+        <i class="bi bi-balance-scale"></i> Underrepresented views
+    </button>
+    <a asp-controller="SocialView" asp-action="Ranking" class="btn btn-sm btn-link text-muted px-1"
+       aria-label="How contributions are ordered" title="How contributions are ordered">
+        <i class="bi bi-info-circle"></i>
+    </a>
+    <label for="tagFilter" class="visually-hidden">Filter contributions by tag</label>
     <input id="tagFilter" class="form-control form-control-sm ms-auto" style="max-width:180px"
            placeholder="Filter by tag…" />
 </div>
@@ -119,7 +126,7 @@
 (function () {
     'use strict';
 
-    let currentSort = 'hot';
+    let currentSort = 'recent';
     let currentTag  = '';
     let currentOffset = 0;
     const PAGE_SIZE = 20;
@@ -246,7 +253,7 @@
                             <div class="wilson-fill" style="width:${wilson}%"></div>
                         </div>
                     </div>
-                    <span class="text-muted small" title="Hot score">${(arg.hotScore||0).toFixed(2)} <i class="bi bi-fire"></i></span>
+                    <span class="text-muted small">Added ${timeAgo(arg.createdAt)}</span>
                 </div>
             </div>
         </div>`;

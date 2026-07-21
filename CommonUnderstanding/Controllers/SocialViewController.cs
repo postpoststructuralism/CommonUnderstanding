@@ -38,8 +38,15 @@ public class SocialViewController : Controller
     // GET /Social/Feed
     public IActionResult Feed()
     {
-        ViewData["Title"] = "Social Feed";
+        ViewData["Title"] = "Latest Contributions";
         return View("~/Views/Social/Feed.cshtml");
+    }
+
+    // GET /SocialView/Ranking
+    public IActionResult Ranking()
+    {
+        ViewData["Title"] = "How contributions are ordered";
+        return View("~/Views/Social/Ranking.cshtml");
     }
 
     // GET /Social/ChainBuilder
@@ -98,14 +105,52 @@ public class SocialViewController : Controller
         if (arg is null || (!arg.IsPublic && arg.UserId != userId))
             return NotFound();
 
-        ViewData["Title"] = arg.Title;
-        ViewBag.UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId);
+        ViewData["Title"] = arg.ClaimProposition?.Text ?? arg.Title;
+
+        var contributionHistory = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.ClaimPropositionId == arg.ClaimPropositionId
+                && a.IsPublic
+                && !a.IsShadowBanned)
+            .OrderBy(a => a.CreatedAt)
+            .ToListAsync();
+
+        var opposingArgumentIds = arg.InboundLinks
+            .Where(l => l.LinkType == LinkType.Contradicts)
+            .Select(l => l.SourceArgumentId)
+            .Concat(arg.OutboundLinks
+                .Where(l => l.LinkType == LinkType.Contradicts)
+                .Select(l => l.TargetArgumentId))
+            .ToHashSet();
+
+        var supportingArguments = contributionHistory
+            .Where(a => !opposingArgumentIds.Contains(a.Id))
+            .OrderByDescending(a => a.WilsonScore)
+            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
+            .Take(3)
+            .ToList();
+
+        var opposingArguments = arg.InboundLinks
+            .Where(l => l.LinkType == LinkType.Contradicts
+                && l.SourceArgument is { IsPublic: true, IsShadowBanned: false })
+            .Select(l => l.SourceArgument!)
+            .Concat(arg.OutboundLinks
+                .Where(l => l.LinkType == LinkType.Contradicts
+                    && l.TargetArgument is { IsPublic: true, IsShadowBanned: false })
+                .Select(l => l.TargetArgument!))
+            .DistinctBy(a => a.Id)
+            .OrderByDescending(a => a.WilsonScore)
+            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
+            .Take(3)
+            .ToList();
+
+        Argument? sourceArg = null;
 
         // If this social argument was published from a Phase 1 analytical argument,
         // load the full analysis data for the "View Analysis" section.
         if (arg.SourceArgumentId.HasValue)
         {
-            var sourceArg = await db.Arguments
+            sourceArg = await db.Arguments
                 .AsNoTracking()
                 .Include(a => a.Claims)
                     .ThenInclude(c => c.Premises)
@@ -124,27 +169,6 @@ public class SocialViewController : Controller
             if (sourceArg != null)
             {
                 ViewBag.SourceArgument = sourceArg;
-
-                // Load stakeholder data for the analysis section
-                try
-                {
-                    ViewBag.StakeholderPositions = await _stakeholderService.GetPositionsForArgumentAsync(sourceArg.Id);
-                    ViewBag.StakeholderConsensus = await _stakeholderService.GetConsensusAsync(sourceArg.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Stakeholder data pre-load skipped for source argument {Id}", sourceArg.Id);
-                }
-
-                // Pre-load decision support
-                try
-                {
-                    ViewBag.DecisionSupport = await _decisionSupportService.GenerateAsync(sourceArg.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Decision support pre-load skipped for source argument {Id}", sourceArg.Id);
-                }
             }
         }
 
@@ -164,7 +188,30 @@ public class SocialViewController : Controller
             }
         }
 
-        return View("~/Views/Social/Detail.cshtml", arg);
+        var claims = sourceArg?.Claims ?? Array.Empty<CommonUnderstanding.Models.Claim>();
+        var viewModel = new ClaimStateViewModel
+        {
+            FocusArgument = arg,
+            Proposition = arg.ClaimProposition!,
+            SupportingArguments = supportingArguments,
+            OpposingArguments = opposingArguments,
+            ContributionHistory = contributionHistory,
+            Evidence = claims
+                .SelectMany(c => c.Premises)
+                .SelectMany(p => p.EvidenceItems)
+                .OrderBy(e => e.Direction)
+                .ThenBy(e => e.Tier)
+                .ToList(),
+            RemainingQuestions = claims
+                .SelectMany(c => c.Assumptions)
+                .Where(a => !a.IsSupported)
+                .OrderByDescending(a => a.IsCritical)
+                .ToList(),
+            Adjudication = sourceArg?.AdjudicationSummary,
+            UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId)
+        };
+
+        return View("~/Views/Social/Detail.cshtml", viewModel);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

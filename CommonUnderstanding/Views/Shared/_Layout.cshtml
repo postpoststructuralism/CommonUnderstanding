@@ -53,9 +53,9 @@
 
                     <!-- PUBLIC ZONE -->
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "Feed" ? "active" : "")"
-                           asp-controller="SocialView" asp-action="Feed">
-                            <i class="bi bi-fire"></i> The Live Map
+                                <a class="nav-link fw-semibold @(ViewContext.RouteData.Values["controller"]?.ToString() == "UnderstandingGraph" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")"
+                                    asp-controller="UnderstandingGraph" asp-action="Index">
+                                     <i class="bi bi-diagram-3"></i> The Live Map
                         </a>
                     </li>
 
@@ -124,6 +124,11 @@
                         </a>
                         <ul class="dropdown-menu cu-dropdown-workspace">
                             <li><h6 class="dropdown-header cu-dropdown-section">Published Arguments</h6></li>
+                            <li>
+                                <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "Feed" ? "active" : "")" asp-controller="SocialView" asp-action="Feed">
+                                    <i class="bi bi-clock-history me-2"></i>Latest Contributions
+                                </a>
+                            </li>
                             <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SocialView" && ViewContext.RouteData.Values["action"]?.ToString() == "ChainBuilder" ? "active" : "")" asp-controller="SocialView" asp-action="ChainBuilder">
                                     <i class="bi bi-diagram-3 me-2"></i>Trace the Reasoning

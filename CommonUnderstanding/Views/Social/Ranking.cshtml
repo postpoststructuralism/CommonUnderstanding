@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "How contributions are ordered";
+}
+
+<div class="mx-auto" style="max-width: 760px;">
+    <nav aria-label="Breadcrumb" class="mb-3">
+        <a asp-controller="SocialView" asp-action="Feed">Latest Contributions</a>
+        <span class="text-muted mx-2" aria-hidden="true">/</span>
+        <span>Ordering</span>
+    </nav>
+
+    <h1 class="h2">How contributions are ordered</h1>
+    <p class="lead text-muted">
+        We do not rank contributions to maximize clicks, reactions, or time on site.
+        You choose one of these transparent views.
+    </p>
+
+    <section class="border-top py-4">
+        <h2 class="h4"><i class="bi bi-clock me-2"></i>New</h2>
+        <p class="mb-1">Shows public contributions by publication time, newest first.</p>
+        <p class="small text-muted mb-0">Uses: creation time. Does not use: votes, replies, popularity, or predicted engagement.</p>
+    </section>
+
+    <section class="border-top py-4">
+        <h2 class="h4"><i class="bi bi-arrow-repeat me-2"></i>Recently updated on the map</h2>
+        <p class="mb-1">Shows contributions whose map record changed most recently.</p>
+        <p class="small text-muted mb-0">Uses: last update time. Does not use: votes, controversy, or predicted engagement.</p>
+    </section>
+
+    <section class="border-top border-bottom py-4 mb-4">
+        <h2 class="h4"><i class="bi bi-balance-scale me-2"></i>Underrepresented views</h2>
+        <p class="mb-1">
+            Shows contributions in contested areas, prioritizing claims represented by fewer public contributions.
+        </p>
+        <p class="small text-muted mb-0">
+            Uses: explicit contradiction links, public contribution count for the claim, and last update time as a tie-breaker.
+            Does not use: votes, author reputation, or predicted engagement.
+        </p>
+    </section>
+
+    <a asp-controller="SocialView" asp-action="Feed" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Latest Contributions
+    </a>
+</div>

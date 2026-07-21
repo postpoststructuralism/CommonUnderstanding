@@ -19,7 +19,7 @@ public class FeedService
 
     public async Task<FeedResultDto> GetFeedAsync(
         string? userId,
-        string sort = "hot",
+        string sort = "recent",
         string? domain = null,
         string[]? tags = null,
         int limit = 20,
@@ -41,13 +41,22 @@ public class FeedService
         if (tags is { Length: > 0 })
             query = query.Where(a => a.Tags.Any(t => tags.Contains(t)));
 
-        // Sort
+        // Feed ordering is intentionally limited to chronological and structural signals.
         query = sort switch
         {
-            "wilson" => query.OrderByDescending(a => a.WilsonScore),
-            "recent" => query.OrderByDescending(a => a.CreatedAt),
-            "controversial" => query.OrderByDescending(a => a.ControversyScore),
-            _ => query.OrderByDescending(a => a.HotScore)
+            "updated" => query
+                .OrderByDescending(a => a.UpdatedAt)
+                .ThenByDescending(a => a.CreatedAt),
+            "underrepresented" => query
+                .Where(a => db.ArgumentLinks.Any(link =>
+                    link.LinkType == LinkType.Contradicts &&
+                    (link.SourceArgumentId == a.Id || link.TargetArgumentId == a.Id)))
+                .OrderBy(a => db.SocialArguments.Count(other =>
+                    other.IsPublic &&
+                    !other.IsShadowBanned &&
+                    other.ClaimPropositionId == a.ClaimPropositionId))
+                .ThenByDescending(a => a.UpdatedAt),
+            _ => query.OrderByDescending(a => a.CreatedAt)
         };
 
         var items = await query
@@ -55,7 +64,7 @@ public class FeedService
             .Select(a => MapArgumentToFeedItem(a, userId))
             .ToListAsync(ct);
 
-        return new FeedResultDto(sort, items);
+        return new FeedResultDto(NormalizeSort(sort), items);
     }
 
     public async Task<List<FeedItemDto>> GetUserFeedAsync(
@@ -81,7 +90,7 @@ public class FeedService
             query = query.Where(a => a.Tags.Any(t => userDomains.Contains(t)));
 
         var items = await query
-            .OrderByDescending(a => a.HotScore)
+            .OrderByDescending(a => a.CreatedAt)
             .Take(Math.Min(limit, 100))
             .Select(a => MapArgumentToFeedItem(a, userId))
             .ToListAsync(ct);
@@ -90,6 +99,13 @@ public class FeedService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string NormalizeSort(string sort) => sort switch
+    {
+        "updated" => "updated",
+        "underrepresented" => "underrepresented",
+        _ => "recent"
+    };
 
     private static FeedItemDto MapArgumentToFeedItem(SocialArgument a, string? currentUserId)
     {
