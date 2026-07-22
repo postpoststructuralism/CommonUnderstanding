@@ -645,31 +645,6 @@ public class UnderstandingQueryService
     }
 
     /// <summary>
-    /// Returns homepage nodes backed by public, non-shadow-banned social arguments.
-    /// The social argument GUID is carried directly so every rendered node is actionable.
-    /// </summary>
-    public async Task<List<NodePreviewResponse>> GetHomepageNodesAsync(int count = 200)
-    {
-        await using var db = await _contextFactory.CreateDbContextAsync();
-
-        return await db.SocialArguments
-            .AsNoTracking()
-            .Where(argument => argument.IsPublic && !argument.IsShadowBanned)
-            .OrderByDescending(argument => argument.HotScore)
-            .ThenByDescending(argument => argument.CreatedAt)
-            .Take(count)
-            .Select(argument => new NodePreviewResponse
-            {
-                Id = 0,
-                Label = argument.Title,
-                Status = argument.IsAIValidated ? "Settled" : "Unevaluated",
-                Confidence = argument.AIValidityScore ?? 0,
-                SocialArgumentId = argument.Id
-            })
-            .ToListAsync();
-    }
-
-    /// <summary>
     /// Builds the full graph map from the database (uncached).
     /// </summary>
     private async Task<GraphMap> BuildMapAsync(int maxNodes = 2000, int maxEdges = 5000)

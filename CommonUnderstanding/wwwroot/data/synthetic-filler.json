@@ -3,6 +3,7 @@
     {
       "id": "synthetic-1",
       "label": "Education is the primary driver of social mobility",
+      "socialArgumentId": "c3bf6e33-f348-aaa6-e9e6-8bb5db0c9ea8",
       "confidence": 0.81,
       "degreeCentrality": 0.253,
       "betweennessCentrality": 0.159,
@@ -20,6 +21,7 @@
     {
       "id": "synthetic-2",
       "label": "Individual autonomy should be balanced with collective responsibility",
+      "socialArgumentId": "f3aa8396-06c9-c2e0-8c0e-1aea6551bf05",
       "confidence": 0.554,
       "degreeCentrality": 0.322,
       "betweennessCentrality": 0.039,
@@ -37,6 +39,7 @@
     {
       "id": "synthetic-3",
       "label": "Information quality determines decision quality",
+      "socialArgumentId": "ce8ad078-8ce4-1227-2499-42bd181de371",
       "confidence": 0.793,
       "degreeCentrality": 0.324,
       "betweennessCentrality": 0.079,
@@ -54,6 +57,7 @@
     {
       "id": "synthetic-4",
       "label": "Language shapes thought more than we realize",
+      "socialArgumentId": "768a7e9b-9c7c-b76c-c2d9-feca44eec70f",
       "confidence": 0.679,
       "degreeCentrality": 0.246,
       "betweennessCentrality": 0.142,
@@ -71,6 +75,7 @@
     {
       "id": "synthetic-5",
       "label": "Rights come with corresponding responsibilities",
+      "socialArgumentId": "57c24d10-d62d-d4dd-0e6a-c7faecefd039",
       "confidence": 0.758,
       "degreeCentrality": 0.285,
       "betweennessCentrality": 0.088,
@@ -88,6 +93,7 @@
     {
       "id": "synthetic-6",
       "label": "Tradition provides stability but can hinder progress",
+      "socialArgumentId": "aded03e7-1dbf-ed7a-0a2a-89e50f5a10cd",
       "confidence": 0.636,
       "degreeCentrality": 0.104,
       "betweennessCentrality": 0.164,
@@ -105,6 +111,7 @@
     {
       "id": "synthetic-7",
       "label": "Meritocracy is an ideal, not a reality",
+      "socialArgumentId": "f686b6ab-d93f-3bd6-694a-5c04ee163003",
       "confidence": 0.759,
       "degreeCentrality": 0.296,
       "betweennessCentrality": 0.052,
@@ -122,6 +129,7 @@
     {
       "id": "synthetic-8",
       "label": "Education is the primary driver of social mobility",
+      "socialArgumentId": "c3bf6e33-f348-aaa6-e9e6-8bb5db0c9ea8",
       "confidence": 0.808,
       "degreeCentrality": 0.106,
       "betweennessCentrality": 0.091,
@@ -139,6 +147,7 @@
     {
       "id": "synthetic-9",
       "label": "Privacy is a prerequisite for intellectual freedom",
+      "socialArgumentId": "f67ae096-2a31-c27f-3461-f010ac5b0fc0",
       "confidence": 0.685,
       "degreeCentrality": 0.285,
       "betweennessCentrality": 0.085,
@@ -156,6 +165,7 @@
     {
       "id": "synthetic-10",
       "label": "Meritocracy is an ideal, not a reality",
+      "socialArgumentId": "f686b6ab-d93f-3bd6-694a-5c04ee163003",
       "confidence": 0.611,
       "degreeCentrality": 0.291,
       "betweennessCentrality": 0.199,
@@ -173,6 +183,7 @@
     {
       "id": "synthetic-11",
       "label": "Rights come with corresponding responsibilities",
+      "socialArgumentId": "57c24d10-d62d-d4dd-0e6a-c7faecefd039",
       "confidence": 0.61,
       "degreeCentrality": 0.116,
       "betweennessCentrality": 0.061,
@@ -190,6 +201,7 @@
     {
       "id": "synthetic-12",
       "label": "Global cooperation is necessary for existential risks",
+      "socialArgumentId": "4c6b27f3-a5c3-fbe3-1040-ffdc83a06aaa",
       "confidence": 0.844,
       "degreeCentrality": 0.284,
       "betweennessCentrality": 0.159,
@@ -207,6 +219,7 @@
     {
       "id": "synthetic-59",
       "label": "Information quality determines decision quality",
+      "socialArgumentId": "ce8ad078-8ce4-1227-2499-42bd181de371",
       "confidence": 0.886,
       "degreeCentrality": 0.13,
       "betweennessCentrality": 0.106,
@@ -224,6 +237,7 @@
     {
       "id": "synthetic-60",
       "label": "Mental health is as important as physical health",
+      "socialArgumentId": "ca1a2362-f9a1-30aa-421a-e8c965564b5e",
       "confidence": 0.66,
       "degreeCentrality": 0.218,
       "betweennessCentrality": 0.046,
@@ -241,6 +255,7 @@
     {
       "id": "synthetic-61",
       "label": "Healthcare is a fundamental human right",
+      "socialArgumentId": "2041933b-cea3-07d5-4351-6d8ce7412e45",
       "confidence": 0.73,
       "degreeCentrality": 0.246,
       "betweennessCentrality": 0.054,
@@ -258,6 +273,7 @@
     {
       "id": "synthetic-62",
       "label": "Infrastructure investment yields long-term prosperity",
+      "socialArgumentId": "937460ae-3a00-002d-6a9f-791111a3598e",
       "confidence": 0.505,
       "degreeCentrality": 0.272,
       "betweennessCentrality": 0.166,
@@ -275,6 +291,7 @@
     {
       "id": "synthetic-63",
       "label": "Historical context is essential for understanding current events",
+      "socialArgumentId": "d3ffb7b3-fa50-cda6-28d5-fe2781d0ae39",
       "confidence": 0.545,
       "degreeCentrality": 0.112,
       "betweennessCentrality": 0.059,
@@ -292,6 +309,7 @@
     {
       "id": "synthetic-64",
       "label": "Complex systems require humility in intervention",
+      "socialArgumentId": "c7229625-716d-1cb3-0da2-d70d7200ccb6",
       "confidence": 0.747,
       "degreeCentrality": 0.189,
       "betweennessCentrality": 0.196,
@@ -309,6 +327,7 @@
     {
       "id": "synthetic-65",
       "label": "Complex systems require humility in intervention",
+      "socialArgumentId": "c7229625-716d-1cb3-0da2-d70d7200ccb6",
       "confidence": 0.585,
       "degreeCentrality": 0.381,
       "betweennessCentrality": 0.156,
@@ -326,6 +345,7 @@
     {
       "id": "synthetic-66",
       "label": "Uncertainty should be embraced, not eliminated",
+      "socialArgumentId": "ee7b34fb-2de5-2681-efcc-c07628f958bd",
       "confidence": 0.513,
       "degreeCentrality": 0.213,
       "betweennessCentrality": 0.003,
@@ -343,6 +363,7 @@
     {
       "id": "synthetic-84",
       "label": "Moral progress is possible but not inevitable",
+      "socialArgumentId": "02724e36-b4c2-1638-01db-3cfed6f96766",
       "confidence": 0.805,
       "degreeCentrality": 0.157,
       "betweennessCentrality": 0.011,
@@ -360,6 +381,7 @@
     {
       "id": "synthetic-85",
       "label": "Cultural diversity strengthens democratic institutions",
+      "socialArgumentId": "10c1a95e-6926-7f48-6b9d-d88984b1bd9e",
       "confidence": 0.74,
       "degreeCentrality": 0.143,
       "betweennessCentrality": 0.044,
@@ -377,6 +399,7 @@
     {
       "id": "synthetic-86",
       "label": "Complex systems require humility in intervention",
+      "socialArgumentId": "c7229625-716d-1cb3-0da2-d70d7200ccb6",
       "confidence": 0.801,
       "degreeCentrality": 0.157,
       "betweennessCentrality": 0.043,
@@ -394,6 +417,7 @@
     {
       "id": "synthetic-90",
       "label": "Competition and cooperation are both essential",
+      "socialArgumentId": "b48ac92e-8753-219d-7191-eb9ac2ee45f1",
       "confidence": 0.607,
       "degreeCentrality": 0.066,
       "betweennessCentrality": 0.03,
@@ -411,6 +435,7 @@
     {
       "id": "synthetic-91",
       "label": "Healthcare is a fundamental human right",
+      "socialArgumentId": "2041933b-cea3-07d5-4351-6d8ce7412e45",
       "confidence": 0.87,
       "degreeCentrality": 0.081,
       "betweennessCentrality": 0.029,
@@ -428,6 +453,7 @@
     {
       "id": "synthetic-92",
       "label": "Free markets drive innovation more effectively than regulation",
+      "socialArgumentId": "1d1c275b-81ed-ab34-b655-71ae07dda0a7",
       "confidence": 0.683,
       "degreeCentrality": 0.065,
       "betweennessCentrality": 0.016,
@@ -445,6 +471,7 @@
     {
       "id": "synthetic-96",
       "label": "Diversity of thought prevents groupthink",
+      "socialArgumentId": "7bc5876c-b347-7628-b369-572979d88669",
       "confidence": 0.513,
       "degreeCentrality": 0.166,
       "betweennessCentrality": 0.018,
@@ -462,6 +489,7 @@
     {
       "id": "synthetic-97",
       "label": "Privacy is a prerequisite for intellectual freedom",
+      "socialArgumentId": "f67ae096-2a31-c27f-3461-f010ac5b0fc0",
       "confidence": 0.76,
       "degreeCentrality": 0.115,
       "betweennessCentrality": 0.054,
@@ -479,6 +507,7 @@
     {
       "id": "synthetic-98",
       "label": "Art is essential for a healthy society",
+      "socialArgumentId": "2d168e47-2745-b36d-ff84-469935e75000",
       "confidence": 0.54,
       "degreeCentrality": 0.18,
       "betweennessCentrality": 0.091,
@@ -496,6 +525,7 @@
     {
       "id": "synthetic-102",
       "label": "Meritocracy is an ideal, not a reality",
+      "socialArgumentId": "f686b6ab-d93f-3bd6-694a-5c04ee163003",
       "confidence": 0.467,
       "degreeCentrality": 0.012,
       "betweennessCentrality": 0,
@@ -513,6 +543,7 @@
     {
       "id": "synthetic-103",
       "label": "Intergenerational equity is a moral imperative",
+      "socialArgumentId": "90c5be82-85ad-16c7-1694-ff6c597dc82b",
       "confidence": 0.512,
       "degreeCentrality": 0.039,
       "betweennessCentrality": 0,
@@ -530,6 +561,7 @@
     {
       "id": "synthetic-104",
       "label": "Narrative shapes identity more than facts",
+      "socialArgumentId": "585b81fe-fd86-c81e-cd85-c80517778aba",
       "confidence": 0.424,
       "degreeCentrality": 0.03,
       "betweennessCentrality": 0,
@@ -547,6 +579,7 @@
     {
       "id": "synthetic-105",
       "label": "Technology should serve human flourishing, not replace it",
+      "socialArgumentId": "319ae8c5-3573-9a35-94fc-8510af34f1d8",
       "confidence": 0.328,
       "degreeCentrality": 0.039,
       "betweennessCentrality": 0,
@@ -564,6 +597,7 @@
     {
       "id": "synthetic-106",
       "label": "Historical context is essential for understanding current events",
+      "socialArgumentId": "d3ffb7b3-fa50-cda6-28d5-fe2781d0ae39",
       "confidence": 0.567,
       "degreeCentrality": 0.007,
       "betweennessCentrality": 0,
@@ -581,6 +615,7 @@
     {
       "id": "synthetic-107",
       "label": "Diversity of thought prevents groupthink",
+      "socialArgumentId": "7bc5876c-b347-7628-b369-572979d88669",
       "confidence": 0.558,
       "degreeCentrality": 0.043,
       "betweennessCentrality": 0,
@@ -598,6 +633,7 @@
     {
       "id": "synthetic-108",
       "label": "Competition and cooperation are both essential",
+      "socialArgumentId": "b48ac92e-8753-219d-7191-eb9ac2ee45f1",
       "confidence": 0.321,
       "degreeCentrality": 0.027,
       "betweennessCentrality": 0,
@@ -615,6 +651,7 @@
     {
       "id": "synthetic-109",
       "label": "Global cooperation is necessary for existential risks",
+      "socialArgumentId": "4c6b27f3-a5c3-fbe3-1040-ffdc83a06aaa",
       "confidence": 0.334,
       "degreeCentrality": 0.001,
       "betweennessCentrality": 0,
@@ -1232,6 +1269,6 @@
       "synthetic": true
     }
   ],
-  "generatedAt": "2026-07-18T22:36:54.9019427Z",
+  "generatedAt": "2026-07-22T06:15:26.8896303Z",
   "synthetic": true
 }

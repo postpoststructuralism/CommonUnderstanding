@@ -330,16 +330,6 @@ public class UnderstandingGraphController : Controller
     }
 
     /// <summary>
-    /// Returns only homepage nodes that have public SocialView detail pages.
-    /// </summary>
-    [HttpGet("api/understanding-graph/homepage-nodes")]
-    [OutputCache(Duration = 60)]
-    public async Task<IActionResult> GetHomepageNodes()
-    {
-        return Json(await _queryService.GetHomepageNodesAsync());
-    }
-
-    /// <summary>
     /// Returns the current skeleton manifest — tells the client which versioned
     /// static JSON file to fetch. Enables cache-busting on rebuild without redeploy.
     /// </summary>

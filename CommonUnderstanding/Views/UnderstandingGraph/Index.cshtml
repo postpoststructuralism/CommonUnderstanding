@@ -275,6 +275,11 @@
     }
 
     .vis-tooltip {
+        position: absolute;
+        visibility: hidden;
+        z-index: 1000;
+        pointer-events: none;
+        white-space: nowrap;
         background: #fff !important;
         border: 1px solid var(--cu-border-light) !important;
         border-radius: 0.6rem !important;
@@ -282,6 +287,67 @@
         font-size: 12px !important;
         padding: 8px 12px !important;
         box-shadow: var(--cu-shadow-sm) !important;
+    }
+
+    .graph-hover-popup {
+        position: absolute;
+        z-index: 200;
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+        background: #ffffff;
+        border: 1px solid var(--cu-border-light, #e2e8f0);
+        border-radius: 1rem;
+        box-shadow: 0 12px 40px rgba(22, 33, 49, 0.15), 0 4px 12px rgba(22, 33, 49, 0.08);
+        padding: 16px 18px;
+        min-width: 240px;
+        max-width: 340px;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+    .graph-hover-popup.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .graph-hover-popup::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 8px solid #ffffff;
+        filter: drop-shadow(0 2px 2px rgba(22, 33, 49, 0.08));
+    }
+
+    .graph-hover-popup .popup-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--cu-primary-blue, #162131);
+        line-height: 1.4;
+        margin-bottom: 10px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .graph-hover-popup .popup-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .graph-hover-popup .popup-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.3px; }
+    .graph-hover-popup .popup-badge.settled { background: rgba(5, 150, 105, 0.1); color: #059669; }
+    .graph-hover-popup .popup-badge.contested { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+    .graph-hover-popup .popup-badge.unevaluated { background: rgba(102, 116, 135, 0.1); color: #667487; }
+    .graph-hover-popup .popup-confidence { font-size: 11px; color: var(--cu-text-muted, #667487); display: flex; align-items: center; gap: 4px; }
+    .graph-hover-popup .popup-confidence-bar { width: 48px; height: 4px; border-radius: 2px; background: #e2e8f0; overflow: hidden; }
+    .graph-hover-popup .popup-confidence-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #0f766e, #059669); transition: width 0.3s ease; }
+    .graph-hover-popup .popup-cta { margin-top: 10px; font-size: 11px; font-weight: 500; color: var(--cu-secondary-blue, #0f766e); display: flex; align-items: center; gap: 4px; opacity: 0.8; }
+    .graph-hover-popup .popup-cta i { font-size: 10px; }
     }
 
     /* ── Search ── */
@@ -408,114 +474,6 @@
         padding: 12px 20px;
         border-top: 1px solid var(--cu-border-light);
         text-align: center;
-    }
-
-    /* ── Hover Popup (Tooltip) ── */
-    .graph-hover-popup {
-        position: absolute;
-        z-index: 200;
-        pointer-events: auto;
-        opacity: 0;
-        transform: translateY(6px);
-        transition: opacity 0.18s ease-out, transform 0.18s ease-out;
-        background: #ffffff;
-        border: 1px solid var(--cu-border-light, #e2e8f0);
-        border-radius: 1rem;
-        box-shadow: 0 12px 40px rgba(22, 33, 49, 0.15), 0 4px 12px rgba(22, 33, 49, 0.08);
-        padding: 16px 18px;
-        min-width: 240px;
-        max-width: 340px;
-        cursor: pointer;
-        font-family: inherit;
-    }
-    .graph-hover-popup.visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    .graph-hover-popup::after {
-        content: '';
-        position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-top: 8px solid #ffffff;
-        filter: drop-shadow(0 2px 2px rgba(22, 33, 49, 0.08));
-    }
-    .graph-hover-popup .popup-label {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--cu-primary-blue, #162131);
-        line-height: 1.4;
-        margin-bottom: 10px;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    .graph-hover-popup .popup-meta {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .graph-hover-popup .popup-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 3px 10px;
-        border-radius: 999px;
-        letter-spacing: 0.3px;
-    }
-    .graph-hover-popup .popup-badge.settled {
-        background: rgba(5, 150, 105, 0.1);
-        color: #059669;
-    }
-    .graph-hover-popup .popup-badge.contested {
-        background: rgba(217, 119, 6, 0.1);
-        color: #d97706;
-    }
-    .graph-hover-popup .popup-badge.unevaluated {
-        background: rgba(102, 116, 135, 0.1);
-        color: #667487;
-    }
-    .graph-hover-popup .popup-confidence {
-        font-size: 11px;
-        color: var(--cu-text-muted, #667487);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .graph-hover-popup .popup-confidence-bar {
-        width: 48px;
-        height: 4px;
-        border-radius: 2px;
-        background: #e2e8f0;
-        overflow: hidden;
-    }
-    .graph-hover-popup .popup-confidence-fill {
-        height: 100%;
-        border-radius: 2px;
-        background: linear-gradient(90deg, #0f766e, #059669);
-        transition: width 0.3s ease;
-    }
-    .graph-hover-popup .popup-cta {
-        margin-top: 10px;
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--cu-secondary-blue, #0f766e);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        opacity: 0.8;
-    }
-    .graph-hover-popup .popup-cta i {
-        font-size: 10px;
     }
 </style>
 
@@ -663,21 +621,16 @@
                 <div class="spinner"></div>
             </div>
         </div>
-    </div>
-
-    <!-- Hover Popup — beautifully styled tooltip for graph nodes -->
-    <div id="graph-hover-popup" class="graph-hover-popup" style="display:none;">
-        <div class="popup-label" id="popup-label"></div>
-        <div class="popup-meta">
-            <span class="popup-badge" id="popup-badge"></span>
-            <span class="popup-confidence">
-                <span class="popup-confidence-bar"><div class="popup-confidence-fill" id="popup-confidence-fill"></div></span>
-                <span id="popup-confidence-text"></span>
-            </span>
-        </div>
-        <div class="popup-cta">
-            <span>View details</span>
-            <i class="bi bi-arrow-right"></i>
+        <div id="graph-hover-popup" class="graph-hover-popup" style="display:none;">
+            <div class="popup-label" id="popup-label"></div>
+            <div class="popup-meta">
+                <span class="popup-badge" id="popup-badge"></span>
+                <span class="popup-confidence">
+                    <span class="popup-confidence-bar"><span class="popup-confidence-fill" id="popup-confidence-fill"></span></span>
+                    <span id="popup-confidence-text"></span>
+                </span>
+            </div>
+            <div class="popup-cta"><span>View details</span><i class="bi bi-arrow-right"></i></div>
         </div>
     </div>
 
@@ -801,61 +754,13 @@
                 const nodeId = params.nodes[0];
                 const node = allNodes.find(n => n.id === nodeId);
                 if (!node) return;
-
-                // On the homepage, clicking navigates to SocialView/Detail if available
                 @if (isHomePage)
                 {
                 <text>
-                // Try cached preview first
-                const preview = hoverCache.get(nodeId);
-                if (preview && preview.socialArgumentId) {
-                    window.location.href = '/SocialView/Detail/' + preview.socialArgumentId;
-                    return;
-                }
-                // Try the in-memory node's argumentIdsJson for a GUID
-                let socialArgId = null;
-                let hasAnyArgId = false;
-                if (node.argumentIdsJson) {
-                    try {
-                        const ids = JSON.parse(node.argumentIdsJson);
-                        if (Array.isArray(ids) && ids.length > 0) {
-                            hasAnyArgId = true;
-                            if (typeof ids[0] === 'string' && ids[0].length === 36) {
-                                socialArgId = ids[0];
-                            }
-                        }
-                    } catch (e) { /* ignore */ }
-                }
-                if (socialArgId) {
-                    window.location.href = '/SocialView/Detail/' + socialArgId;
-                    return;
-                }
-                // Fetch preview from API — this resolves both GUID strings and integer argument IDs
-                // to a SocialArgument GUID. Works for all real DB nodes (skeleton + viewport-loaded).
-                if (hasAnyArgId || (typeof nodeId === 'number' || /^\d+$/.test(nodeId))) {
-                    fetch('/api/understanding-graph/node/' + nodeId + '/preview')
-                        .then(r => r.ok ? r.json() : null)
-                        .then(p => {
-                            if (p && p.socialArgumentId) {
-                                // Cache for future clicks/hovers
-                                hoverCache.set(nodeId, p);
-                                window.location.href = '/SocialView/Detail/' + p.socialArgumentId;
-                            } else {
-                                // Real DB node without a SocialArgument — navigate to graph node detail
-                                window.location.href = '/UnderstandingGraph/Node/' + nodeId;
-                            }
-                        })
-                        .catch(() => {
-                            window.location.href = '/UnderstandingGraph/Node/' + nodeId;
-                        });
-                } else {
-                    // Synthetic node — show in-memory detail in the slide-in panel
-                    showNodeDetail(nodeId);
-                }
+                navigateToSocialArgument(node);
                 return;
                 </text>
                 }
-
                 showNodeDetail(nodeId);
             }
         });
@@ -866,11 +771,9 @@
             }
         });
 
-        // ── Hover: show beautifully styled popup with debounced preview fetch ──
+        // ── Hover: show the original popup card ──
         let hoverTimer = null;
         let hoveredNodeId = null;
-        const hoverPopup = document.getElementById('graph-hover-popup');
-
         network.on('hoverNode', (params) => {
             const nodeId = params.node;
             if (hoverTimer) clearTimeout(hoverTimer);
@@ -883,45 +786,13 @@
             hideHoverPopup();
         });
 
-        // Click on the popup itself navigates to SocialView/Detail
+        const hoverPopup = document.getElementById('graph-hover-popup');
         if (hoverPopup) {
-            hoverPopup.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (hoveredNodeId) {
-                    // Try cached preview first
-                    const preview = hoverCache.get(hoveredNodeId);
-                    if (preview && preview.socialArgumentId) {
-                        window.location.href = '/SocialView/Detail/' + preview.socialArgumentId;
-                        return;
-                    }
-                    // Try the in-memory node's argumentIdsJson for a GUID
-                    const node = allNodes.find(n => n.id === hoveredNodeId);
-                    if (node && node.argumentIdsJson) {
-                        try {
-                            const ids = JSON.parse(node.argumentIdsJson);
-                            if (Array.isArray(ids) && ids.length > 0 && typeof ids[0] === 'string' && ids[0].length === 36) {
-                                window.location.href = '/SocialView/Detail/' + ids[0];
-                                return;
-                            }
-                        } catch (err) { /* ignore */ }
-                    }
-                    // For real DB nodes (numeric IDs), fetch the preview API to resolve the SocialArgument GUID
-                    if (typeof hoveredNodeId === 'number' || /^\d+$/.test(hoveredNodeId)) {
-                        fetch('/api/understanding-graph/node/' + hoveredNodeId + '/preview')
-                            .then(r => r.ok ? r.json() : null)
-                            .then(p => {
-                                if (p && p.socialArgumentId) {
-                                    hoverCache.set(hoveredNodeId, p);
-                                    window.location.href = '/SocialView/Detail/' + p.socialArgumentId;
-                                } else {
-                                    window.location.href = '/UnderstandingGraph/Node/' + hoveredNodeId;
-                                }
-                            })
-                            .catch(() => {
-                                window.location.href = '/UnderstandingGraph/Node/' + hoveredNodeId;
-                            });
-                    }
-                }
+            hoverPopup.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (!hoveredNodeId) return;
+                const node = nodes.get(hoveredNodeId);
+                if (node) navigateToSocialArgument(node);
             });
         }
 
@@ -951,95 +822,31 @@
         }, { passive: true });
     }
 
-    // ── Show/hide the custom hover popup ──
-    async function showHoverPopup(nodeId) {
+    function showHoverPopup(nodeId) {
         const popup = document.getElementById('graph-hover-popup');
-        if (!popup || !network) return;
+        const node = nodes.get(nodeId);
+        if (!popup || !node || !network) return;
 
-        // Build preview from the best available source:
-        //   1. Cached API response (real DB nodes)
-        //   2. Live API fetch (real DB nodes not yet cached)
-        //   3. allNodes in-memory data (skeleton + synthetic nodes)
-        let preview = hoverCache.get(nodeId);
-
-        if (!preview) {
-            // Only try the API for non-synthetic nodes (skeleton nodes may or may not be in DB)
-            if (!syntheticNodeIds.has(nodeId)) {
-                try {
-                    const res = await fetch(`/api/understanding-graph/node/${nodeId}/preview`);
-                    if (res.ok) {
-                        preview = await res.json();
-                        hoverCache.set(nodeId, preview);
-                    }
-                } catch (err) {
-                    // Fall through to in-memory fallback
-                }
-            }
-        }
-
-        // If still no preview, build one from the in-memory node data
-        if (!preview) {
-            const node = allNodes.find(n => n.id === nodeId);
-            if (!node) return;
-
-            // Extract socialArgumentId from argumentIdsJson if present
-            let socialArgumentId = null;
-            if (node.argumentIdsJson) {
-                try {
-                    const ids = JSON.parse(node.argumentIdsJson);
-                    if (Array.isArray(ids) && ids.length > 0) {
-                        // Skeleton stores GUID strings directly; synthetic nodes have no argumentIdsJson
-                        const first = ids[0];
-                        if (typeof first === 'string' && first.length === 36) {
-                            socialArgumentId = first; // It's already a GUID string
-                        }
-                    }
-                } catch (e) { /* ignore parse errors */ }
-            }
-
-            preview = {
-                id: nodeId,
-                label: node.fullLabel || node.label || '(unnamed)',
-                status: node.group || 'Unevaluated',
-                confidence: node.confidence || 0,
-                socialArgumentId: socialArgumentId
-            };
-            // Cache in-memory previews so popup clicks can navigate without a second API call
-            hoverCache.set(nodeId, preview);
-        }
-
-        if (!preview) return;
-
-        // Populate popup content
-        const label = preview.label || '(unnamed)';
-        document.getElementById('popup-label').textContent = label.length > 120 ? label.substring(0, 120) + '\u2026' : label;
-
+        document.getElementById('popup-label').textContent = node.fullLabel || node.label || '(unnamed)';
+        const status = (node.group || 'Unevaluated').toLowerCase();
         const badge = document.getElementById('popup-badge');
-        const status = (preview.status || 'Unevaluated').toLowerCase();
         badge.textContent = status;
         badge.className = 'popup-badge ' + (status === 'settled' ? 'settled' : status === 'contested' ? 'contested' : 'unevaluated');
-
-        const confidence = preview.confidence || 0;
+        const confidence = node.confidence || 0;
         document.getElementById('popup-confidence-fill').style.width = (confidence * 100) + '%';
         document.getElementById('popup-confidence-text').textContent = (confidence * 100).toFixed(0) + '%';
 
-        // Position the popup near the node
-        const canvasPos = network.getPositions([nodeId])[nodeId];
-        if (!canvasPos) return;
-        const domPos = network.canvasToDOM({ x: canvasPos.x, y: canvasPos.y });
-
         const containerRect = document.getElementById('graph-network').getBoundingClientRect();
+        const visualizationRect = popup.parentElement.getBoundingClientRect();
+        const canvasPosition = network.getPositions([nodeId])[nodeId];
+        if (!canvasPosition) return;
+        const domPosition = network.canvasToDOM(canvasPosition);
         const popupWidth = popup.offsetWidth || 280;
         const popupHeight = popup.offsetHeight || 100;
-
-        let left = containerRect.left + domPos.x - popupWidth / 2;
-        let top = containerRect.top + domPos.y - popupHeight - 20;
-
-        // Keep popup within viewport bounds
-        if (left < 10) left = 10;
-        if (left + popupWidth > window.innerWidth - 10) left = window.innerWidth - popupWidth - 10;
-        if (top < 10) top = containerRect.top + domPos.y + 20; // Show below node if not enough room above
-
+        let left = containerRect.left - visualizationRect.left + domPosition.x - popupWidth / 2;
+        let top = containerRect.top - visualizationRect.top + domPosition.y - popupHeight - 20;
+        left = Math.max(10, Math.min(left, visualizationRect.width - popupWidth - 10));
+        if (top < 10) top = containerRect.top - visualizationRect.top + domPosition.y + 20;
         popup.style.left = left + 'px';
         popup.style.top = top + 'px';
         popup.style.display = 'block';
@@ -1050,12 +857,44 @@
         const popup = document.getElementById('graph-hover-popup');
         if (!popup) return;
         popup.classList.remove('visible');
-        // Hide after transition completes
         setTimeout(() => {
             if (!popup.classList.contains('visible')) {
                 popup.style.display = 'none';
             }
         }, 180);
+    }
+
+    async function navigateToSocialArgument(node) {
+        let socialArgumentId = node.socialArgumentId || null;
+        try {
+            const argumentIds = JSON.parse(node.argumentIdsJson || '[]');
+            const firstId = argumentIds[0];
+            if (!socialArgumentId && typeof firstId === 'string' && /^[0-9a-f-]{36}$/i.test(firstId)) {
+                socialArgumentId = firstId;
+            }
+        } catch (err) {
+            // The API can still resolve real graph nodes with malformed argument metadata.
+        }
+
+        if (!socialArgumentId && !syntheticNodeIds.has(node.id)) {
+            const cached = hoverCache.get(node.id);
+            if (cached && cached.socialArgumentId) {
+                socialArgumentId = cached.socialArgumentId;
+            } else {
+                try {
+                    const response = await fetch(`/api/understanding-graph/node/${node.id}/preview`);
+                    if (response.ok) {
+                        const preview = await response.json();
+                        hoverCache.set(node.id, preview);
+                        socialArgumentId = preview.socialArgumentId;
+                    }
+                } catch (err) {
+                    // Fall through to the label resolver.
+                }
+            }
+        }
+
+        if (socialArgumentId) window.location.href = '/SocialView/Detail/' + socialArgumentId;
     }
 
     // ── Schedule a debounced viewport fetch ──
@@ -1152,39 +991,16 @@
             if (!manifestRes.ok) throw new Error('Manifest API returned ' + manifestRes.status);
             var manifest = await manifestRes.json();
 
-            // The homepage is sourced directly from public social arguments so every
-            // rendered node has a valid SocialView destination. Explorer uses the skeleton.
-            var skeletonPromise = @isHomePage.ToString().ToLowerInvariant()
-                ? fetch('/api/understanding-graph/homepage-nodes')
-                    .then(function(r) {
-                        if (!r.ok) throw new Error('Homepage nodes API returned ' + r.status);
-                        return r.json();
-                    })
-                    .then(function(homepageNodes) {
-                        return {
-                            nodes: homepageNodes.map(function(node) {
-                                return {
-                                    id: node.socialArgumentId,
-                                    label: node.label,
-                                    status: node.status,
-                                    confidence: node.confidence,
-                                    socialArgumentId: node.socialArgumentId
-                                };
-                            }),
-                            edges: []
-                        };
-                    })
-                : (manifest.version && manifest.version !== 'none'
-                    ? fetch(manifest.url).then(function(r) { return r.json(); })
-                    : Promise.resolve(null));
+            // Tier 2: Fetch static skeleton JSON (zero DB cost — served as static file)
+            var skeletonPromise = Promise.resolve(null);
+            if (manifest.version && manifest.version !== 'none') {
+                skeletonPromise = fetch(manifest.url).then(function(r) { return r.json(); });
+            }
 
-            // Decorative filler has no backing SocialArgument and therefore cannot
-            // satisfy the homepage contract that every visible node opens details.
-            var fillerPromise = @isHomePage.ToString().ToLowerInvariant()
-                ? Promise.resolve(null)
-                : fetch('/data/synthetic-filler.json')
-                    .then(function(r) { return r.json(); })
-                    .catch(function() { return null; });
+            // Tier 3: Fetch synthetic filler JSON (zero DB cost — static file)
+            var fillerPromise = fetch('/data/synthetic-filler.json')
+                .then(function(r) { return r.json(); })
+                .catch(function() { return null; }); // filler is optional
 
             var _a = await Promise.all([skeletonPromise, fillerPromise]),
                 skeletonData = _a[0], fillerData = _a[1];
@@ -1193,19 +1009,7 @@
             if (skeletonData && skeletonData.nodes) {
                 var skNodes = skeletonData.nodes.map(mapStaticNode);
                 var skEdges = (skeletonData.edges || []).map(mapStaticEdge);
-                skNodes.forEach(function(n) {
-                    allNodes.push(n);
-                    skeletonNodeIds.add(n.id);
-                    if (n.socialArgumentId) {
-                        hoverCache.set(n.id, {
-                            id: n.id,
-                            label: n.fullLabel,
-                            status: n.group,
-                            confidence: n.confidence,
-                            socialArgumentId: n.socialArgumentId
-                        });
-                    }
-                });
+                skNodes.forEach(function(n) { allNodes.push(n); skeletonNodeIds.add(n.id); });
                 skEdges.forEach(function(e) { allEdges.push(e); });
                 nodes.add(skNodes);
                 edges.add(skEdges);
@@ -1268,21 +1072,14 @@
         var status = n.status || n.Status || 'Unknown';
         var evidenceCount = n.evidenceCount !== undefined ? n.evidenceCount : (n.EvidenceCount !== undefined ? n.EvidenceCount : 0);
         var argumentIdsJson = n.argumentIdsJson || n.ArgumentIdsJson || '[]';
-        var socialArgumentId = n.socialArgumentId || n.SocialArgumentId || null;
         return {
             id: id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
-            title: '<strong>' + escHtml(label) + '</strong><br/>' +
-                   'Confidence: ' + confidence.toFixed(3) + '<br/>' +
-                   'Centrality: ' + degreeCentrality.toFixed(3) + '<br/>' +
-                   'Status: ' + status + '<br/>' +
-                   'Evidence: ' + evidenceCount,
             value: Math.max(5, (degreeCentrality || 0.1) * 30),
             color: getNodeColor({ confidence: confidence, status: status, dialecticalTemperature: n.dialecticalTemperature || n.DialecticalTemperature || 0, controversyScore: n.controversyScore || n.ControversyScore || 0, schemaEntropy: n.schemaEntropy || n.SchemaEntropy || 0 }),
             group: status,
             argumentIdsJson: argumentIdsJson,
-            socialArgumentId: socialArgumentId,
-            // Custom properties for hover popup (ignored by vis.js)
+            socialArgumentId: n.socialArgumentId || n.SocialArgumentId || null,
             fullLabel: label,
             confidence: confidence
             // NOTE: Do NOT pass x/y from skeleton — let physics do the layout for visible motion
@@ -1316,20 +1113,11 @@
         return {
             id: n.id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
-            title: `<strong>${escHtml(label)}</strong><br/>
-                     Confidence: ${(n.confidence ?? 0).toFixed(3)}<br/>
-                     Centrality: ${(n.degreeCentrality ?? 0).toFixed(3)}<br/>
-                     Betweenness: ${(n.betweennessCentrality ?? 0).toFixed(3)}<br/>
-                     Clustering: ${(n.clusteringCoefficient ?? 0).toFixed(3)}<br/>
-                     Dialectical Temp: ${(n.dialecticalTemperature ?? 0).toFixed(3)}<br/>
-                     Controversy: ${(n.controversyScore ?? 0).toFixed(3)}<br/>
-                     Status: ${n.status || 'Unknown'}<br/>
-                     Evidence: ${n.evidenceCount ?? 0}`,
             value: Math.max(5, (n.degreeCentrality || 0.1) * 30),
             color: getNodeColor(n),
             group: n.status || 'Unknown',
             argumentIdsJson: n.argumentIdsJson || '[]',
-            // Custom properties for hover popup (ignored by vis.js)
+            socialArgumentId: n.socialArgumentId || null,
             fullLabel: label,
             confidence: n.confidence ?? 0
         };
@@ -1458,31 +1246,8 @@
         const title = document.getElementById('node-detail-title');
         const fullLink = document.getElementById('node-detail-full-link');
         
-        // Set the full page link (only valid for numeric/real node IDs)
-        if (typeof nodeId === 'number' || /^\d+$/.test(nodeId)) {
-            fullLink.href = '/UnderstandingGraph/Node/' + nodeId;
-        } else {
-            fullLink.style.display = 'none';
-        }
-        
-        // Check if this is a synthetic node — show in-memory data directly
-        const isSynthetic = typeof nodeId === 'string' && nodeId.startsWith('synthetic-');
-        if (isSynthetic) {
-            const node = allNodes.find(n => n.id === nodeId);
-            if (node) {
-                const label = node.fullLabel || node.label || 'Untitled';
-                title.textContent = label.length > 50 ? label.substring(0, 50) + '…' : label;
-                const conf = node.confidence || 0;
-                body.innerHTML = 
-                    '<p style="font-size:14px;color:var(--cu-primary-blue);margin-bottom:16px;">' + escHtml(label) + '</p>' +
-                    '<div class="meta-row"><span class="meta-label">Status</span><span class="meta-value"><span class="badge" style="background:rgba(102,116,135,0.12);color:#667487;">Unevaluated</span></span></div>' +
-                    '<div class="meta-row"><span class="meta-label">Confidence</span><span class="meta-value">' + conf.toFixed(3) + '</span></div>' +
-                    '<div class="meta-row"><span class="meta-label">Type</span><span class="meta-value">Synthetic Filler Node</span></div>' +
-                    '<p style="font-size:12px;color:var(--cu-text-muted);margin-top:16px;">This is a synthetic node generated to fill gaps in the graph. It has no detailed analytics yet.</p>';
-                panel.style.display = 'flex';
-                return;
-            }
-        }
+        // Set the full page link
+        fullLink.href = '/UnderstandingGraph/Node/' + nodeId;
         
         // Show panel with loading spinner
         title.textContent = 'Loading...';

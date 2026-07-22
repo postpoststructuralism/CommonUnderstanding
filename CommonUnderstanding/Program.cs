@@ -344,6 +344,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await SyntheticSocialArgumentSeedData.EnsureAsync(db, startupLogger);
+
     // Phase 1 (4.6): Only seed sample data when explicitly opted in.
     // In development, set SEED_SAMPLE_DATA=true environment variable or pass --seed flag.
     var shouldSeed = app.Environment.IsDevelopment() &&
@@ -351,8 +354,7 @@ using (var scope = app.Services.CreateScope())
          Environment.GetEnvironmentVariable("SEED_SAMPLE_DATA")?.ToLowerInvariant() == "true");
     if (shouldSeed)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        await Phase2SeedData.SeedAllAsync(db, logger);
+        await Phase2SeedData.SeedAllAsync(db, startupLogger);
     }
 }
 

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CommonUnderstanding.Services;
 
@@ -47,10 +49,12 @@ public class SyntheticFillerGenerator
             var id = $"synthetic-{nextId++}";
             cluster1Ids.Add(id);
             var color = colorGroups[rng.Next(colorGroups.Length)];
+            var label = SyntheticLabels.GetLabel(rng);
             nodes.Add(new
             {
                 id,
-                label = SyntheticLabels.GetLabel(rng),
+                label,
+                socialArgumentId = SyntheticLabels.GetSocialArgumentId(label),
                 confidence = Math.Round(0.5 + rng.NextDouble() * 0.4, 3),
                 degreeCentrality = Math.Round(0.1 + rng.NextDouble() * 0.3, 3),
                 betweennessCentrality = Math.Round(rng.NextDouble() * 0.2, 3),
@@ -94,10 +98,12 @@ public class SyntheticFillerGenerator
             var id = $"synthetic-{nextId++}";
             cluster2Ids.Add(id);
             var color = colorGroups[rng.Next(colorGroups.Length)];
+            var label = SyntheticLabels.GetLabel(rng);
             nodes.Add(new
             {
                 id,
-                label = SyntheticLabels.GetLabel(rng),
+                label,
+                socialArgumentId = SyntheticLabels.GetSocialArgumentId(label),
                 confidence = Math.Round(0.5 + rng.NextDouble() * 0.4, 3),
                 degreeCentrality = Math.Round(0.1 + rng.NextDouble() * 0.3, 3),
                 betweennessCentrality = Math.Round(rng.NextDouble() * 0.2, 3),
@@ -143,10 +149,12 @@ public class SyntheticFillerGenerator
                 var id = $"synthetic-{nextId++}";
                 triIds.Add(id);
                 var color = colorGroups[rng.Next(colorGroups.Length)];
+                var label = SyntheticLabels.GetLabel(rng);
                 nodes.Add(new
                 {
                     id,
-                    label = SyntheticLabels.GetLabel(rng),
+                    label,
+                    socialArgumentId = SyntheticLabels.GetSocialArgumentId(label),
                     confidence = Math.Round(0.5 + rng.NextDouble() * 0.4, 3),
                     degreeCentrality = Math.Round(0.05 + rng.NextDouble() * 0.15, 3),
                     betweennessCentrality = Math.Round(rng.NextDouble() * 0.1, 3),
@@ -173,10 +181,12 @@ public class SyntheticFillerGenerator
         {
             var id = $"synthetic-{nextId++}";
             var color = colorGroups[rng.Next(colorGroups.Length)];
+            var label = SyntheticLabels.GetLabel(rng);
             nodes.Add(new
             {
                 id,
-                label = SyntheticLabels.GetLabel(rng),
+                label,
+                socialArgumentId = SyntheticLabels.GetSocialArgumentId(label),
                 confidence = Math.Round(0.3 + rng.NextDouble() * 0.3, 3),
                 degreeCentrality = Math.Round(rng.NextDouble() * 0.05, 3),
                 betweennessCentrality = 0.0,
@@ -226,7 +236,7 @@ public class SyntheticFillerGenerator
 /// </summary>
 internal static class SyntheticLabels
 {
-    private static readonly string[] Labels = new[]
+    public static readonly string[] All = new[]
     {
         "Individual autonomy should be balanced with collective responsibility",
         "Free markets drive innovation more effectively than regulation",
@@ -260,5 +270,15 @@ internal static class SyntheticLabels
         "Mental health is as important as physical health"
     };
 
-    public static string GetLabel(Random rng) => Labels[rng.Next(Labels.Length)];
+    public static string GetLabel(Random rng) => All[rng.Next(All.Length)];
+
+    public static Guid GetSocialArgumentId(string label) => CreateStableId("argument", label);
+
+    public static Guid GetClaimPropositionId(string label) => CreateStableId("claim", label);
+
+    private static Guid CreateStableId(string kind, string label)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"synthetic-{kind}:{label}"));
+        return new Guid(hash.AsSpan(0, 16));
+    }
 }
