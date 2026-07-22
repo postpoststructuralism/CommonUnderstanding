@@ -814,11 +814,15 @@
                 }
                 // Try the in-memory node's argumentIdsJson for a GUID
                 let socialArgId = null;
+                let hasAnyArgId = false;
                 if (node.argumentIdsJson) {
                     try {
                         const ids = JSON.parse(node.argumentIdsJson);
-                        if (Array.isArray(ids) && ids.length > 0 && typeof ids[0] === 'string' && ids[0].length === 36) {
-                            socialArgId = ids[0];
+                        if (Array.isArray(ids) && ids.length > 0) {
+                            hasAnyArgId = true;
+                            if (typeof ids[0] === 'string' && ids[0].length === 36) {
+                                socialArgId = ids[0];
+                            }
                         }
                     } catch (e) { /* ignore */ }
                 }
@@ -826,27 +830,28 @@
                     window.location.href = '/SocialView/Detail/' + socialArgId;
                     return;
                 }
-                // Fetch preview from API (for real DB nodes not yet cached)
-                fetch('/api/understanding-graph/node/' + nodeId + '/preview')
-                    .then(r => r.ok ? r.json() : null)
-                    .then(p => {
-                        if (p && p.socialArgumentId) {
-                            window.location.href = '/SocialView/Detail/' + p.socialArgumentId;
-                        } else if (typeof nodeId === 'number' || /^\d+$/.test(nodeId)) {
-                            // Real DB node without a SocialArgument — navigate to graph node detail
+                // Fetch preview from API — this resolves both GUID strings and integer argument IDs
+                // to a SocialArgument GUID. Works for all real DB nodes (skeleton + viewport-loaded).
+                if (hasAnyArgId || (typeof nodeId === 'number' || /^\d+$/.test(nodeId))) {
+                    fetch('/api/understanding-graph/node/' + nodeId + '/preview')
+                        .then(r => r.ok ? r.json() : null)
+                        .then(p => {
+                            if (p && p.socialArgumentId) {
+                                // Cache for future clicks/hovers
+                                hoverCache.set(nodeId, p);
+                                window.location.href = '/SocialView/Detail/' + p.socialArgumentId;
+                            } else {
+                                // Real DB node without a SocialArgument — navigate to graph node detail
+                                window.location.href = '/UnderstandingGraph/Node/' + nodeId;
+                            }
+                        })
+                        .catch(() => {
                             window.location.href = '/UnderstandingGraph/Node/' + nodeId;
-                        } else {
-                            // Synthetic node — show in-memory detail in the slide-in panel
-                            showNodeDetail(nodeId);
-                        }
-                    })
-                    .catch(() => {
-                        if (typeof nodeId === 'number' || /^\d+$/.test(nodeId)) {
-                            window.location.href = '/UnderstandingGraph/Node/' + nodeId;
-                        } else {
-                            showNodeDetail(nodeId);
-                        }
-                    });
+                        });
+                } else {
+                    // Synthetic node — show in-memory detail in the slide-in panel
+                    showNodeDetail(nodeId);
+                }
                 return;
                 </text>
                 }
@@ -883,9 +888,38 @@
             hoverPopup.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (hoveredNodeId) {
+                    // Try cached preview first
                     const preview = hoverCache.get(hoveredNodeId);
                     if (preview && preview.socialArgumentId) {
                         window.location.href = '/SocialView/Detail/' + preview.socialArgumentId;
+                        return;
+                    }
+                    // Try the in-memory node's argumentIdsJson for a GUID
+                    const node = allNodes.find(n => n.id === hoveredNodeId);
+                    if (node && node.argumentIdsJson) {
+                        try {
+                            const ids = JSON.parse(node.argumentIdsJson);
+                            if (Array.isArray(ids) && ids.length > 0 && typeof ids[0] === 'string' && ids[0].length === 36) {
+                                window.location.href = '/SocialView/Detail/' + ids[0];
+                                return;
+                            }
+                        } catch (err) { /* ignore */ }
+                    }
+                    // For real DB nodes (numeric IDs), fetch the preview API to resolve the SocialArgument GUID
+                    if (typeof hoveredNodeId === 'number' || /^\d+$/.test(hoveredNodeId)) {
+                        fetch('/api/understanding-graph/node/' + hoveredNodeId + '/preview')
+                            .then(r => r.ok ? r.json() : null)
+                            .then(p => {
+                                if (p && p.socialArgumentId) {
+                                    hoverCache.set(hoveredNodeId, p);
+                                    window.location.href = '/SocialView/Detail/' + p.socialArgumentId;
+                                } else {
+                                    window.location.href = '/UnderstandingGraph/Node/' + hoveredNodeId;
+                                }
+                            })
+                            .catch(() => {
+                                window.location.href = '/UnderstandingGraph/Node/' + hoveredNodeId;
+                            });
                     }
                 }
             });
@@ -970,7 +1004,8 @@
                 confidence: node.confidence || 0,
                 socialArgumentId: socialArgumentId
             };
-            // Don't cache in-memory fallbacks — they're cheap to reconstruct
+            // Cache in-memory previews so popup clicks can navigate without a second API call
+            hoverCache.set(nodeId, preview);
         }
 
         if (!preview) return;
@@ -1117,16 +1152,39 @@
             if (!manifestRes.ok) throw new Error('Manifest API returned ' + manifestRes.status);
             var manifest = await manifestRes.json();
 
-            // Tier 2: Fetch static skeleton JSON (zero DB cost — served as static file)
-            var skeletonPromise = Promise.resolve(null);
-            if (manifest.version && manifest.version !== 'none') {
-                skeletonPromise = fetch(manifest.url).then(function(r) { return r.json(); });
-            }
+            // The homepage is sourced directly from public social arguments so every
+            // rendered node has a valid SocialView destination. Explorer uses the skeleton.
+            var skeletonPromise = @isHomePage.ToString().ToLowerInvariant()
+                ? fetch('/api/understanding-graph/homepage-nodes')
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('Homepage nodes API returned ' + r.status);
+                        return r.json();
+                    })
+                    .then(function(homepageNodes) {
+                        return {
+                            nodes: homepageNodes.map(function(node) {
+                                return {
+                                    id: node.socialArgumentId,
+                                    label: node.label,
+                                    status: node.status,
+                                    confidence: node.confidence,
+                                    socialArgumentId: node.socialArgumentId
+                                };
+                            }),
+                            edges: []
+                        };
+                    })
+                : (manifest.version && manifest.version !== 'none'
+                    ? fetch(manifest.url).then(function(r) { return r.json(); })
+                    : Promise.resolve(null));
 
-            // Tier 3: Fetch synthetic filler JSON (zero DB cost — static file)
-            var fillerPromise = fetch('/data/synthetic-filler.json')
-                .then(function(r) { return r.json(); })
-                .catch(function() { return null; }); // filler is optional
+            // Decorative filler has no backing SocialArgument and therefore cannot
+            // satisfy the homepage contract that every visible node opens details.
+            var fillerPromise = @isHomePage.ToString().ToLowerInvariant()
+                ? Promise.resolve(null)
+                : fetch('/data/synthetic-filler.json')
+                    .then(function(r) { return r.json(); })
+                    .catch(function() { return null; });
 
             var _a = await Promise.all([skeletonPromise, fillerPromise]),
                 skeletonData = _a[0], fillerData = _a[1];
@@ -1135,7 +1193,19 @@
             if (skeletonData && skeletonData.nodes) {
                 var skNodes = skeletonData.nodes.map(mapStaticNode);
                 var skEdges = (skeletonData.edges || []).map(mapStaticEdge);
-                skNodes.forEach(function(n) { allNodes.push(n); skeletonNodeIds.add(n.id); });
+                skNodes.forEach(function(n) {
+                    allNodes.push(n);
+                    skeletonNodeIds.add(n.id);
+                    if (n.socialArgumentId) {
+                        hoverCache.set(n.id, {
+                            id: n.id,
+                            label: n.fullLabel,
+                            status: n.group,
+                            confidence: n.confidence,
+                            socialArgumentId: n.socialArgumentId
+                        });
+                    }
+                });
                 skEdges.forEach(function(e) { allEdges.push(e); });
                 nodes.add(skNodes);
                 edges.add(skEdges);
@@ -1198,6 +1268,7 @@
         var status = n.status || n.Status || 'Unknown';
         var evidenceCount = n.evidenceCount !== undefined ? n.evidenceCount : (n.EvidenceCount !== undefined ? n.EvidenceCount : 0);
         var argumentIdsJson = n.argumentIdsJson || n.ArgumentIdsJson || '[]';
+        var socialArgumentId = n.socialArgumentId || n.SocialArgumentId || null;
         return {
             id: id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
@@ -1210,6 +1281,7 @@
             color: getNodeColor({ confidence: confidence, status: status, dialecticalTemperature: n.dialecticalTemperature || n.DialecticalTemperature || 0, controversyScore: n.controversyScore || n.ControversyScore || 0, schemaEntropy: n.schemaEntropy || n.SchemaEntropy || 0 }),
             group: status,
             argumentIdsJson: argumentIdsJson,
+            socialArgumentId: socialArgumentId,
             // Custom properties for hover popup (ignored by vis.js)
             fullLabel: label,
             confidence: confidence
