@@ -781,12 +781,6 @@
                 tooltipDelay: 200,
                 navigationButtons: true,
                 keyboard: true
-            },
-            groups: {
-                Settled: { color: { background: '#059669', border: '#34d399' } },
-                Contested: { color: { background: '#d97706', border: '#f59e0b' } },
-                Unknown: { color: { background: '#667487', border: '#8b95a5' } },
-                Unevaluated: { color: { background: '#0f766e', border: '#14b8a6' } }
             }
         };
 
@@ -1060,6 +1054,8 @@
 
             // ── Render skeleton ──
             if (skeletonData && skeletonData.nodes) {
+                // Compute percentile thresholds FIRST so mapStaticNode uses them
+                computeColorThresholds(skeletonData.nodes);
                 var skNodes = skeletonData.nodes.map(mapStaticNode);
                 var skEdges = (skeletonData.edges || []).map(mapStaticEdge);
                 skNodes.forEach(function(n) { allNodes.push(n); skeletonNodeIds.add(n.id); });
@@ -1073,7 +1069,7 @@
 
             // Start with a wide, fixed camera so the visible physics layout
             // never begins close-up. Do not fit the camera again after this.
-            network.moveTo({ position: { x: 0, y: 0 }, scale: 0.10, animation: false });
+            network.moveTo({ position: { x: 0, y: 0 }, scale: 0.20, animation: false });
             if (loadingEl) loadingEl.classList.add('hidden');
 
             // Show labels once data is loaded
@@ -1119,9 +1115,8 @@
         return {
             id: id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
-            value: Math.max(5, (degreeCentrality || 0.1) * 30),
-            color: getNodeColor({ confidence: confidence, status: status, dialecticalTemperature: n.dialecticalTemperature || n.DialecticalTemperature || 0, controversyScore: n.controversyScore || n.ControversyScore || 0, schemaEntropy: n.schemaEntropy || n.SchemaEntropy || 0 }),
-            group: status,
+            value: Math.max(5, (degreeCentrality || 0.05) * 200),
+            color: getNodeColor({ id: id, confidence: confidence, status: status, dialecticalTemperature: n.dialecticalTemperature || n.DialecticalTemperature || 0, controversyScore: n.controversyScore || n.ControversyScore || 0, schemaEntropy: n.schemaEntropy || n.SchemaEntropy || 0 }),
             argumentIdsJson: argumentIdsJson,
             socialArgumentId: n.socialArgumentId || n.SocialArgumentId || null,
             fullLabel: label,
@@ -1160,7 +1155,6 @@
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
             value: Math.max(5, (n.degreeCentrality || 0.1) * 30),
             color: getNodeColor(n),
-            group: n.status || 'Unknown',
             argumentIdsJson: n.argumentIdsJson || '[]',
             socialArgumentId: n.socialArgumentId || null,
             fullLabel: label,
@@ -1184,12 +1178,67 @@
     }
 
     function getNodeColor(n) {
-        if (n.dialecticalTemperature > 0.7) return { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
-        if (n.controversyScore > 0.6) return { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
-        if (n.confidence > 0.7) return { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
-        if (n.schemaEntropy > 0.5) return { background: '#7c3aed', border: '#a78bfa', highlight: { background: '#a78bfa', border: '#7c3aed' } };
+        // Use pre-computed color map (keyed by node id) from computeColorThresholds.
+        var map = window._colorMap;
+        var id = n.id !== undefined ? n.id : (n.Id !== undefined ? n.Id : null);
+        if (map && id != null && map[id]) {
+            return map[id];
+        }
+        // Fallback: use hard thresholds
+        var dt = n.dialecticalTemperature || n.DialecticalTemperature || 0;
+        var cs = n.controversyScore || n.ControversyScore || 0;
+        var cf = n.confidence || n.Confidence || 0;
+        var se = n.schemaEntropy || n.SchemaEntropy || 0;
+        if (dt > 0.4) return { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
+        if (cs > 0.08) return { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
+        if (cf > 0.55) return { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
+        if (se > 0.03) return { background: '#7c3aed', border: '#a78bfa', highlight: { background: '#a78bfa', border: '#7c3aed' } };
         return { background: '#0f766e', border: '#14b8a6', highlight: { background: '#14b8a6', border: '#0f766e' } };
     }
+
+    // Pre-compute a nodeId -> color mapping from skeleton data.
+    // Uses percentile ranks: top 20% by dialectical temp → red, next 20% by controversy → amber,
+    // next 20% by confidence → green, rest → teal.
+    function computeColorThresholds(skeletonNodes) {
+        var map = {};
+        if (!skeletonNodes || !skeletonNodes.length) { window._colorMap = map; return; }
+
+        // Sort nodes by each dimension (descending — highest first)
+        function byTemp(a, b) { var va = a.dialecticalTemperature || a.DialecticalTemperature || 0; var vb = b.dialecticalTemperature || b.DialecticalTemperature || 0; return vb - va; }
+        function byCont(a, b) { var va = a.controversyScore || a.ControversyScore || 0; var vb = b.controversyScore || b.ControversyScore || 0; return vb - va; }
+        function byConf(a, b) { var va = a.confidence || a.Confidence || 0; var vb = b.confidence || b.Confidence || 0; return vb - va; }
+
+        var sortedByTemp = skeletonNodes.slice().sort(byTemp);
+        var sortedByCont = skeletonNodes.slice().sort(byCont);
+        var sortedByConf = skeletonNodes.slice().sort(byConf);
+
+        var n = skeletonNodes.length;
+        var redCut = Math.floor(n * 0.20);    // top 20%
+        var amberCut = Math.floor(n * 0.40);  // next 20%
+        var greenCut = Math.floor(n * 0.60);  // next 20%
+
+        var redColor = { background: '#dc2626', border: '#f87171', highlight: { background: '#f87171', border: '#dc2626' } };
+        var amberColor = { background: '#d97706', border: '#f59e0b', highlight: { background: '#f59e0b', border: '#d97706' } };
+        var greenColor = { background: '#059669', border: '#34d399', highlight: { background: '#34d399', border: '#059669' } };
+        var tealColor = { background: '#0f766e', border: '#14b8a6', highlight: { background: '#14b8a6', border: '#0f766e' } };
+
+        // Assign colors: each node gets the "best" color it qualifies for
+        // Priority: red > amber > green > teal
+        var assigned = {};
+        for (var i = 0; i < redCut; i++) { var nodeId = getId(sortedByTemp[i]); if (nodeId != null) { assigned[nodeId] = redColor; } }
+        for (var j = 0; j < amberCut; j++) { var nodeId = getId(sortedByCont[j]); if (nodeId != null && !assigned[nodeId]) { assigned[nodeId] = amberColor; } }
+        for (var k = 0; k < greenCut; k++) { var nodeId = getId(sortedByConf[k]); if (nodeId != null && !assigned[nodeId]) { assigned[nodeId] = greenColor; } }
+
+        // Fill remaining with teal
+        for (var m = 0; m < n; m++) {
+            var nodeId = getId(skeletonNodes[m]);
+            if (nodeId != null && !assigned[nodeId]) { assigned[nodeId] = tealColor; }
+        }
+
+        window._colorMap = assigned;
+    }
+
+    function getId(n) { return n.id !== undefined ? n.id : (n.Id !== undefined ? n.Id : null); }
 
     // ── Helpers ──
     // Strip any existing alpha suffix from a hex color (e.g. '#05966922' -> '#059669')
