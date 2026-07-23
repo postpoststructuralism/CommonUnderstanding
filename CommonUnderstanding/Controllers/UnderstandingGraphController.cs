@@ -129,7 +129,7 @@ public class UnderstandingGraphController : Controller
     /// Returns the full graph map as JSON for frontend visualization.
     /// </summary>
     [HttpGet("api/understanding-graph/map")]
-    [OutputCache(Duration = 30)]
+    [OutputCache(Duration = 300)]
     public async Task<IActionResult> GetMap()
     {
         var map = await _queryService.GetMapAsync();
@@ -141,7 +141,7 @@ public class UnderstandingGraphController : Controller
     /// The frontend loads these first, then streams in leaf nodes.
     /// </summary>
     [HttpGet("api/understanding-graph/roots")]
-    [OutputCache(Duration = 60)]
+    [OutputCache(Duration = 300)]
     public async Task<IActionResult> GetRootNodes(int count = 150)
     {
         var map = await _queryService.GetRootNodesAsync(count);
@@ -180,7 +180,7 @@ public class UnderstandingGraphController : Controller
     /// Returns schema details as JSON.
     /// </summary>
     [HttpGet("api/understanding-graph/schemas")]
-    [OutputCache(Duration = 30)]
+    [OutputCache(Duration = 120)]
     public async Task<IActionResult> GetSchemas()
     {
         var schemas = await _queryService.GetAllSchemasAsync();
@@ -334,7 +334,7 @@ public class UnderstandingGraphController : Controller
     /// static JSON file to fetch. Enables cache-busting on rebuild without redeploy.
     /// </summary>
     [HttpGet("api/understanding-graph/skeleton-manifest")]
-    [OutputCache(Duration = 30)]
+    [OutputCache(Duration = 300)]
     public IActionResult GetSkeletonManifest()
     {
         var dataDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "data");
