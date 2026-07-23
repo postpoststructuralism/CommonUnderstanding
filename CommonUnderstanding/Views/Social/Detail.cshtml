@@ -3,149 +3,158 @@
 
 @{
     var focus = Model.FocusArgument;
-    var supportingEvidence = Model.Evidence.Where(e => e.Direction == EvidenceDirection.Supports).ToList();
-    var opposingEvidence = Model.Evidence.Where(e => e.Direction == EvidenceDirection.Opposes).ToList();
-    var contested = Model.OpposingArguments.Count > 0
-        || (supportingEvidence.Count > 0 && opposingEvidence.Count > 0);
-    var stateLabel = Model.Adjudication is null || Model.Evidence.Count == 0
-        ? "Unresolved"
-        : contested || Model.Adjudication.Recommendation is DecisionRecommendation.Investigate or DecisionRecommendation.Defer
-            ? "Contested"
-            : "Provisionally settled";
-    var currentUnderstanding = Model.Adjudication?.DetailedNarrative
-        ?? Model.Adjudication?.ReasoningTrace
-        ?? focus.ResolutionText
-        ?? focus.WarrantText;
-    var contextLabel = Model.Proposition.Text.Length > 80
-        ? Model.Proposition.Text[..77] + "..."
-        : Model.Proposition.Text;
+    var source = Model.SourceArgument;
+    var claims = source?.Claims.OrderBy(c => c.Id).ToList() ?? new();
+    var premises = claims.SelectMany(c => c.Premises).OrderBy(p => p.SortOrder).ToList();
+    var syllogisms = claims.SelectMany(c => c.Syllogisms).OrderBy(s => s.SortOrder).ToList();
+    var assumptions = claims.SelectMany(c => c.Assumptions).ToList();
+    var qualifiers = claims.SelectMany(c => c.Qualifiers).ToList();
+    var rebuttals = claims.SelectMany(c => c.Rebuttals).ToList();
+    var contested = Model.OpposingArguments.Count > 0 || Model.Adjudication?.Recommendation is DecisionRecommendation.Investigate or DecisionRecommendation.Defer;
+    var stateLabel = Model.Adjudication is null ? "Unresolved" : contested ? "Contested" : "Provisionally settled";
+    var currentUnderstanding = Model.Adjudication?.ReasoningTrace ?? focus.ResolutionText ?? focus.WarrantText;
+    var contextLabel = Model.Proposition.Text.Length > 80 ? Model.Proposition.Text[..77] + "..." : Model.Proposition.Text;
 }
 
-<div class="claim-state-page container-xl py-4 py-lg-5">
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb small mb-0">
-            <li class="breadcrumb-item"><a asp-controller="UnderstandingGraph" asp-action="Index">The Live Map</a></li>
-            <li class="breadcrumb-item"><a asp-controller="SocialView" asp-action="Feed">Latest Contributions</a></li>
-            <li class="breadcrumb-item active" aria-current="page">State of this claim</li>
-        </ol>
+<link rel="stylesheet" href="~/css/social-detail.css" asp-append-version="true" />
+
+<div class="claim-detail container-fluid">
+    <nav class="detail-breadcrumb" aria-label="breadcrumb">
+        <a asp-controller="UnderstandingGraph" asp-action="Index">Live Map</a><span>/</span>
+        <a asp-controller="SocialView" asp-action="Feed">Contributions</a><span>/</span><span>Claim detail</span>
     </nav>
 
-    <header class="claim-header mb-5">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <span class="claim-state-badge">@stateLabel</span>
-            <span class="text-muted small">Updated @focus.UpdatedAt.ToString("MMM d, yyyy")</span>
-            <a asp-controller="UnderstandingGraph" asp-action="Evolution" class="ms-auto small"><i class="bi bi-clock-history me-1"></i>View map history</a>
+    <header class="detail-header">
+        <div class="detail-title">
+            <div class="title-meta"><span class="state-badge">@stateLabel</span><span>Updated @focus.UpdatedAt.ToString("MMM d, yyyy")</span></div>
+            <h1>@Model.Proposition.Text</h1>
+            <p>@currentUnderstanding</p>
         </div>
-        <p class="text-uppercase text-muted fw-semibold small mb-2">The state of this claim</p>
-        <h1 class="claim-title mb-0">@Model.Proposition.Text</h1>
+        <div class="metric-strip" aria-label="Analysis summary">
+            <div><strong>@premises.Count</strong><span>Premises</span></div>
+            <div><strong>@Model.Evidence.Count</strong><span>Evidence</span></div>
+            <div><strong>@assumptions.Count(a => a.IsCritical)</strong><span>Critical gaps</span></div>
+            <div><strong>@(Model.Adjudication?.OverallConfidence.ToString("P0") ?? "--")</strong><span>Confidence</span></div>
+            <div><strong>@(Model.Adjudication?.Recommendation.ToString() ?? "Pending")</strong><span>Recommendation</span></div>
+        </div>
     </header>
 
-    <section class="claim-section" aria-labelledby="understanding-heading">
-        <div class="section-heading"><span>01</span><div><h2 id="understanding-heading">The current best understanding of the claim</h2><p>What the available reasoning supports, disputes, and leaves open.</p></div></div>
-        <div class="understanding-summary"><p class="lead mb-0">@currentUnderstanding</p></div>
-        <div class="state-metrics" aria-label="Claim state summary">
-            <div><strong>@supportingEvidence.Count</strong><span>supporting evidence items</span></div>
-            <div><strong>@opposingEvidence.Count</strong><span>opposing evidence items</span></div>
-            <div><strong>@Model.RemainingQuestions.Count</strong><span>open questions</span></div>
-            @if (Model.Adjudication is not null)
+    <div class="detail-layout">
+        <main class="analysis-main">
+            @if (source is not null)
             {
-                <div><strong>@Model.Adjudication.OverallConfidence.ToString("P0")</strong><span>analysis confidence</span></div>
+                <section class="analysis-panel">
+                    <div class="panel-heading"><h2>AI argument analysis</h2><span>Source analysis #@source.Id</span></div>
+                    <div class="claim-block"><span>Central claim</span><strong>@(claims.FirstOrDefault()?.Text ?? Model.Proposition.Text)</strong></div>
+                    @if (premises.Count > 0)
+                    {
+                        <div class="subsection-heading"><h3>Premises</h3><span>@premises.Count identified</span></div>
+                        @foreach (var (premise, index) in premises.Select((item, index) => (item, index + 1)))
+                        {
+                            <article class="premise-row">
+                                <span class="row-index">@index</span>
+                                <div>
+                                    <p>@premise.Text</p>
+                                    @if (!string.IsNullOrWhiteSpace(premise.ProvisionalAssessment))
+                                    {
+                                        <div class="ai-assessment"><i class="bi bi-cpu"></i><span><strong>AI assessment @(premise.ProvisionalConfidence?.ToString("P0") ?? "")</strong>@premise.ProvisionalAssessment</span></div>
+                                    }
+                                </div>
+                                <div class="premise-status"><strong>@premise.ConfidenceScore.ToString("P0")</strong><span>@premise.Status</span><small>@premise.EvidenceItems.Count evidence</small></div>
+                            </article>
+                        }
+                    }
+                </section>
+
+                @if (syllogisms.Count > 0)
+                {
+                    <section class="analysis-panel">
+                        <div class="panel-heading"><h2>Logical structure</h2><span>@syllogisms.Count inference chains</span></div>
+                        <div class="logic-grid">
+                            @foreach (var (syllogism, index) in syllogisms.Select((item, index) => (item, index + 1)))
+                            {
+                                <article class="logic-chain">
+                                    <header><strong>@index. @syllogism.InferenceType</strong><span class="@(syllogism.IsValidForm ? "valid" : "issue")">@(syllogism.IsValidForm ? "Valid form" : "Issue detected")</span></header>
+                                    <dl><dt>Major</dt><dd>@syllogism.MajorPremise</dd><dt>Minor</dt><dd>@syllogism.MinorPremise</dd><dt>Therefore</dt><dd><strong>@syllogism.Conclusion</strong></dd></dl>
+                                    @if (!string.IsNullOrWhiteSpace(syllogism.FallaciesDetected)) { <p class="fallacy"><i class="bi bi-exclamation-triangle"></i>@syllogism.FallaciesDetected</p> }
+                                </article>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (assumptions.Count > 0 || qualifiers.Count > 0 || rebuttals.Count > 0)
+                {
+                    <section class="analysis-panel">
+                        <div class="panel-heading"><h2>Conditions and challenges</h2><span>Limits of the argument</span></div>
+                        <div class="condition-grid">
+                            <div><h3>Hidden assumptions <span>@assumptions.Count</span></h3>@foreach (var item in assumptions) { <p>@if (item.IsCritical) { <strong>Critical</strong> } @item.Text</p> }</div>
+                            <div><h3>Qualifiers <span>@qualifiers.Count</span></h3>@foreach (var item in qualifiers) { <p>@if (!string.IsNullOrWhiteSpace(item.QualifierType)) { <strong>@item.QualifierType</strong> } @item.Text</p> }</div>
+                            <div><h3>Rebuttals <span>@rebuttals.Count</span></h3>@foreach (var item in rebuttals) { <p>@if (!string.IsNullOrWhiteSpace(item.Strength)) { <strong>@item.Strength</strong> } @item.Text</p> }</div>
+                        </div>
+                    </section>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Adjudication?.DetailedNarrative))
+                {
+                    <section class="analysis-panel narrative-panel">
+                        <div class="panel-heading"><h2>Full agent narrative</h2><span>Adjudication analysis</span></div>
+                        @foreach (var paragraph in Model.Adjudication.DetailedNarrative.Split("\n\n", StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph.Trim()</p> }
+                    </section>
+                }
             }
-        </div>
-    </section>
+            else
+            {
+                <section class="analysis-panel empty-analysis"><i class="bi bi-cpu"></i><div><h2>No source AI analysis</h2><p>This contribution was created directly on the map and is not linked to an analyzed argument.</p></div></section>
+            }
 
-    <section class="claim-section" aria-labelledby="arguments-heading">
-        <div class="section-heading"><span>02</span><div><h2 id="arguments-heading">The strongest arguments on each side</h2><p>Distinct contributions currently shaping the claim.</p></div></div>
-        <div class="argument-sides">
-            <div class="argument-column supports">
-                <h3><i class="bi bi-arrow-up-right-circle"></i> Supports</h3>
-                @if (Model.SupportingArguments.Count == 0) { <p class="empty-state">No supporting argument has been linked yet.</p> }
-                @foreach (var argument in Model.SupportingArguments)
-                {
-                    <a class="argument-entry" asp-controller="SocialView" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a>
-                }
-            </div>
-            <div class="argument-column opposes">
-                <h3><i class="bi bi-arrow-down-left-circle"></i> Challenges</h3>
-                @if (Model.OpposingArguments.Count == 0) { <p class="empty-state">No explicit counter-argument has been linked yet.</p> }
-                @foreach (var argument in Model.OpposingArguments)
-                {
-                    <a class="argument-entry" asp-controller="SocialView" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a>
-                }
-            </div>
-        </div>
-    </section>
-
-    <section class="claim-section" aria-labelledby="evidence-heading">
-        <div class="section-heading"><span>03</span><div><h2 id="evidence-heading">Evidence linked to this claim</h2><p>Sources extracted from the analysis behind this contribution.</p></div></div>
-        @if (Model.Evidence.Count == 0)
-        {
-            <p class="empty-state">No evidence has been linked to this claim yet.</p>
-        }
-        else
-        {
-            <div class="evidence-list">
+            <section class="analysis-panel">
+                <div class="panel-heading"><h2>Evidence</h2><span>@Model.Evidence.Count linked items</span></div>
+                @if (Model.Evidence.Count == 0) { <p class="compact-empty">No evidence has been linked yet.</p> }
                 @foreach (var evidence in Model.Evidence)
                 {
-                    var directionLabel = evidence.Direction == EvidenceDirection.Opposes ? "Challenges" : evidence.Direction.ToString();
-                    <article class="evidence-entry">
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="evidence-direction">@directionLabel</span><span class="text-muted small">@evidence.Tier.ToString().Replace("_", " ")</span></div>
-                        <p class="mb-2">@evidence.Citation</p>
-                        @if (!string.IsNullOrWhiteSpace(evidence.SourceUri))
-                        {
-                            <a href="@evidence.SourceUri" target="_blank" rel="noopener noreferrer">View source <i class="bi bi-box-arrow-up-right ms-1"></i></a>
-                        }
+                    <article class="evidence-row">
+                        <span class="direction @evidence.Direction.ToString().ToLowerInvariant()">@(evidence.Direction == EvidenceDirection.Opposes ? "Challenges" : evidence.Direction)</span>
+                        <div><p>@evidence.Citation</p><small>@evidence.Tier.ToString().Replace("_", " ")</small></div>
+                        @if (!string.IsNullOrWhiteSpace(evidence.SourceUri)) { <a href="@evidence.SourceUri" target="_blank" rel="noopener noreferrer" title="Open source"><i class="bi bi-box-arrow-up-right"></i></a> }
                     </article>
                 }
-            </div>
-        }
-    </section>
+            </section>
+        </main>
 
-    <section class="claim-section" aria-labelledby="questions-heading">
-        <div class="section-heading"><span>04</span><div><h2 id="questions-heading">Remaining questions</h2><p>Unsupported assumptions and information that could change the assessment.</p></div></div>
-        @if (Model.RemainingQuestions.Count == 0 && string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps))
-        {
-            <p class="empty-state">The current analysis has not identified a specific unresolved question.</p>
-        }
-        else
-        {
-            <ul class="question-list">
-                @foreach (var question in Model.RemainingQuestions)
+        <aside class="detail-sidebar">
+            <section class="side-panel">
+                <div class="panel-heading"><h2>Arguments in context</h2></div>
+                <h3 class="support-label">Supports</h3>
+                @if (Model.SupportingArguments.Count == 0) { <p class="compact-empty">None linked.</p> }
+                @foreach (var argument in Model.SupportingArguments) { <a class="argument-link" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a> }
+                <h3 class="challenge-label">Challenges</h3>
+                @if (Model.OpposingArguments.Count == 0) { <p class="compact-empty">None linked.</p> }
+                @foreach (var argument in Model.OpposingArguments) { <a class="argument-link" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a> }
+            </section>
+
+            <section class="side-panel">
+                <div class="panel-heading"><h2>Open questions</h2><span>@Model.RemainingQuestions.Count</span></div>
+                @if (Model.RemainingQuestions.Count == 0 && string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps)) { <p class="compact-empty">No unresolved questions identified.</p> }
+                @foreach (var question in Model.RemainingQuestions) { <p class="question">@if (question.IsCritical) { <strong>Critical</strong> } @question.Text</p> }
+                @if (!string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps)) { <p class="question"><strong>Next</strong> @Model.Adjudication.NextSteps</p> }
+            </section>
+
+            <section class="side-panel">
+                <div class="panel-heading"><h2>Contribution history</h2><span>@Model.ContributionHistory.Count</span></div>
+                @foreach (var contribution in Model.ContributionHistory.OrderByDescending(c => c.CreatedAt))
                 {
-                    <li><span>@question.Text</span>@if (question.IsCritical) { <strong>Critical</strong> }</li>
+                    <a class="history-item @(contribution.Id == focus.Id ? "current" : null)" asp-action="Detail" asp-route-id="@contribution.Id"><time>@contribution.CreatedAt.ToString("MMM d, yyyy")</time><strong>@contribution.Title</strong></a>
                 }
-                @if (!string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps)) { <li><span>@Model.Adjudication.NextSteps</span></li> }
-            </ul>
-        }
-    </section>
+            </section>
 
-    <section class="claim-section" aria-labelledby="history-heading">
-        <div class="section-heading"><span>05</span><div><h2 id="history-heading">Contribution history</h2><p>How this claim's public record has developed over time.</p></div></div>
-        <ol class="contribution-timeline">
-            @foreach (var contribution in Model.ContributionHistory)
-            {
-                <li class="@(contribution.Id == focus.Id ? "is-current" : null)">
-                    <time datetime="@contribution.CreatedAt.ToString("O")">@contribution.CreatedAt.ToString("MMM d, yyyy")</time>
-                    <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@contribution.Id">@contribution.Title</a>
-                    <p>@contribution.WarrantText</p>
-                    @if (contribution.Id == focus.Id) { <span class="current-marker">Currently viewing</span> }
-                </li>
-            }
-        </ol>
-    </section>
-
-    <section class="claim-section" aria-labelledby="contribute-heading">
-        <div class="section-heading"><span>06</span><div><h2 id="contribute-heading">Add your perspective</h2><p>Contribute reasoning, evidence, or a counter-argument to the shared map.</p></div></div>
-        @await Html.PartialAsync("_InlineContribution", (ContextLabel: contextLabel, ContextType: "Proposition", ContextId: Model.Proposition.Id.ToString()))
-    </section>
+            <section class="side-panel contribute-panel">
+                <div class="panel-heading"><h2>Add perspective</h2></div>
+                @await Html.PartialAsync("_InlineContribution", (ContextLabel: contextLabel, ContextType: "Proposition", ContextId: Model.Proposition.Id.ToString()))
+            </section>
+        </aside>
+    </div>
 </div>
-
-<style>
-    .claim-state-page{--ink:#17221d;--muted:#657168;--line:#d9dfda;--paper:#f6f7f3;--support:#26734d;--oppose:#a34337;color:var(--ink);max-width:1120px}.claim-header{max-width:900px}.claim-title{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2rem,4vw,3.75rem);line-height:1.08;letter-spacing:0}.claim-state-badge{border:1px solid #8b3d31;border-radius:999px;color:#8b3d31;font-size:.75rem;font-weight:700;padding:.35rem .7rem;text-transform:uppercase}.claim-section{border-top:1px solid var(--line);padding:2.75rem 0}.section-heading{display:grid;grid-template-columns:3rem minmax(0,1fr);gap:1rem;margin-bottom:1.75rem}.section-heading>span{font-family:monospace;font-size:.8rem;padding-top:.45rem}.section-heading h2{font-family:Georgia,"Times New Roman",serif;font-size:1.75rem;letter-spacing:0;margin:0 0 .35rem}.section-heading p{color:var(--muted);margin:0}.understanding-summary{border-left:4px solid var(--ink);max-width:900px;padding:.25rem 0 .25rem 1.25rem}.understanding-summary .lead{line-height:1.65;white-space:pre-line}
-    .state-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:2rem}.state-metrics>div{background:white;min-height:105px;padding:1.15rem}.state-metrics strong,.state-metrics span{display:block}.state-metrics strong{font-family:Georgia,"Times New Roman",serif;font-size:2rem}.state-metrics span{color:var(--muted);font-size:.8rem}.argument-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line)}.argument-column{min-width:0;padding:1.5rem}.argument-column+.argument-column{border-left:1px solid var(--line)}.argument-column h3{font-size:1rem;margin-bottom:1rem;text-transform:uppercase}.supports h3{color:var(--support)}.opposes h3{color:var(--oppose)}.argument-entry{border-top:1px solid var(--line);color:var(--ink);display:block;padding:1rem 0;text-decoration:none}.argument-entry:hover strong{text-decoration:underline}.argument-entry strong,.argument-entry span{display:block}.argument-entry span{color:var(--muted);font-size:.9rem;margin-top:.35rem}.empty-state{background:var(--paper);color:var(--muted);margin:0;padding:1.25rem}
-    .evidence-list{border-top:1px solid var(--line)}.evidence-entry{border-bottom:1px solid var(--line);padding:1.25rem 0}.evidence-direction,.current-marker{border:1px solid currentColor;font-size:.7rem;font-weight:700;padding:.2rem .45rem;text-transform:uppercase}.question-list{list-style:none;margin:0;padding:0}.question-list li{align-items:start;border-top:1px solid var(--line);display:flex;gap:1rem;justify-content:space-between;padding:1rem 0}.question-list strong{color:var(--oppose);font-size:.7rem;text-transform:uppercase}.contribution-timeline{border-left:1px solid var(--line);list-style:none;margin:0 0 0 .5rem;padding:0 0 0 2rem}.contribution-timeline li{padding:0 0 2rem;position:relative}.contribution-timeline li:before{background:white;border:2px solid var(--muted);border-radius:50%;content:"";height:.75rem;left:-2.4rem;position:absolute;top:.25rem;width:.75rem}.contribution-timeline li.is-current:before{background:var(--ink);border-color:var(--ink)}.contribution-timeline time{color:var(--muted);display:block;font-size:.75rem}.contribution-timeline a{color:var(--ink);display:inline-block;font-weight:700;margin:.2rem 0}.contribution-timeline p{color:var(--muted);margin:0;max-width:800px}
-    @@media(max-width:767px){.state-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.argument-sides{grid-template-columns:1fr}.argument-column+.argument-column{border-left:0;border-top:1px solid var(--line)}.section-heading{grid-template-columns:2rem minmax(0,1fr)}.section-heading h2{font-size:1.4rem}}
-</style>
 
 @section Scripts {
     <script src="~/js/inline-contribution.js"></script>

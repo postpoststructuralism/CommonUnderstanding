@@ -669,7 +669,6 @@
     const VIEWPORT_ZOOM_THRESHOLD = 0.6;    // only fetch real data when zoomed in this far
     const VIEWPORT_FETCH_DEBOUNCE_MS = 250; // rate-limit viewport fetches
     let skeletonNodeIds = new Set();        // IDs from the static skeleton
-    let syntheticNodeIds = new Set();       // IDs from the synthetic filler
     let loadedRealNodeIds = new Set();      // IDs fetched via viewport or interaction
     let hoverCache = new Map();             // nodeId -> { id, label, status, confidence }
     let viewportFetchTimer = null;
@@ -708,17 +707,16 @@
         const options = {
             physics: {
                 enabled: false,  // enabled after data loads and kept running while idle
-                minVelocity: 0,
+                minVelocity: 0.5,
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
-                    gravitationalConstant: -50,
-                    centralGravity: 0.003,
-                    springLength: 200,
-                    springConstant: 0.03,
+                    gravitationalConstant: -35,
+                    centralGravity: 0.005,
+                    springLength: 250,
+                    springConstant: 0.04,
                     damping: 0.4
                 },
-                // Keep vis from moving the camera during layout.
-                stabilization: { iterations: 200, fit: false }
+                stabilization: { iterations: 300, fit: false }
             },
             layout: {
                 improvedLayout: true
@@ -876,7 +874,7 @@
             // The API can still resolve real graph nodes with malformed argument metadata.
         }
 
-        if (!socialArgumentId && !syntheticNodeIds.has(node.id)) {
+        if (!socialArgumentId) {
             const cached = hoverCache.get(node.id);
             if (cached && cached.socialArgumentId) {
                 socialArgumentId = cached.socialArgumentId;
@@ -916,13 +914,12 @@
         var topLeft = network.DOMtoCanvas({ x: 0, y: 0 });
         var bottomRight = network.DOMtoCanvas({ x: canvasWidth, y: canvasHeight });
 
-        // Find all non-synthetic nodes currently visible in the viewport
+        // Find all skeleton nodes currently visible in the viewport
         var visibleIds = [];
         var allNodeData = nodes.get();
         for (var i = 0; i < allNodeData.length; i++) {
             var n = allNodeData[i];
-            // Skip synthetic nodes and nodes already loaded as real data
-            if (syntheticNodeIds.has(n.id)) continue;
+            // Skip nodes already loaded as real data
             if (loadedRealNodeIds.has(n.id)) continue;
             // Check if node position falls within viewport
             if (n.x >= topLeft.x && n.x <= bottomRight.x && n.y >= topLeft.y && n.y <= bottomRight.y) {
@@ -938,7 +935,7 @@
         lastViewportFetchNodes = visibleIds;
 
         // Cap to remaining capacity
-        var remaining = MAX_TOTAL_NODES - loadedRealNodeIds.size - skeletonNodeIds.size - syntheticNodeIds.size;
+        var remaining = MAX_TOTAL_NODES - loadedRealNodeIds.size - skeletonNodeIds.size;
         if (remaining <= 0) return;
         if (visibleIds.length > remaining) visibleIds = visibleIds.slice(0, remaining);
 
@@ -969,7 +966,7 @@
                 newNodes.forEach(function(n) { allNodes.push(n); loadedRealNodeIds.add(n.id); });
                 newEdges.forEach(function(e) { allEdges.push(e); });
 
-                // Incremental merge — never setData() which would discard skeleton+synthetic
+                // Incremental merge — never setData() which would discard the skeleton
                 nodes.add(newNodes);
                 edges.add(newEdges);
             }
@@ -978,7 +975,7 @@
         }
     }
 
-    // ── Three-tier load: manifest → skeleton → synthetic → render ──
+    // ── Load manifest → skeleton → render ──
     async function loadGraph() {
         // Keep the loading spinner visible until all graph data is ready.
         var loadingEl = document.getElementById('graph-loading');
@@ -997,13 +994,7 @@
                 skeletonPromise = fetch(manifest.url).then(function(r) { return r.json(); });
             }
 
-            // Tier 3: Fetch synthetic filler JSON (zero DB cost — static file)
-            var fillerPromise = fetch('/data/synthetic-filler.json')
-                .then(function(r) { return r.json(); })
-                .catch(function() { return null; }); // filler is optional
-
-            var _a = await Promise.all([skeletonPromise, fillerPromise]),
-                skeletonData = _a[0], fillerData = _a[1];
+            var skeletonData = await skeletonPromise;
 
             // ── Render skeleton ──
             if (skeletonData && skeletonData.nodes) {
@@ -1018,31 +1009,26 @@
                 if (statNodes) statNodes.textContent = skeletonData.nodes.length || 0;
             }
 
-            // ── Render synthetic filler ──
-            if (fillerData && fillerData.nodes) {
-                var syNodes = fillerData.nodes
-                    .map(mapStaticNode)
-                    .filter(function(n) { return !skeletonNodeIds.has(n.id); });
-                var syEdges = (fillerData.edges || [])
-                    .map(mapStaticEdge)
-                    .filter(function(e) { return !skeletonNodeIds.has(e.id); });
-                syNodes.forEach(function(n) { allNodes.push(n); syntheticNodeIds.add(n.id); });
-                syEdges.forEach(function(e) { allEdges.push(e); });
-                if (syNodes.length > 0) nodes.add(syNodes);
-                if (syEdges.length > 0) edges.add(syEdges);
-            }
-
-            // Start with a wide, fixed camera so the visible physics layout
-            // never begins close-up. Do not fit the camera again after this.
-            network.moveTo({ position: { x: 0, y: 0 }, scale: 0.35, animation: false });
-            if (loadingEl) loadingEl.classList.add('hidden');
-
+            // Show labels once data is loaded
             nodes.forEach(n => {
                 nodes.update({ id: n.id, font: { size: 10, color: '#17202f', strokeWidth: 0 } });
             });
 
-            // Keep the layout moving while the camera stays fixed.
+            // Enable physics and wait for stabilization before showing the graph
             enablePhysics();
+            
+            // Wait for physics to stabilize, then fit the view and hide spinner
+            network.once('stabilized', function() {
+                network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+                if (loadingEl) loadingEl.classList.add('hidden');
+            });
+            
+            // Fallback: hide spinner after 10 seconds even if not stabilized
+            setTimeout(function() {
+                if (loadingEl && !loadingEl.classList.contains('hidden')) {
+                    loadingEl.classList.add('hidden');
+                }
+            }, 10000);
         } catch (err) {
             console.error('Failed to load graph:', err);
             if (loadingEl) {
@@ -1064,7 +1050,7 @@
 
     // ── Map static (pre-baked) node data to vis format ──
     function mapStaticNode(n) {
-        // Handle both PascalCase (skeleton JSON) and camelCase (synthetic filler)
+        // Handle both PascalCase and camelCase skeleton serializers.
         var id = n.id !== undefined ? n.id : n.Id;
         var label = n.label || n.Label || '(unnamed)';
         var confidence = n.confidence !== undefined ? n.confidence : (n.Confidence !== undefined ? n.Confidence : 0);
@@ -1072,6 +1058,10 @@
         var status = n.status || n.Status || 'Unknown';
         var evidenceCount = n.evidenceCount !== undefined ? n.evidenceCount : (n.EvidenceCount !== undefined ? n.EvidenceCount : 0);
         var argumentIdsJson = n.argumentIdsJson || n.ArgumentIdsJson || '[]';
+        // Scatter nodes randomly in a 600px box so physics can spread them naturally.
+        // The skeleton's circular positions are ignored — vis-network does the real layout.
+        var x = (Math.random() - 0.5) * 600;
+        var y = (Math.random() - 0.5) * 600;
         return {
             id: id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
@@ -1081,8 +1071,9 @@
             argumentIdsJson: argumentIdsJson,
             socialArgumentId: n.socialArgumentId || n.SocialArgumentId || null,
             fullLabel: label,
-            confidence: confidence
-            // NOTE: Do NOT pass x/y from skeleton — let physics do the layout for visible motion
+            confidence: confidence,
+            x: x,
+            y: y
         };
     }
 

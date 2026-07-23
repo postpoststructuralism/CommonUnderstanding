@@ -207,6 +207,7 @@ public class SocialViewController : Controller
                 .Where(a => !a.IsSupported)
                 .OrderByDescending(a => a.IsCritical)
                 .ToList(),
+            SourceArgument = sourceArg,
             Adjudication = sourceArg?.AdjudicationSummary,
             UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId)
         };

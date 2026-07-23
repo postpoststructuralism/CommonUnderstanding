@@ -189,9 +189,6 @@ builder.Services.AddHostedService<SchemaDiscoveryWorker>();
 builder.Services.AddScoped<SkeletonGeneratorService>();
 builder.Services.AddHostedService<SkeletonBackgroundService>();
 
-// Synthetic filler generator — one-time procedural decoration
-builder.Services.AddSingleton<SyntheticFillerGenerator>();
-
 // Register Multi-User Convergence services (Phase 6)
 builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
@@ -283,7 +280,7 @@ app.UseOutputCache();
 app.UseMiddleware<CommonUnderstanding.Middleware.ApiRobotsTagMiddleware>();
 app.UseStaticFiles();
 
-// Static data files (skeleton JSON, synthetic filler) — cache aggressively
+// Static skeleton data — cache aggressively
 // since they are versioned and regenerated nightly.
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -345,7 +342,6 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    await SyntheticSocialArgumentSeedData.EnsureAsync(db, startupLogger);
 
     // Phase 1 (4.6): Only seed sample data when explicitly opted in.
     // In development, set SEED_SAMPLE_DATA=true environment variable or pass --seed flag.
@@ -356,15 +352,6 @@ using (var scope = app.Services.CreateScope())
     {
         await Phase2SeedData.SeedAllAsync(db, startupLogger);
     }
-}
-
-// ── CLI: Generate synthetic filler JSON (one-time) ──
-if (args.Contains("--generate-synthetic-filler"))
-{
-    var generator = app.Services.GetRequiredService<SyntheticFillerGenerator>();
-    generator.Generate();
-    Console.WriteLine("Synthetic filler generation complete. Exiting.");
-    return;
 }
 
 // ── CLI: Generate skeleton JSON (one-time, for testing) ──
