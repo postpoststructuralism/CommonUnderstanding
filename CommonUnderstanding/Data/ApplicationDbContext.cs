@@ -6,10 +6,71 @@ using CommonUnderstanding.Models.Widget;
 
 namespace CommonUnderstanding.Data;
 
+/// <summary>
+/// Extension methods for conditional PostgreSQL/SQL Server column configuration.
+/// </summary>
+internal static class DbContextExtensions
+{
+    /// <summary>
+    /// Sets a PostgreSQL-specific column type, but only when the provider is PostgreSQL.
+    /// For SQL Server, the property is stored as a JSON string via a value converter.
+    /// </summary>
+    public static void SetPostgresArrayType<TProperty>(
+        this Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<TProperty> propertyBuilder,
+        string postgresType,
+        bool isPostgres)
+    {
+        if (isPostgres)
+        {
+            propertyBuilder.HasColumnType(postgresType);
+        }
+    }
+
+    /// <summary>
+    /// Applies a filtered index with PostgreSQL-compatible filter syntax only when using PostgreSQL.
+    /// </summary>
+    public static Microsoft.EntityFrameworkCore.Metadata.Builders.IndexBuilder HasPostgresFilter(
+        this Microsoft.EntityFrameworkCore.Metadata.Builders.IndexBuilder indexBuilder,
+        string postgresFilter,
+        bool isPostgres)
+    {
+        if (isPostgres)
+        {
+            indexBuilder.HasFilter(postgresFilter);
+        }
+        return indexBuilder;
+    }
+
+    /// <summary>
+    /// Applies a check constraint with PostgreSQL-compatible syntax only when using PostgreSQL.
+    /// </summary>
+    public static Microsoft.EntityFrameworkCore.Metadata.Builders.TableBuilder HasPostgresCheckConstraint(
+        this Microsoft.EntityFrameworkCore.Metadata.Builders.TableBuilder tableBuilder,
+        string name,
+        string postgresSql,
+        bool isPostgres)
+    {
+        if (isPostgres)
+        {
+            tableBuilder.HasCheckConstraint(name, postgresSql);
+        }
+        return tableBuilder;
+    }
+}
+
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options) { }
+    /// <summary>
+    /// Indicates whether the database provider is PostgreSQL.
+    /// Set by the context factory or DI configuration.
+    /// </summary>
+    public bool IsPostgres { get; init; } = true;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, DatabaseProviderInfo providerInfo)
+        : base(options)
+    {
+        IsPostgres = providerInfo.IsPostgres;
+    }
 
     public DbSet<Argument> Arguments => Set<Argument>();
     public DbSet<Claim> Claims => Set<Claim>();
@@ -291,7 +352,7 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             // pgvector: column type set here; requires Npgsql.EntityFrameworkCore.PostgreSQL with vector support
             // When pgvector NuGet is added, change to HasColumnType("vector(1536)")
-            e.Property(x => x.Embedding).HasColumnType("float4[]");
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
         });
 
         // SocialArgument
@@ -299,27 +360,27 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("SocialArguments");
             e.HasKey(x => x.Id);
-            e.Property(x => x.Embedding).HasColumnType("float4[]");
-            e.Property(x => x.Tags).HasColumnType("text[]");
-            e.Property(x => x.SchwartzValues).HasColumnType("text[]");
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
+            e.Property(x => x.Tags).SetPostgresArrayType("text[]", IsPostgres);
+            e.Property(x => x.SchwartzValues).SetPostgresArrayType("text[]", IsPostgres);
             e.HasOne(x => x.ClaimProposition)
              .WithMany()
              .HasForeignKey(x => x.ClaimPropositionId)
              .OnDelete(DeleteBehavior.Restrict)
              .IsRequired(false);
             e.HasIndex(x => x.HotScore)
-             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasPostgresFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false", IsPostgres)
              .HasDatabaseName("idx_socialarguments_hotscore");
             e.HasIndex(x => x.WilsonScore)
-             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasPostgresFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false", IsPostgres)
              .HasDatabaseName("idx_socialarguments_wilsonscore");
             e.HasIndex(x => x.CreatedAt)
-             .HasFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false")
+             .HasPostgresFilter("\"IsPublic\" = true AND \"IsShadowBanned\" = false", IsPostgres)
              .HasDatabaseName("idx_socialarguments_createdat");
             // One social post per source Phase 1 argument (partial unique: ignores native posts).
             e.HasIndex(x => x.SourceArgumentId)
              .IsUnique()
-             .HasFilter("\"SourceArgumentId\" IS NOT NULL")
+             .HasPostgresFilter("\"SourceArgumentId\" IS NOT NULL", IsPostgres)
              .HasDatabaseName("idx_socialarguments_sourceargumentid");
         });
 
@@ -353,9 +414,10 @@ public class ApplicationDbContext : DbContext
              .HasForeignKey(x => x.TargetArgumentId)
              .OnDelete(DeleteBehavior.Restrict);
             // Check constraint: no self-loops
-            e.ToTable(t => t.HasCheckConstraint(
+            e.ToTable(t => t.HasPostgresCheckConstraint(
                 "CK_ArgumentLinks_NoSelfLoop",
-                "\"SourceArgumentId\" <> \"TargetArgumentId\""));
+                "\"SourceArgumentId\" <> \"TargetArgumentId\"",
+                IsPostgres));
         });
 
         // ArgumentVote
@@ -377,9 +439,9 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("ArgumentChains");
             e.HasKey(x => x.Id);
-            e.Property(x => x.Tags).HasColumnType("text[]");
-            e.Property(x => x.ArgumentIds).HasColumnType("uuid[]");
-            e.Property(x => x.Embedding).HasColumnType("float4[]");
+            e.Property(x => x.Tags).SetPostgresArrayType("text[]", IsPostgres);
+            e.Property(x => x.ArgumentIds).SetPostgresArrayType("uuid[]", IsPostgres);
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
             e.HasOne(x => x.RootArgument)
              .WithMany()
              .HasForeignKey(x => x.RootArgumentId)
@@ -392,10 +454,10 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("Worldviews");
             e.HasKey(x => x.Id);
-            e.Property(x => x.Tags).HasColumnType("text[]");
-            e.Property(x => x.SchwartzValues).HasColumnType("text[]");
-            e.Property(x => x.SchwartzVector).HasColumnType("float8[]");
-            e.Property(x => x.Embedding).HasColumnType("float4[]");
+            e.Property(x => x.Tags).SetPostgresArrayType("text[]", IsPostgres);
+            e.Property(x => x.SchwartzValues).SetPostgresArrayType("text[]", IsPostgres);
+            e.Property(x => x.SchwartzVector).SetPostgresArrayType("float8[]", IsPostgres);
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
         });
 
         // WorldviewChain (join table)
@@ -433,7 +495,7 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.Format).HasConversion<string>();
-            e.Property(x => x.JudgeUserIds).HasColumnType("text[]");
+            e.Property(x => x.JudgeUserIds).SetPostgresArrayType("text[]", IsPostgres);
             e.HasOne(x => x.MotionProposition)
              .WithMany()
              .HasForeignKey(x => x.MotionPropositionId)
@@ -470,7 +532,7 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("UserReputations");
             e.HasKey(x => x.Id);
-            e.Property(x => x.Badges).HasColumnType("text[]");
+            e.Property(x => x.Badges).SetPostgresArrayType("text[]", IsPostgres);
             e.HasIndex(x => x.UserId).IsUnique();
         });
 
@@ -548,10 +610,10 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("UnderstandingNodes");
             e.HasKey(x => x.Id);
-            e.Property(x => x.SemanticEmbedding).HasColumnType("float4[]");
-            e.Property(x => x.GraphEmbedding).HasColumnType("float4[]");
-            e.Property(x => x.SchwartzVector).HasColumnType("float8[]");
-            e.Property(x => x.MoralFoundationsVector).HasColumnType("float8[]");
+            e.Property(x => x.SemanticEmbedding).SetPostgresArrayType("float4[]", IsPostgres);
+            e.Property(x => x.GraphEmbedding).SetPostgresArrayType("float4[]", IsPostgres);
+            e.Property(x => x.SchwartzVector).SetPostgresArrayType("float8[]", IsPostgres);
+            e.Property(x => x.MoralFoundationsVector).SetPostgresArrayType("float8[]", IsPostgres);
             e.HasIndex(x => x.NormalizedKey);
             e.HasIndex(x => x.Confidence);
             e.HasIndex(x => x.ControversyScore);
@@ -572,9 +634,10 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.SourceNodeId, x.TargetNodeId, x.Relationship });
             e.HasIndex(x => x.Weight);
-            e.ToTable(t => t.HasCheckConstraint(
+            e.ToTable(t => t.HasPostgresCheckConstraint(
                 "CK_UnderstandingEdges_NoSelfLoop",
-                "\"SourceNodeId\" <> \"TargetNodeId\""));
+                "\"SourceNodeId\" <> \"TargetNodeId\"",
+                IsPostgres));
         });
 
         // ConceptualSchema
@@ -628,7 +691,7 @@ public class ApplicationDbContext : DbContext
         {
             e.ToTable("CommentSites");
             e.HasKey(x => x.Id);
-            e.Property(x => x.AllowedOrigins).HasColumnType("text[]");
+            e.Property(x => x.AllowedOrigins).SetPostgresArrayType("text[]", IsPostgres);
             e.HasIndex(x => x.Domain).IsUnique();
             e.HasIndex(x => x.ApiKey).IsUnique();
             e.HasIndex(x => x.OwnerUserId);

@@ -6,6 +6,7 @@ namespace CommonUnderstanding.Data;
 /// <summary>
 /// Design-time factory for EF Core migrations.
 /// Used by `dotnet ef migrations add` and `dotnet ef database update`.
+/// Supports both PostgreSQL and SQL Server via the DatabaseProvider config key.
 /// </summary>
 public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
@@ -23,15 +24,27 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
             .Build();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "PostgreSQL";
 
         if (string.IsNullOrEmpty(connectionString))
         {
             // Fallback for local development
-            connectionString = "Host=localhost;Database=commonunderstanding;Username=postgres;Password=postgres";
+            connectionString = dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase)
+                ? "Server=localhost;Database=CommonUnderstanding;Trusted_Connection=True;TrustServerCertificate=True;"
+                : "Host=localhost;Database=commonunderstanding;Username=postgres;Password=postgres";
         }
 
-        optionsBuilder.UseNpgsql(connectionString);
+        var isPostgres = !dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase);
 
-        return new ApplicationDbContext(optionsBuilder.Options);
+        if (!isPostgres)
+        {
+            optionsBuilder.UseSqlServer(connectionString);
+        }
+        else
+        {
+            optionsBuilder.UseNpgsql(connectionString);
+        }
+
+        return new ApplicationDbContext(optionsBuilder.Options, new DatabaseProviderInfo(isPostgres));
     }
 }

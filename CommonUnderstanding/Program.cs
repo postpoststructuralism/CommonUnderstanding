@@ -36,17 +36,43 @@ else
     builder.Services.AddDistributedMemoryCache();
 }
 
-// Add EF Core with PostgreSQL
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.MaxBatchSize(20)));
+// Add EF Core with configurable provider (PostgreSQL or SQL Server)
+var dbProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "PostgreSQL";
+var isPostgres = !dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase);
+
+// Helper to configure DbContext options based on provider
+void ConfigureDbContext(DbContextOptionsBuilder options)
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
+
+    if (isPostgres)
+    {
+        options.UseNpgsql(connectionString,
+            npgsqlOptions => npgsqlOptions.MaxBatchSize(20));
+    }
+    else
+    {
+        options.UseSqlServer(connectionString,
+            sqlServerOptions => sqlServerOptions.MaxBatchSize(20));
+    }
+}
+
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
+    ConfigureDbContext(options);
+});
 
 // EF Core DbContext factory for use in SignalR hubs and background workers
 // Must be Scoped so it can consume the Scoped DbContextOptions registered by AddDbContext
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.MaxBatchSize(20)),
-    ServiceLifetime.Scoped);
+builder.Services.AddDbContextFactory<ApplicationDbContext>((sp, options) =>
+{
+    ConfigureDbContext(options);
+}, ServiceLifetime.Scoped);
+
+// Register a singleton that tells the DbContext which provider is active
+builder.Services.AddSingleton(new DatabaseProviderInfo(isPostgres));
 
 // Singleton-safe wrapper for workers and hubhttps://localhost:44347/#s that can't consume Scoped services
 builder.Services.AddSingleton<SingletonDbContextFactory>();
