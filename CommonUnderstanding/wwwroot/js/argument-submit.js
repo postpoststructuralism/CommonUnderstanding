@@ -16,9 +16,40 @@
     const error = document.getElementById('sensemakingError');
     const status = document.getElementById('draftStatus');
     const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+    const storageKey = 'argument-sensemaking-session';
     const messages = [];
     let activeMode = 'direct';
     let waiting = false;
+
+    function saveSession() {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify({
+                messages,
+                draft: guidedDraft.value,
+                mode: activeMode
+            }));
+        } catch {
+            // The workflow remains usable when browser storage is unavailable.
+        }
+    }
+
+    function restoreSession() {
+        try {
+            const session = JSON.parse(localStorage.getItem(storageKey));
+            if (!session || !Array.isArray(session.messages)) return;
+
+            session.messages.forEach(message => {
+                if ((message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string') {
+                    messages.push(message);
+                    appendMessage(message.role, message.content);
+                }
+            });
+            guidedDraft.value = typeof session.draft === 'string' ? session.draft : '';
+            if (session.mode === 'guided') setMode('guided');
+        } catch {
+            localStorage.removeItem(storageKey);
+        }
+    }
 
     function setMode(mode) {
         activeMode = mode;
@@ -33,6 +64,7 @@
             ? 'Begin with uncertainty. A reflection partner will help you find the claim, values, and assumptions underneath it.'
             : 'Share a fully formed argument for analysis and mapping.';
         if (guided) input.focus(); else argumentText.focus();
+        saveSession();
     }
 
     function appendMessage(role, content) {
@@ -45,6 +77,7 @@
         row.appendChild(bubble);
         log.appendChild(row);
         log.scrollTop = log.scrollHeight;
+        return row;
     }
 
     function updateDraftState(ready = false) {
@@ -61,27 +94,42 @@
         waiting = true;
         error.classList.add('d-none');
         messages.push({ role: 'user', content });
-        appendMessage('user', content);
+        const userRow = appendMessage('user', content);
         input.value = '';
         sendButton.disabled = true;
         sendButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
         updateDraftState();
 
         try {
-            const response = await fetch(window.argumentSensemakingUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
-                body: JSON.stringify({ messages, currentDraft: guidedDraft.value })
-            });
-            const result = await response.json();
+            let response;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                response = await fetch(window.argumentSensemakingUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({ messages, currentDraft: guidedDraft.value })
+                });
+                if (response.status !== 503 || attempt === 1) break;
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+
+            const responseText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch {
+                throw new Error('The reflection partner returned an unreadable response. Please try again.');
+            }
             if (!response.ok) throw new Error(result.error || 'The reflection partner could not respond.');
 
             messages.push({ role: 'assistant', content: result.reply });
             appendMessage('assistant', result.reply);
             guidedDraft.value = result.draft || guidedDraft.value;
             updateDraftState(result.ready);
+            saveSession();
         } catch (requestError) {
             messages.pop();
+            userRow.remove();
+            input.value = content;
             error.textContent = requestError.message;
             error.classList.remove('d-none');
         } finally {
@@ -106,12 +154,16 @@
             sendMessage();
         }
     });
-    guidedDraft.addEventListener('input', () => updateDraftState());
+    guidedDraft.addEventListener('input', () => {
+        updateDraftState();
+        saveSession();
+    });
     argumentText.addEventListener('input', () => {
         counter.textContent = `${argumentText.value.length.toLocaleString()} characters`;
     });
     guidedSubmit.addEventListener('click', () => {
         argumentText.value = guidedDraft.value.trim();
+        localStorage.removeItem(storageKey);
         form.requestSubmit();
     });
     form.addEventListener('submit', event => {
@@ -127,4 +179,6 @@
     });
 
     counter.textContent = `${argumentText.value.length.toLocaleString()} characters`;
+    restoreSession();
+    updateDraftState();
 })();
