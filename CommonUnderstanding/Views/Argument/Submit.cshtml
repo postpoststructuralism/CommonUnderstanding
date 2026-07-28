@@ -1,18 +1,30 @@
 @model CommonUnderstanding.Controllers.ArgumentSubmitModel
 
 @{
-    ViewData["Title"] = "A Common Understanding — Argument Analysis";
+    ViewData["Title"] = "Add Your Perspective";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container-fluid py-4 px-4">
+@section Styles {
+    <link rel="stylesheet" href="~/css/argument-submit.css" asp-append-version="true" />
+}
 
-    <!-- Page heading -->
-    <div class="mb-4 pb-2 border-bottom">
-        <h2 class="fw-semibold mb-1" style="letter-spacing: -0.01em;">Add Your Perspective</h2>
-        <p class="text-muted mb-0" style="font-size: 0.9rem;">
-            Share what you believe and why. The system will analyze your argument's logic, surface the evidence behind it, and map it against the values that drive it — then add it to the collective understanding.
-        </p>
+<div class="container-fluid py-4 px-3 px-lg-4 submission-shell">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4 pb-3 border-bottom">
+        <div class="submission-heading">
+            <h2 class="fw-semibold mb-1">Add Your Perspective</h2>
+            <p class="text-muted mb-0" id="modeDescription">Share a fully formed argument for analysis and mapping.</p>
+        </div>
+        <div class="mode-switch" role="tablist" aria-label="Submission mode">
+            <button type="button" class="mode-option active" id="directModeButton" role="tab" aria-selected="true" aria-controls="directMode">
+                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                <span><strong>I know what I think</strong><small>Write and submit a complete perspective</small></span>
+            </button>
+            <button type="button" class="mode-option" id="guidedModeButton" role="tab" aria-selected="false" aria-controls="guidedMode">
+                <i class="bi bi-compass" aria-hidden="true"></i>
+                <span><strong>Help me make sense of it</strong><small>Think it through with a reflection partner</small></span>
+            </button>
+        </div>
     </div>
 
     @if (TempData["Error"] != null)
@@ -26,73 +38,91 @@
     <form asp-action="Submit" method="post" id="submitForm">
         @Html.AntiForgeryToken()
 
-        <div class="row g-4 align-items-start">
-
-            <!-- Argument text — takes most of the horizontal space -->
-            <div class="col-xl-8 col-lg-7">
-                <label asp-for="ArgumentText" class="form-label fw-semibold small text-uppercase tracking-wide text-secondary mb-1">
-                    Your Perspective
-                </label>
-                <textarea asp-for="ArgumentText" id="argumentText" class="form-control font-monospace"
-                          rows="16" autofocus spellcheck="true"
-                          style="font-size: 0.875rem; line-height: 1.6; resize: vertical;"
-                          placeholder="What do you believe, and why? Include your reasoning, any evidence you'd cite, and what you think the other side gets wrong or misses."></textarea>
-                <span asp-validation-for="ArgumentText" class="text-danger small d-block mt-1"></span>
-                <div class="d-flex justify-content-end mt-1">
-                    <span id="charCount" class="text-muted" style="font-size: 0.78rem;">0 characters</span>
+        <section id="directMode" class="mode-panel" role="tabpanel" aria-labelledby="directModeButton">
+            <div class="row g-4 align-items-start">
+                <div class="col-xl-8 col-lg-7">
+                    <label asp-for="ArgumentText" class="form-label fw-semibold small text-uppercase text-secondary mb-2">Your Perspective</label>
+                    <div class="writing-surface">
+                        <textarea asp-for="ArgumentText" id="argumentText" class="form-control" rows="16" autofocus spellcheck="true"
+                                  placeholder="What do you believe, and why? Include your reasoning, evidence, and what another perspective may miss."></textarea>
+                    </div>
+                    <span asp-validation-for="ArgumentText" class="text-danger small d-block mt-1"></span>
+                    <div class="d-flex justify-content-end mt-1"><span id="charCount" class="text-muted small">0 characters</span></div>
                 </div>
-            </div>
-
-            <!-- Right column: submitter + action + analysis pipeline summary -->
-            <div class="col-xl-4 col-lg-5 d-flex flex-column gap-4">
-
-                <!-- Submit button -->
-                <div>
-                    <button type="submit" class="btn btn-primary w-100" id="submitBtn" style="padding: 0.6rem 1rem; font-size: 0.95rem;">
-                        <i class="bi bi-send me-2"></i>Add to The Map
-                    </button>
-                    <div class="text-center mt-2">
-                        <a asp-action="Index" class="text-muted" style="font-size: 0.8rem;">
-                            <i class="bi bi-clock-history me-1"></i>My previous submissions
-                        </a>
+                <div class="col-xl-4 col-lg-5 d-flex flex-column gap-4">
+                    <div>
+                        <button type="submit" class="btn btn-primary w-100 py-2" id="submitBtn"><i class="bi bi-send me-2"></i>Add to The Map</button>
+                        <div class="text-center mt-2"><a asp-action="Index" class="text-muted small"><i class="bi bi-clock-history me-1"></i>My previous submissions</a></div>
+                    </div>
+                    <div class="border rounded p-3 bg-light small">
+                        <p class="fw-semibold text-secondary text-uppercase mb-2 outcome-heading">What You'll Get</p>
+                        <ul class="ps-3 mb-0 text-secondary outcome-list">
+                            <li>Your core claim, clearly identified</li>
+                            <li>The evidence and reasoning behind it</li>
+                            <li>Hidden assumptions surfaced for review</li>
+                            <li>Connections to other perspectives</li>
+                            <li>The values your perspective draws on</li>
+                        </ul>
                     </div>
                 </div>
-
-                <!-- What you'll get — outcome-focused -->
-                <div class="border rounded p-3 bg-light" style="font-size: 0.8rem;">
-                    <p class="fw-semibold text-secondary text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">What You'll Get</p>
-                    <ul class="ps-3 mb-0 text-secondary" style="line-height: 1.8;">
-                        <li>Your core claim, clearly identified</li>
-                        <li>The evidence and reasoning behind it</li>
-                        <li>Hidden assumptions surfaced for review</li>
-                        <li>How your view connects to others on the map</li>
-                        <li>The universal values your perspective draws on</li>
-                    </ul>
-                </div>
-
             </div>
-        </div>
+        </section>
+
+        <section id="guidedMode" class="mode-panel d-none" role="tabpanel" aria-labelledby="guidedModeButton">
+            <div class="row g-4">
+                <div class="col-xl-7">
+                    <div class="conversation-panel">
+                        <div class="panel-bar d-flex align-items-center gap-2">
+                            <i class="bi bi-chat-heart text-success" aria-hidden="true"></i>
+                            <div><div class="fw-semibold">Reflection partner</div><div class="text-muted small">One thoughtful question at a time</div></div>
+                        </div>
+                        <div id="conversationLog" class="conversation-log" aria-live="polite">
+                            <div class="conversation-empty" id="conversationEmpty">
+                                <i class="bi bi-compass fs-2 text-success" aria-hidden="true"></i>
+                                <h3 class="h5 mt-3">Start with what feels unresolved</h3>
+                                <p class="small mb-0">You do not need a polished argument. Describe the situation, a reaction you cannot quite explain, or the part you keep returning to.</p>
+                                <div class="prompt-chips">
+                                    <button type="button" class="prompt-chip">I keep having the same disagreement...</button>
+                                    <button type="button" class="prompt-chip">Something about this feels unfair...</button>
+                                    <button type="button" class="prompt-chip">I can see both sides, but...</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="conversation-input">
+                            <label for="sensemakingInput" class="visually-hidden">Your response</label>
+                            <div class="d-flex gap-2 align-items-end">
+                                <textarea id="sensemakingInput" class="form-control" maxlength="4000" placeholder="Say what is on your mind..."></textarea>
+                                <button type="button" class="btn btn-primary px-3" id="sendSensemaking" title="Send response" aria-label="Send response"><i class="bi bi-arrow-up"></i></button>
+                            </div>
+                            <div id="sensemakingError" class="text-danger small mt-2 d-none" role="alert"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-5">
+                    <div class="draft-panel">
+                        <div class="panel-bar d-flex justify-content-between align-items-center gap-3">
+                            <div><div class="fw-semibold">Your emerging perspective</div><div class="text-muted small">Editable, private, and always in your voice</div></div>
+                            <span id="draftStatus" class="draft-status">Listening</span>
+                        </div>
+                        <label for="guidedDraft" class="visually-hidden">Emerging argument draft</label>
+                        <textarea id="guidedDraft" placeholder="Your draft will take shape here as you talk. You can edit it at any time."></textarea>
+                        <div class="p-3 border-top">
+                            <button type="button" class="btn btn-primary w-100 py-2" id="submitGuided" disabled><i class="bi bi-send me-2"></i>Add This Perspective to The Map</button>
+                            <p class="text-muted text-center mb-0 mt-2 submit-note">You decide when the draft represents what you mean.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </form>
 </div>
 
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
     <script>
-        const textarea = document.getElementById('argumentText');
-        const counter  = document.getElementById('charCount');
-        const btn      = document.getElementById('submitBtn');
-
-        function updateCount() {
-            const n = textarea.value.length;
-            counter.textContent = n.toLocaleString() + ' characters';
-        }
-        textarea.addEventListener('input', updateCount);
-
-        document.getElementById('submitForm').addEventListener('submit', function () {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Submitting\u2026';
-        });
+        window.argumentSensemakingUrl = '@Url.Action("Sensemake", "Argument")';
     </script>
+    <script src="~/js/argument-submit.js" asp-append-version="true"></script>
 }
 
 

@@ -21,6 +21,7 @@ public class ArgumentController : Controller
     private readonly StakeholderService _stakeholderService;
     private readonly DecisionSupportService _decisionSupportService;
     private readonly ComparativeAnalysisService _comparativeAnalysisService;
+    private readonly ArgumentSensemakingService _sensemakingService;
     private readonly ILogger<ArgumentController> _logger;
 
     public ArgumentController(
@@ -32,6 +33,7 @@ public class ArgumentController : Controller
         StakeholderService stakeholderService,
         DecisionSupportService decisionSupportService,
         ComparativeAnalysisService comparativeAnalysisService,
+        ArgumentSensemakingService sensemakingService,
         ILogger<ArgumentController> logger)
     {
         _db = db;
@@ -42,6 +44,7 @@ public class ArgumentController : Controller
         _stakeholderService = stakeholderService;
         _decisionSupportService = decisionSupportService;
         _comparativeAnalysisService = comparativeAnalysisService;
+        _sensemakingService = sensemakingService;
         _logger = logger;
     }
 
@@ -117,6 +120,45 @@ public class ArgumentController : Controller
         await _db.SaveChangesAsync();
 
         return RedirectToAction(nameof(Analyze), new { id = argument.Id });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Sensemake(
+        [FromBody] ArgumentSensemakingRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Messages.Count == 0 || request.Messages.Count > 20)
+            return BadRequest(new { error = "Please send between 1 and 20 conversation messages." });
+
+        if (request.Messages.Any(message =>
+                string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 4000))
+            return BadRequest(new { error = "Each message must be between 1 and 4,000 characters." });
+
+        try
+        {
+            var messages = request.Messages
+                .Select(message => new ArgumentSensemakingMessage(message.Role, message.Content))
+                .ToList();
+            var result = await _sensemakingService.ContinueAsync(
+                messages,
+                request.CurrentDraft,
+                cancellationToken);
+
+            return Json(result);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { error = exception.Message });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Argument sense-making failed for user {UserId}",
+                User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "The reflection partner is temporarily unavailable. Your notes are still here; please try again."
+            });
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1063,6 +1105,18 @@ public class ArgumentSubmitModel
 
     [System.ComponentModel.DataAnnotations.MaxLength(100)]
     public string? SubmittedBy { get; set; }
+}
+
+public sealed class ArgumentSensemakingRequest
+{
+    public List<ArgumentSensemakingMessageModel> Messages { get; set; } = new();
+    public string? CurrentDraft { get; set; }
+}
+
+public sealed class ArgumentSensemakingMessageModel
+{
+    public string Role { get; set; } = "user";
+    public string Content { get; set; } = string.Empty;
 }
 
 public class RegisterPositionModel

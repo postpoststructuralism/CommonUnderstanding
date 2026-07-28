@@ -122,6 +122,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<ResponseProcessing
 
 // Register Argument Engine services
 builder.Services.AddScoped<ArgumentDecompositionService>();
+builder.Services.AddScoped<ArgumentSensemakingService>();
 builder.Services.AddScoped<LogicalValidationService>();
 builder.Services.AddScoped<AdjudicationEngine>();
 builder.Services.AddScoped<EvidenceClassificationService>();
