@@ -385,6 +385,7 @@
     .graph-hover-popup .popup-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.3px; }
     .graph-hover-popup .popup-badge.settled { background: rgba(5, 150, 105, 0.1); color: #059669; }
     .graph-hover-popup .popup-badge.contested { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+    .graph-hover-popup .popup-badge.unknown { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
     .graph-hover-popup .popup-badge.unevaluated { background: rgba(102, 116, 135, 0.1); color: #667487; }
     .graph-hover-popup .popup-confidence { font-size: 11px; color: var(--cu-text-muted, #667487); display: flex; align-items: center; gap: 4px; }
     .graph-hover-popup .popup-confidence-bar { width: 48px; height: 4px; border-radius: 2px; background: #e2e8f0; overflow: hidden; }
@@ -865,10 +866,10 @@
         if (!popup || !node || !network) return;
 
         document.getElementById('popup-label').textContent = node.fullLabel || node.label || '(unnamed)';
-        const status = (node.group || 'Unevaluated').toLowerCase();
+        const status = (node.status || 'Unevaluated').toLowerCase();
         const badge = document.getElementById('popup-badge');
         badge.textContent = status;
-        badge.className = 'popup-badge ' + (status === 'settled' ? 'settled' : status === 'contested' ? 'contested' : 'unevaluated');
+        badge.className = 'popup-badge ' + (status === 'settled' ? 'settled' : status === 'contested' ? 'contested' : status === 'unknown' ? 'unknown' : 'unevaluated');
         const confidence = node.confidence || 0;
         document.getElementById('popup-confidence-fill').style.width = (confidence * 100) + '%';
         document.getElementById('popup-confidence-text').textContent = (confidence * 100).toFixed(0) + '%';
@@ -1121,6 +1122,7 @@
             socialArgumentId: n.socialArgumentId || n.SocialArgumentId || null,
             fullLabel: label,
             confidence: confidence,
+            status: status,
             x: x,
             y: y
         };
@@ -1150,6 +1152,7 @@
     // ── Map raw node/edge data to vis format (used for real data from API) ──
     function mapNode(n) {
         const label = n.label || '(unnamed)';
+        const status = n.status || n.Status || 'Unknown';
         return {
             id: n.id,
             label: label.length > 30 ? label.substring(0, 30) + '\u2026' : label,
@@ -1158,7 +1161,8 @@
             argumentIdsJson: n.argumentIdsJson || '[]',
             socialArgumentId: n.socialArgumentId || null,
             fullLabel: label,
-            confidence: n.confidence ?? 0
+            confidence: n.confidence ?? 0,
+            status: status
         };
     }
 

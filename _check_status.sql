@@ -1,0 +1,1 @@
+SELECT "Status", count(*) FROM "UnderstandingNodes" GROUP BY "Status" ORDER BY "Status";

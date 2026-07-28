@@ -234,7 +234,15 @@ public class AdjudicationEngine
 
     private static PropositionStatus DeterminePropositionStatus(List<EvidenceItem> evidence, double confidence)
     {
-        if (!evidence.Any()) return PropositionStatus.Unevaluated;
+        if (!evidence.Any())
+        {
+            // No evidence — fall back to the computed confidence (which may be
+            // the AI-generated ProvisionalConfidence) instead of leaving the
+            // proposition permanently Unevaluated.
+            if (confidence >= 0.70 || confidence <= 0.30) return PropositionStatus.Settled;
+            if (confidence >= 0.45) return PropositionStatus.Unknown;
+            return PropositionStatus.Unevaluated;
+        }
 
         bool hasSupporting = evidence.Any(e => e.Direction == EvidenceDirection.Supports);
         bool hasOpposing = evidence.Any(e => e.Direction == EvidenceDirection.Opposes);

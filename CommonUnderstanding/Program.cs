@@ -364,4 +364,53 @@ if (args.Contains("--generate-skeleton"))
     return;
 }
 
+// ── CLI: Batch-adjudicate all arguments that have never been evaluated ──
+if (args.Contains("--adjudicate-all"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var adjudicationEngine = scope.ServiceProvider.GetRequiredService<AdjudicationEngine>();
+    var graphService = scope.ServiceProvider.GetRequiredService<UnderstandingGraphService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    // Find all arguments that have never been adjudicated (no AdjudicationSummary)
+    var unevaluatedIds = await db.Arguments
+        .Where(a => a.AdjudicationSummary == null)
+        .Select(a => a.Id)
+        .ToListAsync();
+
+    Console.WriteLine($"Found {unevaluatedIds.Count} arguments to adjudicate.");
+
+    int succeeded = 0, failed = 0;
+    foreach (var id in unevaluatedIds)
+    {
+        try
+        {
+            await adjudicationEngine.AdjudicateAsync(id);
+            succeeded++;
+            Console.WriteLine($"  ✓ Argument {id} adjudicated.");
+        }
+        catch (Exception ex)
+        {
+            failed++;
+            logger.LogWarning(ex, "Adjudication failed for argument {ArgumentId}", id);
+            Console.WriteLine($"  ✗ Argument {id} failed: {ex.Message}");
+        }
+    }
+
+    Console.WriteLine($"Adjudication complete. {succeeded} succeeded, {failed} failed.");
+
+    // Sync updated proposition statuses into UnderstandingNodes so the graph
+    // reflects the new evaluations.
+    Console.WriteLine("Syncing statuses to Understanding Graph...");
+    await graphService.SyncAllAsync();
+
+    // Invalidate the graph map cache so the frontend picks up the new statuses.
+    var queryService = scope.ServiceProvider.GetRequiredService<UnderstandingQueryService>();
+    queryService.InvalidateMapCache();
+
+    Console.WriteLine("Graph sync complete. Exiting.");
+    return;
+}
+
 app.Run();

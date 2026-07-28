@@ -499,6 +499,10 @@ public class UnderstandingGraphController : Controller
             // request-scoped services remain available and the next reload is current.
             await _skeletonGenerator.GenerateAsync();
 
+            // Step 9: Invalidate the graph map cache so the frontend picks up
+            // updated statuses, confidences, and topology metrics.
+            _queryService.InvalidateMapCache();
+
             return Json(new
             {
                 success = true,

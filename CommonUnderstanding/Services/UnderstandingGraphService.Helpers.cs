@@ -67,11 +67,16 @@ public partial class UnderstandingGraphService
             try { embedding = proposition.Embedding ?? await _embeddingService.GenerateEmbeddingAsync(proposition.Text); }
             catch { _logger.LogDebug("Embedding generation skipped for social proposition."); }
 
+            // Use confidence-based status heuristic (same as DeterminePropositionStatus for no-evidence case).
+            // Social propositions start at 0.5 confidence → "Unknown" rather than "Unevaluated".
+            var status = PropositionStatus.Unknown;
+            if (0.5 >= 0.70 || 0.5 <= 0.30) status = PropositionStatus.Settled;
+
             node = new UnderstandingNode
             {
                 CanonicalText = proposition.Text.Trim(),
                 NormalizedKey = key,
-                Status = PropositionStatus.Unevaluated,
+                Status = status,
                 Confidence = 0.5,
                 EvidenceCount = 1,
                 SemanticEmbedding = embedding,
@@ -87,6 +92,7 @@ public partial class UnderstandingGraphService
             var argIds = DeserializeGuidList(node.ArgumentIdsJson);
             var idStr = socialArgumentId.ToString();
             if (!argIds.Contains(idStr)) { argIds.Add(idStr); node.ArgumentIdsJson = JsonSerializer.Serialize(argIds); }
+            // Don't downgrade existing nodes — keep their current status
             node.LastUpdatedAt = DateTime.UtcNow;
             node.Version++;
         }
