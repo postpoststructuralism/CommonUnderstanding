@@ -301,7 +301,10 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-app.UseHttpsRedirection();
+if (!builder.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseResponseCompression();
 app.UseOutputCache();
 app.UseMiddleware<CommonUnderstanding.Middleware.ApiRobotsTagMiddleware>();
