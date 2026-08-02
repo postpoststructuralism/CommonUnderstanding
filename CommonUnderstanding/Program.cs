@@ -369,19 +369,12 @@ app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    await db.Database.MigrateAsync();
 
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Phase 1 (4.6): Only seed sample data when explicitly opted in.
-    // In development, set SEED_SAMPLE_DATA=true environment variable or pass --seed flag.
-    var shouldSeed = app.Environment.IsDevelopment() &&
-        (args.Contains("--seed") ||
-         Environment.GetEnvironmentVariable("SEED_SAMPLE_DATA")?.ToLowerInvariant() == "true");
-    if (shouldSeed)
-    {
-        await Phase2SeedData.SeedAllAsync(db, startupLogger);
-    }
+    // SeedAllAsync is idempotent and skips databases that already contain seed data.
+    await Phase2SeedData.SeedAllAsync(db, startupLogger);
 }
 
 // ── CLI: Generate skeleton JSON (one-time, for testing) ──

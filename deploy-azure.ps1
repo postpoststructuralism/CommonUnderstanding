@@ -7,12 +7,35 @@ param(
     [string]$Location = "canadaeast",
     [string]$PlanName = "Initial",
     [string]$Runtime = "dotnet:9",
-    [string]$AzureFoundryEndpoint = "",
-    [string]$AzureFoundryApiKey = "",
     [string]$AzureFoundryModelId = "DeepSeek-V3-0324",
     [string]$AzureFoundrySecondaryModelId = "gpt-4o-mini",
     [int]$FreeAiRequestLimit = 120
 )
+
+$ProjectPath = Join-Path $PSScriptRoot "CommonUnderstanding\CommonUnderstanding.csproj"
+$secrets = @{}
+dotnet user-secrets list --project $ProjectPath 2>$null | ForEach-Object {
+    if ($_ -match '^(.+?)\s*=\s*(.*)$') {
+        $secrets[$matches[1].Trim()] = $matches[2]
+    }
+}
+
+$requiredSecretKeys = @(
+    "ConnectionStrings:DefaultConnection",
+    "AzureFoundry:Endpoint",
+    "AzureFoundry:ApiKey"
+)
+$missingSecretKeys = $requiredSecretKeys | Where-Object {
+    $secretValue = $secrets.Item($_)
+    [string]::IsNullOrWhiteSpace($secretValue)
+}
+if ($missingSecretKeys.Count -gt 0) {
+    throw "Missing required .NET user secrets: $($missingSecretKeys -join ', '). Configure them with 'dotnet user-secrets set --project $ProjectPath <key> <value>'."
+}
+
+$databaseConnectionString = $secrets.Item("ConnectionStrings:DefaultConnection")
+$azureFoundryEndpoint = $secrets.Item("AzureFoundry:Endpoint")
+$azureFoundryApiKey = $secrets.Item("AzureFoundry:ApiKey")
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Common Understanding - Azure Deployment" -ForegroundColor Cyan
@@ -94,6 +117,8 @@ Write-Host ""
 Write-Host "Configuring App Settings..." -ForegroundColor Yellow
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings `
     ASPNETCORE_ENVIRONMENT="Production" `
+    DatabaseProvider="SqlServer" `
+    ConnectionStrings__DefaultConnection="$databaseConnectionString" `
     AzureFoundry__Endpoint="$AzureFoundryEndpoint" `
     AzureFoundry__ApiKey="$AzureFoundryApiKey" `
     AzureFoundry__ModelId="$AzureFoundryModelId" `

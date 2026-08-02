@@ -16,6 +16,31 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$ProjectPath = Join-Path $PSScriptRoot "CommonUnderstanding\CommonUnderstanding.csproj"
+$secrets = @{}
+dotnet user-secrets list --project $ProjectPath 2>$null | ForEach-Object {
+    if ($_ -match '^(.+?)\s*=\s*(.*)$') {
+        $secrets[$matches[1].Trim()] = $matches[2]
+    }
+}
+
+$requiredSecretKeys = @(
+    "ConnectionStrings:DefaultConnection",
+    "AzureFoundry:Endpoint",
+    "AzureFoundry:ApiKey"
+)
+$missingSecretKeys = $requiredSecretKeys | Where-Object {
+    $secretValue = $secrets.Item($_)
+    [string]::IsNullOrWhiteSpace($secretValue)
+}
+if ($missingSecretKeys.Count -gt 0) {
+    throw "Missing required .NET user secrets: $($missingSecretKeys -join ', '). Configure them with 'dotnet user-secrets set --project $ProjectPath <key> <value>'."
+}
+
+$databaseConnectionString = $secrets.Item("ConnectionStrings:DefaultConnection")
+$azureFoundryEndpoint = $secrets.Item("AzureFoundry:Endpoint")
+$azureFoundryApiKey = $secrets.Item("AzureFoundry:ApiKey")
+
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host "CommonUnderstanding - New Azure Instance Setup" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
@@ -78,8 +103,10 @@ Write-Host "Applying baseline app settings..." -ForegroundColor Yellow
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings `
     ASPNETCORE_ENVIRONMENT="Production" `
     ApplicationInsights__ConnectionString="$appInsightsConnectionString" `
-    AzureFoundry__Endpoint="" `
-    AzureFoundry__ApiKey="" `
+    DatabaseProvider="SqlServer" `
+    ConnectionStrings__DefaultConnection="$databaseConnectionString" `
+    AzureFoundry__Endpoint="$azureFoundryEndpoint" `
+    AzureFoundry__ApiKey="$azureFoundryApiKey" `
     AzureFoundry__ModelId="DeepSeek-V3-0324" `
     AzureFoundry__SecondaryModelId="gpt-4o-mini" `
     AzureFoundry__UseSecondaryFallback="true" `

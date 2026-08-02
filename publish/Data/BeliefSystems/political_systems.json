@@ -1,0 +1,584 @@
+[
+  {
+    "Name": "Liberalism (Classical)",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "17th-19th century - Present",
+    "Description": "Political philosophy emphasizing individual liberty, limited government, free markets, and rule of law.",
+    "Sources": [
+      "Two Treatises of Government (John Locke)",
+      "On Liberty (John Stuart Mill)",
+      "The Wealth of Nations (Adam Smith)",
+      "The Road to Serfdom (F.A. Hayek)"
+    ],
+    "CorePrinciples": [
+      "Individual rights and freedoms as paramount",
+      "Limited government constrained by constitution",
+      "Free market capitalism",
+      "Rule of law and equality before the law",
+      "Private property rights",
+      "Spontaneous order over central planning",
+      "Tolerance and pluralism"
+    ],
+    "NotableFigures": [
+      "John Locke",
+      "Adam Smith",
+      "John Stuart Mill",
+      "F.A. Hayek",
+      "Milton Friedman"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Western Europe"
+    ]
+  },
+  {
+    "Name": "Socialism (Democratic)",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Political and economic system advocating for social ownership of means of production and democratic control of the economy.",
+    "Sources": [
+      "The Communist Manifesto (Marx & Engels)",
+      "Capital (Karl Marx)",
+      "Evolutionary Socialism (Eduard Bernstein)",
+      "The Conquest of Bread (Peter Kropotkin)"
+    ],
+    "CorePrinciples": [
+      "Social ownership of means of production",
+      "Economic equality and redistribution",
+      "Workers' rights and collective bargaining",
+      "Universal healthcare, education, and social services",
+      "Democratic participation in economic decisions",
+      "Critique of capitalism and exploitation",
+      "Solidarity and collective welfare over individual profit"
+    ],
+    "NotableFigures": [
+      "Karl Marx",
+      "Eduard Bernstein",
+      "Rosa Luxemburg",
+      "Bernie Sanders",
+      "Jeremy Corbyn"
+    ],
+    "Regions": [
+      "Scandinavia",
+      "Western Europe",
+      "Latin America"
+    ]
+  },
+  {
+    "Name": "Anarchism",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Political philosophy advocating for abolition of all hierarchical authority and the state, replaced by voluntary cooperation.",
+    "Sources": [
+      "What is Property? (Pierre-Joseph Proudhon)",
+      "The Conquest of Bread (Peter Kropotkin)",
+      "Mutual Aid (Peter Kropotkin)",
+      "On Anarchism (Noam Chomsky)"
+    ],
+    "CorePrinciples": [
+      "Abolition of the state and all coercive hierarchies",
+      "Voluntary association and mutual aid",
+      "Direct democracy and consensus decision-making",
+      "Workers' self-management",
+      "Decentralization and federalism",
+      "Individual autonomy within community",
+      "Critique of all forms of domination"
+    ],
+    "NotableFigures": [
+      "Pierre-Joseph Proudhon",
+      "Mikhail Bakunin",
+      "Peter Kropotkin",
+      "Emma Goldman",
+      "Noam Chomsky"
+    ],
+    "Regions": [
+      "Spain (historical)",
+      "Modern activist movements worldwide"
+    ]
+  },
+  {
+    "Name": "Conservatism (Traditional)",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "18th century - Present",
+    "Description": "Political philosophy emphasizing preservation of traditional institutions, gradual change, and skepticism of radical reform.",
+    "Sources": [
+      "Reflections on the Revolution in France (Edmund Burke)",
+      "The Conservative Mind (Russell Kirk)",
+      "Ideas Have Consequences (Richard Weaver)"
+    ],
+    "CorePrinciples": [
+      "Tradition and continuity with the past",
+      "Gradual, organic change over revolution",
+      "Preservation of established institutions",
+      "Skepticism of human reason to reshape society",
+      "Importance of religion and moral order",
+      "Private property and free enterprise",
+      "Strong national defense",
+      "Respect for authority and hierarchy"
+    ],
+    "NotableFigures": [
+      "Edmund Burke",
+      "Russell Kirk",
+      "Roger Scruton",
+      "William F. Buckley Jr."
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Continental Europe"
+    ]
+  },
+  {
+    "Name": "Libertarianism",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "20th century - Present",
+    "Description": "Political philosophy emphasizing maximum individual freedom and minimal government intervention in both personal and economic spheres.",
+    "Sources": [
+      "Anarchy, State, and Utopia (Robert Nozick)",
+      "The Ethics of Liberty (Murray Rothbard)",
+      "Free to Choose (Milton Friedman)"
+    ],
+    "CorePrinciples": [
+      "Non-aggression principle",
+      "Maximum individual liberty in all spheres",
+      "Minimal or no government intervention",
+      "Free market absolutism",
+      "Property rights as fundamental",
+      "Voluntary exchange over coercion",
+      "Self-ownership",
+      "Opposition to taxation as theft"
+    ],
+    "NotableFigures": [
+      "Murray Rothbard",
+      "Robert Nozick",
+      "Ayn Rand",
+      "Ron Paul"
+    ],
+    "Regions": [
+      "United States",
+      "Parts of Western Europe"
+    ]
+  },
+  {
+    "Name": "Communitarianism",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "Late 20th century - Present",
+    "Description": "Political philosophy emphasizing community values, social responsibility, and the common good over individual rights.",
+    "Sources": [
+      "After Virtue (Alasdair MacIntyre)",
+      "The Spirit of Community (Amitai Etzioni)",
+      "Liberalism and the Limits of Justice (Michael Sandel)"
+    ],
+    "CorePrinciples": [
+      "Community and social bonds as primary",
+      "Common good over individual autonomy",
+      "Responsibilities alongside rights",
+      "Civic virtue and participation",
+      "Shared values and traditions",
+      "Critique of excessive individualism",
+      "Balance between individual and community"
+    ],
+    "NotableFigures": [
+      "Alasdair MacIntyre",
+      "Michael Sandel",
+      "Amitai Etzioni",
+      "Charles Taylor"
+    ],
+    "Regions": [
+      "United States",
+      "Europe"
+    ]
+  },
+  {
+    "Name": "Social Democracy",
+    "Category": "Political",
+    "Culture": "Western European",
+    "Era": "Late 19th century - Present",
+    "Description": "Political ideology advocating for a capitalist economy regulated to ensure social welfare, labor rights, and reduction of inequality within a democratic framework.",
+    "Sources": [
+      "Evolutionary Socialism (Eduard Bernstein)",
+      "The Future of Socialism (Anthony Crosland)",
+      "Third Way (Anthony Giddens)",
+      "Scandinavian social democratic platforms"
+    ],
+    "CorePrinciples": [
+      "Mixed economy: market capitalism with strong state regulation",
+      "Universal welfare state: healthcare, education, pensions, unemployment benefits",
+      "Progressive taxation to reduce inequality",
+      "Strong labor unions and workers' rights",
+      "Parliamentary democracy as the path to reform",
+      "Social justice without abolishing private property",
+      "International cooperation and multilateral institutions"
+    ],
+    "NotableFigures": [
+      "Eduard Bernstein",
+      "Clement Attlee",
+      "Willy Brandt",
+      "Olof Palme",
+      "Anthony Giddens"
+    ],
+    "Regions": [
+      "Scandinavia",
+      "Germany",
+      "United Kingdom",
+      "Western Europe"
+    ]
+  },
+  {
+    "Name": "Fascism",
+    "Category": "Political",
+    "Culture": "European (20th century)",
+    "Era": "Early 20th century - Present (fringe)",
+    "Description": "Authoritarian ultranationalist ideology emphasizing strong centralized state power, national or ethnic unity, and opposition to liberalism, Marxism, and democracy.",
+    "Sources": [
+      "The Doctrine of Fascism (Mussolini and Gentile)",
+      "Mein Kampf (Adolf Hitler — Nazi variant)",
+      "The Fascist Manifesto (Mussolini)",
+      "The Anatomy of Fascism (Robert Paxton)"
+    ],
+    "CorePrinciples": [
+      "Ultranationalism: the nation or race as supreme organizing principle",
+      "Leadership cult: strong authoritarian leader embodies national will",
+      "Anti-liberalism and anti-Marxism",
+      "Violence and struggle as ennobling and necessary",
+      "Glorification of military and war",
+      "Corporatist economy: class collaboration under state direction",
+      "Social Darwinism: competition between nations and races",
+      "Myth of national rebirth and regeneration (palingenesis)"
+    ],
+    "NotableFigures": [
+      "Benito Mussolini (Italian Fascism)",
+      "Adolf Hitler (National Socialism)",
+      "Francisco Franco",
+      "Oswald Mosley",
+      "Julius Evola (intellectual fascist)"
+    ],
+    "Regions": [
+      "Italy (historical)",
+      "Germany (historical Nazi variant)",
+      "Spain (historical Francoism)",
+      "Fringe movements globally"
+    ]
+  },
+  {
+    "Name": "Communism (Marxist-Leninist)",
+    "Category": "Political",
+    "Culture": "Global",
+    "Era": "20th century - Present",
+    "Description": "Revolutionary political ideology advocating for the abolition of capitalism and private property, and the establishment of a classless, stateless society through the vanguard party and dictatorship of the proletariat.",
+    "Sources": [
+      "The Communist Manifesto (Marx and Engels)",
+      "What Is to Be Done? (Lenin)",
+      "State and Revolution (Lenin)",
+      "Quotations from Chairman Mao"
+    ],
+    "CorePrinciples": [
+      "Abolition of private ownership of means of production",
+      "Dictatorship of the proletariat as transitional phase",
+      "Vanguard party leads the working class to revolution",
+      "Centrally planned economy replaces market",
+      "Withering away of the state in final communist stage",
+      "Classless, stateless society as ultimate goal",
+      "Internationalism: workers of the world unite",
+      "Historical materialism: capitalism's contradictions lead inevitably to communism"
+    ],
+    "NotableFigures": [
+      "Karl Marx",
+      "Vladimir Lenin",
+      "Leon Trotsky",
+      "Mao Zedong",
+      "Fidel Castro",
+      "Ho Chi Minh"
+    ],
+    "Regions": [
+      "Soviet Union (historical)",
+      "China (current)",
+      "Cuba",
+      "Vietnam",
+      "Former Eastern Bloc"
+    ]
+  },
+  {
+    "Name": "Nationalism",
+    "Category": "Political",
+    "Culture": "Global",
+    "Era": "18th century - Present",
+    "Description": "Political ideology holding that the nation — a people with shared identity, culture, and often ethnicity — should be self-governing and that national interests should take priority.",
+    "Sources": [
+      "What is a Nation? (Ernest Renan)",
+      "Imagined Communities (Benedict Anderson)",
+      "The Idea of Nationalism (Hans Kohn)",
+      "Addresses to the German Nation (Fichte)"
+    ],
+    "CorePrinciples": [
+      "National self-determination: nations should govern themselves",
+      "Shared identity: culture, language, history, or ethnicity bind the nation",
+      "National sovereignty as paramount value",
+      "Priority of national interests over international obligations",
+      "Cultural nationalism: preserving and promoting national culture",
+      "Ethnic nationalism: membership based on descent (more extreme variant)",
+      "Civic nationalism: membership based on shared laws and values"
+    ],
+    "NotableFigures": [
+      "Johann Gottlieb Fichte",
+      "Giuseppe Mazzini",
+      "Ernest Renan",
+      "Benedict Anderson",
+      "Charles de Gaulle"
+    ],
+    "Regions": [
+      "France (French Revolution origin)",
+      "Germany",
+      "Global — every continent"
+    ]
+  },
+  {
+    "Name": "Green Politics / Eco-Socialism",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Political ideology integrating environmentalism with social justice, arguing that ecological sustainability requires fundamental transformation of both capitalism and social inequality.",
+    "Sources": [
+      "For the Common Good (Herman Daly and John Cobb)",
+      "The Green Case for Socialism (David Pepper)",
+      "Green Politics (Fritjof Capra and Charlene Spretnak)",
+      "This Changes Everything (Naomi Klein)"
+    ],
+    "CorePrinciples": [
+      "Ecological sustainability as foundational political principle",
+      "Social justice and environmental justice are inseparable",
+      "Capitalism drives ecological destruction; systemic change needed",
+      "Degrowth: reducing consumption in wealthy nations is necessary",
+      "Renewable energy transition and green economy",
+      "Rights of nature and intergenerational responsibility",
+      "Participatory democracy and decentralization",
+      "Feminism, anti-racism, and environmentalism as interconnected struggles"
+    ],
+    "NotableFigures": [
+      "Petra Kelly (German Greens founder)",
+      "Murray Bookchin",
+      "Naomi Klein",
+      "Alexandria Ocasio-Cortez",
+      "Greta Thunberg (youth movement)"
+    ],
+    "Regions": [
+      "Germany (Green Party origin)",
+      "Western Europe",
+      "Global environmental movements"
+    ]
+  },
+  {
+    "Name": "Populism",
+    "Category": "Political",
+    "Culture": "Global",
+    "Era": "19th century - Present",
+    "Description": "Political ideology that pits the virtuous 'people' against a corrupt 'elite,' arguing that politics should express the will of the common people against powerful minorities.",
+    "Sources": [
+      "What Is Populism? (Jan-Werner Müller)",
+      "The Populist Explosion (John Judis)",
+      "For a New Left (Chantal Mouffe)"
+    ],
+    "CorePrinciples": [
+      "Manichean division: virtuous people vs. corrupt elite",
+      "Popular sovereignty: the people's will is ultimate political authority",
+      "Anti-establishment: existing institutions serve elites, not people",
+      "Can be left-wing (economic elite as enemy) or right-wing (cultural elite, immigrants)",
+      "Charismatic leader as embodiment of the people's will",
+      "Direct democracy and referendums over representative institutions",
+      "Crisis narrative: the people are under threat and must act"
+    ],
+    "NotableFigures": [
+      "Juan Perón (left populism)",
+      "Hugo Chávez",
+      "Donald Trump (right populism)",
+      "Viktor Orbán",
+      "Bernie Sanders (progressive populism)"
+    ],
+    "Regions": [
+      "Latin America",
+      "United States",
+      "Eastern Europe",
+      "Global in various forms"
+    ]
+  },
+  {
+    "Name": "Christian Democracy",
+    "Category": "Political",
+    "Culture": "Western European/Latin American",
+    "Era": "20th century - Present",
+    "Description": "Political ideology applying Christian social teaching to politics, advocating subsidiarity, social solidarity, human dignity, and a regulated market economy within a democratic framework.",
+    "Sources": [
+      "Rerum Novarum (Pope Leo XIII)",
+      "Quadragesimo Anno (Pope Pius XI)",
+      "Catholic Social Teaching documents",
+      "Konrad Adenauer's speeches"
+    ],
+    "CorePrinciples": [
+      "Human dignity: every person has inherent worth as created by God",
+      "Subsidiarity: decisions made at the lowest competent level",
+      "Solidarity: mutual responsibility for the common good",
+      "Common good over individual or class interest",
+      "Family as the fundamental unit of society",
+      "Social market economy: capitalism regulated for social justice",
+      "Anti-communism and anti-fascism: the third way between extremes",
+      "European integration and international cooperation"
+    ],
+    "NotableFigures": [
+      "Konrad Adenauer",
+      "Alcide de Gasperi",
+      "Jacques Maritain",
+      "Angela Merkel (later CDU era)"
+    ],
+    "Regions": [
+      "Germany",
+      "Italy",
+      "France",
+      "Latin America"
+    ]
+  },
+  {
+    "Name": "Feminism (Political)",
+    "Category": "Political",
+    "Culture": "Western/Global",
+    "Era": "19th century - Present",
+    "Description": "Political movement and ideology advocating for equal rights, opportunities, and representation for women, and the dismantling of patriarchal structures in society, law, and culture.",
+    "Sources": [
+      "A Vindication of the Rights of Woman (Mary Wollstonecraft)",
+      "The Feminine Mystique (Betty Friedan)",
+      "Ain't I a Woman? (bell hooks)",
+      "Sister Outsider (Audre Lorde)"
+    ],
+    "CorePrinciples": [
+      "Legal and political equality for women (First Wave)",
+      "Social and economic equality; challenging domestic roles (Second Wave)",
+      "Intersectionality: race, class, and gender oppressions are linked (Third Wave)",
+      "Bodily autonomy: reproductive rights as fundamental",
+      "Representation: equal participation in politics and institutions",
+      "Dismantling systemic patriarchy, not just individual prejudice",
+      "Critique of violence against women: domestic violence, sexual assault"
+    ],
+    "NotableFigures": [
+      "Mary Wollstonecraft",
+      "Susan B. Anthony",
+      "Betty Friedan",
+      "Gloria Steinem",
+      "bell hooks",
+      "Kimberlé Crenshaw"
+    ],
+    "Regions": [
+      "United Kingdom (suffrage movement origin)",
+      "United States",
+      "Global women's movements"
+    ]
+  },
+  {
+    "Name": "Republicanism (Classical)",
+    "Category": "Political",
+    "Culture": "Western",
+    "Era": "Ancient Rome - Present",
+    "Description": "Political philosophy emphasizing freedom as non-domination, civic virtue, mixed government, and the rule of law to prevent tyranny of individuals or factions.",
+    "Sources": [
+      "Republic (Cicero)",
+      "The Discourses on Livy (Machiavelli)",
+      "The Spirit of the Laws (Montesquieu)",
+      "The Federalist Papers (Hamilton, Madison, Jay)"
+    ],
+    "CorePrinciples": [
+      "Non-domination: freedom means not being subject to another's arbitrary will",
+      "Mixed constitution: balance of monarchical, aristocratic, and democratic elements",
+      "Separation of powers to prevent tyranny",
+      "Civic virtue: citizens must be active, public-spirited participants",
+      "Rule of law: no person above the law",
+      "Res publica: politics as the public thing, not private interest",
+      "Term limits and rotation of offices prevent concentration of power"
+    ],
+    "NotableFigures": [
+      "Cicero",
+      "Machiavelli",
+      "Montesquieu",
+      "James Madison",
+      "Philip Pettit (contemporary)"
+    ],
+    "Regions": [
+      "Ancient Rome",
+      "Renaissance Italy",
+      "American Founding",
+      "Global constitutional tradition"
+    ]
+  },
+  {
+    "Name": "Progressivism",
+    "Category": "Political",
+    "Culture": "American/Western",
+    "Era": "Late 19th century - Present",
+    "Description": "Political ideology advocating for social reform, government intervention to address inequality, expanding civil rights, and using policy to achieve positive social change.",
+    "Sources": [
+      "The Promise of American Life (Herbert Croly)",
+      "Progressivism at the Crossroads (various)",
+      "Works of John Dewey",
+      "FDR's New Deal speeches"
+    ],
+    "CorePrinciples": [
+      "Social progress is possible and desirable through collective action",
+      "Government has a positive role in addressing social problems",
+      "Expansion of civil rights for marginalized groups",
+      "Economic regulation to protect workers and the environment",
+      "Science and expertise should guide policy",
+      "Reform rather than revolution: working within institutions",
+      "Universal access to healthcare, education, and economic opportunity"
+    ],
+    "NotableFigures": [
+      "Theodore Roosevelt",
+      "Franklin D. Roosevelt",
+      "Lyndon B. Johnson",
+      "Elizabeth Warren",
+      "Bernie Sanders"
+    ],
+    "Regions": [
+      "United States",
+      "Influence in Western European left"
+    ]
+  },
+  {
+    "Name": "Theocracy / Religious Governance",
+    "Category": "Political",
+    "Culture": "Global",
+    "Era": "Ancient - Present",
+    "Description": "System of government in which religious authority governs directly or in which law is derived from divine mandate, with clergy or religiously legitimated leaders holding political power.",
+    "Sources": [
+      "Plato's Republic (philosopher-king as divine reason)",
+      "Islamic jurisprudence texts (Wilayat al-Faqih)",
+      "Old Testament governance texts",
+      "Writings of John Calvin on Geneva's theocracy"
+    ],
+    "CorePrinciples": [
+      "Divine law as the ultimate source of legal authority",
+      "Religious leadership holds political legitimacy",
+      "No separation of religion and state",
+      "Governance as service to God, not just the people",
+      "Religious texts as constitutional documents",
+      "Duty to implement God's will in the social order",
+      "Religious minorities may face restricted rights"
+    ],
+    "NotableFigures": [
+      "Ayatollah Khomeini (Iran)",
+      "John Calvin (Geneva)",
+      "Pope Innocent III (medieval papacy)",
+      "King David (Biblical)",
+      "Abu Bakr al-Baghdadi (ISIS, extreme variant)"
+    ],
+    "Regions": [
+      "Iran (Islamic Republic)",
+      "Vatican City",
+      "Saudi Arabia (partial)",
+      "Historical: Geneva, Papal States, Islamic Caliphate"
+    ]
+  }
+]

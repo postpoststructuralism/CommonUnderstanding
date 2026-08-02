@@ -30,6 +30,7 @@ namespace CommonUnderstanding.Controllers
                                   !string.IsNullOrWhiteSpace(azureEndpoint);
             var azureModel = _semanticKernelService.ResolveAzurePrimaryModel();
             var secondaryModel = _configuration["AzureFoundry:SecondaryModelId"] ?? string.Empty;
+            var proModel = _semanticKernelService.ResolveAzureProModel();
             var useSecondaryFallback = bool.TryParse(_configuration["AzureFoundry:UseSecondaryFallback"], out var useSecondary)
                 ? useSecondary
                 : true;
@@ -43,6 +44,8 @@ namespace CommonUnderstanding.Controllers
             if (azureConfigured) activeProviders.Add("AzureFoundryPrimary");
             if (azureConfigured && useSecondaryFallback && !string.IsNullOrWhiteSpace(secondaryModel))
                 activeProviders.Add("AzureFoundrySecondary");
+            if (azureConfigured && !string.IsNullOrWhiteSpace(proModel))
+                activeProviders.Add("AzureFoundryPro");
             if (ollamaFallbackEnabled) activeProviders.Add("Ollama");
 
             var systemStatus = activeProviders.Count > 0 ? "ready"
@@ -61,6 +64,7 @@ namespace CommonUnderstanding.Controllers
                         Endpoint = azureEndpoint,
                         Model = azureModel,
                         SecondaryModel = secondaryModel,
+                        ProModel = proModel,
                         UseSecondaryFallback = useSecondaryFallback
                     },
                     Ollama = new
@@ -94,6 +98,25 @@ namespace CommonUnderstanding.Controllers
                 Message = "Runtime model override set",
                 CurrentModel = _configuration["AzureFoundry:ModelId"],
                 RuntimeModel = _runtimeConfig.Model
+            });
+        }
+
+        [HttpPost("switch-pro-model")]
+        public IActionResult SwitchProModel([FromBody] SwitchModelRequest request)
+        {
+            if (string.IsNullOrEmpty(request.ModelName))
+            {
+                return BadRequest(new { Success = false, Message = "ModelName is required" });
+            }
+
+            _runtimeConfig.ProModel = request.ModelName;
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "Runtime Pro model override set",
+                CurrentProModel = _configuration["AzureFoundry:ProModelId"],
+                RuntimeProModel = _runtimeConfig.ProModel
             });
         }
 

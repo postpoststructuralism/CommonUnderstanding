@@ -1,0 +1,368 @@
+html {
+  font-size: 14px;
+  scroll-behavior: smooth;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* ========================================
+   FOCUS STATES - ACCESSIBILITY
+   ======================================== */
+.btn:focus, 
+.btn:active:focus, 
+.btn-link.nav-link:focus, 
+.form-control:focus, 
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem var(--cu-background-strong), 0 0 0 0.3rem rgba(var(--cu-secondary-rgb), 0.22);
+  outline: 2px solid rgba(var(--cu-secondary-rgb), 0.45);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   FORM ENHANCEMENTS
+   ======================================== */
+.form-floating > .form-control-plaintext::placeholder, 
+.form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, 
+.form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+/* Form Controls */
+.form-control,
+.form-select {
+  border-color: var(--cu-border-light);
+  border-radius: 0.95rem;
+  background-color: rgba(255, 255, 255, 0.78);
+  transition: all 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: rgba(var(--cu-secondary-rgb), 0.35);
+  background-color: var(--cu-white);
+  box-shadow: 0 0 0 4px rgba(var(--cu-secondary-rgb), 0.12);
+}
+
+/* ========================================
+   BOOTSTRAP OVERRIDES FOR APP THEME
+   ======================================== */
+.btn-primary {
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
+  box-shadow: 0 12px 20px rgba(var(--cu-primary-rgb), 0.16);
+}
+
+.btn-primary:hover {
+  background-color: var(--cu-primary-strong);
+  border-color: var(--cu-primary-strong);
+  transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+  color: var(--cu-primary-blue);
+  border-color: var(--cu-border-mid);
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
+}
+
+.alert-primary {
+  background-color: rgba(var(--cu-secondary-rgb), 0.1);
+  border-color: rgba(var(--cu-secondary-rgb), 0.22);
+  color: var(--cu-primary-blue);
+}
+
+.text-primary {
+  color: var(--cu-primary-blue) !important;
+}
+
+.bg-primary {
+  background-color: var(--cu-primary-blue) !important;
+}
+
+/* ========================================
+   CARD ENHANCEMENTS
+   ======================================== */
+.card {
+  border-color: var(--cu-border-light);
+  border-radius: 1.3rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.88));
+  box-shadow: var(--cu-shadow-xs);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--cu-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-bottom-color: var(--cu-border-light);
+  font-weight: 600;
+  color: var(--cu-primary-blue);
+}
+
+/* ========================================
+   TABLE ENHANCEMENTS
+   ======================================== */
+.table {
+  color: var(--cu-text-dark);
+}
+
+.table thead {
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  color: var(--cu-text-muted);
+}
+
+.table thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--cu-border-light);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(var(--cu-primary-rgb), 0.02);
+}
+
+.table-hover > tbody > tr:hover > * {
+  background-color: rgba(var(--cu-secondary-rgb), 0.05);
+}
+
+/* ========================================
+   BADGE STYLES
+   ======================================== */
+.badge {
+  font-weight: 600;
+  padding: 0.375em 0.75em;
+  border-radius: 999px;
+}
+
+.badge-primary {
+  background-color: var(--cu-secondary-blue);
+}
+
+/* ========================================
+   BREADCRUMB CUSTOMIZATION
+   ======================================== */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0.75rem 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  color: #6b7280;
+}
+
+.breadcrumb-item.active {
+  color: var(--cu-primary-blue);
+  font-weight: 600;
+}
+
+/* ========================================
+   MODAL ENHANCEMENTS
+   ======================================== */
+.modal-header {
+  background: linear-gradient(135deg, var(--cu-primary-strong) 0%, var(--cu-primary-blue) 70%, var(--cu-secondary-blue) 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+}
+
+.modal-footer {
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-top-color: var(--cu-border-light);
+}
+
+/* ========================================
+   PAGINATION
+   ======================================== */
+.pagination .page-link {
+  color: var(--cu-primary-blue);
+  border-color: var(--cu-border-light);
+}
+
+.pagination .page-link:hover {
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  border-color: var(--cu-primary-blue);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--cu-primary-blue);
+  border-color: var(--cu-primary-blue);
+}
+
+/* ========================================
+   DROPDOWN MENUS
+   ======================================== */
+.dropdown-menu {
+  border-color: var(--cu-border-light);
+  box-shadow: var(--cu-shadow-sm);
+  border-radius: 1.15rem;
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+.dropdown-item:hover {
+  background-color: rgba(var(--cu-secondary-rgb), 0.05);
+  color: var(--cu-primary-blue);
+}
+
+.dropdown-item.active {
+  background-color: var(--cu-primary-blue);
+}
+
+/* ========================================
+   PROGRESS BARS
+   ======================================== */
+.progress {
+  background-color: rgba(var(--cu-primary-rgb), 0.08);
+  border-radius: 0.375rem;
+}
+
+.progress-bar {
+  background-color: var(--cu-primary-blue);
+}
+
+/* ========================================
+   ACCORDION
+   ======================================== */
+.accordion-button {
+  background-color: rgba(var(--cu-primary-rgb), 0.03);
+  color: var(--cu-primary-blue);
+  font-weight: 600;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--cu-primary-blue);
+  color: white;
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--cu-secondary-rgb), 0.2);
+}
+
+/* ========================================
+   TOOLTIPS & POPOVERS
+   ======================================== */
+.tooltip-inner {
+  background-color: var(--cu-primary-blue);
+}
+
+.popover {
+  border-color: var(--cu-border-light);
+}
+
+.popover-header {
+  background-color: var(--cu-primary-blue);
+  color: white;
+}
+
+/* ========================================
+   SPINNER/LOADING STATES
+   ======================================== */
+.spinner-border-primary {
+  color: var(--cu-primary-blue);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-muted-cu {
+  color: var(--cu-text-muted) !important;
+}
+
+.border-cu {
+  border-color: var(--cu-border-light) !important;
+}
+
+.bg-cu-light {
+  background-color: rgba(var(--cu-primary-rgb), 0.03) !important;
+}
+
+.shadow-cu {
+  box-shadow: var(--cu-shadow) !important;
+}
+
+.shadow-cu-sm {
+  box-shadow: var(--cu-shadow-sm) !important;
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+@media (max-width: 767px) {
+  .table-responsive-sm {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  .card,
+  .table {
+    box-shadow: none !important;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+}
+
+/* ========================================
+   SMOOTH SCROLLING
+   ======================================== */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ========================================
+   DARK MODE PREPARATION (Future Enhancement)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  /* Placeholder for future dark mode support */
+}

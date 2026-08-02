@@ -1023,19 +1023,22 @@
         // Reset state for fresh load
         physicsEnabled = false;
         try {
-            // Tier 1: Fetch skeleton manifest (cached in sessionStorage for instant reloads)
+            // Tier 1: Fetch the current manifest so a rebuild is visible immediately.
             var manifest = null;
             var cachedManifest = sessionStorage.getItem('skel_manifest');
             if (cachedManifest) {
-                try { manifest = JSON.parse(cachedManifest); } catch(e) { /* stale — refetch */ }
+                try { manifest = JSON.parse(cachedManifest); } catch(e) { /* stale - refetch */ }
             }
-            if (!manifest || !manifest.version || manifest.version === 'none') {
-                var manifestRes = await fetch('/api/understanding-graph/skeleton-manifest');
-                if (!manifestRes.ok) throw new Error('Manifest API returned ' + manifestRes.status);
+
+            var manifestRes = await fetch('/api/understanding-graph/skeleton-manifest', { cache: 'no-store' });
+            if (manifestRes.ok) {
                 manifest = await manifestRes.json();
-                if (manifest && manifest.version && manifest.version !== 'none') {
-                    try { sessionStorage.setItem('skel_manifest', JSON.stringify(manifest)); } catch(e) { /* quota exceeded — ignore */ }
-                }
+            } else if (!manifest) {
+                throw new Error('Manifest API returned ' + manifestRes.status);
+            }
+
+            if (manifest && manifest.version && manifest.version !== 'none') {
+                try { sessionStorage.setItem('skel_manifest', JSON.stringify(manifest)); } catch(e) { /* quota exceeded - ignore */ }
             }
 
             // Tier 2: Fetch static skeleton JSON (zero DB cost — served as static file, cached in sessionStorage)
@@ -1051,6 +1054,21 @@
                     skeletonData = await skelRes.json();
                     try { sessionStorage.setItem(skelCacheKey, JSON.stringify(skeletonData)); } catch(e) { /* quota exceeded */ }
                 }
+            }
+
+            // A deployment can replace static skeleton files while the browser still
+            // holds an older manifest. Fall back to the live map instead of rendering empty.
+            if (!skeletonData || !Array.isArray(skeletonData.nodes) || skeletonData.nodes.length === 0) {
+                sessionStorage.removeItem('skel_manifest');
+                if (manifest && manifest.version) sessionStorage.removeItem(skelCacheKey);
+
+                var mapRes = await fetch('/api/understanding-graph/map', { cache: 'no-store' });
+                if (!mapRes.ok) throw new Error('Graph map API returned ' + mapRes.status);
+                var liveMap = await mapRes.json();
+                skeletonData = {
+                    nodes: liveMap.nodes || liveMap.Nodes || [],
+                    edges: liveMap.edges || liveMap.Edges || []
+                };
             }
 
             // ── Render skeleton ──

@@ -10,11 +10,14 @@ namespace CommonUnderstanding.Services;
 
 /// <summary>
 /// Builds a Semantic Kernel backed by an Azure-first provider chain:
-///   1. Azure Foundry primary model
-///   2. Azure Foundry secondary model (optional)
-///   3. Ollama fallback (optional, typically for local/dev resiliency)
+///   1. Azure Foundry primary model (DeepSeek-V4-Flash)
+///   2. Azure Foundry secondary model (optional fallback, e.g. gpt-4o-mini)
+///   3. Azure Foundry Pro model (DeepSeek-V4-Pro) — reserved for special tasks
+///   4. Ollama fallback (optional, typically for local/dev resiliency)
 ///
 /// All call-sites continue to use <c>kernel.InvokePromptAsync()</c> unchanged.
+/// The Pro model is exposed via <see cref="GetProChatService"/> for services
+/// that need higher-quality reasoning (adjudication, synthesis, blindspot detection).
 /// </summary>
 public class SemanticKernelService
 {
@@ -241,6 +244,7 @@ public class SemanticKernelService
             _configuration["AzureFoundry:ApiKey"] ?? "",
             ResolveAzurePrimaryModel(),
             _configuration["AzureFoundry:SecondaryModelId"] ?? "",
+            ResolveAzureProModel(),
             _configuration["AzureFoundry:UseSecondaryFallback"] ?? "true",
             _configuration["Ollama:EnableFallback"] ?? "true",
             _configuration["Ollama:Endpoint"] ?? "http://localhost:11434",
@@ -252,7 +256,48 @@ public class SemanticKernelService
         if (!string.IsNullOrWhiteSpace(_runtimeConfig.Model))
             return _runtimeConfig.Model;
 
-        return _configuration["AzureFoundry:ModelId"] ?? "DeepSeek-V3-0324";
+        return _configuration["AzureFoundry:ModelId"] ?? "DeepSeek-V4-Flash";
+    }
+
+    internal string ResolveAzureProModel()
+    {
+        if (!string.IsNullOrWhiteSpace(_runtimeConfig.ProModel))
+            return _runtimeConfig.ProModel;
+
+        return _configuration["AzureFoundry:ProModelId"] ?? "DeepSeek-V4-Pro";
+    }
+
+    /// <summary>
+    /// Returns a standalone <see cref="IChatCompletionService"/> backed by the
+    /// Azure Foundry Pro model (DeepSeek-V4-Pro). This bypasses the fallback chain
+    /// so that special tasks always use the high-quality model.
+    /// Returns null if the Pro model is not configured.
+    /// </summary>
+    public IChatCompletionService? GetProChatService()
+    {
+        var azureEndpoint = _runtimeConfig.Endpoint ?? _configuration["AzureFoundry:Endpoint"];
+        var azureApiKey = _configuration["AzureFoundry:ApiKey"];
+        var proModel = ResolveAzureProModel();
+
+        if (string.IsNullOrWhiteSpace(azureEndpoint) ||
+            string.IsNullOrWhiteSpace(azureApiKey) ||
+            string.IsNullOrWhiteSpace(proModel))
+        {
+            _logger.LogInformation("Azure Foundry Pro model not configured — GetProChatService returns null.");
+            return null;
+        }
+
+        try
+        {
+            var service = BuildAzureFoundryService(proModel, azureEndpoint, azureApiKey);
+            _logger.LogInformation("Azure Foundry Pro chat service created (model: {Model}).", proModel);
+            return service;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not create Azure Foundry Pro chat service — returning null.");
+            return null;
+        }
     }
 
     public async Task<bool> TestConnectionAsync()

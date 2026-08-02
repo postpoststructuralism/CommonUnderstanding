@@ -27,12 +27,8 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "PostgreSQL";
 
         if (string.IsNullOrEmpty(connectionString))
-        {
-            // Fallback for local development
-            connectionString = dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase)
-                ? "Server=localhost;Database=CommonUnderstanding;Trusted_Connection=True;TrustServerCertificate=True;"
-                : "Host=localhost;Database=commonunderstanding;Username=postgres;Password=postgres";
-        }
+            throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is not configured. Set it in .NET user secrets or an environment variable.");
 
         var isPostgres = !dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase);
 

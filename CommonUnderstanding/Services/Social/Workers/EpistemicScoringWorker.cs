@@ -64,9 +64,11 @@ public class EpistemicScoringWorker : BackgroundService
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
+        var cutoff = DateTime.UtcNow - StaleThreshold;
+
         var staleProfiles = await db.EpistemicProfiles
             .AsNoTracking()
-            .Where(p => p.UpdatedAt < DateTime.UtcNow - StaleThreshold)
+            .Where(p => p.UpdatedAt < cutoff)
             .Take(50) // Process in batches
             .ToListAsync(ct);
 

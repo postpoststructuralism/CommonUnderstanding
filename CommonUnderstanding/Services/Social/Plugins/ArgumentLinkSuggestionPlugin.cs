@@ -4,7 +4,6 @@ using CommonUnderstanding.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Npgsql;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -127,33 +126,22 @@ public class ArgumentLinkSuggestionPlugin
     {
         try
         {
-            // Raw SQL for pgvector cosine similarity
-            // Using float4[] column type until pgvector NuGet is added
-            var results = await db.Database
-                .SqlQueryRaw<ArgumentSimilarityResult>(
-                    """
-                    SELECT
-                        a."Id",
-                        a."Title",
-                        a."UserId",
-                        0.5 AS "SimilarityScore"
-                    FROM "SocialArguments" a
-                    WHERE a."IsPublic" = true
-                      AND a."IsShadowBanned" = false
-                      AND a."Id" <> @excludeId
-                      AND a."Embedding" IS NOT NULL
-                    ORDER BY a."WilsonScore" DESC
-                    LIMIT @limit
-                    """,
-                    new NpgsqlParameter("excludeId", excludeId),
-                    new NpgsqlParameter("limit", limit))
+            var results = await db.SocialArguments
+                .AsNoTracking()
+                .Where(a => a.IsPublic
+                    && !a.IsShadowBanned
+                    && a.Id != excludeId
+                    && a.Embedding != null)
+                .OrderByDescending(a => a.WilsonScore)
+                .Take(limit)
+                .Select(a => new ArgumentSimilarityResult(a.Id, a.Title, a.UserId, 0.5))
                 .ToListAsync(ct);
 
             return results;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "pgvector similarity query failed; using fallback.");
+            _logger.LogWarning(ex, "Argument similarity query failed; using fallback.");
             return new List<ArgumentSimilarityResult>();
         }
     }

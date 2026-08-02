@@ -6,7 +6,6 @@ using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services.Social;
 using MathNet.Numerics.LinearAlgebra;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace CommonUnderstanding.Services;
 
@@ -663,48 +662,29 @@ public partial class UnderstandingGraphService
             schemaEntropy[id] = Math.Round(en / Math.Log(mems.Count, 2), 4);
         }
 
-        // Bulk update via raw SQL to avoid loading full entities
-        // Use a single UPDATE per metric for efficiency
-        var updateSql = @"
-            UPDATE ""UnderstandingNodes""
-            SET ""DegreeCentrality"" = c.""DegreeCentrality"",
-                ""BetweennessCentrality"" = c.""BetweennessCentrality"",
-                ""ClusteringCoefficient"" = c.""ClusteringCoefficient"",
-                ""PageRank"" = c.""PageRank"",
-                ""ControversyScore"" = c.""ControversyScore"",
-                ""DialecticalTemperature"" = c.""DialecticalTemperature"",
-                ""EigenvectorCentrality"" = c.""EigenvectorCentrality"",
-                ""SchemaEntropy"" = c.""SchemaEntropy""
-            FROM (VALUES {0}) AS c(""Id"", ""DegreeCentrality"", ""BetweennessCentrality"", ""ClusteringCoefficient"",
-                ""PageRank"", ""ControversyScore"", ""DialecticalTemperature"", ""EigenvectorCentrality"", ""SchemaEntropy"")
-            WHERE ""UnderstandingNodes"".""Id"" = c.""Id""";
-
-        // Build VALUES clause in batches of 500 to avoid parameter limits
+        // Load and save in batches so EF generates SQL for the configured provider.
         const int batchSize = 500;
         for (int batch = 0; batch < nodeIds.Count; batch += batchSize)
         {
             var batchIds = nodeIds.Skip(batch).Take(batchSize).ToList();
-            var valuesList = new List<string>();
-            var parameters = new List<Npgsql.NpgsqlParameter>();
+            var nodes = await db.UnderstandingNodes
+                .Where(node => batchIds.Contains(node.Id))
+                .ToListAsync();
 
-            for (int i = 0; i < batchIds.Count; i++)
+            foreach (var node in nodes)
             {
-                var id = batchIds[i];
-                var baseIdx = i * 9;
-                valuesList.Add($"(@p{baseIdx}, @p{baseIdx + 1}, @p{baseIdx + 2}, @p{baseIdx + 3}, @p{baseIdx + 4}, @p{baseIdx + 5}, @p{baseIdx + 6}, @p{baseIdx + 7}, @p{baseIdx + 8})");
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx}", id));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 1}", degreeCentrality[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 2}", betweennessCentrality[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 3}", clusteringCoefficient[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 4}", pr[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 5}", controversyScore[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 6}", dialecticalTemperature[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 7}", eigenvectorCentrality[id]));
-                parameters.Add(new Npgsql.NpgsqlParameter($"@p{baseIdx + 8}", schemaEntropy[id]));
+                node.DegreeCentrality = degreeCentrality[node.Id];
+                node.BetweennessCentrality = betweennessCentrality[node.Id];
+                node.ClusteringCoefficient = clusteringCoefficient[node.Id];
+                node.PageRank = pr[node.Id];
+                node.ControversyScore = controversyScore[node.Id];
+                node.DialecticalTemperature = dialecticalTemperature[node.Id];
+                node.EigenvectorCentrality = eigenvectorCentrality[node.Id];
+                node.SchemaEntropy = schemaEntropy[node.Id];
             }
 
-            var formattedSql = string.Format(updateSql, string.Join(", ", valuesList));
-            await db.Database.ExecuteSqlRawAsync(formattedSql, parameters);
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
         }
 
         _logger.LogInformation("Topology metrics recomputed for {Count} nodes (projection-based, no heavy column load).", nodeIds.Count);
