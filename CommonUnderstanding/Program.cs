@@ -243,6 +243,7 @@ builder.Services.AddScoped<VotingService>();
 builder.Services.AddScoped<FollowUpArgumentService>();
 builder.Services.AddScoped<ArgumentValidationService>();
 builder.Services.AddScoped<SocialArgumentAnalysisService>();
+builder.Services.AddScoped<BaselineContentGenerationService>();
 
 // Argument chain and worldview logic
 builder.Services.AddScoped<ArgumentChainService>();
@@ -263,6 +264,7 @@ builder.Services.AddHostedService<AIValidationWorker>();
 builder.Services.AddHostedService<EmbeddingBackfillWorker>();
 builder.Services.AddHostedService<ReplyCountWorker>();
 builder.Services.AddHostedService<DmiScoreWorker>();
+builder.Services.AddHostedService<BaselineContentWorker>();
 
 // ── Widget / Embeddable Comments Services ────────────────────────────────────
 builder.Services.AddScoped<ThreadService>();

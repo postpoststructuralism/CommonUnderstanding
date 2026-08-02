@@ -46,6 +46,7 @@ Razor views and static JavaScript render the result; SignalR pushes voting, deba
 ## Key Components
 - **Discovery and belief modelling** — adaptive conversations extract belief signals and update confidence-bearing worldview models; depends on AI orchestration and statistical services.
 - **Social argument platform** — feed, structured arguments, votes, replies, chains, debate rooms, reputation, and badges; depends on EF Core, background workers, and SignalR hubs.
+- **Baseline content generation** — a bounded hosted worker selects canonical belief systems, generates common arguments through the shared Semantic Kernel fallback chain, publishes them under an explicitly marked AI service account, and invokes the same decomposition and adjudication service used by human social posts. Stable source keys make publication resumable and idempotent.
 - **Understanding graph** — connects propositions, arguments, evidence, contradictions, syntheses, and snapshots for exploration; depends on persisted graph entities and visualization endpoints.
 - **Semantic Kernel integration** — central AI boundary for local or hosted model providers; provider behavior is controlled by runtime configuration rather than direct calls from views.
 - **ApplicationDbContext** — shared EF Core persistence boundary with SQL Server and PostgreSQL providers; migrations and provider-specific behavior must remain compatible with the selected deployment.

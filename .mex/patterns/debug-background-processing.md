@@ -35,6 +35,7 @@ Interactive discovery enqueues response analysis and consumes prefetched questio
 - A scoped `DbContext` reused across items can cause concurrency and stale-tracking failures.
 - In-memory queues lose pending work on process restart and do not coordinate across scaled-out instances.
 - Prefetch cache misses should fall back without blocking the entire discovery loop.
+- Baseline generation is disabled by default. Enable `BaselineContent:Enabled`, keep batches small, and use `GenerationSourceKey` plus `SourceArgumentId` to distinguish missing generation from incomplete analysis.
 
 ## Verify
 - [ ] Enqueue returns promptly and one item reaches a terminal logged state.

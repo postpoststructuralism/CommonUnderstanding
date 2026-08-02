@@ -39,6 +39,23 @@ public class SocialArgument : BaseEntity
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // ── Generation provenance ──
+    public bool IsAIGenerated { get; set; }
+
+    [MaxLength(300)]
+    public string? GenerationSourceKey { get; set; }
+
+    [MaxLength(100)]
+    public string? GeneratorProvider { get; set; }
+
+    [MaxLength(200)]
+    public string? GeneratorModel { get; set; }
+
+    [MaxLength(50)]
+    public string? GeneratorPromptVersion { get; set; }
+
+    public string? GenerationProvenanceJson { get; set; }
+
     // ── Denormalized vote tallies — updated asynchronously by VotingHub consumer ──
     public int UpvoteCount { get; set; } = 0;
     public int DownvoteCount { get; set; } = 0;

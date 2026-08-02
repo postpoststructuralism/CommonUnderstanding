@@ -332,6 +332,7 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.Username).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.Username).IsUnique();
             e.Property(x => x.DisplayName).HasMaxLength(200);
+            e.Property(x => x.IsServiceAccount).HasDefaultValue(false);
         });
 
         // AiUsageCounter
@@ -382,6 +383,10 @@ public class ApplicationDbContext : DbContext
              .IsUnique()
              .HasPostgresFilter("\"SourceArgumentId\" IS NOT NULL", IsPostgres)
              .HasDatabaseName("idx_socialarguments_sourceargumentid");
+              e.HasIndex(x => x.GenerationSourceKey)
+               .IsUnique()
+               .HasPostgresFilter("\"GenerationSourceKey\" IS NOT NULL", IsPostgres)
+               .HasDatabaseName("idx_socialarguments_generation_source");
         });
 
         // SocialArgumentProposition (join table)

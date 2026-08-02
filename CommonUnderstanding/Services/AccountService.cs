@@ -54,7 +54,7 @@ public class AccountService
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         var account = await db.UserAccounts
-            .FirstOrDefaultAsync(a => a.Username == username.ToLower() && a.IsActive);
+            .FirstOrDefaultAsync(a => a.Username == username.ToLower() && a.IsActive && !a.IsServiceAccount);
         if (account is null) return null;
 
         var result = _hasher.VerifyHashedPassword(account, account.PasswordHash, password);

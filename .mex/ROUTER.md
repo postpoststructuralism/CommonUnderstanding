@@ -40,6 +40,7 @@ Then read this file fully before doing anything else in this session.
 - EF Core supports runtime-selected SQL Server or PostgreSQL; production configuration selects SQL Server.
 - Semantic Kernel supports configured hosted models with local Ollama fallback and AI access policy.
 - Response analysis and question prefetch queues keep interactive discovery non-blocking.
+- Optional baseline-content generation publishes canonical belief-system arguments under a non-login AI service account, records generation provenance, and sends each post through the normal social analysis pipeline.
 
 **Not yet built or verified:**
 - A dedicated automated test project is not present in the solution.
