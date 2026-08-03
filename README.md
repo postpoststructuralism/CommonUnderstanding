@@ -177,6 +177,36 @@ dotnet run
 
 ---
 
+## Generate Baseline Arguments
+
+The optional baseline-content worker generates common, debatable arguments from the canonical belief systems shown in `/Explore`. It publishes them under the non-login **Common Understanding AI** service account and runs each argument through the same decomposition, validation, and adjudication pipeline used for human submissions.
+
+Before the first run, apply the EF Core migration to the configured database:
+
+```powershell
+dotnet ef database update --project .\CommonUnderstanding\CommonUnderstanding.csproj
+```
+
+Then enable a bounded local batch and start the application:
+
+```powershell
+$env:BaselineContent__Enabled = "true"
+$env:BaselineContent__StartupDelaySeconds = "0"
+$env:BaselineContent__ArgumentsPerBeliefSystem = "2"
+$env:BaselineContent__MaxBeliefSystemsPerBatch = "1"
+$env:BaselineContent__PollingIntervalMinutes = "30"
+$env:BaselineContent__TargetArgumentCount = "100"
+$env:BaselineContent__StopApplicationWhenTargetReached = "true"
+
+dotnet run --project .\CommonUnderstanding\CommonUnderstanding.csproj --launch-profile http
+```
+
+The application needs either a configured Azure Foundry provider or a reachable Ollama instance. Each batch processes at most `MaxBeliefSystemsPerBatch` belief systems and creates 1-5 arguments per system. `TargetArgumentCount` caps the total AI-generated records, while `StopApplicationWhenTargetReached` makes a bounded generation run exit after every generated record has completed normal analysis. Stable generation source keys make the process resumable and prevent intentional duplicate publication after a restart. Existing generated posts whose analysis was interrupted are analyzed before new content is requested.
+
+Stop the application after the desired baseline has been generated, then clear the PowerShell variables or set `BaselineContent__Enabled` to `false`. For persistent local or hosted operation, place the same values under the `BaselineContent` configuration section or use double-underscore application settings such as `BaselineContent__Enabled=true`.
+
+---
+
 ## 🎓 How It Works
 
 ### 1. Discovery Phase

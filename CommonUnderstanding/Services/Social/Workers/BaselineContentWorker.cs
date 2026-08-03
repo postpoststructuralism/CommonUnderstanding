@@ -11,29 +11,31 @@ public sealed class BaselineContentWorker : BackgroundService
     private const string ServiceAccountUsername = "common-understanding-ai";
     private const string ServiceAccountDisplayName = "Common Understanding AI";
 
-    private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly BeliefSystemKnowledgeBase _knowledgeBase;
     private readonly IConfiguration _configuration;
+    private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<BaselineContentWorker> _logger;
 
     public BaselineContentWorker(
-        IDbContextFactory<ApplicationDbContext> dbFactory,
         IServiceScopeFactory scopeFactory,
         BeliefSystemKnowledgeBase knowledgeBase,
         IConfiguration configuration,
+        IHostApplicationLifetime applicationLifetime,
         ILogger<BaselineContentWorker> logger)
     {
-        _dbFactory = dbFactory;
         _scopeFactory = scopeFactory;
         _knowledgeBase = knowledgeBase;
         _configuration = configuration;
+        _applicationLifetime = applicationLifetime;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_configuration.GetValue("BaselineContent:Enabled", false))
+        var isEnabled = _configuration.GetValue("BaselineContent:Enabled", false);
+        _logger.LogInformation("Baseline content worker starting. Enabled: {Enabled}.", isEnabled);
+        if (!isEnabled)
         {
             _logger.LogInformation("Baseline content generation is disabled.");
             return;
@@ -45,12 +47,20 @@ public sealed class BaselineContentWorker : BackgroundService
             Math.Max(1, _configuration.GetValue("BaselineContent:PollingIntervalMinutes", 30)));
 
         await Task.Delay(startupDelay, stoppingToken);
+        _logger.LogInformation("Baseline content worker processing its first batch.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await ProcessBatchAsync(stoppingToken);
+                var targetReached = await ProcessBatchAsync(stoppingToken);
+                if (targetReached && _configuration.GetValue(
+                        "BaselineContent:StopApplicationWhenTargetReached", false))
+                {
+                    _logger.LogInformation("Baseline content target reached; stopping the application.");
+                    _applicationLifetime.StopApplication();
+                    return;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -65,26 +75,36 @@ public sealed class BaselineContentWorker : BackgroundService
         }
     }
 
-    private async Task ProcessBatchAsync(CancellationToken cancellationToken)
+    private async Task<bool> ProcessBatchAsync(CancellationToken cancellationToken)
     {
         var argumentsPerSystem = Math.Clamp(
             _configuration.GetValue("BaselineContent:ArgumentsPerBeliefSystem", 2), 1, 5);
         var maxSystemsPerBatch = Math.Clamp(
             _configuration.GetValue("BaselineContent:MaxBeliefSystemsPerBatch", 1), 1, 10);
+        var targetArgumentCount = Math.Max(
+            0, _configuration.GetValue("BaselineContent:TargetArgumentCount", 0));
 
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var account = await EnsureServiceAccountAsync(db, cancellationToken);
+        var generatedCount = await db.SocialArguments
+            .CountAsync(argument => argument.IsAIGenerated, cancellationToken);
 
         var systemsToProcess = new List<CanonicalBeliefSystem>();
         foreach (var system in _knowledgeBase.AllSystems.OrderBy(system => system.Name))
         {
             var prefix = BuildSourcePrefix(system);
-            var existingCount = await db.SocialArguments
-                .CountAsync(argument =>
+            var existingArguments = db.SocialArguments
+                .Where(argument =>
                     argument.GenerationSourceKey != null &&
-                    argument.GenerationSourceKey.StartsWith(prefix), cancellationToken);
+                    argument.GenerationSourceKey.StartsWith(prefix));
+            var existingCount = await existingArguments.CountAsync(cancellationToken);
+            var hasPendingAnalysis = await existingArguments
+                .AnyAsync(argument => !argument.SourceArgumentId.HasValue, cancellationToken);
 
-            if (existingCount < argumentsPerSystem)
+            var canGenerate = targetArgumentCount == 0 || generatedCount < targetArgumentCount;
+            if ((canGenerate && existingCount < argumentsPerSystem) || hasPendingAnalysis)
                 systemsToProcess.Add(system);
 
             if (systemsToProcess.Count >= maxSystemsPerBatch)
@@ -93,12 +113,33 @@ public sealed class BaselineContentWorker : BackgroundService
 
         foreach (var system in systemsToProcess)
         {
+            generatedCount = await db.SocialArguments
+                .CountAsync(argument => argument.IsAIGenerated, cancellationToken);
+            var remainingTarget = targetArgumentCount == 0
+                ? int.MaxValue
+                : Math.Max(0, targetArgumentCount - generatedCount);
+            var existingForSystem = await db.SocialArguments.CountAsync(argument =>
+                argument.GenerationSourceKey != null &&
+                argument.GenerationSourceKey.StartsWith(BuildSourcePrefix(system)), cancellationToken);
+            var systemTarget = Math.Min(
+                argumentsPerSystem,
+                existingForSystem + remainingTarget);
+
             await ProcessBeliefSystemAsync(
                 system,
                 account.Id,
-                argumentsPerSystem,
+                systemTarget,
                 cancellationToken);
         }
+
+        if (targetArgumentCount == 0)
+            return false;
+
+        var finalCount = await db.SocialArguments
+            .CountAsync(argument => argument.IsAIGenerated, cancellationToken);
+        var hasPendingTargetAnalysis = await db.SocialArguments.AnyAsync(argument =>
+            argument.IsAIGenerated && !argument.SourceArgumentId.HasValue, cancellationToken);
+        return finalCount >= targetArgumentCount && !hasPendingTargetAnalysis;
     }
 
     private async Task ProcessBeliefSystemAsync(
@@ -113,7 +154,18 @@ public sealed class BaselineContentWorker : BackgroundService
 
         var existingBySlot = await LoadExistingArgumentsAsync(system, cancellationToken);
         foreach (var existing in existingBySlot.Values.Where(argument => !argument.SourceArgumentId.HasValue))
-            await analysis.AnalyzeSocialArgumentAsync(existing.Id, cancellationToken);
+        {
+            try
+            {
+                await analysis.AnalyzeSocialArgumentAsync(existing.Id, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Skipping analysis for existing pending argument {ArgumentId} in {BeliefSystem}; will retry next cycle.",
+                    existing.Id, system.Slug);
+            }
+        }
 
         var missingSlots = Enumerable.Range(1, argumentsPerSystem)
             .Where(slot => !existingBySlot.ContainsKey(slot))
@@ -138,7 +190,16 @@ public sealed class BaselineContentWorker : BackgroundService
                 sourceKey,
                 cancellationToken);
 
-            await analysis.AnalyzeSocialArgumentAsync(socialArgumentId, cancellationToken);
+            try
+            {
+                await analysis.AnalyzeSocialArgumentAsync(socialArgumentId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Skipping analysis for newly generated argument {ArgumentId} in {BeliefSystem}; will retry next cycle.",
+                    socialArgumentId, system.Slug);
+            }
         }
     }
 
@@ -146,7 +207,9 @@ public sealed class BaselineContentWorker : BackgroundService
         CanonicalBeliefSystem system,
         CancellationToken cancellationToken)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var prefix = BuildSourcePrefix(system);
         var existing = await db.SocialArguments
             .AsNoTracking()
@@ -175,7 +238,9 @@ public sealed class BaselineContentWorker : BackgroundService
         string sourceKey,
         CancellationToken cancellationToken)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var existing = await db.SocialArguments
             .AsNoTracking()
             .FirstOrDefaultAsync(argument => argument.GenerationSourceKey == sourceKey, cancellationToken);
