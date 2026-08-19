@@ -90,3 +90,7 @@ launchSettings.json
 /CommonUnderstanding/arguments.db
 /CommonUnderstanding/arguments.db-shm
 /CommonUnderstanding/arguments.db-wal
+/.mex/patterns/change-ai-integration.md
+/.mex/ROUTER.md
+/.mex/events/decisions.jsonl
+/.mex/patterns/deploy-azure.md
