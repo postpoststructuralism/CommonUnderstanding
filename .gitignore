@@ -94,3 +94,14 @@ launchSettings.json
 /.mex/ROUTER.md
 /.mex/events/decisions.jsonl
 /.mex/patterns/deploy-azure.md
+/.build/production-logs-postrestart
+/.build
+/.build/common-understanding-v2.zip
+/.build/production-logs-postrestart.zip
+/.build/production-logs-tar
+/.build/production-logs.zip
+/.build/production-publish
+/.build/request-source-logs.zip
+/.build/worldview-explicit-partial
+/.build/worldview-prevalence
+/.build/worldview-prevalence-ui

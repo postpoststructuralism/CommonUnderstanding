@@ -7,8 +7,8 @@ param(
     [string]$Location = "canadaeast",
     [string]$PlanName = "Initial",
     [string]$Runtime = "dotnet:9",
-    [string]$AzureFoundryModelId = "DeepSeek-V3-0324",
-    [string]$AzureFoundrySecondaryModelId = "gpt-4o-mini",
+    [string]$AzureFoundryModelId = "DeepSeek-V4-Flash",
+    [string]$AzureFoundrySecondaryModelId = "DeepSeek-V4-Pro",
     [int]$FreeAiRequestLimit = 120
 )
 

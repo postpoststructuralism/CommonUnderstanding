@@ -1,0 +1,343 @@
+[
+  {
+    "Name": "Keynesian Economics",
+    "Category": "Economic",
+    "Culture": "Western/Global",
+    "Era": "20th century - Present",
+    "Description": "Economic theory holding that aggregate demand is the primary driver of economic output, and that governments should use fiscal and monetary policy to manage demand and prevent recessions.",
+    "Sources": [
+      "The General Theory of Employment, Interest and Money (John Maynard Keynes)",
+      "A Tract on Monetary Reform (Keynes)",
+      "Essays in Persuasion (Keynes)",
+      "Stabilizing an Unstable Economy (Hyman Minsky)"
+    ],
+    "CorePrinciples": [
+      "Aggregate demand determines output and employment in the short run",
+      "Markets can fail and get stuck in recessions; government must intervene",
+      "Fiscal policy: government spending and taxation to manage economic cycle",
+      "Monetary policy: interest rates to influence borrowing and investment",
+      "Animal spirits: investor psychology drives booms and busts",
+      "Paradox of thrift: individual saving can harm the collective economy",
+      "In the long run we are all dead: urgent action matters"
+    ],
+    "NotableFigures": [
+      "John Maynard Keynes",
+      "Paul Samuelson",
+      "Alvin Hansen",
+      "Hyman Minsky",
+      "Joseph Stiglitz",
+      "Paul Krugman"
+    ],
+    "Regions": [
+      "United Kingdom (origin)",
+      "United States",
+      "Global mainstream economics"
+    ]
+  },
+  {
+    "Name": "Neoclassical / Neoliberal Economics",
+    "Category": "Economic",
+    "Culture": "Western/Global",
+    "Era": "Late 19th century - Present (dominant from 1980s)",
+    "Description": "Mainstream economic paradigm emphasizing markets, price mechanisms, rational actors, and the efficiency of free markets, with neoliberalism applying this to policy through privatization and deregulation.",
+    "Sources": [
+      "Principles of Economics (Alfred Marshall)",
+      "The Wealth of Nations (Adam Smith — classical precursor)",
+      "Capitalism and Freedom (Milton Friedman)",
+      "The Road to Serfdom (F.A. Hayek)"
+    ],
+    "CorePrinciples": [
+      "Rational actors maximize utility; markets aggregate preferences efficiently",
+      "Price mechanism allocates resources better than central planning",
+      "Supply and demand as fundamental economic forces",
+      "Free trade increases prosperity for all parties",
+      "Marginal analysis: decisions made at the margin",
+      "Privatization and deregulation improve efficiency",
+      "Inflation control as primary monetary policy goal",
+      "Trickle-down: growth benefits everyone through markets"
+    ],
+    "NotableFigures": [
+      "Alfred Marshall",
+      "Milton Friedman",
+      "F.A. Hayek",
+      "George Stigler",
+      "Gary Becker"
+    ],
+    "Regions": [
+      "Chicago School (United States)",
+      "Global — dominant in international institutions (IMF, World Bank)"
+    ]
+  },
+  {
+    "Name": "Austrian School of Economics",
+    "Category": "Economic",
+    "Culture": "Austrian/Western",
+    "Era": "Late 19th century - Present",
+    "Description": "Economic tradition emphasizing methodological individualism, subjective value theory, capital theory, and the impossibility of socialist economic calculation.",
+    "Sources": [
+      "Principles of Economics (Carl Menger)",
+      "Socialism (Ludwig von Mises)",
+      "Human Action (Ludwig von Mises)",
+      "Man, Economy, and State (Murray Rothbard)"
+    ],
+    "CorePrinciples": [
+      "Methodological individualism: all economic phenomena explained by individual action",
+      "Subjective value theory: value is determined by individual preferences, not labor",
+      "Economic calculation problem: socialism cannot rationally allocate resources",
+      "Business cycle theory: central bank credit expansion causes booms and busts",
+      "Time preference: people prefer present goods to future goods",
+      "Spontaneous order: markets emerge from human action, not design",
+      "Praxeology: deductive method from axiom of human action"
+    ],
+    "NotableFigures": [
+      "Carl Menger (founder)",
+      "Ludwig von Mises",
+      "Friedrich Hayek",
+      "Murray Rothbard",
+      "Israel Kirzner"
+    ],
+    "Regions": [
+      "Austria/Vienna (historical)",
+      "United States (Mises Institute)"
+    ]
+  },
+  {
+    "Name": "Marxist Political Economy",
+    "Category": "Economic",
+    "Culture": "German/Global",
+    "Era": "19th century - Present",
+    "Description": "Economic analysis examining capitalism as a system of class exploitation, focusing on the labor theory of value, surplus value extraction, and the tendency of capitalism toward crisis.",
+    "Sources": [
+      "Capital (Karl Marx)",
+      "Theories of Surplus Value (Marx)",
+      "The Accumulation of Capital (Rosa Luxemburg)",
+      "Imperialism, the Highest Stage of Capitalism (Lenin)"
+    ],
+    "CorePrinciples": [
+      "Labor theory of value: labor-time is the source of all value",
+      "Surplus value: workers create more value than they receive in wages",
+      "Capital accumulation drives capitalism; profit is unpaid labor",
+      "Tendency of the rate of profit to fall",
+      "Commodity fetishism: social relations appear as relations between things",
+      "Economic crises are inherent in capitalism, not external shocks",
+      "Class struggle between bourgeoisie (owners) and proletariat (workers)",
+      "Imperialism as capitalism's geographic expansion"
+    ],
+    "NotableFigures": [
+      "Karl Marx",
+      "Friedrich Engels",
+      "Rosa Luxemburg",
+      "Vladimir Lenin",
+      "David Harvey (contemporary)"
+    ],
+    "Regions": [
+      "Germany (origin)",
+      "Soviet Union, China, Cuba (applied)",
+      "Global academic influence"
+    ]
+  },
+  {
+    "Name": "Modern Monetary Theory (MMT)",
+    "Category": "Economic",
+    "Culture": "Western",
+    "Era": "1990s - Present",
+    "Description": "Heterodox economic theory arguing that monetarily sovereign governments that issue their own currency can never 'run out of money,' and unemployment is always a policy choice.",
+    "Sources": [
+      "Soft Currency Economics (Warren Mosler)",
+      "The Deficit Myth (Stephanie Kelton)",
+      "Monetary Theory and Policy Practice (Randall Wray)",
+      "Seven Deadly Innocent Frauds (Warren Mosler)"
+    ],
+    "CorePrinciples": [
+      "Monetary sovereign governments (e.g., US, Japan) are currency issuers, not users",
+      "Government deficits are non-government surpluses",
+      "Inflation, not insolvency, is the real constraint on government spending",
+      "Job Guarantee: government as employer of last resort eliminates involuntary unemployment",
+      "Taxes function to create demand for currency and control inflation, not fund spending",
+      "Balance of payments: imports are a benefit, exports are a cost",
+      "Interest rate management by central bank is a policy choice, not a necessity"
+    ],
+    "NotableFigures": [
+      "Warren Mosler",
+      "Stephanie Kelton",
+      "L. Randall Wray",
+      "Pavlina Tcherneva",
+      "Bill Mitchell"
+    ],
+    "Regions": [
+      "United States",
+      "Australia",
+      "Academic heterodox economics"
+    ]
+  },
+  {
+    "Name": "Institutional Economics",
+    "Category": "Economic",
+    "Culture": "American/Global",
+    "Era": "Early 20th century - Present",
+    "Description": "Economic approach emphasizing the role of institutions, social norms, power, and history in shaping economic behavior and outcomes, rejecting the abstraction of pure market models.",
+    "Sources": [
+      "The Theory of the Leisure Class (Thorstein Veblen)",
+      "The Theory of Economic Development (Joseph Schumpeter)",
+      "The New Institutional Economics (Douglass North)",
+      "Governing the Commons (Elinor Ostrom)"
+    ],
+    "CorePrinciples": [
+      "Institutions (rules, norms, laws) shape economic behavior as much as prices",
+      "Path dependence: history matters; past choices constrain future options",
+      "Transaction costs are central to understanding economic organization",
+      "Property rights and legal frameworks determine economic outcomes",
+      "Commons can be managed sustainably without privatization or state control",
+      "Veblen: conspicuous consumption, not utility, drives much behavior",
+      "Evolutionary economics: economies evolve like biological systems"
+    ],
+    "NotableFigures": [
+      "Thorstein Veblen (founder)",
+      "John Commons",
+      "Douglass North",
+      "Elinor Ostrom (Nobel laureate)",
+      "Daron Acemoglu"
+    ],
+    "Regions": [
+      "United States",
+      "Global academic economics"
+    ]
+  },
+  {
+    "Name": "Behavioral Economics",
+    "Category": "Economic",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Economic approach integrating psychological insights into economic models, demonstrating that humans systematically deviate from rational choice in predictable ways.",
+    "Sources": [
+      "Thinking, Fast and Slow (Daniel Kahneman)",
+      "Nudge (Thaler and Sunstein)",
+      "Misbehaving (Richard Thaler)",
+      "Predictably Irrational (Dan Ariely)"
+    ],
+    "CorePrinciples": [
+      "Bounded rationality: humans make good-enough, not optimal, decisions",
+      "Cognitive biases: systematic errors in thinking (anchoring, availability, framing)",
+      "Prospect theory: losses loom larger than gains",
+      "Status quo bias and default effects shape behavior",
+      "Nudge: choice architecture can improve decisions without coercion",
+      "Hyperbolic discounting: we overvalue the present vs. the future",
+      "Social norms and identity shape economic decisions"
+    ],
+    "NotableFigures": [
+      "Daniel Kahneman (Nobel laureate)",
+      "Amos Tversky",
+      "Richard Thaler (Nobel laureate)",
+      "Cass Sunstein",
+      "Dan Ariely"
+    ],
+    "Regions": [
+      "United States",
+      "United Kingdom",
+      "Israel (Kahneman and Tversky)",
+      "Global policy influence"
+    ]
+  },
+  {
+    "Name": "Degrowth Economics",
+    "Category": "Economic",
+    "Culture": "Western/Global",
+    "Era": "Late 20th century - Present",
+    "Description": "Economic paradigm challenging growth as the primary goal of economies, arguing that sustainable wellbeing requires deliberately reducing production and consumption in wealthy nations.",
+    "Sources": [
+      "Limits to Growth (Meadows et al.)",
+      "Prosperity Without Growth (Tim Jackson)",
+      "Degrowth: A Vocabulary for a New Era (D'Alisa et al.)",
+      "The Entropy Law and the Economic Process (Nicholas Georgescu-Roegen)"
+    ],
+    "CorePrinciples": [
+      "GDP growth on a finite planet is unsustainable and harmful",
+      "Wellbeing, not growth, should be the goal of economic policy",
+      "Reduced working time and more leisure vs. more consumption",
+      "Redistribution within economies, not growth, addresses poverty",
+      "Circular economy: waste as resource, minimize throughput",
+      "Care economy: valuing unpaid work, relationships, community",
+      "Conviviality: good life defined by relationships, not things"
+    ],
+    "NotableFigures": [
+      "Nicholas Georgescu-Roegen",
+      "Serge Latouche",
+      "Tim Jackson",
+      "Kate Raworth (Doughnut Economics)",
+      "Jason Hickel"
+    ],
+    "Regions": [
+      "France (origin of degrowth movement)",
+      "Southern Europe",
+      "Global ecological economics community"
+    ]
+  },
+  {
+    "Name": "Mercantilism",
+    "Category": "Economic",
+    "Culture": "Western European",
+    "Era": "16th-18th century (historical); influences persist",
+    "Description": "Early modern economic doctrine holding that national wealth consists in accumulating precious metals through a favorable balance of trade, achieved by promoting exports and restricting imports.",
+    "Sources": [
+      "A Discourse of Trade (Nicholas Barbon)",
+      "Discourse on Trade (Thomas Mun)",
+      "Political Arithmetick (William Petty)",
+      "The Wealth of Nations critique (Adam Smith)"
+    ],
+    "CorePrinciples": [
+      "Nation's wealth measured by stock of gold and silver",
+      "Favorable balance of trade: exports exceed imports",
+      "State intervention in economy to maximize trade surplus",
+      "Colonies exist to supply raw materials and buy manufactured goods",
+      "Economic competition between nations is zero-sum",
+      "Strong state and navy protect trade routes and markets",
+      "Protectionism: tariffs and subsidies defend domestic industries"
+    ],
+    "NotableFigures": [
+      "Jean-Baptiste Colbert (France)",
+      "Thomas Mun",
+      "William Petty",
+      "Jean Bodin"
+    ],
+    "Regions": [
+      "England",
+      "France",
+      "Netherlands",
+      "Spain",
+      "Portugal"
+    ]
+  },
+  {
+    "Name": "Market Socialism",
+    "Category": "Economic",
+    "Culture": "Western/Global",
+    "Era": "20th century - Present",
+    "Description": "Economic system combining social or worker ownership of the means of production with market mechanisms for allocation, aiming to achieve socialist goals without central planning.",
+    "Sources": [
+      "On the Economic Theory of Socialism (Oskar Lange)",
+      "Economic Democracy (David Schweickart)",
+      "The Socialist System (János Kornai)",
+      "Building a Cooperative Economy (John Restakis)"
+    ],
+    "CorePrinciples": [
+      "Worker cooperatives or social ownership replaces private firms",
+      "Market prices coordinate production and distribution",
+      "Profits distributed to workers, not private shareholders",
+      "Investment funded by public banks or social investment funds",
+      "Competition between worker-owned firms in markets",
+      "No private appropriation of surplus value",
+      "Freedom and efficiency of markets without capitalist exploitation"
+    ],
+    "NotableFigures": [
+      "Oskar Lange",
+      "David Schweickart",
+      "Jaroslav Vanek",
+      "Mondragón Cooperative Corporation (example)"
+    ],
+    "Regions": [
+      "Yugoslavia (historical — self-management socialism)",
+      "Mondragón, Spain",
+      "Academic economic theory"
+    ]
+  }
+]

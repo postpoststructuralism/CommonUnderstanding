@@ -20,14 +20,26 @@ public class EmergentConclusionsController : Controller
     }
 
     // ── GET /EmergentConclusions ──────────────────────────────────────────────
-    // Standard (graph-only) analysis. Auto-persists every result.
+    // Shows the latest saved report; an explicit refresh regenerates and persists it.
 
-    public async Task<IActionResult> Index(CancellationToken ct = default)
+    public async Task<IActionResult> Index(bool refresh = false, CancellationToken ct = default)
     {
         try
         {
-            var report = await _engine.GenerateReportAsync(ct: ct);
+            if (!refresh)
+            {
+                var savedReport = await _engine.LoadLatestPersistedReportAsync(ct);
+                if (savedReport != null)
+                    return View(savedReport);
 
+                return View(new EmergentConclusionsReport
+                {
+                    HasSufficientData = false,
+                    InsufficientDataReason = "No saved analysis is available yet. Select Refresh to generate one."
+                });
+            }
+
+            var report = await _engine.GenerateReportAsync(ct: ct);
             if (report.HasSufficientData)
                 await _engine.PersistReportAsync(report, ct);
 

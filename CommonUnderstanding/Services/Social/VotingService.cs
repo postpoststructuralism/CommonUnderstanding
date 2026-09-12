@@ -201,6 +201,29 @@ public class VotingService
         argument.HotScore = hotScore;
         argument.UpdatedAt = DateTime.UtcNow;
 
+        var argumentWork = await db.RecommendationArgumentWork.FindAsync([argumentId], ct);
+        if (argumentWork is null)
+        {
+            argumentWork = new RecommendationArgumentWork { ArgumentId = argumentId };
+            db.RecommendationArgumentWork.Add(argumentWork);
+        }
+        argumentWork.RequestedAt = DateTime.UtcNow;
+        argumentWork.AttemptCount = 0;
+        argumentWork.LastError = null;
+
+        foreach (var userId in votes.Select(vote => vote.UserId).Distinct())
+        {
+            var userWork = await db.RecommendationUserWork.FindAsync([userId], ct);
+            if (userWork is null)
+            {
+                userWork = new RecommendationUserWork { UserId = userId };
+                db.RecommendationUserWork.Add(userWork);
+            }
+            userWork.RequestedAt = DateTime.UtcNow;
+            userWork.AttemptCount = 0;
+            userWork.LastError = null;
+        }
+
         await db.SaveChangesAsync(ct);
 
         return BuildTally(argument, votes);

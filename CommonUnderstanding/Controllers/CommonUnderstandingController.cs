@@ -22,16 +22,17 @@ public class CommonUnderstandingController : Controller
     {
         ViewBag.Query = search;
         ViewBag.Filter = filter;
-        ViewBag.Stats = await _cuService.GetStatisticsAsync();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var results = await _cuService.SearchAsync(search);
+            ViewBag.Stats = await _cuService.GetStatisticsAsync();
             ViewBag.IsSearch = true;
             return View(results);
         }
 
         var all = await _cuService.GetAllAsync();
+        ViewBag.Stats = CommonUnderstandingService.CalculateStatistics(all);
 
         if (!string.IsNullOrWhiteSpace(filter) && filter != "all")
         {
@@ -51,7 +52,9 @@ public class CommonUnderstandingController : Controller
             }
         }
 
-        var grouped = await _cuService.GetGroupedByStatusAsync();
+        var grouped = all
+            .GroupBy(n => n.Status)
+            .ToDictionary(group => group.Key, group => group.ToList());
         ViewBag.Grouped = grouped;
         ViewBag.IsSearch = false;
         return View(all);

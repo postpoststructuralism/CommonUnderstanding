@@ -17,6 +17,7 @@ public class AIValidationWorker : BackgroundService
     private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<AIValidationWorker> _logger;
 
     private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(30);
@@ -25,11 +26,13 @@ public class AIValidationWorker : BackgroundService
         SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
+        RecentUserActivity userActivity,
         ILogger<AIValidationWorker> logger)
     {
         _dbFactory = dbFactory;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -44,7 +47,10 @@ public class AIValidationWorker : BackgroundService
         {
             try
             {
-                await ProcessPendingArgumentsAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    await ProcessPendingArgumentsAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)

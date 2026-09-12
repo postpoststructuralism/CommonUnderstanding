@@ -116,6 +116,11 @@ public class CommonUnderstandingService
     public async Task<GraphStatistics> GetStatisticsAsync()
     {
         var nodes = await _db.CommonUnderstandingNodes.ToListAsync();
+        return CalculateStatistics(nodes);
+    }
+
+    public static GraphStatistics CalculateStatistics(IReadOnlyCollection<CommonUnderstandingNode> nodes)
+    {
         return new GraphStatistics
         {
             TotalNodes = nodes.Count,

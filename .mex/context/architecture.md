@@ -23,7 +23,7 @@ edges:
 # Broad overview: keep this empty unless a claim depends on a few specific symbols.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-08-02
+last_updated: 2026-09-06
 ---
 
 # Architecture
@@ -41,15 +41,19 @@ Controllers coordinate discovery, debate, social argument, account, and understa
 Services apply domain logic, persist state through EF Core, and invoke AI orchestration through Microsoft Semantic Kernel.
 Runtime configuration selects SQL Server or PostgreSQL for persistence and selects a configured AI provider/model.
 Background workers handle deferred social analysis and scoring so expensive AI work does not block interactive requests.
+Periodic database-backed workers check a process-local recent-user activity gate before opening EF Core scopes; dynamic requests refresh the gate, while queue-driven response processing remains independent.
 Razor views and static JavaScript render the result; SignalR pushes voting, debate, discovery, chain, and reputation updates to connected clients.
+A separate local-only Razor Pages project reads App Service, Azure SQL, and Foundry model-call/token metrics from Azure Monitor through the developer's Azure identity, plus sanitized endpoint counts from retained `AppServiceHTTPLogs` in Log Analytics and optional bounded production SQL queries through a read-only user secret. It has no automatic polling, so viewing operations data does not continuously prevent SQL serverless auto-pause.
 
 ## Key Components
 - **Discovery and belief modelling** — adaptive conversations extract belief signals and update confidence-bearing worldview models; depends on AI orchestration and statistical services.
-- **Social argument platform** — feed, structured arguments, votes, replies, chains, debate rooms, reputation, and badges; depends on EF Core, background workers, and SignalR hubs.
+- **Social argument platform** — structured arguments, votes, replies, chains, debate rooms, reputation, badges, and a multi-lane feed ranker that blends personal interest, growth fit, collective value, exploration, and diversity while persisting user controls and engagement events; depends on EF Core, background workers, and SignalR hubs.
+- **Recommendation projections** — SQL-backed argument and user features support bounded candidate retrieval without rebuilding the social graph during feed requests. Durable work rows drive an activity-gated projection worker, indexed serving hydrates only the selected page, and a bounded process-local channel writes lossy impression telemetry asynchronously. A configuration flag keeps the legacy ranker available as a fallback during rollout.
 - **Baseline content generation** — a bounded hosted worker selects canonical belief systems, generates common arguments through the shared Semantic Kernel fallback chain, publishes them under an explicitly marked AI service account, and invokes the same decomposition and adjudication service used by human social posts. Stable source keys make publication resumable and idempotent.
 - **Understanding graph** — connects propositions, arguments, evidence, contradictions, syntheses, and snapshots for exploration; depends on persisted graph entities and visualization endpoints.
 - **Semantic Kernel integration** — central AI boundary for local or hosted model providers; provider behavior is controlled by runtime configuration rather than direct calls from views.
 - **ApplicationDbContext** — shared EF Core persistence boundary with SQL Server and PostgreSQL providers; migrations and provider-specific behavior must remain compatible with the selected deployment.
+- **Local operations dashboard** — `CommonUnderstanding.Admin` aggregates cached adoption queries, Azure platform and Foundry AI compute metrics, sanitized Log Analytics endpoint counts, and process-lifetime availability observations without being deployed alongside the application.
 
 ## External Dependencies
 - **SQL Server / Azure SQL** — current hosted relational store and supported local provider through EF Core.
@@ -61,5 +65,5 @@ Razor views and static JavaScript render the result; SignalR pushes voting, deba
 ## What Does NOT Exist Here
 - There is no separate SPA repository: the user interface is Razor views and static assets served by the ASP.NET Core application.
 - There is no separately deployed worker project: hosted background services run in the web application process.
-- There is no dedicated automated test project in the solution; verification currently relies on build checks and focused runtime/database diagnostics.
+- `CommonUnderstanding.Tests` provides focused xUnit coverage for activity gating and request-pipeline placement; broader integration and production smoke coverage remains limited.
 - The generated `publish/`, `bin/`, deployment archives, and downloaded App Service logs are artifacts, not implementation sources.

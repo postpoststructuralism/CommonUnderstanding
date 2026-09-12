@@ -123,8 +123,9 @@ az webapp config appsettings set --name $AppName --resource-group $ResourceGroup
     ConnectionStrings__DefaultConnection="$databaseConnectionString" `
     AzureFoundry__Endpoint="$azureFoundryEndpoint" `
     AzureFoundry__ApiKey="$azureFoundryApiKey" `
-    AzureFoundry__ModelId="DeepSeek-V3-0324" `
-    AzureFoundry__SecondaryModelId="gpt-4o-mini" `
+    AzureFoundry__ModelId="DeepSeek-V4-Flash" `
+    AzureFoundry__SecondaryModelId="DeepSeek-V4-Pro" `
+    AzureFoundry__ProModelId="DeepSeek-V4-Pro" `
     AzureFoundry__UseSecondaryFallback="true" `
     AiAccessPolicy__Enabled="true" `
     AiAccessPolicy__FreeAiRequestLimit="120" `

@@ -1,0 +1,36 @@
+@model IReadOnlyList<CommonUnderstanding.Models.Social.WorldviewCommunityView>
+
+<section class="insight-panel my-4">
+    <div class="worldview-kicker">Community prevalence</div>
+    <h2 class="section-heading">How common are these interests and opinions?</h2>
+    <p class="text-secondary small">Topic commonness measures how many community authors discuss comparable ideas. Opinion standing is separate and uses votes only on your exact published argument.</p>
+    <div class="prevalence-list">
+        @foreach (var view in Model)
+        {
+            <article class="prevalence-row">
+                <strong>@view.Title</strong>
+                <div class="prevalence-measures">
+                    <div>
+                        <span class="prevalence-label">Area of interest</span>
+                        <span class="prevalence-value">@view.InterestPrevalence</span>
+                        <span class="text-secondary small">@view.SimilarAuthorCount of @view.CommunityAuthorCount other active members posted @view.SimilarArgumentCount comparable argument@(view.SimilarArgumentCount == 1 ? "" : "s").</span>
+                    </div>
+                    <div>
+                        <span class="prevalence-label">Exact opinion</span>
+                        <span class="prevalence-value">@view.OpinionStanding</span>
+                        @if (view.SupportShare.HasValue)
+                        {
+                            <div class="support-track" aria-label="Weighted support @view.SupportShare.Value.ToString("P0")"><span class="support-fill" style="width:@view.SupportShare.Value.ToString("P0")"></span></div>
+                            <span class="text-secondary small">@view.SupportShare.Value.ToString("P0") weighted support from @view.VoteCount decisive vote@(view.VoteCount == 1 ? "" : "s").</span>
+                        }
+                        else
+                        {
+                            <span class="text-secondary small">No reliable support percentage is available yet.</span>
+                        }
+                    </div>
+                </div>
+                <div class="text-secondary small mt-2">@view.ConfidenceNote</div>
+            </article>
+        }
+    </div>
+</section>

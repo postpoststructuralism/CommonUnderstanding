@@ -9,7 +9,7 @@ namespace CommonUnderstanding.Services.Social.Plugins;
 /// <summary>
 /// Detects logical fallacies in debate contributions in real-time.
 /// Uses zero-shot classification against a predefined 20-fallacy taxonomy.
-/// Primary model: gpt-4o-mini or fastest available provider (latency target < 3s).
+/// Primary model: DeepSeek-V4-Flash (latency target < 3s).
 /// Does NOT use RAG or embeddings.
 /// </summary>
 public class FallacyDetectionPlugin

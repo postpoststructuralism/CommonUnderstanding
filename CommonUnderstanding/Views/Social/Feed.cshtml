@@ -34,6 +34,10 @@
     .wilson-fill { height: 100%; border-radius: 2px; background: #198754; }
     .vote-trigger.active-up { box-shadow: 0 0 0 2px #198754; background: rgba(25,135,84,0.12); }
     .vote-trigger.active-down { box-shadow: 0 0 0 2px #dc3545; background: rgba(220,53,69,0.12); }
+    .recommendation-reason { color: var(--bs-secondary-color); font-size: 0.78rem; }
+    .feed-tuner { border-block: 1px solid var(--bs-border-color); padding: 1rem 0; }
+    .feed-tuner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
+    .feed-tuner output { min-width: 2.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 }
 
@@ -45,7 +49,10 @@
 <!-- Sort + filter toolbar -->
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     <span class="text-muted small me-1">Show:</span>
-    <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="recent">
+    <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="recommended">
+        <i class="bi bi-compass"></i> For you
+    </button>
+    <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="recent">
         <i class="bi bi-clock"></i> New
     </button>
     <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="updated">
@@ -61,7 +68,41 @@
     <label for="tagFilter" class="visually-hidden">Filter contributions by tag</label>
     <input id="tagFilter" class="form-control form-control-sm ms-auto" style="max-width:180px"
            placeholder="Filter by tag…" />
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#feedTuner" aria-expanded="false" aria-controls="feedTuner" title="Tune your feed">
+            <i class="bi bi-sliders"></i>
+        </button>
+    }
 </div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <section id="feedTuner" class="feed-tuner collapse mb-3" aria-label="Tune your feed">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+            <h2 class="h6 mb-0">Tune your feed</h2>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Feed presets">
+                <button class="btn btn-outline-secondary preset-btn" data-preset="Focus">Focus</button>
+                <button class="btn btn-outline-secondary preset-btn" data-preset="Balanced">Balanced</button>
+                <button class="btn btn-outline-secondary preset-btn" data-preset="Bridge-builder">Bridge-builder</button>
+            </div>
+        </div>
+        <div class="feed-tuner-grid">
+            <label>Interest <span class="d-flex gap-2"><input id="interestWeight" class="form-range" type="range" min="0" max="1" step="0.05"><output></output></span></label>
+            <label>Growth <span class="d-flex gap-2"><input id="growthWeight" class="form-range" type="range" min="0" max="1" step="0.05"><output></output></span></label>
+            <label>Collective <span class="d-flex gap-2"><input id="collectiveWeight" class="form-range" type="range" min="0" max="1" step="0.05"><output></output></span></label>
+            <label>Adventure <span class="d-flex gap-2"><input id="adventureRate" class="form-range" type="range" min="0" max="0.5" step="0.05"><output></output></span></label>
+            <label>Challenge me <span class="d-flex gap-2"><input id="challengeRate" class="form-range" type="range" min="0" max="0.5" step="0.05"><output></output></span></label>
+            <label>Recent history <span class="d-flex gap-2"><input id="recencyBias" class="form-range" type="range" min="0" max="1" step="0.05"><output></output></span></label>
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3 flex-wrap">
+            <div class="form-check form-switch"><input id="includeAI" class="form-check-input" type="checkbox"><label class="form-check-label" for="includeAI">AI-generated</label></div>
+            <div class="form-check form-switch"><input id="evidencePreferred" class="form-check-input" type="checkbox"><label class="form-check-label" for="evidencePreferred">Prefer cited evidence</label></div>
+            <button id="savePreferencesBtn" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-check2"></i> Apply</button>
+        </div>
+    </section>
+}
 
 <div id="feedSpinner" class="text-center py-4">
     <div class="spinner-border text-primary" role="status"></div>
@@ -126,12 +167,13 @@
 (function () {
     'use strict';
 
-    let currentSort = 'recent';
+    let currentSort = 'recommended';
     let currentTag  = '';
     let currentOffset = 0;
     const PAGE_SIZE = 20;
     let loadedIds = new Set();
     let pendingVoteArgId = null;
+    const viewedAt = new Map();
 
     // ── SignalR ───────────────────────────────────────────────────────────────
     const hubConn = new signalR.HubConnectionBuilder()
@@ -185,18 +227,22 @@
         document.getElementById('loadMoreBtn').style.display = 'none';
 
         const tags = currentTag ? `&tags=${encodeURIComponent(currentTag)}` : '';
-        const url  = `/api/feed?sort=${currentSort}&limit=${PAGE_SIZE}${tags}`;
+        const url = currentSort === 'recommended'
+            ? `/api/feed/recommended?offset=${currentOffset}&limit=${PAGE_SIZE}${tags}`
+            : `/api/feed?sort=${currentSort}&limit=${PAGE_SIZE + currentOffset}${tags}`;
 
         try {
             const res  = await fetch(url);
             const data = await res.json();
-            const items = data.items || [];
+            let items = data.items || [];
+            if (currentSort !== 'recommended') items = items.slice(currentOffset);
 
             const container = document.getElementById('feedContainer');
-            items.forEach(arg => {
+            items.forEach(item => {
+                const arg = item.argument || item;
                 if (loadedIds.has(arg.id)) return;
                 loadedIds.add(arg.id);
-                container.insertAdjacentHTML('beforeend', renderCard(arg));
+                container.insertAdjacentHTML('beforeend', renderCard(arg, item.argument ? item : null));
                 // Subscribe for live updates
                 if (hubConn.state === 'Connected') {
                     hubConn.invoke('SubscribeToArgument', arg.id).catch(() => {});
@@ -205,6 +251,7 @@
 
             if (items.length === PAGE_SIZE)
                 document.getElementById('loadMoreBtn').style.display = '';
+            currentOffset += items.length;
         } catch (err) {
             console.error('Feed load failed:', err);
         }
@@ -212,18 +259,22 @@
         document.getElementById('feedSpinner').style.display = 'none';
     }
 
-    function renderCard(arg) {
+    function renderCard(arg, recommendation) {
         const wilson = Math.round((arg.wilsonScore || 0) * 100);
         const tagHtml = (arg.tags || []).map(t =>
             `<span class="badge bg-secondary me-1">${escHtml(t)}</span>`).join('');
         // Phase 1: AI confidence badge removed from card views per spec 4.5
         const aiLabel = '';
+        const reasonHtml = recommendation
+            ? `<div class="recommendation-reason mb-2"><span class="badge text-bg-light border me-1">${escHtml(recommendation.lane)}</span>${escHtml(recommendation.reason)}</div>`
+            : '';
         const userVote = arg.userVote?.vote?.toLowerCase() || '';
         const upActive   = userVote === 'up'   ? ' active-up' : '';
         const downActive = userVote === 'down' ? ' active-down' : '';
         return `
         <div class="argument-card" id="arg-${arg.id}" data-id="${arg.id}">
-            <div class="argument-card-body" onclick="window.location='/SocialView/Detail/${arg.id}'">
+            <div class="argument-card-body" onclick="openArgument('${arg.id}')">
+                ${reasonHtml}
                 <div class="d-flex justify-content-between align-items-start mb-1">
                     <h5 class="mb-0">${escHtml(arg.title)}</h5>
                     <span class="text-muted small ms-2 text-nowrap">${timeAgo(arg.createdAt)}</span>
@@ -282,6 +333,35 @@
         }
     }
 
+    window.openArgument = argId => {
+        recordEngagement(argId, { clicked: true });
+        window.location = `/SocialView/Detail/${argId}`;
+    };
+
+    function recordEngagement(argumentId, values = {}) {
+        if (!document.getElementById('feedTuner')) return;
+        fetch('/api/feed/engagement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify({ argumentId, clicked: false, voted: false, commented: false, dwellMs: 0, ...values })
+        }).catch(() => {});
+    }
+
+    const dwellObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+        const argumentId = entry.target.dataset.id;
+        if (entry.isIntersecting) {
+            viewedAt.set(argumentId, Date.now());
+        } else if (viewedAt.has(argumentId)) {
+            recordEngagement(argumentId, { dwellMs: Date.now() - viewedAt.get(argumentId) });
+            viewedAt.delete(argumentId);
+        }
+    }), { threshold: 0.6 });
+
+    new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('argument-card')) dwellObserver.observe(node);
+    }))).observe(document.getElementById('feedContainer'), { childList: true });
+
     function pulseElement(el) {
         el.style.transition = 'transform 0.15s ease';
         el.style.transform = 'scale(1.3)';
@@ -310,6 +390,53 @@
 
     // ── Load more ─────────────────────────────────────────────────────────────
     document.getElementById('loadMoreBtn').addEventListener('click', loadFeed);
+
+    // ── Feed preferences ─────────────────────────────────────────────────────
+    const preferenceInputs = ['interestWeight', 'growthWeight', 'collectiveWeight', 'adventureRate', 'challengeRate', 'recencyBias'];
+    const presets = {
+        'Focus': { interestWeight: .75, growthWeight: .15, collectiveWeight: .10, adventureRate: .05, challengeRate: .05, recencyBias: .7 },
+        'Balanced': { interestWeight: .5, growthWeight: .25, collectiveWeight: .25, adventureRate: .1, challengeRate: .1, recencyBias: .5 },
+        'Bridge-builder': { interestWeight: .2, growthWeight: .25, collectiveWeight: .55, adventureRate: .15, challengeRate: .2, recencyBias: .35 }
+    };
+    let activePresetName = 'Balanced';
+
+    function setPreferences(preferences) {
+        preferenceInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.value = preferences[id];
+            input.nextElementSibling.textContent = Math.round(preferences[id] * 100) + '%';
+        });
+        if (document.getElementById('includeAI')) document.getElementById('includeAI').checked = preferences.includeAIGenerated;
+        if (document.getElementById('evidencePreferred')) document.getElementById('evidencePreferred').checked = preferences.evidencePreferred;
+        activePresetName = preferences.activePresetName || activePresetName;
+    }
+
+    preferenceInputs.forEach(id => document.getElementById(id)?.addEventListener('input', e => {
+        e.target.nextElementSibling.textContent = Math.round(e.target.value * 100) + '%';
+        activePresetName = 'Custom';
+    }));
+    document.querySelectorAll('.preset-btn').forEach(button => button.addEventListener('click', () => {
+        activePresetName = button.dataset.preset;
+        setPreferences({ ...presets[activePresetName], activePresetName, includeAIGenerated: true, evidencePreferred: false });
+    }));
+    document.getElementById('savePreferencesBtn')?.addEventListener('click', async () => {
+        const body = Object.fromEntries(preferenceInputs.map(id => [id, Number(document.getElementById(id).value)]));
+        body.includeAIGenerated = document.getElementById('includeAI').checked;
+        body.evidencePreferred = document.getElementById('evidencePreferred').checked;
+        body.activePresetName = activePresetName;
+        const response = await fetch('/api/feed/preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (response.ok) {
+            setPreferences(await response.json());
+            currentSort = 'recommended';
+            document.querySelectorAll('.sort-btn').forEach(button => button.classList.toggle('active', button.dataset.sort === currentSort));
+            loadFeed(true);
+        }
+    });
+
+    if (document.getElementById('feedTuner')) {
+        fetch('/api/feed/preferences').then(response => response.ok ? response.json() : null).then(preferences => preferences && setPreferences(preferences));
+    }
 
     // ── Vote modal ────────────────────────────────────────────────────────────
     let pendingVoteValue = null;
@@ -356,6 +483,7 @@
         }
 
         bootstrap.Modal.getInstance(document.getElementById('voteModal'))?.hide();
+        recordEngagement(pendingVoteArgId, { voted: true });
         pendingVoteArgId = null;
         pendingVoteValue = null;
     }

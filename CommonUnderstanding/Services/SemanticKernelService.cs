@@ -11,7 +11,7 @@ namespace CommonUnderstanding.Services;
 /// <summary>
 /// Builds a Semantic Kernel backed by an Azure-first provider chain:
 ///   1. Azure Foundry primary model (DeepSeek-V4-Flash)
-///   2. Azure Foundry secondary model (optional fallback, e.g. gpt-4o-mini)
+///   2. Azure Foundry secondary model (DeepSeek-V4-Pro)
 ///   3. Azure Foundry Pro model (DeepSeek-V4-Pro) — reserved for special tasks
 ///   4. Ollama fallback (optional, typically for local/dev resiliency)
 ///

@@ -135,6 +135,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<Moderator> Moderators => Set<Moderator>();
     public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
     public DbSet<ModerationAppeal> ModerationAppeals => Set<ModerationAppeal>();
+    public DbSet<UserFeedPreferences> UserFeedPreferences => Set<UserFeedPreferences>();
+    public DbSet<FeedImpressionEvent> FeedImpressionEvents => Set<FeedImpressionEvent>();
+    public DbSet<ArgumentRecommendationFeature> ArgumentRecommendationFeatures => Set<ArgumentRecommendationFeature>();
+    public DbSet<ArgumentRecommendationTag> ArgumentRecommendationTags => Set<ArgumentRecommendationTag>();
+    public DbSet<UserRecommendationProfile> UserRecommendationProfiles => Set<UserRecommendationProfile>();
+    public DbSet<UserRecommendationTopicAffinity> UserRecommendationTopicAffinities => Set<UserRecommendationTopicAffinity>();
+    public DbSet<CommunityRecommendationFeature> CommunityRecommendationFeatures => Set<CommunityRecommendationFeature>();
+    public DbSet<RecommendationArgumentWork> RecommendationArgumentWork => Set<RecommendationArgumentWork>();
+    public DbSet<RecommendationUserWork> RecommendationUserWork => Set<RecommendationUserWork>();
 
     // ── Badge System Entities ────────────────────────────────────────────────
     public DbSet<ResolutionEndorsement> ResolutionEndorsements => Set<ResolutionEndorsement>();
@@ -530,6 +539,88 @@ public class ApplicationDbContext : DbContext
             e.ToTable("EpistemicProfiles");
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.UserId, x.TopicDomain }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserFeedPreferences>(e =>
+        {
+            e.ToTable("UserFeedPreferences");
+            e.HasKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<FeedImpressionEvent>(e =>
+        {
+            e.ToTable("FeedImpressionEvents");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.ServedAt });
+            e.HasIndex(x => new { x.ArgumentId, x.ServedAt });
+            e.HasOne(x => x.Argument)
+             .WithMany()
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArgumentRecommendationFeature>(e =>
+        {
+            e.ToTable("ArgumentRecommendationFeatures");
+            e.HasKey(x => x.ArgumentId);
+            e.HasIndex(x => new { x.IsEligible, x.CreatedAt });
+            e.HasIndex(x => new { x.IsEligible, x.CollectiveScore });
+            e.HasIndex(x => new { x.IsEligible, x.HotScore });
+            e.HasIndex(x => new { x.IsEligible, x.IsAIGenerated, x.CreatedAt });
+            e.HasOne<SocialArgument>()
+             .WithOne()
+             .HasForeignKey<ArgumentRecommendationFeature>(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArgumentRecommendationTag>(e =>
+        {
+            e.ToTable("ArgumentRecommendationTags");
+            e.HasKey(x => new { x.ArgumentId, x.Tag });
+            e.HasIndex(x => new { x.Tag, x.ArgumentId });
+            e.HasOne<SocialArgument>()
+             .WithMany()
+             .HasForeignKey(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRecommendationProfile>(e =>
+        {
+            e.ToTable("UserRecommendationProfiles");
+            e.HasKey(x => x.UserId);
+            e.HasIndex(x => x.ComputedAt);
+        });
+
+        modelBuilder.Entity<UserRecommendationTopicAffinity>(e =>
+        {
+            e.ToTable("UserRecommendationTopicAffinities");
+            e.HasKey(x => new { x.UserId, x.Topic });
+            e.HasIndex(x => new { x.Topic, x.Affinity });
+        });
+
+        modelBuilder.Entity<CommunityRecommendationFeature>(e =>
+        {
+            e.ToTable("CommunityRecommendationFeatures");
+            e.HasKey(x => new { x.ScopeType, x.ScopeKey });
+            e.HasIndex(x => x.ComputedAt);
+        });
+
+        modelBuilder.Entity<RecommendationArgumentWork>(e =>
+        {
+            e.ToTable("RecommendationArgumentWork");
+            e.HasKey(x => x.ArgumentId);
+            e.HasIndex(x => x.RequestedAt);
+            e.HasOne<SocialArgument>()
+             .WithOne()
+             .HasForeignKey<RecommendationArgumentWork>(x => x.ArgumentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RecommendationUserWork>(e =>
+        {
+            e.ToTable("RecommendationUserWork");
+            e.HasKey(x => x.UserId);
+            e.HasIndex(x => x.RequestedAt);
         });
 
         // UserReputation

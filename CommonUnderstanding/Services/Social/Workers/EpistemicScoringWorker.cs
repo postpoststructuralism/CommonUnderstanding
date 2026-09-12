@@ -16,6 +16,7 @@ public class EpistemicScoringWorker : BackgroundService
 {
     private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<EpistemicScoringWorker> _logger;
 
     private static readonly TimeSpan WorkInterval = TimeSpan.FromMinutes(15);
@@ -24,10 +25,12 @@ public class EpistemicScoringWorker : BackgroundService
     public EpistemicScoringWorker(
         SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
+        RecentUserActivity userActivity,
         ILogger<EpistemicScoringWorker> logger)
     {
         _dbFactory = dbFactory;
         _scopeFactory = scopeFactory;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -41,8 +44,11 @@ public class EpistemicScoringWorker : BackgroundService
         {
             try
             {
-                await ProcessStaleProfilesAsync(stoppingToken);
-                await CreateMissingProfilesAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    await ProcessStaleProfilesAsync(stoppingToken);
+                    await CreateMissingProfilesAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)

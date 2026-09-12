@@ -3,12 +3,13 @@
 
 param(
     [string]$ResourceGroup = "CommonUnderstanding",
-    [string]$AppName = "common-understanding",
+    [string]$AppName = "common-understanding-v2",
     [string]$Location = "eastus",
     [string]$PlanName = "common-understanding-v2-plan",
     [string]$Runtime = "DOTNETCORE:9.0",
-    [string]$AzureFoundryModelId = "DeepSeek-V3-0324",
-    [string]$AzureFoundrySecondaryModelId = "gpt-4o-mini",
+    [string]$AzureFoundryModelId = "DeepSeek-V4-Flash",
+    [string]$AzureFoundrySecondaryModelId = "DeepSeek-V4-Pro",
+    [string]$AzureFoundryProModelId = "DeepSeek-V4-Pro",
     [int]$FreeAiRequestLimit = 120
 )
 
@@ -120,11 +121,12 @@ Write-Host ""
 
 # Always enforce .NET 9 runtime stack (fixes 500.30 if runtime was ever reset)
 Write-Host "Configuring runtime stack to .NET 9..." -ForegroundColor Yellow
-az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "DOTNETCORE|9.0"
+az webapp config set --name $AppName --resource-group $ResourceGroup `
+    --linux-fx-version "DOTNETCORE|9.0" --startup-file "dotnet CommonUnderstanding.dll"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "WARNING: Failed to set runtime stack. Check Azure portal manually." -ForegroundColor Yellow
+    Write-Host "WARNING: Failed to set runtime/startup configuration. Check Azure portal manually." -ForegroundColor Yellow
 } else {
-    Write-Host "✓ Runtime stack set to DOTNETCORE|9.0" -ForegroundColor Green
+    Write-Host "✓ Runtime stack and startup command configured" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -138,6 +140,7 @@ az webapp config appsettings set --name $AppName --resource-group $ResourceGroup
     AzureFoundry__ApiKey="$AzureFoundryApiKey" `
     AzureFoundry__ModelId="$AzureFoundryModelId" `
     AzureFoundry__SecondaryModelId="$AzureFoundrySecondaryModelId" `
+    AzureFoundry__ProModelId="$AzureFoundryProModelId" `
     AzureFoundry__UseSecondaryFallback="true" `
     AiAccessPolicy__Enabled="true" `
     AiAccessPolicy__FreeAiRequestLimit="$FreeAiRequestLimit" `
@@ -180,7 +183,9 @@ if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
 }
 
-Compress-Archive -Path "$publishPath\*" -DestinationPath $zipPath -Force
+# tar writes portable forward-slash ZIP entries; Compress-Archive can emit
+# backslash paths that Linux App Service rejects during rsync deployment.
+tar.exe -a -c -f $zipPath -C $publishPath .
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to create deployment package" -ForegroundColor Red
     exit 1
@@ -191,7 +196,8 @@ Write-Host ""
 # Deploy to Azure
 Write-Host "Deploying to Azure App Service..." -ForegroundColor Yellow
 Write-Host "This may take several minutes..." -ForegroundColor Yellow
-az webapp deployment source config-zip --name $AppName --resource-group $ResourceGroup --src $zipPath
+az webapp deploy --name $AppName --resource-group $ResourceGroup --src-path $zipPath `
+    --type zip --clean true --restart true --track-status true --enriched-errors true
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Deployment failed" -ForegroundColor Red

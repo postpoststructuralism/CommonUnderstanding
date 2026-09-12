@@ -6,13 +6,16 @@ namespace CommonUnderstanding.Services.Social.Workers;
 public class DmiScoreWorker : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<DmiScoreWorker> _logger;
 
     public DmiScoreWorker(
         IServiceProvider serviceProvider,
+        RecentUserActivity userActivity,
         ILogger<DmiScoreWorker> logger)
     {
         _serviceProvider = serviceProvider;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -27,9 +30,12 @@ public class DmiScoreWorker : BackgroundService
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
-                var dmiService = scope.ServiceProvider.GetRequiredService<DmiScoreService>();
-                await dmiService.RecomputeAllAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var dmiService = scope.ServiceProvider.GetRequiredService<DmiScoreService>();
+                    await dmiService.RecomputeAllAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException)
             {

@@ -14,6 +14,7 @@ public class EmbeddingBackfillWorker : BackgroundService
 {
     private readonly SingletonDbContextFactory _dbFactory;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<EmbeddingBackfillWorker> _logger;
 
     private static readonly TimeSpan PollingInterval = TimeSpan.FromMinutes(10);
@@ -21,10 +22,12 @@ public class EmbeddingBackfillWorker : BackgroundService
     public EmbeddingBackfillWorker(
         SingletonDbContextFactory dbFactory,
         IServiceScopeFactory scopeFactory,
+        RecentUserActivity userActivity,
         ILogger<EmbeddingBackfillWorker> logger)
     {
         _dbFactory = dbFactory;
         _scopeFactory = scopeFactory;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -39,13 +42,16 @@ public class EmbeddingBackfillWorker : BackgroundService
         {
             try
             {
-                int processed = await BackfillArgumentEmbeddingsAsync(stoppingToken);
-                int processedWorldviews = await BackfillWorldviewEmbeddingsAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    int processed = await BackfillArgumentEmbeddingsAsync(stoppingToken);
+                    int processedWorldviews = await BackfillWorldviewEmbeddingsAsync(stoppingToken);
 
-                if (processed + processedWorldviews > 0)
-                    _logger.LogInformation(
-                        "EmbeddingBackfill: processed {Args} arguments, {WVs} worldviews.",
-                        processed, processedWorldviews);
+                    if (processed + processedWorldviews > 0)
+                        _logger.LogInformation(
+                            "EmbeddingBackfill: processed {Args} arguments, {WVs} worldviews.",
+                            processed, processedWorldviews);
+                }
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)

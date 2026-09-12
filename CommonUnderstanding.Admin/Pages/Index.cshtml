@@ -1,0 +1,146 @@
+@page
+@model IndexModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Operations";
+    var snapshot = Model.Snapshot;
+    string Compact(double value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000:0.#}M",
+        >= 1_000 => $"{value / 1_000:0.#}K",
+        _ => $"{value:0.#}"
+    };
+    string Percent(MetricSeries series) => $"{series.Maximum:0.#}%";
+    string Bytes(double value) => value >= 1_073_741_824
+        ? $"{value / 1_073_741_824:0.#} GB"
+        : $"{value / 1_048_576:0.#} MB";
+    string AdoptionValue(long value) => snapshot.Adoption.IsAvailable ? value.ToString("N0") : "Unavailable";
+    string AiComputeValue(double value) => snapshot.AiCompute.IsAvailable ? Compact(value) : "Unavailable";
+}
+
+<section class="dashboard-shell">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">PRODUCTION OVERVIEW</p>
+            <h1>System pulse</h1>
+            <p class="subhead">Uptake, reliability, and resource pressure across the live application.</p>
+        </div>
+        <div class="heading-actions">
+            <nav class="range-control" aria-label="Reporting range">
+                <a class="@(Model.Hours == 6 ? "active" : null)" asp-route-hours="6">6H</a>
+                <a class="@(Model.Hours == 24 ? "active" : null)" asp-route-hours="24">24H</a>
+                <a class="@(Model.Hours == 168 ? "active" : null)" asp-route-hours="168">7D</a>
+                <a class="@(Model.Hours == 720 ? "active" : null)" asp-route-hours="720">30D</a>
+            </nav>
+            <a class="icon-button" asp-route-hours="@Model.Hours" title="Refresh dashboard" aria-label="Refresh dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <div class="status-strip">
+        <div class="service-status">
+            <span class="status-dot @(snapshot.Availability.IsReachable ? "healthy" : "down")"></span>
+            <div><strong>@(snapshot.Availability.IsReachable ? "Service reachable" : "Service unavailable")</strong><small>HTTP @(snapshot.Availability.StatusCode == 0 ? "---" : snapshot.Availability.StatusCode)</small></div>
+        </div>
+        <div class="status-metric"><span>RESPONSE</span><strong>@snapshot.Availability.LatencyMilliseconds.ToString("0") ms</strong></div>
+        <div class="status-metric"><span>OBSERVED UPTIME</span><strong>@snapshot.Availability.ObservedAvailabilityPercent.ToString("0.00")%</strong></div>
+        <div class="status-metric"><span>LAST CHECK</span><strong>@snapshot.Availability.CheckedAt.LocalDateTime.ToString("HH:mm:ss")</strong></div>
+    </div>
+
+    @if (snapshot.Warnings.Count > 0)
+    {
+        <details class="notice">
+            <summary>@snapshot.Warnings.Count data notes</summary>
+            @foreach (var warning in snapshot.Warnings) { <p>@warning</p> }
+        </details>
+    }
+
+    <section class="section-block">
+        <div class="section-heading"><div><p class="eyebrow">ADOPTION</p><h2>Audience & activity</h2></div><span>LAST @Model.Hours HOURS</span></div>
+        <div class="metric-grid adoption-grid">
+            <article class="metric-card primary"><span>TOTAL USERS</span><strong>@AdoptionValue(snapshot.Adoption.TotalUsers)</strong><small>@(snapshot.Adoption.IsAvailable ? $"{snapshot.Adoption.NewUsers:N0} new in range" : "Production database unavailable")</small></article>
+            <article class="metric-card"><span>ACTIVE NOW</span><strong>@AdoptionValue(snapshot.Adoption.ActiveUsers)</strong><small>15-minute approximation</small></article>
+            <a class="metric-card metric-card-link" href="#endpoint-traffic"><span>HTTP REQUESTS</span><strong>@Compact(snapshot.Platform.Requests.Total)</strong><small>View endpoint breakdown</small></a>
+            <article class="metric-card"><span>HUMAN ARGUMENTS</span><strong>@AdoptionValue(snapshot.Adoption.Arguments)</strong><small>Published in range</small></article>
+            <article class="metric-card"><span>VOTES</span><strong>@AdoptionValue(snapshot.Adoption.Votes)</strong><small>Community decisions</small></article>
+            <article class="metric-card"><span>AI COMPUTE</span><strong>@AiComputeValue(snapshot.AiCompute.TotalTokens.Total)</strong><small>@(snapshot.AiCompute.IsAvailable ? $"{snapshot.AiCompute.Requests.Total:N0} calls · {Compact(snapshot.AiCompute.InputTokens.Total)} in / {Compact(snapshot.AiCompute.OutputTokens.Total)} out" : "Foundry metrics unavailable")</small></article>
+            <article class="metric-card"><span>WIDGET VIEWS</span><strong>@AdoptionValue(snapshot.Adoption.WidgetViews)</strong><small>Publisher reach</small></article>
+        </div>
+    </section>
+
+    <section class="section-block">
+        <div class="section-heading"><div><p class="eyebrow">TRAFFIC</p><h2>Application load</h2></div><span>AZURE APP SERVICE</span></div>
+        <div class="split-grid">
+            <a class="chart-panel chart-panel-link" href="#endpoint-traffic">
+                <div class="chart-title"><div><span>RAW HTTP REQUEST VOLUME</span><strong>@Compact(snapshot.Platform.Requests.Total)</strong></div><small>All endpoints and static assets</small></div>
+                <div class="chart" data-chart='@JsonSerializer.Serialize(snapshot.Platform.Requests.Points, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })'></div>
+            </a>
+            <div class="metric-stack">
+                <article class="row-metric"><div><span>AVG RESPONSE TIME</span><strong>@snapshot.Platform.AverageResponseTime.Average.ToString("0") ms</strong></div><div class="meter"><i style="--value:@Math.Min(100, snapshot.Platform.AverageResponseTime.Average / 10)%"></i></div></article>
+                <article class="row-metric"><div><span>SERVER ERRORS</span><strong>@snapshot.Platform.ServerErrors.Total.ToString("N0")</strong></div><div class="meter danger"><i style="--value:@Math.Min(100, snapshot.Platform.ServerErrors.Total)%"></i></div></article>
+                <article class="row-metric"><div><span>CPU TIME</span><strong>@snapshot.Platform.CpuTime.Total.ToString("0.0") s</strong></div><div class="meter"><i style="--value:@Math.Min(100, snapshot.Platform.CpuTime.Maximum)%"></i></div></article>
+                <article class="row-metric"><div><span>MEMORY PEAK</span><strong>@Bytes(snapshot.Platform.MemoryWorkingSet.Maximum)</strong></div><div class="meter amber"><i style="--value:@Math.Min(100, snapshot.Platform.MemoryWorkingSet.Maximum / 536870912 * 100)%"></i></div></article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-block" id="endpoint-traffic">
+        <div class="section-heading"><div><p class="eyebrow">REQUEST DRILL-DOWN</p><h2>Traffic by endpoint</h2></div><span>TOP 50 · LOG ANALYTICS</span></div>
+        <div class="endpoint-panel">
+            @if (!snapshot.EndpointTraffic.IsAvailable)
+            {
+                <div class="endpoint-empty"><strong>Endpoint details unavailable</strong><span>HTTP access log collection may still be initializing. Refresh later.</span></div>
+            }
+            else if (snapshot.EndpointTraffic.Endpoints.Count == 0)
+            {
+                <div class="endpoint-empty"><strong>No endpoint logs in this range</strong><span>Collection began after the aggregate request metric; historical routes cannot be reconstructed.</span></div>
+            }
+            else
+            {
+                <div class="endpoint-coverage">
+                    <strong>@snapshot.EndpointTraffic.CapturedRequests.ToString("N0") of @snapshot.Platform.Requests.Total.ToString("N0") requests captured in endpoint logs</strong>
+                    <span>
+                        @if (snapshot.EndpointTraffic.FirstObservedAt is not null)
+                        {
+                            @:Logging coverage: @snapshot.EndpointTraffic.FirstObservedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") to @snapshot.EndpointTraffic.LastObservedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"). Counts before logging began cannot be reconstructed.
+                        }
+                    </span>
+                </div>
+                <div class="endpoint-table-wrap">
+                    <table class="endpoint-table">
+                        <thead><tr><th>METHOD</th><th>ENDPOINT</th><th>REQUESTS</th><th>5XX</th><th>AVG TIME</th></tr></thead>
+                        <tbody>
+                        @foreach (var endpoint in snapshot.EndpointTraffic.Endpoints)
+                        {
+                            <tr>
+                                <td><span class="method-badge">@endpoint.Method</span></td>
+                                <td class="endpoint-path">@endpoint.Path</td>
+                                <td>@endpoint.Requests.ToString("N0")</td>
+                                <td class="@(endpoint.ServerErrors > 0 ? "error-value" : null)">@endpoint.ServerErrors.ToString("N0")</td>
+                                <td>@endpoint.AverageDurationMilliseconds.ToString("0") ms</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="section-block">
+        <div class="section-heading"><div><p class="eyebrow">EFFICIENCY</p><h2>Database pressure</h2></div><span>AZURE SQL SERVERLESS</span></div>
+        <div class="database-grid">
+            <article class="gauge-panel"><div class="gauge" style="--value:@snapshot.Platform.DatabaseCpu.Maximum"><span>@Percent(snapshot.Platform.DatabaseCpu)</span></div><strong>CPU PEAK</strong><small>Average @snapshot.Platform.DatabaseCpu.Average.ToString("0.#")%</small></article>
+            <article class="gauge-panel"><div class="gauge" style="--value:@snapshot.Platform.DatabaseDataIo.Maximum"><span>@Percent(snapshot.Platform.DatabaseDataIo)</span></div><strong>DATA I/O PEAK</strong><small>Average @snapshot.Platform.DatabaseDataIo.Average.ToString("0.#")%</small></article>
+            <article class="gauge-panel"><div class="gauge" style="--value:@snapshot.Platform.DatabaseLogIo.Maximum"><span>@Percent(snapshot.Platform.DatabaseLogIo)</span></div><strong>LOG I/O PEAK</strong><small>Average @snapshot.Platform.DatabaseLogIo.Average.ToString("0.#")%</small></article>
+            <article class="gauge-panel"><div class="gauge" style="--value:@snapshot.Platform.DatabaseStorage.Maximum"><span>@Percent(snapshot.Platform.DatabaseStorage)</span></div><strong>STORAGE</strong><small>Maximum observed</small></article>
+            <article class="gauge-panel"><div class="gauge" style="--value:@snapshot.Platform.DatabaseSessions.Maximum"><span>@Percent(snapshot.Platform.DatabaseSessions)</span></div><strong>SESSIONS PEAK</strong><small>Connection pressure</small></article>
+        </div>
+    </section>
+
+    <footer class="dashboard-footer">
+        <span>Generated @snapshot.GeneratedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")</span>
+        <span>No automatic polling · Azure metrics cached 5 min · Database metrics cached 15 min</span>
+    </footer>
+</section>

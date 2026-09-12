@@ -15,6 +15,7 @@ public sealed class BaselineContentWorker : BackgroundService
     private readonly BeliefSystemKnowledgeBase _knowledgeBase;
     private readonly IConfiguration _configuration;
     private readonly IHostApplicationLifetime _applicationLifetime;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<BaselineContentWorker> _logger;
 
     public BaselineContentWorker(
@@ -22,12 +23,14 @@ public sealed class BaselineContentWorker : BackgroundService
         BeliefSystemKnowledgeBase knowledgeBase,
         IConfiguration configuration,
         IHostApplicationLifetime applicationLifetime,
+        RecentUserActivity userActivity,
         ILogger<BaselineContentWorker> logger)
     {
         _scopeFactory = scopeFactory;
         _knowledgeBase = knowledgeBase;
         _configuration = configuration;
         _applicationLifetime = applicationLifetime;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -53,13 +56,16 @@ public sealed class BaselineContentWorker : BackgroundService
         {
             try
             {
-                var targetReached = await ProcessBatchAsync(stoppingToken);
-                if (targetReached && _configuration.GetValue(
-                        "BaselineContent:StopApplicationWhenTargetReached", false))
+                if (_userActivity.IsActive)
                 {
-                    _logger.LogInformation("Baseline content target reached; stopping the application.");
-                    _applicationLifetime.StopApplication();
-                    return;
+                    var targetReached = await ProcessBatchAsync(stoppingToken);
+                    if (targetReached && _configuration.GetValue(
+                            "BaselineContent:StopApplicationWhenTargetReached", false))
+                    {
+                        _logger.LogInformation("Baseline content target reached; stopping the application.");
+                        _applicationLifetime.StopApplication();
+                        return;
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

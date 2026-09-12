@@ -80,6 +80,8 @@ builder.Services.AddSingleton<SingletonDbContextFactory>();
 
 // Add HttpContextAccessor for views that need Request access
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<RecentUserActivity>();
 
 // Add response compression for API endpoints (reduces JSON payload size)
 builder.Services.AddResponseCompression(options =>
@@ -235,6 +237,11 @@ builder.Services.AddSingleton<LocalEmbeddingGenerator>();
 builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(
     sp => sp.GetRequiredService<LocalEmbeddingGenerator>());
 builder.Services.AddScoped<FeedService>();
+builder.Services.AddScoped<IFeedRankingService, FeedRankingService>();
+builder.Services.AddScoped<RecommendationProjectionService>();
+builder.Services.AddSingleton<FeedImpressionWriter>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<FeedImpressionWriter>());
+builder.Services.AddHostedService<RecommendationProjectionWorker>();
 
 // Voting
 builder.Services.AddScoped<VotingService>();
@@ -256,6 +263,7 @@ builder.Services.AddScoped<BridgeArgumentPlugin>();
 
 // WorldviewService depends on WorldviewConvergencePlugin — register after the plugin
 builder.Services.AddScoped<WorldviewService>();
+builder.Services.AddScoped<WorldviewInsightService>();
 
 // Background workers
 builder.Services.AddHostedService<HotScoreUpdateWorker>();
@@ -308,7 +316,6 @@ if (!builder.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 app.UseResponseCompression();
-app.UseOutputCache();
 app.UseMiddleware<CommonUnderstanding.Middleware.ApiRobotsTagMiddleware>();
 app.UseStaticFiles();
 
@@ -326,6 +333,14 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    context.RequestServices.GetRequiredService<RecentUserActivity>().RecordActivity();
+    await next();
+});
+
+app.UseOutputCache();
 
 app.Use(async (context, next) =>
 {

@@ -8,13 +8,16 @@ namespace CommonUnderstanding.Services;
 public class SkeletonBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<SkeletonBackgroundService> _logger;
 
     public SkeletonBackgroundService(
         IServiceScopeFactory scopeFactory,
+        RecentUserActivity userActivity,
         ILogger<SkeletonBackgroundService> logger)
     {
         _scopeFactory = scopeFactory;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -43,7 +46,10 @@ public class SkeletonBackgroundService : BackgroundService
                 break;
             }
 
-            await RegenerateAsync(stoppingToken);
+            if (_userActivity.IsActive)
+            {
+                await RegenerateAsync(stoppingToken);
+            }
         }
     }
 

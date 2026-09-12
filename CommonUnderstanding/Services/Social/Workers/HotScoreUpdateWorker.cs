@@ -16,6 +16,7 @@ public class HotScoreUpdateWorker : BackgroundService
 {
     private readonly SingletonDbContextFactory _dbFactory;
     private readonly IConfiguration _configuration;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<HotScoreUpdateWorker> _logger;
 
     private static readonly TimeSpan RecentInterval = TimeSpan.FromMinutes(5);
@@ -24,10 +25,12 @@ public class HotScoreUpdateWorker : BackgroundService
     public HotScoreUpdateWorker(
         SingletonDbContextFactory dbFactory,
         IConfiguration configuration,
+        RecentUserActivity userActivity,
         ILogger<HotScoreUpdateWorker> logger)
     {
         _dbFactory = dbFactory;
         _configuration = configuration;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -44,12 +47,15 @@ public class HotScoreUpdateWorker : BackgroundService
         {
             try
             {
-                await UpdateRecentArgumentsAsync(stoppingToken);
-
-                if (DateTime.UtcNow - lastOldUpdate > OldInterval)
+                if (_userActivity.IsActive)
                 {
-                    await UpdateOlderArgumentsAsync(stoppingToken);
-                    lastOldUpdate = DateTime.UtcNow;
+                    await UpdateRecentArgumentsAsync(stoppingToken);
+
+                    if (DateTime.UtcNow - lastOldUpdate > OldInterval)
+                    {
+                        await UpdateOlderArgumentsAsync(stoppingToken);
+                        lastOldUpdate = DateTime.UtcNow;
+                    }
                 }
             }
             catch (OperationCanceledException) { break; }

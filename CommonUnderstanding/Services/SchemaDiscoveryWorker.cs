@@ -12,15 +12,18 @@ namespace CommonUnderstanding.Services;
 public class SchemaDiscoveryWorker : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<SchemaDiscoveryWorker> _logger;
     private readonly TimeSpan _initialDelay = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _interval = TimeSpan.FromMinutes(10);
 
     public SchemaDiscoveryWorker(
         IServiceProvider serviceProvider,
+        RecentUserActivity userActivity,
         ILogger<SchemaDiscoveryWorker> logger)
     {
         _serviceProvider = serviceProvider;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -35,7 +38,10 @@ public class SchemaDiscoveryWorker : BackgroundService
         {
             try
             {
-                await RunDiscoveryAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    await RunDiscoveryAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException)
             {

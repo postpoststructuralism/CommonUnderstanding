@@ -23,7 +23,7 @@ edges:
 # Decisions usually ground sparsely; add only symbols that implement the decision.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-08-02
+last_updated: 2026-09-06
 ---
 
 # Decisions
@@ -42,6 +42,22 @@ last_updated: 2026-08-02
      The history must be preserved — this is the event clock. -->
 
 ## Decision Log
+
+  ### Precompute recommendation features in SQL-backed projections
+  **Date:** 2026-09-06
+  **Status:** Active
+  **Decision:** Materialize reusable argument and user recommendation features in provider-neutral relational projections, retrieve bounded candidate pools, and retain the online ranker behind a feature-flagged legacy fallback.
+  **Reasoning:** Rebuilding graph, voter, history, and expertise signals while eagerly hydrating broad argument collections made feed latency scale with the corpus instead of the requested page size.
+  **Alternatives considered:** Caching the existing broad query would preserve its invalidation and memory-growth problems; introducing a separate vector or search service was deferred because SQL projections provide the needed intermediate scale with less operational complexity.
+  **Consequences:** Mutation boundaries should enqueue durable refresh markers, stale sweeps remain a correctness backstop, request-time work must stay bounded, only lossy impression telemetry may use the process-local channel, and indexed serving remains disabled until projections are backfilled and measured.
+
+  ### Retain HTTP access logs for local endpoint diagnostics
+  **Date:** 2026-08-30
+  **Status:** Active
+  **Decision:** Keep aggregate request totals in Azure Monitor metrics and source endpoint drill-down from sanitized `AppServiceHTTPLogs` retained in the existing Log Analytics workspace.
+  **Reasoning:** App Service request metrics do not contain route dimensions, while HTTP access logs provide method, path, status, and duration without adding production database traffic.
+  **Alternatives considered:** Inferring endpoints from aggregate metrics was impossible; adding Application Insights was rejected as unnecessary for this bounded diagnostic need.
+  **Consequences:** The `LocalOpsHttpTraffic` diagnostic setting must remain enabled, detailed history starts only when logging is enabled, ingestion can lag, query strings stay excluded, and identifier-shaped path segments are normalized before display.
 
 <!-- Document key decisions using the format below.
      Include decisions that: are non-obvious, have important constraints,

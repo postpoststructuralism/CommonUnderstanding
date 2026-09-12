@@ -1,4 +1,5 @@
 using CommonUnderstanding.Models;
+using CommonUnderstanding.Models.Social;
 using Microsoft.SemanticKernel.ChatCompletion;
 using System.Text;
 
@@ -85,6 +86,115 @@ public class WorldviewSummaryService
         }
 
         return GenerateFallbackSummary(snapshot);
+    }
+
+    public async Task<string> GenerateIntegratedSummaryAsync(
+        BeliefSnapshot snapshot,
+        IReadOnlyList<WorldviewInsightArgument> arguments,
+        IReadOnlyList<WorldviewInsightPeer> peers,
+        CancellationToken ct = default)
+    {
+        if (snapshot.InteractionCount < 3)
+            return "Answer a few more discovery questions to unlock a reliable worldview portrait.";
+
+        try
+        {
+            var topValues = snapshot.Values
+                .OrderByDescending(value => value.ImportanceScore * value.Confidence)
+                .Take(6)
+                .Select(value => $"{value.Name} ({value.ImportanceScore:F1}/10, {value.Confidence:P0} confidence)");
+            var dimensions = snapshot.Dimensions
+                .Where(dimension => dimension.Position.HasValue && dimension.Confidence >= 0.2)
+                .OrderByDescending(dimension => dimension.Confidence)
+                .Take(8)
+                .Select(dimension => $"{dimension.Name}: {dimension.Position:F2} ({dimension.Confidence:P0} confidence)");
+            var submittedArguments = arguments.Take(8)
+                .Select(argument => $"- {argument.Title}: {argument.Claim}");
+            var nearestPeer = peers.FirstOrDefault()?.Similarity;
+
+            var history = new ChatHistory();
+            history.AddSystemMessage(
+                "You are a careful worldview analyst. Synthesize only the supplied evidence. " +
+                "Distinguish inferred beliefs from positions explicitly expressed in submitted arguments. " +
+                "Do not diagnose, label party affiliation, or imply that similarity means identity. " +
+                "Write 3 concise plain-text paragraphs with no headings or lists.");
+            history.AddUserMessage($"""
+                Create a personal worldview portrait from these sources.
+
+                BELIEF PROFILE
+                Questions answered: {snapshot.InteractionCount}
+                Overall confidence: {snapshot.OverallConfidence:P0}
+                Values: {string.Join("; ", topValues)}
+                Dimensions: {string.Join("; ", dimensions)}
+
+                ARGUMENTS SUBMITTED BY THIS PERSON
+                {(arguments.Count == 0 ? "None yet." : string.Join(Environment.NewLine, submittedArguments))}
+
+                COMMUNITY CONTEXT
+                Anonymized comparable profiles: {peers.Count}
+                Closest measured similarity: {(nearestPeer.HasValue ? nearestPeer.Value.ToString("P0") : "not available")}
+
+                Paragraph 1: explain the clearest worldview pattern and calibrate certainty.
+                Paragraph 2: connect or distinguish the belief profile from the person's submitted arguments.
+                Paragraph 3: explain how this perspective relates to others, emphasizing both common ground and meaningful difference.
+                """);
+
+            var response = await _chatService.GetChatMessageContentAsync(history, cancellationToken: ct);
+            if (!string.IsNullOrWhiteSpace(response.Content) && response.Content.Length >= 180)
+                return response.Content.Trim();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Integrated worldview summary failed for user {UserId}", snapshot.UserId);
+        }
+
+        var fallback = GenerateFallbackSummary(snapshot);
+        if (arguments.Count == 0)
+            return fallback + " You have not submitted any arguments yet, so this portrait currently reflects discovery responses rather than your public reasoning.";
+
+        return fallback + $" Your {arguments.Count} recent submitted arguments add direct evidence about how these values show up in claims you are willing to defend.";
+    }
+
+    public async Task<string> GenerateArgumentSummaryAsync(
+        IReadOnlyList<WorldviewInsightArgument> arguments,
+        CancellationToken ct = default)
+    {
+        if (arguments.Count == 0)
+            return "Your worldview portrait will take shape as you complete belief discovery and submit arguments.";
+
+        try
+        {
+            var submittedArguments = arguments.Take(8)
+                .Select(argument => $"- {argument.Title}: {argument.Claim}");
+            var history = new ChatHistory();
+            history.AddSystemMessage(
+                "You are a careful argument analyst. Analyze only the supplied arguments. " +
+                "Identify expressed priorities, assumptions, and tensions, but do not infer a complete worldview " +
+                "from limited evidence. Do not diagnose or assign political, religious, or philosophical labels. " +
+                "Write 2 concise plain-text paragraphs with no headings or lists.");
+            history.AddUserMessage($"""
+                Analyze what this person's submitted arguments reveal about the reasoning and values they have explicitly expressed.
+
+                SUBMITTED ARGUMENTS
+                {string.Join(Environment.NewLine, submittedArguments)}
+
+                Paragraph 1: summarize the recurring claims, priorities, or reasoning patterns supported by the text.
+                Paragraph 2: explain what remains uncertain and how belief discovery would make the portrait more reliable.
+                """);
+
+            var response = await _chatService.GetChatMessageContentAsync(history, cancellationToken: ct);
+            if (!string.IsNullOrWhiteSpace(response.Content) && response.Content.Length >= 120)
+                return response.Content.Trim();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Argument-only worldview summary failed");
+        }
+
+        var subject = arguments.Count == 1
+            ? $"the claim in \"{arguments[0].Title}\""
+            : $"the claims across your {arguments.Count} recent submissions";
+        return $"Your current portrait is grounded in {subject}. This is direct evidence of reasoning you have chosen to put forward, but one set of arguments is not enough to infer a complete worldview reliably. Complete belief discovery to connect these expressed positions to broader values, moral priorities, and intellectual traditions.";
     }
 
     private string BuildSummaryPrompt(BeliefSnapshot snapshot)

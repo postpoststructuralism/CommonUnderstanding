@@ -12,13 +12,16 @@ namespace CommonUnderstanding.Services.Social.Workers;
 public class ReplyCountWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<ReplyCountWorker> _logger;
 
     public ReplyCountWorker(
         IServiceScopeFactory scopeFactory,
+        RecentUserActivity userActivity,
         ILogger<ReplyCountWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -32,11 +35,14 @@ public class ReplyCountWorker : BackgroundService
             {
                 await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
 
-                using var scope = _scopeFactory.CreateScope();
-                var followUpService = scope.ServiceProvider
-                    .GetRequiredService<FollowUpArgumentService>();
+                if (_userActivity.IsActive)
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var followUpService = scope.ServiceProvider
+                        .GetRequiredService<FollowUpArgumentService>();
 
-                await followUpService.UpdateAllReplyCountsAsync(stoppingToken);
+                    await followUpService.UpdateAllReplyCountsAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

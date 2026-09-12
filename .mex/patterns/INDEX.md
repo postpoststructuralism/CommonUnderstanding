@@ -9,3 +9,4 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [change-database-schema.md](change-database-schema.md) | Changing EF Core entities, mappings, queries, or SQL Server/PostgreSQL migrations |
 | [debug-background-processing.md](debug-background-processing.md) | Diagnosing queues, prefetch, deferred analysis, scoring, or hosted-worker failures |
 | [deploy-azure.md](deploy-azure.md) | Publishing, configuring, deploying, or troubleshooting the Azure App Service application |
+| [local-operations-dashboard.md](local-operations-dashboard.md) | Extending production uptake, availability, App Service, or Azure SQL monitoring in the local admin project |

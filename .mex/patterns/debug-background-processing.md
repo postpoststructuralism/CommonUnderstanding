@@ -14,7 +14,7 @@ edges:
   - target: patterns/change-ai-integration.md
     condition: when a worker failure occurs inside an AI call
 grounds_to: []
-last_updated: 2026-08-02
+last_updated: 2026-08-29
 ---
 
 # Debug Background Processing
@@ -35,6 +35,8 @@ Interactive discovery enqueues response analysis and consumes prefetched questio
 - A scoped `DbContext` reused across items can cause concurrency and stale-tracking failures.
 - In-memory queues lose pending work on process restart and do not coordinate across scaled-out instances.
 - Prefetch cache misses should fall back without blocking the entire discovery loop.
+- Periodic database-backed workers intentionally skip work outside `BackgroundWorkers:ActiveUserWindowMinutes`; confirm a dynamic request refreshed `RecentUserActivity` before treating an idle worker as stuck.
+- `ResponseProcessingQueue` is queue-driven and deliberately bypasses the activity gate so accepted user work can finish after its initiating request completes.
 - Baseline generation is disabled by default. Enable `BaselineContent:Enabled`, keep batches small, and use `GenerationSourceKey` plus `SourceArgumentId` to distinguish missing generation from incomplete analysis.
 - A baseline belief system must remain eligible for a batch while any generated post has no `SourceArgumentId`, even when every configured generation slot already exists; otherwise interrupted analysis cannot resume until new slots are requested.
 

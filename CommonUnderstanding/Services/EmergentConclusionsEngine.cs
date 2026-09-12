@@ -144,6 +144,23 @@ public class EmergentConclusionsEngine
         int id, CancellationToken ct = default)
     {
         var snapshot = await _db.PersistedEmergentReports.FindAsync([id], ct);
+        return DeserializePersistedReport(snapshot);
+    }
+
+    public async Task<EmergentConclusionsReport?> LoadLatestPersistedReportAsync(
+        CancellationToken ct = default)
+    {
+        var snapshot = await _db.PersistedEmergentReports
+            .AsNoTracking()
+            .Where(report => report.FullReportJson != null)
+            .OrderByDescending(report => report.GeneratedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return DeserializePersistedReport(snapshot);
+    }
+
+    private EmergentConclusionsReport? DeserializePersistedReport(PersistedEmergentReport? snapshot)
+    {
         if (snapshot?.FullReportJson == null) return null;
         try
         {
@@ -151,7 +168,7 @@ public class EmergentConclusionsEngine
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize FullReportJson for snapshot {Id}", id);
+            _logger.LogWarning(ex, "Failed to deserialize FullReportJson for snapshot {Id}", snapshot.Id);
             return null;
         }
     }

@@ -1,5 +1,6 @@
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Models.Widget;
+using CommonUnderstanding.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace CommonUnderstanding.Services.Widget;
@@ -11,14 +12,17 @@ namespace CommonUnderstanding.Services.Widget;
 public class CrossThreadContradictionWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly RecentUserActivity _userActivity;
     private readonly ILogger<CrossThreadContradictionWorker> _logger;
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
 
     public CrossThreadContradictionWorker(
         IServiceScopeFactory scopeFactory,
+        RecentUserActivity userActivity,
         ILogger<CrossThreadContradictionWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _userActivity = userActivity;
         _logger = logger;
     }
 
@@ -30,7 +34,10 @@ public class CrossThreadContradictionWorker : BackgroundService
         {
             try
             {
-                await DetectContradictionsAsync(stoppingToken);
+                if (_userActivity.IsActive)
+                {
+                    await DetectContradictionsAsync(stoppingToken);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

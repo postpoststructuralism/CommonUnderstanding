@@ -107,7 +107,7 @@ public class FeedService
         _ => "recent"
     };
 
-    private static FeedItemDto MapArgumentToFeedItem(SocialArgument a, string? currentUserId)
+    internal static FeedItemDto MapArgumentToFeedItem(SocialArgument a, string? currentUserId)
     {
         var userVote = a.Votes.FirstOrDefault(v => v.UserId == currentUserId);
 

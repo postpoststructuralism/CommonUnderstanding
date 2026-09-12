@@ -1016,6 +1016,87 @@ namespace CommonUnderstanding.Migrations
                     b.ToTable("ArgumentLinks", (string)null);
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentRecommendationFeature", b =>
+                {
+                    b.Property<Guid>("ArgumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("CollectiveScore")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("ComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ContradictionCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FeatureVersion")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("HasCitedEvidence")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("HotScore")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsAIGenerated")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsEligible")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LinkCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PositiveVoterBreadth")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SchwartzValuesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("StructuralScore")
+                        .HasColumnType("float");
+
+                    b.Property<string>("TagsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("WilsonScore")
+                        .HasColumnType("float");
+
+                    b.HasKey("ArgumentId");
+
+                    b.HasIndex("IsEligible", "CollectiveScore");
+
+                    b.HasIndex("IsEligible", "CreatedAt");
+
+                    b.HasIndex("IsEligible", "HotScore");
+
+                    b.HasIndex("IsEligible", "IsAIGenerated", "CreatedAt");
+
+                    b.ToTable("ArgumentRecommendationFeatures", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentRecommendationTag", b =>
+                {
+                    b.Property<Guid>("ArgumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Tag")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("ArgumentId", "Tag");
+
+                    b.HasIndex("Tag", "ArgumentId");
+
+                    b.ToTable("ArgumentRecommendationTags", (string)null);
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentVote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1085,6 +1166,35 @@ namespace CommonUnderstanding.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("BadgeAwardLogs", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.CommunityRecommendationFeature", b =>
+                {
+                    b.Property<string>("ScopeType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ScopeKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("ComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("TrendingScore")
+                        .HasColumnType("float");
+
+                    b.Property<double>("UnderexposedQualityScore")
+                        .HasColumnType("float");
+
+                    b.Property<double>("UnresolvedContradictionScore")
+                        .HasColumnType("float");
+
+                    b.HasKey("ScopeType", "ScopeKey");
+
+                    b.HasIndex("ComputedAt");
+
+                    b.ToTable("CommunityRecommendationFeatures", (string)null);
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.Social.DebateContribution", b =>
@@ -1243,6 +1353,63 @@ namespace CommonUnderstanding.Migrations
                     b.ToTable("EpistemicProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.FeedImpressionEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ArgumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("BlendedScoreAtServe")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("Clicked")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("CollectiveScoreAtServe")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("Commented")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("DwellMs")
+                        .HasColumnType("int");
+
+                    b.Property<double>("GrowthScoreAtServe")
+                        .HasColumnType("float");
+
+                    b.Property<double>("InterestScoreAtServe")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Lane")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("ServedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("Voted")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArgumentId", "ServedAt");
+
+                    b.HasIndex("UserId", "ServedAt");
+
+                    b.ToTable("FeedImpressionEvents", (string)null);
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ModerationAppeal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1363,6 +1530,49 @@ namespace CommonUnderstanding.Migrations
                     b.HasIndex("UserId", "TopicDomain");
 
                     b.ToTable("Moderators", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.RecommendationArgumentWork", b =>
+                {
+                    b.Property<Guid>("ArgumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ArgumentId");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.ToTable("RecommendationArgumentWork", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.RecommendationUserWork", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.ToTable("RecommendationUserWork", (string)null);
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ResolutionEndorsement", b =>
@@ -1582,6 +1792,105 @@ namespace CommonUnderstanding.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SocialPropositions", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.UserFeedPreferences", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ActivePresetName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<double>("AdventureRate")
+                        .HasColumnType("float");
+
+                    b.Property<double>("ChallengeRate")
+                        .HasColumnType("float");
+
+                    b.Property<double>("CollectiveWeight")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("EvidencePreferred")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("GrowthWeight")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IncludeAIGenerated")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("InterestWeight")
+                        .HasColumnType("float");
+
+                    b.Property<double>("RecencyBias")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserFeedPreferences", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.UserRecommendationProfile", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExpertiseDomainsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FeatureVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("HistoryWatermark")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SchwartzValuesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("ComputedAt");
+
+                    b.ToTable("UserRecommendationProfiles", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.UserRecommendationTopicAffinity", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Topic")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<double>("Affinity")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("ComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEngagedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId", "Topic");
+
+                    b.HasIndex("Topic", "Affinity");
+
+                    b.ToTable("UserRecommendationTopicAffinities", (string)null);
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.Social.UserReputation", b =>
@@ -2559,6 +2868,24 @@ namespace CommonUnderstanding.Migrations
                     b.Navigation("TargetArgument");
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentRecommendationFeature", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.Social.SocialArgument", null)
+                        .WithOne()
+                        .HasForeignKey("CommonUnderstanding.Models.Social.ArgumentRecommendationFeature", "ArgumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentRecommendationTag", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.Social.SocialArgument", null)
+                        .WithMany()
+                        .HasForeignKey("ArgumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentVote", b =>
                 {
                     b.HasOne("CommonUnderstanding.Models.Social.SocialArgument", "Argument")
@@ -2597,6 +2924,26 @@ namespace CommonUnderstanding.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("MotionProposition");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.FeedImpressionEvent", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.Social.SocialArgument", "Argument")
+                        .WithMany()
+                        .HasForeignKey("ArgumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Argument");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.Social.RecommendationArgumentWork", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.Social.SocialArgument", null)
+                        .WithOne()
+                        .HasForeignKey("CommonUnderstanding.Models.Social.RecommendationArgumentWork", "ArgumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ResolutionEndorsement", b =>

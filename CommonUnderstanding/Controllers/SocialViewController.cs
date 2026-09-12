@@ -19,6 +19,7 @@ public class SocialViewController : Controller
     private readonly StakeholderService _stakeholderService;
     private readonly DecisionSupportService _decisionSupportService;
     private readonly SocialArgumentAnalysisService _analysisService;
+    private readonly WorldviewInsightService _worldviewInsightService;
     private readonly ILogger<SocialViewController> _logger;
 
     public SocialViewController(
@@ -26,12 +27,14 @@ public class SocialViewController : Controller
         StakeholderService stakeholderService,
         DecisionSupportService decisionSupportService,
         SocialArgumentAnalysisService analysisService,
+        WorldviewInsightService worldviewInsightService,
         ILogger<SocialViewController> logger)
     {
         _dbFactory = dbFactory;
         _stakeholderService = stakeholderService;
         _decisionSupportService = decisionSupportService;
         _analysisService = analysisService;
+        _worldviewInsightService = worldviewInsightService;
         _logger = logger;
     }
 
@@ -56,11 +59,16 @@ public class SocialViewController : Controller
         return View("~/Views/Social/ChainBuilder.cshtml");
     }
 
-    // GET /Social/WorldviewComposer
-    public IActionResult WorldviewComposer()
+    // GET /SocialView/WorldviewComposer
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> WorldviewComposer(CancellationToken ct = default)
     {
         ViewData["Title"] = "Worldview Composer";
-        return View("~/Views/Social/WorldviewComposer.cshtml");
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Challenge();
+
+        var insight = await _worldviewInsightService.BuildAsync(userId, ct);
+        return View("~/Views/Social/WorldviewComposer.cshtml", insight);
     }
 
     // GET /Social/DebateRoom/{id?}
