@@ -5,6 +5,7 @@ using CommonUnderstanding.Services.Social.Workers;
 using CommonUnderstanding.Services.Widget;
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.AI;
@@ -175,6 +176,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            if (string.IsNullOrWhiteSpace(userId)
+                || !await db.UserAccounts.AnyAsync(account => account.Id == userId, context.HttpContext.RequestAborted))
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+        };
         // Return 401 for API routes instead of redirecting to login
         options.Events.OnRedirectToLogin = context =>
         {
@@ -202,6 +214,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddScoped<UnderstandingGraphService>();
 builder.Services.AddScoped<SchemaDiscoveryService>();
 builder.Services.AddScoped<DialecticalSynthesisService>();
+builder.Services.AddScoped<IReferenceFrameworkImportService, ReferenceFrameworkImportService>();
+builder.Services.AddScoped<IReferenceFrameworkFitService, ReferenceFrameworkFitService>();
 
 // Phase 3b: Graph Algorithms — Tensor decomposition, FCA, TDA, snapshots, query
 builder.Services.AddScoped<TensorConstructionService>();

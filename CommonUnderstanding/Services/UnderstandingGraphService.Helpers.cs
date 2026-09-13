@@ -220,32 +220,14 @@ public partial class UnderstandingGraphService
     /// </summary>
     private static string DetermineRelationship(UnderstandingNode a, UnderstandingNode b, double similarity)
     {
-        if (similarity >= 0.85) return "supports";
-        if (similarity >= 0.65) return "refines";
-        if (similarity >= 0.45) return "qualifies";
-
-        // Low similarity but shared argument context → likely contradiction
-        // (same topic, opposing viewpoints)
-        if (similarity < 0.30)
-        {
-            var aArgs = DeserializeIntList(a.ArgumentIdsJson);
-            var bArgs = DeserializeIntList(b.ArgumentIdsJson);
-            if (aArgs.Intersect(bArgs).Any())
-                return "contradicts";
-        }
-
-        // One contested, one settled with moderate-low similarity → contradiction signal
-        if (similarity < 0.55 &&
-            ((a.Status == PropositionStatus.Contested && b.Status == PropositionStatus.Settled) ||
-             (a.Status == PropositionStatus.Settled && b.Status == PropositionStatus.Contested)))
-        {
-            var aArgs = DeserializeIntList(a.ArgumentIdsJson);
-            var bArgs = DeserializeIntList(b.ArgumentIdsJson);
-            if (aArgs.Intersect(bArgs).Any())
-                return "contradicts";
-        }
-
-        return "assumes";
+        var sharesContext = DeserializeIntList(a.ArgumentIdsJson)
+            .Intersect(DeserializeIntList(b.ArgumentIdsJson))
+            .Any();
+        return ReferenceRelationshipClassifier.Classify(
+            similarity,
+            a.Status,
+            b.Status,
+            sharesContext);
     }
 
     // ── Status merging ────────────────────────────────────────────────────

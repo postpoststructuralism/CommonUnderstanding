@@ -1,0 +1,341 @@
+@model ReferenceFrameworkImportModel
+@{
+    ViewData["Title"] = "Import Reference Framework";
+}
+
+<nav aria-label="breadcrumb" class="cu-breadcrumb mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a asp-action="Index">Reference Library</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Import</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <i class="bi bi-file-earmark-arrow-up fs-1 text-primary"></i>
+            <div>
+                <h1 class="cu-page-heading mb-1">Import a framework</h1>
+                <p class="text-muted mb-0">Upload one version of a normative source.</p>
+            </div>
+        </div>
+
+        <form id="import-form" asp-action="Import" method="post" enctype="multipart/form-data" class="cu-card cu-panel-card">
+            <div class="cu-card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Version" class="form-label"></label>
+                        <input asp-for="Version" class="form-control" placeholder="2026.1" />
+                        <span asp-validation-for="Version" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SourceType" class="form-label"></label>
+                        <select asp-for="SourceType" asp-items="Html.GetEnumSelectList<ReferenceSourceType>()" class="form-select"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="JurisdictionScope" class="form-label">Jurisdiction or scope</label>
+                        <input asp-for="JurisdictionScope" class="form-control" placeholder="Canada, global, organization" />
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Document" class="form-label">Source document</label>
+                        <input asp-for="Document" class="form-control" accept=".pdf,.html,.htm,.txt" />
+                        <div class="form-text">PDF, HTML, or text; maximum 20 MB. Only source metadata is retained.</div>
+                        <span asp-validation-for="Document" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input asp-for="IsShared" class="form-check-input" />
+                            <label asp-for="IsShared" class="form-check-label">Available to all users</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label for="owner-search" class="form-label">Additional owners <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input id="owner-search" class="form-control" type="search"
+                                       placeholder="Search by name or username" autocomplete="off"
+                                       aria-controls="owner-search-results" aria-expanded="false" />
+                            </div>
+                            <div id="owner-search-results" class="list-group position-absolute start-0 end-0 shadow-sm d-none"
+                                 style="z-index: 20; max-height: 16rem; overflow-y: auto;"></div>
+                        </div>
+                        <div id="selected-owners" class="d-flex flex-wrap gap-2 mt-2">
+                            @foreach (var owner in Model.SelectedOwners)
+                            {
+                                <span class="badge text-bg-light border d-inline-flex align-items-center gap-2 p-2" data-owner-id="@owner.Id">
+                                    <span>@owner.DisplayName <span class="text-muted">@@@owner.Username</span></span>
+                                    <button type="button" class="btn-close owner-remove" aria-label="Remove @owner.DisplayName"></button>
+                                    <input type="hidden" name="AdditionalOwnerUserIds" value="@owner.Id" />
+                                </span>
+                            }
+                        </div>
+                        <div class="form-text">You are automatically recorded as an owner. Search here only to give other users ownership access.</div>
+                    </div>
+                </div>
+                <div id="import-progress" class="border-top mt-4 pt-4 d-none" aria-live="polite">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div id="import-spinner" class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Importing framework</span>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">Importing framework</div>
+                            <div id="import-status" class="small text-muted">Uploading source document...</div>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width: 2%;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="2"></div>
+                    </div>
+                    <div id="import-progress-log" class="small mt-3 p-3 bg-light border rounded overflow-auto"
+                         style="max-height: 14rem;"></div>
+                    <div id="import-error" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+                </div>
+            </div>
+            <div class="cu-card-footer d-flex justify-content-end gap-2 p-3">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button id="import-submit" type="submit" class="btn cu-btn-primary">
+                    <i class="bi bi-stars me-1"></i>Import and decompose
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const search = document.getElementById('owner-search');
+            const results = document.getElementById('owner-search-results');
+            const selected = document.getElementById('selected-owners');
+            const form = document.getElementById('import-form');
+            const submit = document.getElementById('import-submit');
+            const progressPanel = document.getElementById('import-progress');
+            const progressBar = document.getElementById('import-progress-bar');
+            const progressStatus = document.getElementById('import-status');
+            const progressLog = document.getElementById('import-progress-log');
+            const progressError = document.getElementById('import-error');
+            const spinner = document.getElementById('import-spinner');
+            let requestNumber = 0;
+            let debounceTimer;
+
+            const selectedIds = () => new Set(
+                [...selected.querySelectorAll('[data-owner-id]')].map(element => element.dataset.ownerId)
+            );
+
+            const closeResults = () => {
+                results.replaceChildren();
+                results.classList.add('d-none');
+                search.setAttribute('aria-expanded', 'false');
+            };
+
+            const addOwner = owner => {
+                if (selectedIds().has(owner.id)) return;
+
+                const badge = document.createElement('span');
+                badge.className = 'badge text-bg-light border d-inline-flex align-items-center gap-2 p-2';
+                badge.dataset.ownerId = owner.id;
+
+                const label = document.createElement('span');
+                label.textContent = owner.displayName + ' ' + String.fromCharCode(64) + owner.username;
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn-close owner-remove';
+                remove.setAttribute('aria-label', `Remove ${owner.displayName}`);
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'AdditionalOwnerUserIds';
+                input.value = owner.id;
+
+                badge.append(label, remove, input);
+                selected.append(badge);
+            };
+
+            const renderResults = owners => {
+                results.replaceChildren();
+                const existing = selectedIds();
+                const available = owners.filter(owner => !existing.has(owner.id));
+
+                if (available.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'list-group-item small text-muted';
+                    empty.textContent = 'No matching users found.';
+                    results.append(empty);
+                } else {
+                    available.forEach(owner => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'list-group-item list-group-item-action';
+
+                        const name = document.createElement('div');
+                        name.className = 'fw-semibold';
+                        name.textContent = owner.displayName;
+
+                        const username = document.createElement('div');
+                        username.className = 'small text-muted';
+                        username.textContent = String.fromCharCode(64) + owner.username;
+
+                        button.append(name, username);
+                        button.addEventListener('click', () => {
+                            addOwner(owner);
+                            search.value = '';
+                            closeResults();
+                            search.focus();
+                        });
+                        results.append(button);
+                    });
+                }
+
+                results.classList.remove('d-none');
+                search.setAttribute('aria-expanded', 'true');
+            };
+
+            search.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                const query = search.value.trim();
+                if (query.length < 2) {
+                    closeResults();
+                    return;
+                }
+
+                const currentRequest = ++requestNumber;
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`@Url.Action("OwnerSearch", "Reference")?query=${encodeURIComponent(query)}`);
+                        if (!response.ok || currentRequest !== requestNumber) return;
+                        renderResults(await response.json());
+                    } catch {
+                        if (currentRequest === requestNumber) closeResults();
+                    }
+                }, 250);
+            });
+
+            selected.addEventListener('click', event => {
+                const remove = event.target.closest('.owner-remove');
+                if (remove) remove.closest('[data-owner-id]').remove();
+            });
+
+            document.addEventListener('click', event => {
+                if (!results.contains(event.target) && event.target !== search) closeResults();
+            });
+
+            const addProgressEntry = message => {
+                const entry = document.createElement('div');
+                const time = document.createElement('span');
+                time.className = 'text-secondary me-2';
+                time.textContent = `[${new Date().toLocaleTimeString()}]`;
+                entry.append(time, document.createTextNode(message));
+                progressLog.append(entry);
+                progressLog.scrollTop = progressLog.scrollHeight;
+            };
+
+            const setImporting = importing => {
+                submit.disabled = importing;
+                [...form.elements].forEach(element => {
+                    if (element !== submit) element.disabled = importing;
+                });
+                if (importing) {
+                    progressPanel.classList.remove('d-none');
+                    progressError.classList.add('d-none');
+                    progressLog.replaceChildren();
+                    progressBar.style.width = '2%';
+                    progressBar.setAttribute('aria-valuenow', '2');
+                    progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+                    progressBar.classList.remove('bg-danger', 'bg-success');
+                    spinner.classList.remove('d-none');
+                    progressStatus.textContent = 'Uploading source document...';
+                    addProgressEntry('Uploading source document...');
+                }
+            };
+
+            const failImport = message => {
+                setImporting(false);
+                spinner.classList.add('d-none');
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                progressStatus.textContent = 'Import failed.';
+                progressError.textContent = message;
+                progressError.classList.remove('d-none');
+                addProgressEntry(`Error: ${message}`);
+                progressPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            };
+
+            form.addEventListener('submit', async event => {
+                if (!window.fetch || !window.ReadableStream || !form.checkValidity()) return;
+
+                event.preventDefault();
+                const formData = new FormData(form);
+                setImporting(true);
+
+                try {
+                    const response = await fetch('@Url.Action("ImportStream", "Reference")', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'Accept': 'application/x-ndjson' }
+                    });
+                    if (!response.ok || !response.body) {
+                        throw new Error(`The server returned ${response.status}.`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            const update = JSON.parse(line);
+                            if (update.type === 'error') {
+                                failImport(update.message);
+                                return;
+                            }
+                            if (update.type === 'progress') {
+                                const percent = Math.max(2, Math.min(99, Math.round((update.step / update.total) * 100)));
+                                progressBar.style.width = `${percent}%`;
+                                progressBar.setAttribute('aria-valuenow', percent.toString());
+                                progressStatus.textContent = update.label;
+                                addProgressEntry(update.label);
+                            }
+                            if (update.type === 'complete') {
+                                progressBar.style.width = '100%';
+                                progressBar.setAttribute('aria-valuenow', '100');
+                                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                                progressBar.classList.add('bg-success');
+                                spinner.classList.add('d-none');
+                                progressStatus.textContent = update.label;
+                                addProgressEntry(`${update.label}. Opening framework...`);
+                                window.location.assign(update.redirectUrl);
+                                return;
+                            }
+                        }
+
+                        if (done) break;
+                    }
+
+                    failImport('The import ended before completion. Please try again.');
+                } catch (error) {
+                    failImport(error instanceof Error ? error.message : 'The import could not be completed.');
+                }
+            });
+        })();
+    </script>
+}

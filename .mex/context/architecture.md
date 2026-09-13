@@ -23,7 +23,7 @@ edges:
 # Broad overview: keep this empty unless a claim depends on a few specific symbols.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-09-06
+last_updated: 2026-09-13
 ---
 
 # Architecture
@@ -51,6 +51,7 @@ A separate local-only Razor Pages project reads App Service, Azure SQL, and Foun
 - **Recommendation projections** — SQL-backed argument and user features support bounded candidate retrieval without rebuilding the social graph during feed requests. Durable work rows drive an activity-gated projection worker, indexed serving hydrates only the selected page, and a bounded process-local channel writes lossy impression telemetry asynchronously. A configuration flag keeps the legacy ranker available as a fallback during rollout.
 - **Baseline content generation** — a bounded hosted worker selects canonical belief systems, generates common arguments through the shared Semantic Kernel fallback chain, publishes them under an explicitly marked AI service account, and invokes the same decomposition and adjudication service used by human social posts. Stable source keys make publication resumable and idempotent.
 - **Understanding graph** — connects propositions, arguments, evidence, contradictions, syntheses, and snapshots for exploration; depends on persisted graph entities and visualization endpoints.
+- **Reference framework library** — imports versioned normative PDF, HTML, and text corpora into shared or multi-owner frameworks, automatically includes the authenticated importer, validates owner account IDs before extraction or AI work, decomposes bounded text chunks through the argument pipeline, stores embedded atomic propositions, and persists fit/tension classifications against analytical propositions or social arguments using the understanding graph's relationship thresholds. Cookie principal validation rejects sessions whose account row has been removed.
 - **Semantic Kernel integration** — central AI boundary for local or hosted model providers; provider behavior is controlled by runtime configuration rather than direct calls from views.
 - **ApplicationDbContext** — shared EF Core persistence boundary with SQL Server and PostgreSQL providers; migrations and provider-specific behavior must remain compatible with the selected deployment.
 - **Local operations dashboard** — `CommonUnderstanding.Admin` aggregates cached adoption queries, Azure platform and Foundry AI compute metrics, sanitized Log Analytics endpoint counts, and process-lifetime availability observations without being deployed alongside the application.

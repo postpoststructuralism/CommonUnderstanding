@@ -117,6 +117,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<AiUsageCounter> AiUsageCounters => Set<AiUsageCounter>();
 
+    // Pluggable reference frameworks
+    public DbSet<ReferenceFramework> ReferenceFrameworks => Set<ReferenceFramework>();
+    public DbSet<ReferenceFrameworkOwner> ReferenceFrameworkOwners => Set<ReferenceFrameworkOwner>();
+    public DbSet<ReferenceProposition> ReferencePropositions => Set<ReferenceProposition>();
+    public DbSet<ReferenceFrameworkRelationship> ReferenceFrameworkRelationships => Set<ReferenceFrameworkRelationship>();
+
     // ── Phase 2: Social Platform ─────────────────────────────────────────────
     public DbSet<SocialProposition> SocialPropositions => Set<SocialProposition>();
     public DbSet<SocialArgumentProposition> SocialArgumentPropositions => Set<SocialArgumentProposition>();
@@ -351,6 +357,66 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.CounterKey).HasMaxLength(200).IsRequired();
             e.Property(x => x.RequestCount).IsRequired();
             e.HasIndex(x => x.LastRequestAt);
+        });
+
+        modelBuilder.Entity<ReferenceFramework>(e =>
+        {
+            e.ToTable("ReferenceFrameworks");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SourceType).HasConversion<string>();
+            e.HasIndex(x => new { x.Name, x.Version });
+            e.HasIndex(x => x.IsShared);
+        });
+
+        modelBuilder.Entity<ReferenceFrameworkOwner>(e =>
+        {
+            e.ToTable("ReferenceFrameworkOwners");
+            e.HasKey(x => new { x.ReferenceFrameworkId, x.UserId });
+            e.HasOne(x => x.ReferenceFramework)
+                .WithMany(x => x.Owners)
+                .HasForeignKey(x => x.ReferenceFrameworkId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReferenceProposition>(e =>
+        {
+            e.ToTable("ReferencePropositions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
+            e.HasIndex(x => new { x.ReferenceFrameworkId, x.SortOrder });
+            e.HasOne(x => x.ReferenceFramework)
+                .WithMany(x => x.Propositions)
+                .HasForeignKey(x => x.ReferenceFrameworkId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReferenceFrameworkRelationship>(e =>
+        {
+            var targetConstraint = IsPostgres
+                ? "(\"PropositionId\" IS NOT NULL AND \"SocialArgumentId\" IS NULL) OR (\"PropositionId\" IS NULL AND \"SocialArgumentId\" IS NOT NULL)"
+                : "([PropositionId] IS NOT NULL AND [SocialArgumentId] IS NULL) OR ([PropositionId] IS NULL AND [SocialArgumentId] IS NOT NULL)";
+            e.ToTable("ReferenceFrameworkRelationships", table =>
+                table.HasCheckConstraint("CK_ReferenceFrameworkRelationships_ExactlyOneTarget", targetConstraint));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RelationshipType).HasConversion<string>();
+            e.HasIndex(x => new { x.ReferencePropositionId, x.PropositionId }).IsUnique();
+            e.HasIndex(x => new { x.ReferencePropositionId, x.SocialArgumentId }).IsUnique();
+            e.HasOne(x => x.ReferenceProposition)
+                .WithMany(x => x.Relationships)
+                .HasForeignKey(x => x.ReferencePropositionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Proposition)
+                .WithMany()
+                .HasForeignKey(x => x.PropositionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.SocialArgument)
+                .WithMany()
+                .HasForeignKey(x => x.SocialArgumentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── Phase 2: Social Platform Entities ───────────────────────────────

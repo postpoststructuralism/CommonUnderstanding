@@ -1,164 +1,75 @@
-﻿@{
+﻿@model ReferenceFrameworkIndexModel
+@{
     ViewData["Title"] = "Reference Library";
 }
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="cu-breadcrumb mb-1">
+<nav aria-label="breadcrumb" class="cu-breadcrumb mb-2">
     <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
         <li class="breadcrumb-item active" aria-current="page">Reference Library</li>
     </ol>
 </nav>
 
-<div class="cu-workspace-hero cu-workspace-hero--compact mb-3">
-    <span class="cu-workspace-tag">
-        <i class="bi bi-book"></i>
-        Research Workspace
-    </span>
-    <h1 class="cu-page-heading mt-2 mb-1">Reference Library</h1>
-    <p class="cu-workspace-lead mb-0">
-        Belief frameworks and value systems that shape stakeholder perspectives. Use this library to understand
-        <em>why</em> people take the positions they do before you try to align them.
-    </p>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <span class="cu-workspace-tag"><i class="bi bi-journal-check"></i> Normative sources</span>
+        <h1 class="cu-page-heading mt-2 mb-1">Reference frameworks</h1>
+        <p class="text-muted mb-0">Versioned legal, policy, scientific, organizational, and ethical corpora.</p>
+    </div>
+    <a asp-action="Import" class="btn cu-btn-primary">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i>Import framework
+    </a>
 </div>
 
-<!-- Context callout -->
-<div class="cu-info-band cu-info-band--compact d-flex align-items-start gap-2 mb-3">
-    <i class="bi bi-lightbulb-fill flex-shrink-0 mt-1"></i>
-    <div class="small">
-        <strong>Why does this matter?</strong> When stakeholders disagree on an argument, the disagreement often
-        stems from different underlying worldviews, moral frameworks, or political philosophies. Exploring these
-        frameworks can help identify whether a dispute is about <em>facts</em> (solvable with evidence) or
-        <em>values</em> (requiring negotiation and compromise).
-    </div>
-</div>
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
 
-<!-- Framework cards -->
-<div class="row g-3 mb-4">
-
-    <div class="col-md-6 col-lg-3">
-        <div class="cu-card cu-panel-card h-100">
-            <div class="cu-card-header">
-                <i class="bi bi-globe2 me-1"></i> World Religions
-            </div>
-            <div class="cu-card-body d-flex flex-column">
-                <p class="text-muted small flex-grow-1">
-                    Major religious traditions and their ethical frameworks — from Christianity and Islam
-                    to Hinduism, Buddhism, and Judaism.
-                </p>
-                <a asp-controller="Explore" asp-action="Index"
-                   class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="bi bi-arrow-right me-1"></i> Browse
-                </a>
-            </div>
+@if (Model.Frameworks.Count == 0)
+{
+    <div class="cu-info-band d-flex align-items-center gap-3">
+        <i class="bi bi-journal-plus fs-3"></i>
+        <div>
+            <strong>No reference frameworks are available.</strong>
+            <div class="small">Import a PDF, HTML, or text source to begin.</div>
         </div>
     </div>
-
-    <div class="col-md-6 col-lg-3">
-        <div class="cu-card cu-panel-card h-100">
-            <div class="cu-card-header">
-                <i class="bi bi-tree me-1"></i> Indigenous Traditions
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var framework in Model.Frameworks)
+        {
+            var isOwner = framework.Owners.Any(owner => owner.UserId == Model.CurrentUserId);
+            <div class="col-md-6 col-xl-4">
+                <article class="cu-card cu-panel-card h-100">
+                    <div class="cu-card-header d-flex justify-content-between gap-2">
+                        <span><i class="bi bi-book me-1"></i>@framework.Name</span>
+                        <span class="badge text-bg-@(framework.IsShared ? "success" : "secondary")">
+                            @(framework.IsShared ? "Shared" : "Private")
+                        </span>
+                    </div>
+                    <div class="cu-card-body d-flex flex-column">
+                        <div class="d-flex flex-wrap gap-2 small text-muted mb-2">
+                            <span>@framework.SourceType</span>
+                            <span>v@framework.Version</span>
+                            @if (isOwner)
+                            {
+                                <span><i class="bi bi-person-check"></i> Owner</span>
+                            }
+                        </div>
+                        <p class="flex-grow-1 mb-3">@(string.IsNullOrWhiteSpace(framework.Description) ? "No description supplied." : framework.Description)</p>
+                        <div class="d-flex justify-content-between align-items-center small mb-3">
+                            <span>@framework.Propositions.Count propositions</span>
+                            <span class="text-muted">@framework.ImportedAt.ToLocalTime().ToString("d")</span>
+                        </div>
+                        <a asp-action="Details" asp-route-id="@framework.Id" class="btn btn-sm btn-outline-primary align-self-start">
+                            Open <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </article>
             </div>
-            <div class="cu-card-body d-flex flex-column">
-                <p class="text-muted small flex-grow-1">
-                    Indigenous knowledge systems and value frameworks including First Nations, Métis,
-                    and Inuit perspectives.
-                </p>
-                <a asp-controller="Explore" asp-action="Index"
-                   class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="bi bi-arrow-right me-1"></i> Browse
-                </a>
-            </div>
-        </div>
+        }
     </div>
-
-    <div class="col-md-6 col-lg-3">
-        <div class="cu-card cu-panel-card h-100">
-            <div class="cu-card-header">
-                <i class="bi bi-columns-gap me-1"></i> Philosophy
-            </div>
-            <div class="cu-card-body d-flex flex-column">
-                <p class="text-muted small flex-grow-1">
-                    Ethical and epistemological traditions — utilitarianism, deontology, virtue ethics,
-                    existentialism, and more.
-                </p>
-                <a asp-controller="Explore" asp-action="Index"
-                   class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="bi bi-arrow-right me-1"></i> Browse
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-3">
-        <div class="cu-card cu-panel-card h-100">
-            <div class="cu-card-header">
-                <i class="bi bi-flag me-1"></i> Political Systems
-            </div>
-            <div class="cu-card-body d-flex flex-column">
-                <p class="text-muted small flex-grow-1">
-                    Political philosophies and governance ideologies that inform stakeholder views on
-                    policy, rights, and collective action.
-                </p>
-                <a asp-controller="Explore" asp-action="Index"
-                   class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="bi bi-arrow-right me-1"></i> Browse
-                </a>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<!-- Tools -->
-<h2 class="cu-section-heading mb-2">
-    <i class="bi bi-tools me-1"></i> Exploration Tools
-</h2>
-<div class="row g-2 mb-3">
-
-    <div class="col-md-4">
-        <div class="cu-tool-card">
-            <i class="bi bi-search fs-3 text-primary flex-shrink-0"></i>
-            <div>
-                <h6 class="mb-1">Personal Discovery</h6>
-                <p class="text-muted small mb-2">
-                    Answer questions to map your own value framework and compare it to established systems.
-                </p>
-                <a asp-controller="Discovery" asp-action="Start" class="btn btn-sm btn-outline-secondary">
-                    Start →
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="cu-tool-card">
-            <i class="bi bi-bar-chart-horizontal fs-3 text-primary flex-shrink-0"></i>
-            <div>
-                <h6 class="mb-1">Compare Systems</h6>
-                <p class="text-muted small mb-2">
-                    Side-by-side comparison of two belief systems across shared dimensions.
-                </p>
-                <a asp-controller="Explore" asp-action="Compare" class="btn btn-sm btn-outline-secondary">
-                    Compare →
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="cu-tool-card">
-            <i class="bi bi-clock-history fs-3 text-primary flex-shrink-0"></i>
-            <div>
-                <h6 class="mb-1">Historical Timeline</h6>
-                <p class="text-muted small mb-2">
-                    Explore how these frameworks emerged and evolved over time.
-                </p>
-                <a asp-controller="Explore" asp-action="Timeline" class="btn btn-sm btn-outline-secondary">
-                    View →
-                </a>
-            </div>
-        </div>
-    </div>
-
-</div>
+}
