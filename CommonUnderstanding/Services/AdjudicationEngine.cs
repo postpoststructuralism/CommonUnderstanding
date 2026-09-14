@@ -54,6 +54,11 @@ public class AdjudicationEngine
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Premises)
                     .ThenInclude(p => p.EvidenceItems)
+                        .ThenInclude(e => e.Source)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Premises)
+                    .ThenInclude(p => p.EvidenceItems)
+                        .ThenInclude(e => e.EvidenceCorpusEntry)
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Syllogisms)
             .Include(a => a.Claims)
@@ -197,6 +202,9 @@ public class AdjudicationEngine
         {
             double weight = TierWeight(item.Tier);
 
+            weight *= CalculateSourceTrustMultiplier(item.Source);
+            weight *= CalculateVerificationMultiplier(item.EvidenceCorpusEntry?.VerificationStatus);
+
             // Replication multiplier
             weight *= item.ReplicationStatus?.ToLower() switch
             {
@@ -231,6 +239,25 @@ public class AdjudicationEngine
         var confidence = 0.5 + normalisedSignal * 0.45;
         return Math.Round(Math.Clamp(confidence, 0.05, 0.95), 3);
     }
+
+    internal static double CalculateSourceTrustMultiplier(Source? source)
+    {
+        if (source is null) return 0.5;
+        if (source.VerificationStatus == SourceVerificationStatus.Retracted) return 0.02;
+
+        var reliabilityMultiplier = 0.25 + (0.75 * Math.Clamp(source.ReliabilityScore, 0, 1));
+        if (source.VerificationStatus == SourceVerificationStatus.CorrectionIssued)
+            reliabilityMultiplier *= 0.6;
+
+        return reliabilityMultiplier;
+    }
+
+    internal static double CalculateVerificationMultiplier(SourceVerificationStatus? status) => status switch
+    {
+        SourceVerificationStatus.Retracted => 0.02,
+        SourceVerificationStatus.CorrectionIssued => 0.6,
+        _ => 1.0
+    };
 
     private static PropositionStatus DeterminePropositionStatus(List<EvidenceItem> evidence, double confidence)
     {

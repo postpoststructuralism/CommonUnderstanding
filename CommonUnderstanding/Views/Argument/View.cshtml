@@ -129,6 +129,27 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
+@if (TempData["CitationInfo"] is string citationInfo)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-journal-check me-1"></i> @citationInfo
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["CitationWarning"] is string citationWarning)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-info-circle me-1"></i> @citationWarning
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["CitationError"] is string citationError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i> @citationError
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
 <!-- ── Tab Navigation ──────────────────────────────────────────────────────── -->
 <ul class="nav nav-tabs mb-0" id="argTabs" role="tablist">
@@ -450,6 +471,15 @@
                                 data-bs-target="#addEvForm-@p.Id">
                             <i class="bi bi-plus me-1"></i> Add Evidence
                         </button>
+                        <form asp-action="SuggestEvidence" method="post" class="ms-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="argumentId" value="@Model.Id" />
+                            <input type="hidden" name="propositionId" value="@p.Id" />
+                            <button class="btn btn-outline-secondary btn-sm" type="submit"
+                                    title="Search the verified literature corpus">
+                                <i class="bi bi-search me-1"></i> Find Citations
+                            </button>
+                        </form>
                     </div>
 
                     <div class="cu-card-body p-0">
@@ -488,6 +518,25 @@
                                                     {
                                                         <small class="text-muted d-block">DOI: @ev.DOI</small>
                                                     }
+                                                    @if (ev.Source != null)
+                                                    {
+                                                        var trustClass = ev.Source.VerificationStatus switch
+                                                        {
+                                                            SourceVerificationStatus.Verified => "success",
+                                                            SourceVerificationStatus.CorrectionIssued => "warning",
+                                                            SourceVerificationStatus.Retracted => "danger",
+                                                            _ => "secondary"
+                                                        };
+                                                        <small class="d-block text-muted">
+                                                            @ev.Source.Name
+                                                            <span class="badge bg-@trustClass ms-1">@ev.Source.VerificationStatus</span>
+                                                            <span title="Independent source reliability score">trust @ev.Source.ReliabilityScore.ToString("P0")</span>
+                                                            @if (!string.IsNullOrWhiteSpace(ev.Source.VerificationNote))
+                                                            {
+                                                                <span title="@ev.Source.VerificationNote"><i class="bi bi-info-circle ms-1"></i></span>
+                                                            }
+                                                        </small>
+                                                    }
                                                 </td>
                                                 <td><span class="badge bg-light text-dark border">@ev.Tier</span></td>
                                                 <td>@ev.PublicationYear</td>
@@ -503,6 +552,60 @@
                         {
                             <div class="p-3 text-muted small">
                                 <i class="bi bi-exclamation-circle me-1"></i> No evidence yet for this premise.
+                            </div>
+                        }
+
+                        @{
+                            var pendingSuggestions = p.EvidenceMatchSuggestions
+                                .Where(s => s.Status == EvidenceMatchStatus.Pending)
+                                .OrderByDescending(s => s.ClassificationConfidence)
+                                .ToList();
+                        }
+                        @if (pendingSuggestions.Count > 0)
+                        {
+                            <div class="border-top p-3">
+                                <h6 class="mb-2"><i class="bi bi-journal-check me-1"></i> Citation suggestions awaiting review</h6>
+                                @foreach (var suggestion in pendingSuggestions)
+                                {
+                                    var entry = suggestion.EvidenceCorpusEntry;
+                                    <div class="border rounded p-2 mb-2">
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <div>
+                                                <strong>@entry?.Title</strong>
+                                                <div class="small text-muted">
+                                                    @suggestion.Direction · @suggestion.SuggestedTier · confidence @suggestion.ClassificationConfidence.ToString("P0")
+                                                </div>
+                                                <div class="small mt-1">@suggestion.Rationale</div>
+                                                @if (entry?.Source != null)
+                                                {
+                                                    <div class="small text-muted mt-1">
+                                                        @entry.Source.Name · @entry.Source.VerificationStatus · trust @entry.Source.ReliabilityScore.ToString("P0")
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="d-flex gap-1 align-items-start flex-shrink-0">
+                                                <form asp-action="ReviewEvidenceSuggestion" method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="argumentId" value="@Model.Id" />
+                                                    <input type="hidden" name="suggestionId" value="@suggestion.Id" />
+                                                    <input type="hidden" name="confirm" value="true" />
+                                                    <button class="btn btn-success btn-sm" type="submit" title="Attach as evidence">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                </form>
+                                                <form asp-action="ReviewEvidenceSuggestion" method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="argumentId" value="@Model.Id" />
+                                                    <input type="hidden" name="suggestionId" value="@suggestion.Id" />
+                                                    <input type="hidden" name="confirm" value="false" />
+                                                    <button class="btn btn-outline-danger btn-sm" type="submit" title="Reject suggestion">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
 
@@ -527,6 +630,10 @@
                                     <div class="col-md-6">
                                         <input type="url" name="SourceUri" class="form-control form-control-sm"
                                                placeholder="URL (optional)" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="SourceName" class="form-control form-control-sm"
+                                               placeholder="Publisher or outlet (optional)" maxlength="300" />
                                     </div>
                                     <div class="col-md-6">
                                         <input type="text" name="DOI" class="form-control form-control-sm"

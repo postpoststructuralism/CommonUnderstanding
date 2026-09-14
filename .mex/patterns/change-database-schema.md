@@ -14,7 +14,7 @@ edges:
   - target: context/setup.md
     condition: when applying or troubleshooting migrations
 grounds_to: []
-last_updated: 2026-08-02
+last_updated: 2026-09-13
 ---
 
 # Change Database Schema
@@ -32,6 +32,7 @@ The application selects SQL Server or PostgreSQL through `DatabaseProvider`; pro
 ## Gotchas
 - Local PostgreSQL success does not validate the production SQL Server migration.
 - Raw SQL, vector types, filtered indexes, computed defaults, and timestamp behavior are provider-sensitive.
+- SQL Server rejects multiple cascade paths even when EF accepts the model. For optional audit backlinks into an aggregate child, prefer `DeleteBehavior.NoAction` and keep cascade deletion only on the aggregate ownership relationship.
 - Do not hand-edit the model snapshot independently of a migration.
 - Root SQL files are diagnostics/maintenance scripts, not the application persistence API.
 

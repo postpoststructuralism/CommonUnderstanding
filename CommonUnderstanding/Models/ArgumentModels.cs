@@ -154,6 +154,7 @@ public class Proposition
     public Claim? Claim { get; set; }
 
     public ICollection<EvidenceItem> EvidenceItems { get; set; } = new List<EvidenceItem>();
+    public ICollection<EvidenceMatchSuggestion> EvidenceMatchSuggestions { get; set; } = new List<EvidenceMatchSuggestion>();
 }
 
 /// <summary>
@@ -281,6 +282,9 @@ public class EvidenceItem
     [MaxLength(100)]
     public string? DOI { get; set; }
 
+    public int? SourceId { get; set; }
+    public long? EvidenceCorpusEntryId { get; set; }
+
     public EvidenceTier Tier { get; set; } = EvidenceTier.T6_AnecdoteOpinion;
 
     public EvidenceDirection Direction { get; set; } = EvidenceDirection.Neutral;
@@ -304,6 +308,12 @@ public class EvidenceItem
     // Navigation
     [ForeignKey(nameof(PropositionId))]
     public Proposition? Proposition { get; set; }
+
+    [ForeignKey(nameof(SourceId))]
+    public Source? Source { get; set; }
+
+    [ForeignKey(nameof(EvidenceCorpusEntryId))]
+    public EvidenceCorpusEntry? EvidenceCorpusEntry { get; set; }
 }
 
 // ─────────────────────────────────────────────

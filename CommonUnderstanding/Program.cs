@@ -3,6 +3,7 @@ using CommonUnderstanding.Services.Social;
 using CommonUnderstanding.Services.Social.Plugins;
 using CommonUnderstanding.Services.Social.Workers;
 using CommonUnderstanding.Services.Widget;
+using CommonUnderstanding.Services.Provenance;
 using CommonUnderstanding.Data;
 using CommonUnderstanding.Authentication;
 using Microsoft.AspNetCore.Authentication;
@@ -155,6 +156,10 @@ builder.Services.AddScoped<ArgumentSensemakingService>();
 builder.Services.AddScoped<LogicalValidationService>();
 builder.Services.AddScoped<AdjudicationEngine>();
 builder.Services.AddScoped<EvidenceClassificationService>();
+builder.Services.AddScoped<ISourceTrustService, SourceTrustService>();
+builder.Services.AddScoped<IEvidenceMatchingService, EvidenceMatchingService>();
+builder.Services.AddScoped<ILiteratureProvider, CrossrefLiteratureProvider>();
+builder.Services.AddScoped<ILiteratureCorpusService, LiteratureCorpusService>();
 builder.Services.AddScoped<CommonUnderstandingService>();
 builder.Services.AddScoped<StakeholderService>();
 builder.Services.AddScoped<DecisionSupportService>();
@@ -287,6 +292,7 @@ builder.Services.AddHostedService<EmbeddingBackfillWorker>();
 builder.Services.AddHostedService<ReplyCountWorker>();
 builder.Services.AddHostedService<DmiScoreWorker>();
 builder.Services.AddHostedService<BaselineContentWorker>();
+builder.Services.AddHostedService<EvidenceCorpusWorker>();
 
 // ── Widget / Embeddable Comments Services ────────────────────────────────────
 builder.Services.AddScoped<ThreadService>();

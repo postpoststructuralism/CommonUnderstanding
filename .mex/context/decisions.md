@@ -23,7 +23,7 @@ edges:
 # Decisions usually ground sparsely; add only symbols that implement the decision.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-09-06
+last_updated: 2026-09-14
 ---
 
 # Decisions
@@ -42,6 +42,14 @@ last_updated: 2026-09-06
      The history must be preserved — this is the event clock. -->
 
 ## Decision Log
+
+  ### Require human confirmation for external evidence matches
+  **Date:** 2026-09-14
+  **Status:** Active
+  **Decision:** Store external literature locally and permit automated retrieval and classification, but create only pending suggestions until the argument owner explicitly confirms one.
+  **Reasoning:** Retrieval similarity and model classification are useful discovery aids but are not reliable enough to silently alter an argument's evidence or confidence.
+  **Alternatives considered:** Automatically accepting high-confidence matches was rejected because model confidence does not establish evidentiary correctness; synchronous ingestion during argument submission was rejected because external API, embedding, and AI latency would block the request path.
+  **Consequences:** Crossref egress is opt-in through `Provenance:Enabled`, periodic work is activity-gated and bounded, accepted suggestions retain corpus/source provenance, and only confirmation triggers evidence creation and re-adjudication.
 
   ### Precompute recommendation features in SQL-backed projections
   **Date:** 2026-09-06

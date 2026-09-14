@@ -5,6 +5,7 @@ using CommonUnderstanding.Data;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services;
+using CommonUnderstanding.Services.Provenance;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -18,6 +19,10 @@ public class ArgumentController : Controller
     private readonly LogicalValidationService _validationService;
     private readonly AdjudicationEngine _adjudicationEngine;
     private readonly EvidenceClassificationService _evidenceClassifier;
+    private readonly ISourceTrustService _sourceTrustService;
+    private readonly IEvidenceMatchingService _evidenceMatchingService;
+    private readonly ILiteratureCorpusService _literatureCorpusService;
+    private readonly IConfiguration _configuration;
     private readonly StakeholderService _stakeholderService;
     private readonly DecisionSupportService _decisionSupportService;
     private readonly ComparativeAnalysisService _comparativeAnalysisService;
@@ -30,6 +35,10 @@ public class ArgumentController : Controller
         LogicalValidationService validationService,
         AdjudicationEngine adjudicationEngine,
         EvidenceClassificationService evidenceClassifier,
+        ISourceTrustService sourceTrustService,
+        IEvidenceMatchingService evidenceMatchingService,
+        ILiteratureCorpusService literatureCorpusService,
+        IConfiguration configuration,
         StakeholderService stakeholderService,
         DecisionSupportService decisionSupportService,
         ComparativeAnalysisService comparativeAnalysisService,
@@ -41,6 +50,10 @@ public class ArgumentController : Controller
         _validationService = validationService;
         _adjudicationEngine = adjudicationEngine;
         _evidenceClassifier = evidenceClassifier;
+        _sourceTrustService = sourceTrustService;
+        _evidenceMatchingService = evidenceMatchingService;
+        _literatureCorpusService = literatureCorpusService;
+        _configuration = configuration;
         _stakeholderService = stakeholderService;
         _decisionSupportService = decisionSupportService;
         _comparativeAnalysisService = comparativeAnalysisService;
@@ -601,9 +614,11 @@ public class ArgumentController : Controller
     public async Task<IActionResult> View(int id)
     {
         var argument = await _db.Arguments
+            .AsSplitQuery()
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Premises)
                     .ThenInclude(p => p.EvidenceItems)
+                        .ThenInclude(e => e.Source)
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Syllogisms)
             .Include(a => a.Claims)
@@ -617,6 +632,39 @@ public class ArgumentController : Controller
 
         if (argument == null)
             return NotFound();
+
+        var propositions = argument.Claims
+            .SelectMany(c => c.Premises)
+            .ToDictionary(p => p.Id);
+
+        var pendingSuggestions = await _db.EvidenceMatchSuggestions
+            .AsNoTracking()
+            .Where(s => propositions.Keys.Contains(s.PropositionId) &&
+                        s.Status == EvidenceMatchStatus.Pending)
+            .Select(s => new EvidenceMatchSuggestion
+            {
+                Id = s.Id,
+                PropositionId = s.PropositionId,
+                Direction = s.Direction,
+                Status = s.Status,
+                ClassificationConfidence = s.ClassificationConfidence,
+                Rationale = s.Rationale,
+                SuggestedTier = s.SuggestedTier,
+                EvidenceCorpusEntry = new EvidenceCorpusEntry
+                {
+                    Title = s.EvidenceCorpusEntry!.Title,
+                    Source = new Source
+                    {
+                        Name = s.EvidenceCorpusEntry.Source!.Name,
+                        VerificationStatus = s.EvidenceCorpusEntry.Source.VerificationStatus,
+                        ReliabilityScore = s.EvidenceCorpusEntry.Source.ReliabilityScore
+                    }
+                }
+            })
+            .ToListAsync();
+
+        foreach (var suggestion in pendingSuggestions)
+            propositions[suggestion.PropositionId].EvidenceMatchSuggestions.Add(suggestion);
 
         // Load stakeholder data for the positions panel
         ViewBag.StakeholderPositions = await _stakeholderService.GetPositionsForArgumentAsync(id);
@@ -685,6 +733,11 @@ public class ArgumentController : Controller
             AddedBy = model.AddedBy?.Trim()
         };
 
+        item.Source = await _sourceTrustService.ResolveAsync(
+            model.SourceName,
+            item.SourceUri,
+            cancellationToken: HttpContext.RequestAborted);
+
         _db.EvidenceItems.Add(item);
         proposition.EvidenceCount += 1;
         await _db.SaveChangesAsync();
@@ -693,6 +746,92 @@ public class ArgumentController : Controller
         await _adjudicationEngine.AdjudicateAsync(model.ArgumentId);
 
         return RedirectToAction(nameof(View), new { id = model.ArgumentId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SuggestEvidence(int argumentId, int propositionId)
+    {
+        if (!await UserOwnsPropositionAsync(argumentId, propositionId))
+            return NotFound();
+
+        if (!_configuration.GetValue<bool>("Provenance:Enabled"))
+        {
+            TempData["CitationWarning"] = "Citation search is disabled. Set Provenance:Enabled to true and configure at least one tracked topic.";
+            return RedirectToAction(nameof(View), new { id = argumentId });
+        }
+
+        var topics = _configuration.GetSection("Provenance:TrackedTopics").Get<string[]>() ?? [];
+        if (!topics.Any(topic => !string.IsNullOrWhiteSpace(topic)))
+        {
+            TempData["CitationWarning"] = "Citation search has no tracked topics. Add at least one Provenance:TrackedTopics entry and restart the app.";
+            return RedirectToAction(nameof(View), new { id = argumentId });
+        }
+
+        try
+        {
+            if (!await _db.EvidenceCorpusEntries.AnyAsync(HttpContext.RequestAborted))
+            {
+                await _literatureCorpusService.RefreshAsync(HttpContext.RequestAborted);
+            }
+
+            var added = await _evidenceMatchingService.SuggestForPropositionAsync(
+                propositionId,
+                HttpContext.RequestAborted);
+
+            TempData[added > 0 ? "CitationInfo" : "CitationWarning"] = added > 0
+                ? $"Found {added} citation suggestion{(added == 1 ? string.Empty : "s")}. Review them under the premise below."
+                : "No relevant citations were found in the configured literature corpus for this premise.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Citation search failed for proposition {PropositionId}.", propositionId);
+            TempData["CitationError"] = "Citation search could not complete. Check the application logs and provenance provider configuration.";
+        }
+
+        return RedirectToAction(nameof(View), new { id = argumentId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReviewEvidenceSuggestion(int argumentId, long suggestionId, bool confirm)
+    {
+        if (!await UserOwnsSuggestionAsync(argumentId, suggestionId))
+            return NotFound();
+
+        var affectedArgumentId = await _evidenceMatchingService.ReviewAsync(
+            suggestionId,
+            confirm,
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            HttpContext.RequestAborted);
+
+        if (affectedArgumentId != argumentId)
+            return NotFound();
+
+        return RedirectToAction(nameof(View), new { id = argumentId });
+    }
+
+    private async Task<bool> UserOwnsPropositionAsync(int argumentId, int propositionId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return await _db.Propositions.AnyAsync(
+            proposition => proposition.Id == propositionId
+                && proposition.Claim != null
+                && proposition.Claim.ArgumentId == argumentId
+                && proposition.Claim.Argument != null
+                && proposition.Claim.Argument.SubmittedBy == userId,
+            HttpContext.RequestAborted);
+    }
+
+    private async Task<bool> UserOwnsSuggestionAsync(int argumentId, long suggestionId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return await _db.EvidenceMatchSuggestions.AnyAsync(
+            suggestion => suggestion.Id == suggestionId
+                && suggestion.Proposition != null
+                && suggestion.Proposition.Claim != null
+                && suggestion.Proposition.Claim.ArgumentId == argumentId
+                && suggestion.Proposition.Claim.Argument != null
+                && suggestion.Proposition.Claim.Argument.SubmittedBy == userId,
+            HttpContext.RequestAborted);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1152,6 +1291,7 @@ public class AddEvidenceModel
     public string Citation { get; set; } = string.Empty;
 
     public string? SourceUri { get; set; }
+    public string? SourceName { get; set; }
     public string? DOI { get; set; }
     public EvidenceTier Tier { get; set; } = EvidenceTier.T5_CaseStudy;
     public EvidenceDirection Direction { get; set; } = EvidenceDirection.Supports;

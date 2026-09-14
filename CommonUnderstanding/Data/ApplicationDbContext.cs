@@ -80,6 +80,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Qualifier> Qualifiers => Set<Qualifier>();
     public DbSet<Rebuttal> Rebuttals => Set<Rebuttal>();
     public DbSet<EvidenceItem> EvidenceItems => Set<EvidenceItem>();
+    public DbSet<Source> Sources => Set<Source>();
+    public DbSet<EvidenceCorpusEntry> EvidenceCorpusEntries => Set<EvidenceCorpusEntry>();
+    public DbSet<EvidenceMatchSuggestion> EvidenceMatchSuggestions => Set<EvidenceMatchSuggestion>();
     public DbSet<AdjudicationSummary> AdjudicationSummaries => Set<AdjudicationSummary>();
 
     // Phase 3 — Common Understanding Graph (legacy)
@@ -234,6 +237,57 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Tier).HasConversion<string>();
             e.Property(x => x.Direction).HasConversion<string>();
+            e.HasOne(x => x.Source)
+             .WithMany(x => x.EvidenceItems)
+             .HasForeignKey(x => x.SourceId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.EvidenceCorpusEntry)
+             .WithMany()
+             .HasForeignKey(x => x.EvidenceCorpusEntryId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Source>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.VerificationStatus).HasConversion<string>();
+            e.HasIndex(x => x.Domain).IsUnique();
+            e.HasIndex(x => x.PublisherIdentifier).IsUnique();
+        });
+
+        modelBuilder.Entity<EvidenceCorpusEntry>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SuggestedTier).HasConversion<string>();
+            e.Property(x => x.VerificationStatus).HasConversion<string>();
+            e.Property(x => x.Embedding).SetPostgresArrayType("float4[]", IsPostgres);
+            e.HasIndex(x => new { x.Provider, x.ExternalId }).IsUnique();
+            e.HasIndex(x => x.DOI);
+            e.HasOne(x => x.Source)
+             .WithMany(x => x.CorpusEntries)
+             .HasForeignKey(x => x.SourceId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<EvidenceMatchSuggestion>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Direction).HasConversion<string>();
+            e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.SuggestedTier).HasConversion<string>();
+            e.HasIndex(x => new { x.PropositionId, x.EvidenceCorpusEntryId }).IsUnique();
+            e.HasOne(x => x.Proposition)
+             .WithMany(x => x.EvidenceMatchSuggestions)
+             .HasForeignKey(x => x.PropositionId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.EvidenceCorpusEntry)
+             .WithMany(x => x.MatchSuggestions)
+             .HasForeignKey(x => x.EvidenceCorpusEntryId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.EvidenceItem)
+             .WithMany()
+             .HasForeignKey(x => x.EvidenceItemId)
+               .OnDelete(DeleteBehavior.NoAction);
         });
 
         // AdjudicationSummary
