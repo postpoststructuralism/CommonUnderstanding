@@ -26,6 +26,15 @@ public sealed class RecentUserActivity
         }
     }
 
+    public bool ShouldRunBackgroundWork
+    {
+        get
+        {
+            var lastActivityUtcTicks = Interlocked.Read(ref _lastActivityUtcTicks);
+            return lastActivityUtcTicks != 0 && !IsActive;
+        }
+    }
+
     public void RecordActivity()
     {
         Interlocked.Exchange(ref _lastActivityUtcTicks, _timeProvider.GetUtcNow().UtcTicks);

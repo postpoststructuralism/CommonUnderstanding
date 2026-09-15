@@ -44,7 +44,7 @@ public class EpistemicScoringWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     await ProcessStaleProfilesAsync(stoppingToken);
                     await CreateMissingProfilesAsync(stoppingToken);

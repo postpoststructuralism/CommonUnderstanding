@@ -47,7 +47,7 @@ public class AIValidationWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     await ProcessPendingArgumentsAsync(stoppingToken);
                 }

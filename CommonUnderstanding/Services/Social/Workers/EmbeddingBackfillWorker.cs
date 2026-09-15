@@ -42,7 +42,7 @@ public class EmbeddingBackfillWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     int processed = await BackfillArgumentEmbeddingsAsync(stoppingToken);
                     int processedWorldviews = await BackfillWorldviewEmbeddingsAsync(stoppingToken);

@@ -33,7 +33,7 @@ public sealed class RecommendationProjectionWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                     await ProcessBatchAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }

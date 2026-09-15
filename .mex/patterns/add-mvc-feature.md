@@ -12,7 +12,7 @@ edges:
   - target: context/architecture.md
     condition: when the feature crosses controllers, services, persistence, workers, or SignalR
 grounds_to: []
-last_updated: 2026-08-02
+last_updated: 2026-09-15
 ---
 
 # Add an MVC Feature
@@ -32,6 +32,7 @@ Load architecture and conventions. Identify the nearest existing feature in `Con
 - Scoped EF services cannot be captured by singleton workers; create a scope per unit of work.
 - MVC success does not prove the SignalR or browser path works; validate both when applicable.
 - Large controllers are a signal that domain logic belongs in a service.
+- When a vis-network graph must match its loaded aesthetic before remote data arrives, embed a bounded generated snapshot and initialize the production network from that real payload. Replace the shared datasets in place after refresh, and do not gate visibility on stabilization events when physics is intended to remain active.
 
 ## Verify
 - [ ] `dotnet build CommonUnderstanding/CommonUnderstanding.csproj --no-restore` succeeds.

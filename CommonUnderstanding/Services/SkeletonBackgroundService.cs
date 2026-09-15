@@ -46,7 +46,7 @@ public class SkeletonBackgroundService : BackgroundService
                 break;
             }
 
-            if (_userActivity.IsActive)
+            if (_userActivity.ShouldRunBackgroundWork)
             {
                 await RegenerateAsync(stoppingToken);
             }

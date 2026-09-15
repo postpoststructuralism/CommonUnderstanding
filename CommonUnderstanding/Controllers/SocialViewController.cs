@@ -100,6 +100,7 @@ public class SocialViewController : Controller
         await using var db = await _dbFactory.CreateDbContextAsync();
         var arg = await db.SocialArguments
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(a => a.ClaimProposition)
             .Include(a => a.Votes)
             .Include(a => a.OutboundLinks)
@@ -160,6 +161,7 @@ public class SocialViewController : Controller
         {
             sourceArg = await db.Arguments
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(a => a.Claims)
                     .ThenInclude(c => c.Premises)
                         .ThenInclude(p => p.EvidenceItems)

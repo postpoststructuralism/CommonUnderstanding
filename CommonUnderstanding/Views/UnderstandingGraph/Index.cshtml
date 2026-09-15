@@ -1,9 +1,27 @@
 @using CommonUnderstanding.Models
 @using CommonUnderstanding.Services
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 @{
     ViewData["Title"] = "Understanding Graph — Schema Explorer";
     var stats = ViewBag.Statistics as QuickStats;
     var isHomePage = ViewBag.IsHomePage as bool? ?? false;
+    var graphDataPath = System.IO.Path.Combine(WebHostEnvironment.WebRootPath, "data");
+    var graphManifestPath = System.IO.Path.Combine(graphDataPath, "skeleton-manifest.json");
+    var initialGraphSnapshotPath = string.Empty;
+    if (System.IO.File.Exists(graphManifestPath))
+    {
+        using var graphManifest = System.Text.Json.JsonDocument.Parse(
+            System.IO.File.ReadAllText(graphManifestPath));
+        if (graphManifest.RootElement.TryGetProperty("url", out var snapshotUrl)
+            && snapshotUrl.GetString() is string snapshotUrlValue)
+        {
+            initialGraphSnapshotPath = System.IO.Path.Combine(
+                graphDataPath, System.IO.Path.GetFileName(snapshotUrlValue));
+        }
+    }
+    var initialGraphSnapshotJson = System.IO.File.Exists(initialGraphSnapshotPath)
+        ? System.IO.File.ReadAllText(initialGraphSnapshotPath)
+        : "{\"nodes\":[],\"edges\":[]}";
 }
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.css" />
@@ -157,76 +175,6 @@
         flex: 1;
         min-height: 0;
         overflow: hidden;
-    }
-
-    /* ── Graph loading overlay ── */
-    .graph-loading {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: rgba(252, 250, 246, 0.92);
-        z-index: 10;
-        pointer-events: none;
-        transition: opacity 0.5s ease;
-    }
-    .graph-loading.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
-    .graph-loading .spinner-ring {
-        --color-1: var(--cu-secondary-blue, #0f766e);
-        --size: 1px;
-        width: calc(48 * var(--size));
-        height: calc(48 * var(--size));
-        display: inline-block;
-        position: relative;
-    }
-    .graph-loading .spinner-ring::after,
-    .graph-loading .spinner-ring::before {
-        content: '';
-        box-sizing: border-box;
-        width: calc(48 * var(--size));
-        height: calc(48 * var(--size));
-        border-radius: 50%;
-        border: calc(2 * var(--size)) solid var(--color-1);
-        position: absolute;
-        left: 0;
-        top: 0;
-        animation: animloader 2s linear infinite;
-    }
-    .graph-loading .spinner-ring::after {
-        animation-delay: 1s;
-    }
-    @@keyframes animloader {
-        0% {
-            transform: scale(0);
-            opacity: 1;
-        }
-        100% {
-            transform: scale(1);
-            opacity: 0;
-        }
-    }
-    .graph-loading .spinner-label {
-        margin-top: 16px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--cu-text-muted, #667487);
-        letter-spacing: 0.3px;
-        animation: spinner-fade-text 2s ease-in-out infinite;
-    }
-    @@keyframes animloader {
-        0% {
-            transform: scale(0);
-            opacity: 1;
-        }
-        100% {
-            transform: scale(1);
-            opacity: 0;
-        }
     }
 
     /* ── Graph Controls ── */
@@ -660,12 +608,7 @@
             </span>
         </div>
         }
-        <div id="graph-network">
-            <div class="graph-loading" id="graph-loading">
-            <div class="spinner-ring"></div>
-            <div class="spinner-label">Mapping understanding…</div>
-        </div>
-        </div>
+        <div id="graph-network" aria-label="Understanding graph"></div>
         <div id="graph-hover-popup" class="graph-hover-popup" style="display:none;">
             <div class="popup-label" id="popup-label"></div>
             <div class="popup-meta">
@@ -701,6 +644,7 @@
     (ContextLabel: "the understanding graph", ContextType: "MapRegion", ContextId: "schema-explorer"))
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
+<script type="application/json" id="initial-graph-snapshot">@Html.Raw(initialGraphSnapshotJson)</script>
 <script>
     // ── Three-tier loading state ──
     let network = null;
@@ -708,7 +652,7 @@
     let edges = new vis.DataSet([]);
     let allNodes = [];
     let allEdges = [];
-    let physicsEnabled = false;
+    let physicsEnabled = true;
     let physicsResumeTimer = null;
     const MAX_TOTAL_NODES = 2000;           // cap total DOM nodes for smooth rendering
     const VIEWPORT_ZOOM_THRESHOLD = 0.6;    // only fetch real data when zoomed in this far
@@ -718,6 +662,15 @@
     let hoverCache = new Map();             // nodeId -> { id, label, status, confidence }
     let viewportFetchTimer = null;
     let lastViewportFetchNodes = new Set(); // track what we last fetched to skip duplicates
+    const initialGraphSnapshot = JSON.parse(
+        document.getElementById('initial-graph-snapshot').textContent
+    );
+
+    function seedInitialGraphSnapshot() {
+        computeColorThresholds(initialGraphSnapshot.nodes || []);
+        nodes.add((initialGraphSnapshot.nodes || []).map(mapStaticNode));
+        edges.add((initialGraphSnapshot.edges || []).map(mapStaticEdge));
+    }
 
     // ── Tab switching (safe: sidebar may be hidden on homepage) ──
     document.querySelectorAll('.sidebar-tab').forEach(tab => {
@@ -746,12 +699,13 @@
         });
     }
 
-    // ── Draw network instantly (empty canvas, no data yet) ──
+    // ── Draw the cached real network instantly while current data loads ──
     function drawNetwork() {
+        seedInitialGraphSnapshot();
         const container = document.getElementById('graph-network');
         const options = {
             physics: {
-                enabled: false,  // enabled after data loads and kept running while idle
+                enabled: true,
                 minVelocity: 0,
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
@@ -786,26 +740,23 @@
         };
 
         network = new vis.Network(container, { nodes, edges }, options);
+        network.moveTo({ position: { x: 0, y: 0 }, scale: 0.20, animation: false });
 
         network.on('click', (params) => {
             if (params.nodes.length > 0) {
                 const nodeId = params.nodes[0];
                 const node = allNodes.find(n => n.id === nodeId);
                 if (!node) return;
-                @if (isHomePage)
-                {
-                <text>
                 navigateToSocialArgument(node);
-                return;
-                </text>
-                }
-                showNodeDetail(nodeId);
             }
         });
 
         network.on('doubleClick', (params) => {
             if (params.nodes.length > 0) {
-                window.location.href = '/UnderstandingGraph/Node/' + params.nodes[0];
+                const nodeId = params.nodes[0];
+                const node = allNodes.find(n => n.id === nodeId);
+                if (!node) return;
+                window.location.href = '/UnderstandingGraph/Node/' + nodeId;
             }
         });
 
@@ -1017,11 +968,6 @@
 
     // ── Load manifest → skeleton → render ──
     async function loadGraph() {
-        // Keep the loading spinner visible until all graph data is ready.
-        var loadingEl = document.getElementById('graph-loading');
-
-        // Reset state for fresh load
-        physicsEnabled = false;
         try {
             // Tier 1: Fetch the current manifest so a rebuild is visible immediately.
             var manifest = null;
@@ -1079,6 +1025,8 @@
                 var skEdges = (skeletonData.edges || []).map(mapStaticEdge);
                 skNodes.forEach(function(n) { allNodes.push(n); skeletonNodeIds.add(n.id); });
                 skEdges.forEach(function(e) { allEdges.push(e); });
+                nodes.clear();
+                edges.clear();
                 nodes.add(skNodes);
                 edges.add(skEdges);
 
@@ -1089,7 +1037,6 @@
             // Start with a wide, fixed camera so the visible physics layout
             // never begins close-up. Do not fit the camera again after this.
             network.moveTo({ position: { x: 0, y: 0 }, scale: 0.20, animation: false });
-            if (loadingEl) loadingEl.classList.add('hidden');
 
             // Show labels once data is loaded
             nodes.forEach(n => {
@@ -1100,10 +1047,6 @@
             enablePhysics();
         } catch (err) {
             console.error('Failed to load graph:', err);
-            if (loadingEl) {
-                loadingEl.classList.remove('hidden');
-                loadingEl.innerHTML = '<div style="text-align:center;color:#dc2626;"><p>\u26a0\ufe0f Failed to load graph</p><p style="font-size:12px;">Check that the server is running and the database is accessible.</p></div>';
-            }
         }
     }
 

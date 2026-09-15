@@ -15,7 +15,7 @@ public interface IEvidenceMatchingService
 
 public sealed class EvidenceMatchingService : IEvidenceMatchingService
 {
-    private const int RetrievalLimit = 8;
+    private const int RetrievalLimit = 3;
     private static readonly TimeSpan ClassificationTimeout = TimeSpan.FromSeconds(20);
 
     private readonly ApplicationDbContext _db;
@@ -55,29 +55,35 @@ public sealed class EvidenceMatchingService : IEvidenceMatchingService
             _logger.LogWarning("Embedding generation returned null for proposition {PropositionId}.", propositionId);
             return 0;
         }
+        var existingEntryIds = await _db.EvidenceMatchSuggestions
+            .AsNoTracking()
+            .Where(match => match.PropositionId == propositionId)
+            .Select(match => match.EvidenceCorpusEntryId)
+            .ToHashSetAsync(cancellationToken);
+        var pendingCount = await _db.EvidenceMatchSuggestions
+            .AsNoTracking()
+            .CountAsync(
+                match => match.PropositionId == propositionId && match.Status == EvidenceMatchStatus.Pending,
+                cancellationToken);
+        var availableSuggestionSlots = Math.Max(0, RetrievalLimit - pendingCount);
+        if (availableSuggestionSlots == 0) return 0;
+
         var corpus = await _db.EvidenceCorpusEntries
             .AsNoTracking()
             .Include(entry => entry.Source)
-            .Where(entry => entry.Embedding != null && entry.VerificationStatus != SourceVerificationStatus.Retracted)
+            .Where(entry => entry.Embedding != null
+                && entry.VerificationStatus != SourceVerificationStatus.Retracted
+                && !existingEntryIds.Contains(entry.Id))
             .OrderByDescending(entry => entry.UpdatedAt)
             .Take(1000)
             .ToListAsync(cancellationToken);
-        var candidates = corpus
-            .Select(entry => new Candidate(entry, ReferenceRelationshipClassifier.CosineSimilarity(queryEmbedding, entry.Embedding!)))
-            .Where(candidate => candidate.Similarity >= 0.2)
-            .OrderByDescending(candidate => candidate.Similarity)
-            .Take(RetrievalLimit)
-            .ToList();
+        var candidates = SelectCandidates(corpus, queryEmbedding, availableSuggestionSlots);
         if (candidates.Count == 0) return 0;
 
         var classified = await ClassifyAsync(proposition.Text, candidates, cancellationToken);
-        var existingEntryIds = await _db.EvidenceMatchSuggestions
-            .Where(match => match.PropositionId == propositionId)
-            .Select(match => match.EvidenceCorpusEntryId)
-            .ToListAsync(cancellationToken);
 
         var added = 0;
-        foreach (var result in classified.Where(result => !existingEntryIds.Contains(result.CorpusEntryId)))
+        foreach (var result in classified)
         {
             var candidate = candidates.Single(item => item.Entry.Id == result.CorpusEntryId);
             _db.EvidenceMatchSuggestions.Add(new EvidenceMatchSuggestion
@@ -96,6 +102,19 @@ public sealed class EvidenceMatchingService : IEvidenceMatchingService
 
         await _db.SaveChangesAsync(cancellationToken);
         return added;
+    }
+
+    internal static List<Candidate> SelectCandidates(
+        IEnumerable<EvidenceCorpusEntry> corpus,
+        float[] queryEmbedding,
+        int limit = RetrievalLimit)
+    {
+        return corpus
+            .Select(entry => new Candidate(entry, ReferenceRelationshipClassifier.CosineSimilarity(queryEmbedding, entry.Embedding!)))
+            .Where(candidate => candidate.Similarity >= 0.2)
+            .OrderByDescending(candidate => candidate.Similarity)
+            .Take(limit)
+            .ToList();
     }
 
     public async Task<int?> ReviewAsync(
@@ -240,7 +259,7 @@ public sealed class EvidenceMatchingService : IEvidenceMatchingService
         }
     }
 
-    private sealed record Candidate(EvidenceCorpusEntry Entry, double Similarity);
+    internal sealed record Candidate(EvidenceCorpusEntry Entry, double Similarity);
     internal sealed record ClassificationResult(
         long CorpusEntryId,
         EvidenceMatchDirection Direction,

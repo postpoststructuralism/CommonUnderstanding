@@ -56,7 +56,7 @@ public sealed class BaselineContentWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     var targetReached = await ProcessBatchAsync(stoppingToken);
                     if (targetReached && _configuration.GetValue(

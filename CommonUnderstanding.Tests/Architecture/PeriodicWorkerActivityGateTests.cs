@@ -28,8 +28,8 @@ public sealed class PeriodicWorkerActivityGateTests
         var workerSource = File.ReadAllText(RepositoryFile("CommonUnderstanding", relativePath));
         Assert.Contains("RecentUserActivity", workerSource, StringComparison.Ordinal);
 
-        var gate = workerSource.IndexOf("_userActivity.IsActive", StringComparison.Ordinal);
-        Assert.True(gate >= 0, $"{workerName} does not check recent user activity.");
+        var gate = workerSource.IndexOf("_userActivity.ShouldRunBackgroundWork", StringComparison.Ordinal);
+        Assert.True(gate >= 0, $"{workerName} does not wait for the user activity window to expire.");
 
         var databaseAccess = FirstIndexAfter(workerSource, 0,
             "CreateScope(",
@@ -51,7 +51,7 @@ public sealed class PeriodicWorkerActivityGateTests
         Assert.Contains("AddHostedService", programSource, StringComparison.Ordinal);
         Assert.Contains("ResponseProcessingQueue", programSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RecentUserActivity", queueSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("_userActivity.IsActive", queueSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("_userActivity.ShouldRunBackgroundWork", queueSource, StringComparison.Ordinal);
     }
 
     private static int FirstIndexAfter(string source, int startIndex, params string[] values)

@@ -34,7 +34,7 @@ public class CrossThreadContradictionWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     await DetectContradictionsAsync(stoppingToken);
                 }

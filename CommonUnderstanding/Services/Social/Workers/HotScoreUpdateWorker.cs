@@ -47,7 +47,7 @@ public class HotScoreUpdateWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     await UpdateRecentArgumentsAsync(stoppingToken);
 

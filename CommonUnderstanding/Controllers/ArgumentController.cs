@@ -663,7 +663,11 @@ public class ArgumentController : Controller
             })
             .ToListAsync();
 
-        foreach (var suggestion in pendingSuggestions)
+        foreach (var suggestion in pendingSuggestions
+            .GroupBy(suggestion => suggestion.PropositionId)
+            .SelectMany(group => group
+                .OrderByDescending(suggestion => suggestion.ClassificationConfidence)
+                .Take(3)))
             propositions[suggestion.PropositionId].EvidenceMatchSuggestions.Add(suggestion);
 
         // Load stakeholder data for the positions panel

@@ -29,6 +29,21 @@ public sealed class RecentUserActivityTests
         Assert.False(activity.IsActive);
     }
 
+    [Fact]
+    public void ShouldRunBackgroundWork_RequiresPriorActivityAndAnExpiredWindow()
+    {
+        var clock = new ManualTimeProvider();
+        var activity = CreateActivity(clock, activeWindowMinutes: 15);
+
+        Assert.False(activity.ShouldRunBackgroundWork);
+
+        activity.RecordActivity();
+        Assert.False(activity.ShouldRunBackgroundWork);
+
+        clock.Advance(TimeSpan.FromMinutes(15) + TimeSpan.FromTicks(1));
+        Assert.True(activity.ShouldRunBackgroundWork);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-10)]

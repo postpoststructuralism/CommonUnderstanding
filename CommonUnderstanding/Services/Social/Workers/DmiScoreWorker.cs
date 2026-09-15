@@ -30,7 +30,7 @@ public class DmiScoreWorker : BackgroundService
         {
             try
             {
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var dmiService = scope.ServiceProvider.GetRequiredService<DmiScoreService>();

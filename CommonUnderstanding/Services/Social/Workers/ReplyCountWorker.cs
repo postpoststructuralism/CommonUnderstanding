@@ -35,7 +35,7 @@ public class ReplyCountWorker : BackgroundService
             {
                 await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
 
-                if (_userActivity.IsActive)
+                if (_userActivity.ShouldRunBackgroundWork)
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var followUpService = scope.ServiceProvider
