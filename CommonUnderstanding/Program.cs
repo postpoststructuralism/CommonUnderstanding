@@ -250,6 +250,8 @@ builder.Services.AddScoped<EpistemicScoringService>();
 builder.Services.AddScoped<BadgeAwardService>();
 builder.Services.AddScoped<XPAwardService>();
 builder.Services.AddScoped<DmiScoreService>();
+builder.Services.AddScoped<AdversarialIntegrityService>();
+builder.Services.AddScoped<ClassificationDisputeService>();
 builder.Services.AddScoped<ResolutionEndorsementService>();
 builder.Services.AddScoped<EmbeddingService>();
 builder.Services.AddSingleton<LocalEmbeddingGenerator>();

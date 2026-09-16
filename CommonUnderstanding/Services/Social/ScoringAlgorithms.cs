@@ -14,15 +14,18 @@ public static class ScoringAlgorithms
     /// Computes the Wilson score lower bound for a 95% confidence interval.
     /// Used for the "Top" sort and stored as WilsonScore on SocialArgument.
     /// </summary>
-    /// <param name="upvotes">Number of positive votes (raw count, not weighted).</param>
-    /// <param name="total">Total votes cast (up + down, excluding Abstain).</param>
+    /// <param name="upvotes">Effective positive vote count.</param>
+    /// <param name="total">Effective total vote count.</param>
     /// <returns>Wilson score lower bound in [0, 1].</returns>
     public static double WilsonScoreLowerBound(int upvotes, int total)
+        => WilsonScoreLowerBound((double)upvotes, total);
+
+    public static double WilsonScoreLowerBound(double upvotes, double total)
     {
         if (total == 0) return 0.0;
 
         const double z = 1.96; // 95% confidence z-score
-        double p = (double)upvotes / total;
+        double p = upvotes / total;
         double denominator = 1.0 + z * z / total;
         double centre = p + z * z / (2 * total);
         double margin = z * Math.Sqrt(p * (1 - p) / total + z * z / (4.0 * total * total));
@@ -43,7 +46,8 @@ public static class ScoringAlgorithms
     {
         return votes
             .Where(v => v.Vote == direction)
-            .Sum(v => 1.0 + (v.EpistemicWeight - 1.0) * (maxMultiplier - 1.0));
+            .Sum(v => (1.0 + (v.EpistemicWeight - 1.0) * (maxMultiplier - 1.0))
+                * Math.Clamp(v.IntegrityMultiplier, 0.0, 1.0));
     }
 
     /// <summary>

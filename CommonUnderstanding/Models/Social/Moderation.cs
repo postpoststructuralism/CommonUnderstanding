@@ -91,3 +91,90 @@ public class ModerationAppeal : BaseEntity
 
     public DateTime? ReviewedAt { get; set; }
 }
+
+public class UserIntegrityAssessment : BaseEntity
+{
+    public string UserId { get; set; } = null!;
+    public double RiskScore { get; set; }
+    public double InfluenceMultiplier { get; set; } = 1.0;
+    public string SignalsJson { get; set; } = "[]";
+    public DateTime LastAssessedAt { get; set; } = DateTime.UtcNow;
+}
+
+public enum DisputeStatus
+{
+    Open,
+    UnderReview,
+    Resolved,
+    Dismissed
+}
+
+public enum DisputeResolution
+{
+    None,
+    ClassificationUpheld,
+    ClassificationChanged,
+    InsufficientEvidence
+}
+
+public class ClassificationDispute : BaseEntity
+{
+    [Required, MaxLength(50)]
+    public string TargetType { get; set; } = null!;
+
+    [Required, MaxLength(100)]
+    public string TargetId { get; set; } = null!;
+
+    [Required, MaxLength(100)]
+    public string ClassificationType { get; set; } = null!;
+
+    public string RaisedByUserId { get; set; } = null!;
+
+    [Required, MaxLength(2000)]
+    public string Rationale { get; set; } = null!;
+
+    public DisputeStatus Status { get; set; } = DisputeStatus.Open;
+    public DisputeResolution Resolution { get; set; } = DisputeResolution.None;
+    public string? ReviewedByUserId { get; set; }
+
+    [MaxLength(2000)]
+    public string? ResolutionNotes { get; set; }
+
+    public DateTime? ResolvedAt { get; set; }
+    public ICollection<DisputeEvidence> Evidence { get; set; } = new List<DisputeEvidence>();
+}
+
+public class DisputeEvidence : BaseEntity
+{
+    public Guid DisputeId { get; set; }
+    public string SubmittedByUserId { get; set; } = null!;
+
+    [Required, MaxLength(4000)]
+    public string Statement { get; set; } = null!;
+
+    [MaxLength(2000)]
+    public string? SourceUrl { get; set; }
+
+    public ClassificationDispute Dispute { get; set; } = null!;
+}
+
+public class ClassificationAuditEntry : BaseEntity
+{
+    [Required, MaxLength(50)]
+    public string TargetType { get; set; } = null!;
+
+    [Required, MaxLength(100)]
+    public string TargetId { get; set; } = null!;
+
+    [Required, MaxLength(50)]
+    public string Action { get; set; } = null!;
+
+    [Required, MaxLength(200)]
+    public string ChangedBy { get; set; } = null!;
+
+    [Required, MaxLength(500)]
+    public string Reason { get; set; } = null!;
+
+    public string? PreviousValueJson { get; set; }
+    public string? NewValueJson { get; set; }
+}

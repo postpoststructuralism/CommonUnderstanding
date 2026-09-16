@@ -43,6 +43,12 @@ public class ArgumentVote : BaseEntity
     /// </summary>
     public double EpistemicWeight { get; set; } = 1.0;
 
+    /// <summary>
+    /// Behavioral-integrity multiplier captured when the vote is cast.
+    /// Suspicious behavior reduces influence without blocking participation.
+    /// </summary>
+    public double IntegrityMultiplier { get; set; } = 1.0;
+
     // Navigation
     public SocialArgument Argument { get; set; } = null!;
 }

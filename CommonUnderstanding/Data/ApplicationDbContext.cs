@@ -144,6 +144,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<Moderator> Moderators => Set<Moderator>();
     public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
     public DbSet<ModerationAppeal> ModerationAppeals => Set<ModerationAppeal>();
+    public DbSet<UserIntegrityAssessment> UserIntegrityAssessments => Set<UserIntegrityAssessment>();
+    public DbSet<ClassificationDispute> ClassificationDisputes => Set<ClassificationDispute>();
+    public DbSet<DisputeEvidence> DisputeEvidence => Set<DisputeEvidence>();
+    public DbSet<ClassificationAuditEntry> ClassificationAuditEntries => Set<ClassificationAuditEntry>();
     public DbSet<UserFeedPreferences> UserFeedPreferences => Set<UserFeedPreferences>();
     public DbSet<FeedImpressionEvent> FeedImpressionEvents => Set<FeedImpressionEvent>();
     public DbSet<ArgumentRecommendationFeature> ArgumentRecommendationFeatures => Set<ArgumentRecommendationFeature>();
@@ -561,6 +565,7 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Vote).HasConversion<string>();
             e.Property(x => x.Rationale).HasConversion<string>();
+            e.Property(x => x.IntegrityMultiplier).HasDefaultValue(1.0);
             e.HasIndex(x => new { x.ArgumentId, x.UserId }).IsUnique();
             e.HasOne(x => x.Argument)
              .WithMany(a => a.Votes)
@@ -785,6 +790,42 @@ public class ApplicationDbContext : DbContext
             e.ToTable("ModerationAppeals");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.AppellantUserId);
+        });
+
+        modelBuilder.Entity<UserIntegrityAssessment>(e =>
+        {
+            e.ToTable("UserIntegrityAssessments");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.HasIndex(x => x.RiskScore);
+        });
+
+        modelBuilder.Entity<ClassificationDispute>(e =>
+        {
+            e.ToTable("ClassificationDisputes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.Resolution).HasConversion<string>();
+            e.HasIndex(x => new { x.TargetType, x.TargetId });
+            e.HasIndex(x => x.Status);
+            e.HasMany(x => x.Evidence)
+                .WithOne(x => x.Dispute)
+                .HasForeignKey(x => x.DisputeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DisputeEvidence>(e =>
+        {
+            e.ToTable("DisputeEvidence");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.DisputeId);
+        });
+
+        modelBuilder.Entity<ClassificationAuditEntry>(e =>
+        {
+            e.ToTable("ClassificationAuditEntries");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.TargetType, x.TargetId, x.CreatedAt });
         });
 
         // ── Badge System Entities ─────────────────────────────────────────────

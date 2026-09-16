@@ -12,6 +12,7 @@ public class VotingService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
     private readonly EpistemicScoringService _epistemicScoring;
+    private readonly AdversarialIntegrityService _integrityService;
     private readonly XPAwardService _xpAwards;
     private readonly IConfiguration _configuration;
     private readonly ILogger<VotingService> _logger;
@@ -24,12 +25,14 @@ public class VotingService
     public VotingService(
         IDbContextFactory<ApplicationDbContext> dbFactory,
         EpistemicScoringService epistemicScoring,
+        AdversarialIntegrityService integrityService,
         XPAwardService xpAwards,
         IConfiguration configuration,
         ILogger<VotingService> logger)
     {
         _dbFactory = dbFactory;
         _epistemicScoring = epistemicScoring;
+        _integrityService = integrityService;
         _xpAwards = xpAwards;
         _configuration = configuration;
         _logger = logger;
@@ -64,6 +67,7 @@ public class VotingService
         // Compute epistemic weight for this user in the argument's primary topic domain
         string primaryDomain = argument.Tags.FirstOrDefault() ?? "General";
         double epistemicWeight = await _epistemicScoring.GetVoteWeightAsync(userId, primaryDomain, ct);
+        var integrityAssessment = await _integrityService.AssessUserAsync(userId, argument.UserId, ct);
 
         // Upsert vote
         var existing = await db.ArgumentVotes
@@ -80,7 +84,8 @@ public class VotingService
                 Vote = vote,
                 Rationale = rationale,
                 Comment = comment,
-                EpistemicWeight = epistemicWeight
+                EpistemicWeight = epistemicWeight,
+                IntegrityMultiplier = integrityAssessment.InfluenceMultiplier
             };
             db.ArgumentVotes.Add(newVote);
         }
@@ -91,6 +96,7 @@ public class VotingService
             existing.Rationale = rationale;
             existing.Comment = comment;
             existing.EpistemicWeight = epistemicWeight;
+            existing.IntegrityMultiplier = integrityAssessment.InfluenceMultiplier;
         }
 
         await db.SaveChangesAsync(ct);
@@ -191,7 +197,8 @@ public class VotingService
         int rawDown = votes.Count(v => v.Vote == VoteValue.Down);
         int total = rawUp + rawDown;
 
-        double wilsonBase = ScoringAlgorithms.WilsonScoreLowerBound(rawUp, total);
+        double effectiveTotal = weightedUp + weightedDown;
+        double wilsonBase = ScoringAlgorithms.WilsonScoreLowerBound(weightedUp, effectiveTotal);
         double wilsonScore = wilsonBase + (argument.IsAIValidated && argument.AIValidityScore >= 0.8 ? aiBonus : 0.0);
         double hotScore = ScoringAlgorithms.HotScore(weightedUp, weightedDown, argument.CreatedAt, gravity);
 
