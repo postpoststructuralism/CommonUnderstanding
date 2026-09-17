@@ -91,6 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add smooth scroll behavior to anchor links
     initSmoothScroll();
+
+    // Load expensive SocialView analysis after the detail shell has painted.
+    initClaimDetailLoader();
     
     // Initialize tooltips if Bootstrap is available AND tooltips exist on the page
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
@@ -203,6 +206,38 @@ function hideLoadingOverlay() {
         overlay.remove();
         document.body.style.overflow = '';
     }
+}
+
+function initClaimDetailLoader() {
+    const host = document.getElementById('claim-detail-host');
+    const errorTemplate = document.getElementById('claim-detail-error-template');
+    if (!host || !errorTemplate) return;
+
+    async function loadDetails() {
+        host.setAttribute('aria-busy', 'true');
+
+        try {
+            const response = await fetch(host.dataset.detailUrl, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (!response.ok) throw new Error(`Detail request failed with ${response.status}`);
+
+            host.innerHTML = await response.text();
+            host.setAttribute('aria-busy', 'false');
+
+            if (window.location.hash) {
+                document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
+            }
+        } catch (error) {
+            console.error('Unable to load claim details.', error);
+            host.replaceChildren(errorTemplate.content.cloneNode(true));
+            host.setAttribute('aria-busy', 'false');
+            host.querySelector('button')?.addEventListener('click', loadDetails, { once: true });
+        }
+    }
+
+    loadDetails();
 }
 
 // Form Validation Helper

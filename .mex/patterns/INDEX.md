@@ -8,5 +8,6 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [change-ai-integration.md](change-ai-integration.md) | Changing Semantic Kernel, hosted models, Ollama, fallback, parsing, or AI access policy |
 | [change-database-schema.md](change-database-schema.md) | Changing EF Core entities, mappings, queries, or SQL Server/PostgreSQL migrations |
 | [debug-background-processing.md](debug-background-processing.md) | Diagnosing queues, prefetch, deferred analysis, scoring, or hosted-worker failures |
+| [defer-heavy-mvc-detail.md](defer-heavy-mvc-detail.md) | Rendering an authorization-aware MVC detail shell before asynchronously loading collection-heavy analysis |
 | [deploy-azure.md](deploy-azure.md) | Publishing, configuring, deploying, or troubleshooting the Azure App Service application |
 | [local-operations-dashboard.md](local-operations-dashboard.md) | Extending production uptake, availability, App Service, or Azure SQL monitoring in the local admin project |

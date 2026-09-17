@@ -2,6 +2,7 @@
 @model CommonUnderstanding.Models.Social.ClaimStateViewModel
 
 @{
+    Layout = null;
     var focus = Model.FocusArgument;
     var source = Model.SourceArgument;
     var claims = source?.Claims.OrderBy(c => c.Id).ToList() ?? new();
@@ -15,8 +16,6 @@
     var currentUnderstanding = Model.Adjudication?.ReasoningTrace ?? focus.ResolutionText ?? focus.WarrantText;
     var contextLabel = Model.Proposition.Text.Length > 80 ? Model.Proposition.Text[..77] + "..." : Model.Proposition.Text;
 }
-
-<link rel="stylesheet" href="~/css/social-detail.css" asp-append-version="true" />
 
 <div class="claim-detail container-fluid">
     <nav class="detail-breadcrumb" aria-label="breadcrumb">
@@ -156,6 +155,3 @@
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/inline-contribution.js"></script>
-}

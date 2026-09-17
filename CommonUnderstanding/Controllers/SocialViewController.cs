@@ -93,11 +93,38 @@ public class SocialViewController : Controller
     }
 
     // GET /Social/Detail/{id}
-    public async Task<IActionResult> Detail(Guid id)
+    public async Task<IActionResult> Detail(Guid id, CancellationToken ct = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        await using var db = await _dbFactory.CreateDbContextAsync();
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var shell = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.Id == id && (a.IsPublic || a.UserId == userId))
+            .Select(a => new ClaimDetailShellViewModel
+            {
+                ArgumentId = a.Id,
+                Title = a.Title,
+                PropositionText = a.ClaimProposition != null ? a.ClaimProposition.Text : a.Title,
+                Summary = a.ResolutionText ?? a.WarrantText,
+                UpdatedAt = a.UpdatedAt
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (shell is null)
+            return NotFound();
+
+        ViewData["Title"] = shell.PropositionText;
+        return View("~/Views/Social/DetailShell.cshtml", shell);
+    }
+
+    // GET /SocialView/DetailContent/{id}
+    [HttpGet]
+    public async Task<IActionResult> DetailContent(Guid id, CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var arg = await db.SocialArguments
             .AsNoTracking()
             .AsSplitQuery()
@@ -109,7 +136,7 @@ public class SocialViewController : Controller
             .Include(a => a.InboundLinks)
                 .ThenInclude(l => l.SourceArgument)
                     .ThenInclude(a => a!.ClaimProposition)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
 
         if (arg is null || (!arg.IsPublic && arg.UserId != userId))
             return NotFound();
@@ -122,7 +149,7 @@ public class SocialViewController : Controller
                 && a.IsPublic
                 && !a.IsShadowBanned)
             .OrderBy(a => a.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var opposingArgumentIds = arg.InboundLinks
             .Where(l => l.LinkType == LinkType.Contradicts)
@@ -174,7 +201,7 @@ public class SocialViewController : Controller
                 .Include(a => a.Claims)
                     .ThenInclude(c => c.Rebuttals)
                 .Include(a => a.AdjudicationSummary)
-                .FirstOrDefaultAsync(a => a.Id == arg.SourceArgumentId.Value);
+                .FirstOrDefaultAsync(a => a.Id == arg.SourceArgumentId.Value, ct);
 
             if (sourceArg != null)
             {
@@ -190,7 +217,7 @@ public class SocialViewController : Controller
             var parentArg = await db.SocialArguments
                 .AsNoTracking()
                 .Include(a => a.ClaimProposition)
-                .FirstOrDefaultAsync(a => a.Id == parentLink.SourceArgumentId);
+                .FirstOrDefaultAsync(a => a.Id == parentLink.SourceArgumentId, ct);
 
             if (parentArg != null)
             {
@@ -222,7 +249,7 @@ public class SocialViewController : Controller
             UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId)
         };
 
-        return View("~/Views/Social/Detail.cshtml", viewModel);
+        return PartialView("~/Views/Social/Detail.cshtml", viewModel);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
