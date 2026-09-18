@@ -247,6 +247,7 @@ builder.Services.AddScoped<CollaborativeSessionService>();
 
 // Core scoring and reputation
 builder.Services.AddScoped<EpistemicScoringService>();
+builder.Services.AddScoped<CalibrationService>();
 builder.Services.AddScoped<BadgeAwardService>();
 builder.Services.AddScoped<XPAwardService>();
 builder.Services.AddScoped<DmiScoreService>();

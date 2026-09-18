@@ -23,6 +23,14 @@
         PropositionStatus.Unknown   => "secondary",
         _                           => "secondary"
     };
+    static string EpistemicLabel(EpistemicStatus s) => s switch
+    {
+        EpistemicStatus.EstablishedConsensus => "Established consensus",
+        EpistemicStatus.LimitedEvidence => "Limited evidence",
+        EpistemicStatus.ExpertDisagreement => "Expert disagreement",
+        EpistemicStatus.ValueConflict => "Value conflict",
+        _ => s.ToString()
+    };
     static string RecClass(DecisionRecommendation r) => r switch
     {
         DecisionRecommendation.Proceed      => "success",
@@ -256,6 +264,9 @@
                                     {
                                         <small class="text-muted"><i class="bi bi-exclamation-circle me-1"></i>No evidence yet</small>
                                     }
+                                    <span class="badge text-bg-light border ms-2" title="Why certainty is limited">
+                                        @EpistemicLabel(p.EpistemicStatus)
+                                    </span>
                                     @if (!string.IsNullOrWhiteSpace(p.ProvisionalAssessment))
                                     {
                                         <div class="mt-2 p-2 bg-light rounded small">
@@ -453,6 +464,9 @@
                                     <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
                                 </div>
                             }
+                            <span class="badge text-bg-light border mt-1" title="Why certainty is limited">
+                                @EpistemicLabel(p.EpistemicStatus)
+                            </span>
                             @if (!string.IsNullOrWhiteSpace(p.ProvisionalAssessment))
                             {
                                 // Phase 1: Categorical label instead of raw numeric percentage

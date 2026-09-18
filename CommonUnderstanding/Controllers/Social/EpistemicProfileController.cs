@@ -18,10 +18,14 @@ namespace CommonUnderstanding.Controllers.Social;
 public class EpistemicProfileController : ControllerBase
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly CalibrationService _calibration;
 
-    public EpistemicProfileController(IDbContextFactory<ApplicationDbContext> dbFactory)
+    public EpistemicProfileController(
+        IDbContextFactory<ApplicationDbContext> dbFactory,
+        CalibrationService calibration)
     {
         _dbFactory = dbFactory;
+        _calibration = calibration;
     }
 
     /// <summary>GET /api/epistemic/me — caller's full epistemic profile across all domains.</summary>
@@ -39,10 +43,12 @@ public class EpistemicProfileController : ControllerBase
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.EpistemicScore)
             .ToListAsync(ct);
+        var calibration = await _calibration.GetUserSummaryAsync(userId, ct);
 
         return Ok(new
         {
             userId,
+            calibration,
             profiles = profiles.Select(p => new
             {
                 topicDomain = p.TopicDomain,
@@ -66,10 +72,12 @@ public class EpistemicProfileController : ControllerBase
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.EpistemicScore)
             .ToListAsync(ct);
+        var calibration = await _calibration.GetUserSummaryAsync(userId, ct);
 
         return Ok(new
         {
             userId,
+            calibration,
             profiles = profiles.Select(p => new
             {
                 topicDomain = p.TopicDomain,

@@ -23,6 +23,17 @@ public enum PropositionStatus
     Unknown        // Insufficient evidence
 }
 
+public enum EpistemicStatus
+{
+    Unspecified,
+    EstablishedConsensus,
+    LimitedEvidence,
+    ExpertDisagreement,
+    ValueConflict,
+    Speculative,
+    Retracted
+}
+
 public enum InferenceType
 {
     Deductive,
@@ -129,6 +140,12 @@ public class Proposition
     public PropositionStatus Status { get; set; } = PropositionStatus.Unevaluated;
 
     /// <summary>
+    /// Human-readable reason for the proposition's current certainty state.
+    /// This is intentionally independent from confidence and adjudication status.
+    /// </summary>
+    public EpistemicStatus EpistemicStatus { get; set; } = EpistemicStatus.Unspecified;
+
+    /// <summary>
     /// Bayesian confidence score [0.0–1.0] after evidence adjudication.
     /// </summary>
     public double ConfidenceScore { get; set; } = 0.5;
@@ -155,6 +172,7 @@ public class Proposition
 
     public ICollection<EvidenceItem> EvidenceItems { get; set; } = new List<EvidenceItem>();
     public ICollection<EvidenceMatchSuggestion> EvidenceMatchSuggestions { get; set; } = new List<EvidenceMatchSuggestion>();
+    public ICollection<Prediction> Predictions { get; set; } = new List<Prediction>();
 }
 
 /// <summary>

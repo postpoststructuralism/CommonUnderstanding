@@ -20,15 +20,18 @@ public class WorldviewController : ControllerBase
     private readonly WorldviewService _worldviewService;
     private readonly BridgeArgumentPlugin _bridgePlugin;
     private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    private readonly CalibrationService _calibration;
 
     public WorldviewController(
         WorldviewService worldviewService,
         BridgeArgumentPlugin bridgePlugin,
-        IDbContextFactory<ApplicationDbContext> dbFactory)
+        IDbContextFactory<ApplicationDbContext> dbFactory,
+        CalibrationService calibration)
     {
         _worldviewService = worldviewService;
         _bridgePlugin = bridgePlugin;
         _dbFactory = dbFactory;
+        _calibration = calibration;
     }
 
     /// <summary>GET /api/worldviews — list public worldviews with cursor pagination.</summary>
@@ -80,6 +83,7 @@ public class WorldviewController : ControllerBase
         var worldview = await _worldviewService.GetWorldviewAsync(id, userId, ct);
 
         if (worldview is null) return NotFound();
+        var calibration = await _calibration.GetWorldviewSummaryAsync(id, ct);
 
         return Ok(new
         {
@@ -91,6 +95,7 @@ public class WorldviewController : ControllerBase
             tags = worldview.Tags,
             schwartzValues = worldview.SchwartzValues,
             schwartzVector = worldview.SchwartzVector,
+            calibration,
             chains = worldview.WorldviewChains
                 .OrderBy(wc => wc.OrderIndex)
                 .Select(wc => new

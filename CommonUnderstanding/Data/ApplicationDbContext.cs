@@ -84,6 +84,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<EvidenceCorpusEntry> EvidenceCorpusEntries => Set<EvidenceCorpusEntry>();
     public DbSet<EvidenceMatchSuggestion> EvidenceMatchSuggestions => Set<EvidenceMatchSuggestion>();
     public DbSet<AdjudicationSummary> AdjudicationSummaries => Set<AdjudicationSummary>();
+    public DbSet<Prediction> Predictions => Set<Prediction>();
 
     // Phase 3 — Common Understanding Graph (legacy)
     public DbSet<CommonUnderstandingNode> CommonUnderstandingNodes => Set<CommonUnderstandingNode>();
@@ -222,10 +223,34 @@ public class ApplicationDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.EpistemicStatus)
+             .HasConversion<string>()
+             .HasDefaultValue(EpistemicStatus.Unspecified);
             e.HasMany(x => x.EvidenceItems)
              .WithOne(ev => ev.Proposition)
              .HasForeignKey(ev => ev.PropositionId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Prediction>(e =>
+        {
+            var probabilityConstraint = IsPostgres
+                ? "\"Probability\" >= 0 AND \"Probability\" <= 1"
+                : "[Probability] >= 0 AND [Probability] <= 1";
+            e.ToTable("Predictions", table =>
+                table.HasCheckConstraint("CK_Predictions_Probability", probabilityConstraint));
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.ResolvedAt });
+            e.HasIndex(x => new { x.WorldviewId, x.ResolvedAt });
+            e.HasIndex(x => new { x.PropositionId, x.ResolutionDate });
+            e.HasOne(x => x.Proposition)
+             .WithMany(x => x.Predictions)
+             .HasForeignKey(x => x.PropositionId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Worldview)
+             .WithMany()
+             .HasForeignKey(x => x.WorldviewId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Syllogism
