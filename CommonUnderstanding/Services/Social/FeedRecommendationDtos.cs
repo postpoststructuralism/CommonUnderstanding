@@ -43,7 +43,7 @@ public record FeedEngagementDto(
     bool Clicked,
     bool Voted,
     bool Commented,
-    [property: Range(0, 3_600_000)] int DwellMs);
+    [Range(0, 3_600_000)] int DwellMs);
 
 public record RecommendedFeedResultDto(
     UserFeedPreferencesDto Preferences,
