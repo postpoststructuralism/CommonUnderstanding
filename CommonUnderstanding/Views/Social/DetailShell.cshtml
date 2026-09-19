@@ -2,56 +2,45 @@
 
 <link rel="stylesheet" href="~/css/social-detail.css" asp-append-version="true" />
 
-<div id="claim-detail-host"
-     data-detail-url="@Url.Action("DetailContent", "SocialView", new { id = Model.ArgumentId })"
-     aria-live="polite"
-     aria-busy="true">
-    <div class="claim-detail container-fluid">
-        <nav class="detail-breadcrumb" aria-label="breadcrumb">
-            <a asp-controller="UnderstandingGraph" asp-action="Index">Live Map</a><span>/</span>
-            <a asp-controller="SocialView" asp-action="Feed">Contributions</a><span>/</span><span>Claim detail</span>
-        </nav>
+<div id="claim-detail-host" class="claim-detail container-fluid">
+    <nav class="detail-breadcrumb" aria-label="breadcrumb">
+        <a asp-controller="UnderstandingGraph" asp-action="Index">Live Map</a><span>/</span>
+        <a asp-controller="SocialView" asp-action="Feed">Contributions</a><span>/</span><span>Claim detail</span>
+    </nav>
 
-        <header class="detail-header">
-            <div class="detail-title">
-                <div class="title-meta"><span class="detail-loading-pulse">Loading analysis</span><span>Updated @Model.UpdatedAt.ToString("MMM d, yyyy")</span></div>
-                <h1>@Model.PropositionText</h1>
-                @if (!string.IsNullOrWhiteSpace(Model.Summary))
-                {
-                    <p>@Model.Summary</p>
-                }
-            </div>
-            <div class="metric-strip detail-metric-placeholder" aria-label="Loading analysis summary">
-                @for (var index = 0; index < 5; index++)
-                {
-                    <div><strong>--</strong><span>Loading</span></div>
-                }
-            </div>
-        </header>
-
-        <div class="detail-layout detail-placeholder-layout">
-            <main class="analysis-main">
-                <section class="analysis-panel detail-placeholder-panel"><span></span><span></span><span></span></section>
-                <section class="analysis-panel detail-placeholder-panel compact"><span></span><span></span></section>
-            </main>
-            <aside class="detail-sidebar">
-                <section class="side-panel detail-placeholder-panel compact"><span></span><span></span><span></span></section>
-            </aside>
+    <header class="detail-header detail-fragment"
+            data-fragment-url="@Url.Action("AnalysisSummary", "SocialView", new { id = Model.ArgumentId })"
+            aria-live="polite" aria-busy="true">
+        <div class="detail-title">
+            <div class="title-meta"><span class="detail-loading-pulse">Loading saved summary</span><span>Updated @Model.UpdatedAt.ToString("MMM d, yyyy")</span></div>
+            <h1>@Model.PropositionText</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.Summary)) { <p>@Model.Summary</p> }
         </div>
+        <div class="metric-strip detail-metric-placeholder" aria-label="Loading saved analysis summary">
+            @for (var index = 0; index < 5; index++) { <div><strong>--</strong><span>Loading</span></div> }
+        </div>
+    </header>
+
+    <div class="detail-layout">
+        <main class="analysis-main detail-fragment"
+              data-fragment-url="@Url.Action("AnalysisDetail", "SocialView", new { id = Model.ArgumentId })"
+              data-fragment-deferred="true" aria-live="polite" aria-busy="true">
+            <section class="analysis-panel detail-fragment-loading"><span class="detail-spinner" aria-hidden="true"></span><div><strong>Loading saved analysis</strong><p>Retrieving argument structure and evidence.</p></div></section>
+        </main>
+        <aside class="detail-sidebar detail-fragment"
+               data-fragment-url="@Url.Action("SocialContext", "SocialView", new { id = Model.ArgumentId })"
+               aria-live="polite" aria-busy="true">
+            <section class="side-panel detail-fragment-loading"><span class="detail-spinner" aria-hidden="true"></span><div><strong>Loading discussion context</strong><p>Retrieving linked contributions.</p></div></section>
+        </aside>
     </div>
 </div>
 
-<template id="claim-detail-error-template">
-    <div class="claim-detail container-fluid">
-        <section class="analysis-panel detail-load-error" role="alert">
-            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-            <div><h1>Details could not be loaded</h1><p>The claim is available, but its analysis did not finish loading.</p></div>
-            <button class="btn btn-outline-secondary" type="button">Retry</button>
-        </section>
-    </div>
+<template id="claim-fragment-error-template">
+    <section class="analysis-panel detail-load-error" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <div><h2>Section could not be loaded</h2><p>The rest of the claim remains available.</p></div>
+        <button class="btn btn-outline-secondary" type="button">Retry</button>
+    </section>
 </template>
 
 <script src="~/js/inline-contribution.js" asp-append-version="true"></script>
-@section Scripts {
-    <script src="~/js/inline-contribution.js" asp-append-version="true"></script>
-}

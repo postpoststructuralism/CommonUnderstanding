@@ -1,0 +1,990 @@
+[
+  {
+    "Name": "Buddhism (Theravada)",
+    "Category": "Religion",
+    "Culture": "Indian/Southeast Asian",
+    "Era": "6th century BCE - Present",
+    "Description": "The oldest surviving branch of Buddhism, emphasizing individual enlightenment through the Four Noble Truths and the Eightfold Path.",
+    "Sources": [
+      "Pali Canon (Tipitaka)",
+      "Dhammapada"
+    ],
+    "CreationMyth": "Buddhist cosmology describes cycles of creation and destruction (kalpas) rather than a single creation event. The universe arises from collective karma.",
+    "CorePrinciples": [
+      "Four Noble Truths: Life involves suffering, suffering arises from craving, suffering can cease, the path to cessation is the Eightfold Path",
+      "Anatta (no-self): There is no permanent, unchanging self",
+      "Anicca (impermanence): All conditioned things are impermanent",
+      "Karma: Actions have consequences across lifetimes",
+      "Nirvana: Liberation from the cycle of rebirth"
+    ],
+    "NotableFigures": [
+      "Siddhartha Gautama (The Buddha)",
+      "Buddhaghosa",
+      "Mahasi Sayadaw"
+    ],
+    "Regions": [
+      "Sri Lanka",
+      "Thailand",
+      "Myanmar",
+      "Cambodia",
+      "Laos"
+    ]
+  },
+  {
+    "Name": "Christianity (Catholic)",
+    "Category": "Religion",
+    "Culture": "Western/Global",
+    "Era": "1st century CE - Present",
+    "Description": "The largest Christian denomination, emphasizing apostolic succession, sacraments, and the authority of the Pope.",
+    "Sources": [
+      "Bible (Old and New Testament)",
+      "Catechism of the Catholic Church",
+      "Papal Encyclicals"
+    ],
+    "CreationMyth": "God created the universe in six days and rested on the seventh. Humans were created in God's image, fell from grace through original sin, and await redemption.",
+    "CorePrinciples": [
+      "Trinity: One God in three persons (Father, Son, Holy Spirit)",
+      "Salvation through Jesus Christ's death and resurrection",
+      "Seven Sacraments as means of grace",
+      "Papal infallibility in matters of faith and morals",
+      "Natural law and moral theology",
+      "Social justice and preferential option for the poor"
+    ],
+    "NotableFigures": [
+      "Jesus Christ",
+      "Saint Peter",
+      "Saint Augustine",
+      "Thomas Aquinas",
+      "Pope Francis"
+    ],
+    "Regions": [
+      "Latin America",
+      "Southern Europe",
+      "Philippines",
+      "Sub-Saharan Africa"
+    ]
+  },
+  {
+    "Name": "Islam (Sunni)",
+    "Category": "Religion",
+    "Culture": "Middle Eastern/Global",
+    "Era": "7th century CE - Present",
+    "Description": "The largest denomination of Islam, following the Sunnah (practices) of Muhammad and the first four caliphs.",
+    "Sources": [
+      "Quran",
+      "Hadith collections (Sahih al-Bukhari, Sahih Muslim)",
+      "Four schools of jurisprudence (Hanafi, Maliki, Shafi'i, Hanbali)"
+    ],
+    "CreationMyth": "Allah created the heavens and earth in six days. Adam was created from clay, and all humans descend from Adam and Eve.",
+    "CorePrinciples": [
+      "Tawhid: Absolute monotheism - Allah is one and indivisible",
+      "Five Pillars: Shahada (faith), Salat (prayer), Zakat (charity), Sawm (fasting), Hajj (pilgrimage)",
+      "Prophets: Muhammad is the final prophet in a line including Abraham, Moses, and Jesus",
+      "Quran is the literal word of God",
+      "Sharia: Divine law governing all aspects of life",
+      "Ummah: Universal Muslim community"
+    ],
+    "NotableFigures": [
+      "Prophet Muhammad",
+      "Abu Bakr",
+      "Umar ibn al-Khattab",
+      "Al-Ghazali",
+      "Ibn Khaldun"
+    ],
+    "Regions": [
+      "Middle East",
+      "North Africa",
+      "South Asia",
+      "Southeast Asia"
+    ]
+  },
+  {
+    "Name": "Hinduism (Advaita Vedanta)",
+    "Category": "Religion",
+    "Culture": "Indian",
+    "Era": "8th century CE - Present (philosophy); roots in 1500 BCE (Vedas)",
+    "Description": "Non-dualistic school of Hindu philosophy teaching that Brahman (ultimate reality) and Atman (individual soul) are identical.",
+    "Sources": [
+      "Upanishads",
+      "Brahma Sutras",
+      "Bhagavad Gita",
+      "Works of Adi Shankara"
+    ],
+    "CreationMyth": "Creation is cyclical, emerging from Brahman through Maya (cosmic illusion). The universe undergoes endless cycles of creation and dissolution.",
+    "CorePrinciples": [
+      "Brahman: Ultimate, unchanging reality",
+      "Maya: The illusory nature of the material world",
+      "Atman = Brahman: Individual consciousness is identical to universal consciousness",
+      "Moksha: Liberation through realization of one's true nature",
+      "Karma and reincarnation",
+      "Jnana Yoga: Path of knowledge and self-inquiry"
+    ],
+    "NotableFigures": [
+      "Adi Shankara",
+      "Ramana Maharshi",
+      "Swami Vivekananda"
+    ],
+    "Regions": [
+      "India",
+      "Nepal"
+    ]
+  },
+  {
+    "Name": "Taoism",
+    "Category": "Religion",
+    "Culture": "Chinese",
+    "Era": "4th century BCE - Present",
+    "Description": "Chinese philosophical and religious tradition emphasizing living in harmony with the Tao (the Way).",
+    "Sources": [
+      "Tao Te Ching (Laozi)",
+      "Zhuangzi",
+      "I Ching"
+    ],
+    "CreationMyth": "The Tao is the source of all existence. From the Tao came the One, from the One came Yin and Yang, from these came all things.",
+    "CorePrinciples": [
+      "Tao: The fundamental nature of the universe",
+      "Wu wei: Non-action or effortless action in harmony with natural flow",
+      "Yin and Yang: Complementary opposites in dynamic balance",
+      "Simplicity and naturalness",
+      "Non-attachment to outcomes",
+      "Three Treasures: compassion, frugality, humility"
+    ],
+    "NotableFigures": [
+      "Laozi",
+      "Zhuangzi",
+      "Zhang Daoling"
+    ],
+    "Regions": [
+      "China",
+      "Taiwan",
+      "Singapore"
+    ]
+  },
+  {
+    "Name": "Judaism (Orthodox)",
+    "Category": "Religion",
+    "Culture": "Jewish/Middle Eastern",
+    "Era": "Ancient (2000 BCE) - Present",
+    "Description": "Traditional form of Judaism adhering strictly to Torah law and rabbinic interpretations.",
+    "Sources": [
+      "Torah (Written Law)",
+      "Talmud (Oral Law)",
+      "Mishnah",
+      "Shulchan Aruch"
+    ],
+    "CreationMyth": "God created the world in six days. Humans are created in God's image and given dominion over the earth. Jews are God's chosen people with whom He made a covenant.",
+    "CorePrinciples": [
+      "Monotheism: One God, creator of the universe",
+      "Torah as divine revelation",
+      "613 Mitzvot (commandments)",
+      "Covenant between God and the Jewish people",
+      "Messiah will come to redeem Israel",
+      "Importance of study, prayer, and observance",
+      "Tikkun Olam: Repairing the world"
+    ],
+    "NotableFigures": [
+      "Moses",
+      "Rabbi Akiva",
+      "Maimonides (Rambam)",
+      "The Baal Shem Tov"
+    ],
+    "Regions": [
+      "Israel",
+      "United States",
+      "Europe"
+    ]
+  },
+  {
+    "Name": "Confucianism",
+    "Category": "Philosophy",
+    "Culture": "Chinese",
+    "Era": "6th century BCE - Present",
+    "Description": "Chinese ethical and philosophical system emphasizing moral cultivation, social harmony, and proper conduct.",
+    "Sources": [
+      "Analects",
+      "Mencius",
+      "Doctrine of the Mean",
+      "Great Learning"
+    ],
+    "CorePrinciples": [
+      "Ren (仁): Humaneness, benevolence",
+      "Li (禮): Ritual propriety, proper conduct",
+      "Filial piety: Respect for parents and ancestors",
+      "Five Relationships: ruler-subject, father-son, husband-wife, elder-younger, friend-friend",
+      "Junzi: The ideal of the cultivated person",
+      "Education and self-cultivation",
+      "Meritocracy in governance"
+    ],
+    "NotableFigures": [
+      "Confucius (Kong Fuzi)",
+      "Mencius",
+      "Xunzi",
+      "Zhu Xi"
+    ],
+    "Regions": [
+      "China",
+      "Korea",
+      "Japan",
+      "Vietnam"
+    ]
+  },
+  {
+    "Name": "Stoicism",
+    "Category": "Philosophy",
+    "Culture": "Greco-Roman",
+    "Era": "3rd century BCE - Present",
+    "Description": "Ancient Greek philosophy teaching that virtue, reason, and living in accordance with nature lead to eudaimonia (flourishing).",
+    "Sources": [
+      "Meditations (Marcus Aurelius)",
+      "Letters from a Stoic (Seneca)",
+      "Discourses (Epictetus)",
+      "Enchiridion"
+    ],
+    "CorePrinciples": [
+      "Dichotomy of control: Focus only on what you can control",
+      "Virtue is the sole good; vice is the sole evil",
+      "Living according to nature and reason",
+      "Apatheia: Freedom from destructive emotions",
+      "Amor fati: Love of one's fate",
+      "Cosmopolitanism: All humans are part of one universal community",
+      "Memento mori: Remember death"
+    ],
+    "NotableFigures": [
+      "Zeno of Citium",
+      "Epictetus",
+      "Seneca",
+      "Marcus Aurelius"
+    ],
+    "Regions": [
+      "Ancient Greece",
+      "Roman Empire",
+      "Modern global revival"
+    ]
+  },
+  {
+    "Name": "Secular Humanism",
+    "Category": "Philosophy",
+    "Culture": "Western",
+    "Era": "20th century - Present",
+    "Description": "Non-religious philosophy affirming human dignity, reason, ethics, and justice without supernatural beliefs.",
+    "Sources": [
+      "Humanist Manifesto I, II, III",
+      "Works of Bertrand Russell",
+      "The God Delusion (Richard Dawkins)",
+      "Enlightenment Now (Steven Pinker)"
+    ],
+    "CorePrinciples": [
+      "No supernatural or divine authority",
+      "Human reason and science as tools for understanding",
+      "Ethical values derived from human experience and empathy",
+      "Individual autonomy and freedom of thought",
+      "Democratic values and human rights",
+      "Social responsibility and altruism",
+      "Critical thinking and skepticism"
+    ],
+    "NotableFigures": [
+      "Bertrand Russell",
+      "Carl Sagan",
+      "Richard Dawkins",
+      "Steven Pinker",
+      "Paul Kurtz"
+    ],
+    "Regions": [
+      "Western Europe",
+      "North America",
+      "Australia"
+    ]
+  },
+  {
+    "Name": "Indigenous Australian Dreamtime",
+    "Category": "Mythological",
+    "Culture": "Australian Aboriginal",
+    "Era": "Ancient (40,000+ years) - Present",
+    "Description": "Aboriginal Australian spiritual framework where ancestral beings created the land and established law and culture.",
+    "Sources": [
+      "Oral traditions",
+      "Song lines",
+      "Rock art",
+      "Ceremony"
+    ],
+    "CreationMyth": "During the Dreamtime, ancestral spirits rose from the earth and sky, creating the land, animals, plants, and people. These beings established the laws and customs before transforming into features of the landscape.",
+    "CorePrinciples": [
+      "All life is interconnected",
+      "Land is sacred and holds ancestral presence",
+      "Custodianship rather than ownership of land",
+      "Circular time: past, present, and future coexist",
+      "Knowledge transmitted through story, song, and ceremony",
+      "Kinship systems define social responsibilities",
+      "Balance and harmony with nature"
+    ],
+    "NotableFigures": [
+      "Rainbow Serpent",
+      "Wandjina spirits",
+      "Various tribal ancestors"
+    ],
+    "Regions": [
+      "Australia"
+    ]
+  },
+  {
+    "Name": "Islam (Shia)",
+    "Category": "Religion",
+    "Culture": "Middle Eastern/Global",
+    "Era": "7th century CE - Present",
+    "Description": "The second-largest branch of Islam, emphasizing the spiritual and political authority of Ali and the Imams as rightful successors to the Prophet Muhammad.",
+    "Sources": [
+      "Quran",
+      "Nahj al-Balagha (sermons of Ali)",
+      "Four Books (Shia hadith collections)",
+      "Works of Al-Kulayni, Al-Saduq, Al-Tusi"
+    ],
+    "CreationMyth": "Shares Islamic cosmology: Allah created the heavens and earth. Adam created from clay; all humans descend from Adam and Eve.",
+    "CorePrinciples": [
+      "Imamate: Divine authority vested in Ali and eleven descendants",
+      "Occultation: Twelfth Imam is hidden, will return as Mahdi",
+      "Five Pillars of Islam plus five additional principles (Usul al-Din)",
+      "Tawassul: Intercession through Imams and saints",
+      "Lamentation and commemoration of martyrdom of Husayn at Karbala",
+      "Ijtihad: Ongoing religious interpretation by qualified scholars (marjas)",
+      "Justice (Adl) as a divine attribute and human obligation"
+    ],
+    "NotableFigures": [
+      "Imam Ali ibn Abi Talib",
+      "Imam Husayn ibn Ali",
+      "Imam al-Mahdi (hidden)",
+      "Ayatollah Khomeini",
+      "Ayatollah Sistani"
+    ],
+    "Regions": [
+      "Iran",
+      "Iraq",
+      "Lebanon",
+      "Bahrain",
+      "Parts of South Asia"
+    ]
+  },
+  {
+    "Name": "Islam (Sufism)",
+    "Category": "Religion",
+    "Culture": "Global",
+    "Era": "8th century CE - Present",
+    "Description": "The mystical dimension of Islam emphasizing direct personal experience of the Divine, love, and inner purification of the soul.",
+    "Sources": [
+      "Quran (mystical interpretation)",
+      "Masnavi (Rumi)",
+      "Fusus al-Hikam (Ibn Arabi)",
+      "Kashf al-Mahjub (Al-Hujwiri)"
+    ],
+    "CorePrinciples": [
+      "Tariqa: Spiritual path to direct knowledge of God",
+      "Dhikr: Remembrance and repetition of divine names",
+      "Fana: Annihilation of the ego in God",
+      "Baqa: Subsistence in God after annihilation",
+      "Murshid: Spiritual guide essential for the path",
+      "Love as the supreme path to the divine",
+      "Sama: Spiritual music and movement as devotional practice",
+      "Inner meaning beneath outer religious law"
+    ],
+    "NotableFigures": [
+      "Rumi (Jalal ad-Din Muhammad Rumi)",
+      "Ibn Arabi",
+      "Al-Ghazali",
+      "Rabia al-Adawiyya",
+      "Hafiz"
+    ],
+    "Regions": [
+      "Turkey",
+      "Persia/Iran",
+      "South Asia",
+      "North Africa",
+      "Global Sufi orders"
+    ]
+  },
+  {
+    "Name": "Buddhism (Mahayana)",
+    "Category": "Religion",
+    "Culture": "East Asian/Global",
+    "Era": "1st century CE - Present",
+    "Description": "The largest Buddhist tradition, emphasizing the bodhisattva ideal of compassion for all beings and the aspiration to achieve full Buddhahood for the benefit of all.",
+    "Sources": [
+      "Prajnaparamita Sutras (Heart Sutra, Diamond Sutra)",
+      "Lotus Sutra",
+      "Vimalakirti Sutra",
+      "Lankavatara Sutra"
+    ],
+    "CorePrinciples": [
+      "Bodhisattva ideal: delay personal nirvana to help all beings",
+      "Sunyata: Emptiness of inherent existence in all phenomena",
+      "Buddha-nature: All beings possess the seed of enlightenment",
+      "Skillful means (upaya): Teachings adapted to listeners' capacity",
+      "Trikaya: Three bodies of the Buddha (Dharmakaya, Sambhogakaya, Nirmanakaya)",
+      "Interconnectedness of all phenomena (Indra's net)",
+      "Compassion (karuna) and wisdom (prajna) as twin pillars"
+    ],
+    "NotableFigures": [
+      "Nagarjuna",
+      "Asanga",
+      "Vasubandhu",
+      "Shantideva",
+      "Thich Nhat Hanh"
+    ],
+    "Regions": [
+      "China",
+      "Japan",
+      "Korea",
+      "Vietnam",
+      "Global diaspora"
+    ]
+  },
+  {
+    "Name": "Buddhism (Vajrayana/Tibetan)",
+    "Category": "Religion",
+    "Culture": "Tibetan/Central Asian",
+    "Era": "7th century CE - Present",
+    "Description": "Tantric Buddhism practiced in Tibet, Mongolia, and the Himalayan region, using ritual, visualization, and esoteric methods to accelerate the path to enlightenment.",
+    "Sources": [
+      "Tibetan Book of the Dead (Bardo Thodol)",
+      "Tantric texts (Tantras)",
+      "Milarepa's Songs",
+      "Teachings of the Dalai Lamas"
+    ],
+    "CorePrinciples": [
+      "Tantra: Esoteric methods using body, speech, and mind in practice",
+      "Guru-yoga: Complete devotion to the qualified lama",
+      "Deity yoga: Visualization of oneself as an enlightened being",
+      "Rigpa: Recognition of the nature of mind as pure awareness",
+      "Tulku system: Reincarnated lamas preserve lineage",
+      "Bardo teachings: Navigation of consciousness after death",
+      "Compassion and emptiness inseparably united"
+    ],
+    "NotableFigures": [
+      "Padmasambhava (Guru Rinpoche)",
+      "Milarepa",
+      "Tsongkhapa",
+      "Dalai Lama (Tenzin Gyatso)",
+      "Chögyam Trungpa"
+    ],
+    "Regions": [
+      "Tibet",
+      "Mongolia",
+      "Bhutan",
+      "Nepal",
+      "Global diaspora"
+    ]
+  },
+  {
+    "Name": "Buddhism (Zen/Chan)",
+    "Category": "Religion",
+    "Culture": "East Asian",
+    "Era": "6th century CE - Present",
+    "Description": "A school of Mahayana Buddhism emphasizing direct experience of enlightenment through meditation, koans, and the teacher-student relationship, rather than scriptural study.",
+    "Sources": [
+      "Platform Sutra of the Sixth Patriarch",
+      "Blue Cliff Record",
+      "Gateless Gate (Mumonkan)",
+      "Teachings of Dogen (Shobogenzo)"
+    ],
+    "CorePrinciples": [
+      "Zazen: Sitting meditation as primary practice",
+      "Kensho/Satori: Direct insight into one's true nature",
+      "Koans: Paradoxical riddles to break conceptual thinking",
+      "Direct mind-to-mind transmission beyond words",
+      "Everyday life as practice (chopping wood, carrying water)",
+      "Beginner's mind: approach each moment fresh",
+      "Non-attachment to concepts, even Buddhist ones"
+    ],
+    "NotableFigures": [
+      "Bodhidharma (founder)",
+      "Huineng (Sixth Patriarch)",
+      "Dogen Zenji",
+      "Huang Po",
+      "Shunryu Suzuki"
+    ],
+    "Regions": [
+      "China",
+      "Japan",
+      "Korea",
+      "United States"
+    ]
+  },
+  {
+    "Name": "Sikhism",
+    "Category": "Religion",
+    "Culture": "Punjabi/South Asian",
+    "Era": "15th century CE - Present",
+    "Description": "Monotheistic religion founded by Guru Nanak in Punjab, emphasizing equality of all people, service to others, and devotional remembrance of the one God.",
+    "Sources": [
+      "Guru Granth Sahib (the eternal Guru)",
+      "Dasam Granth",
+      "Janamsakhis (life stories of Guru Nanak)",
+      "Rehat Maryada (Sikh code of conduct)"
+    ],
+    "CorePrinciples": [
+      "Ik Onkar: There is only one God",
+      "Equality of all humans regardless of caste, gender, or religion",
+      "Nam Japna: Meditation on God's name",
+      "Kirat Karni: Honest labor and earning",
+      "Vand Chhakna: Sharing with those in need",
+      "Seva: Selfless service to the community",
+      "Langar: Community kitchen open to all, regardless of background",
+      "Rejection of ritual, superstition, and idol worship"
+    ],
+    "NotableFigures": [
+      "Guru Nanak Dev Ji (founder)",
+      "Guru Gobind Singh Ji (tenth and last human Guru)",
+      "Bhagat Kabir",
+      "Bhai Gurdas",
+      "Maharaja Ranjit Singh"
+    ],
+    "Regions": [
+      "Punjab (India/Pakistan)",
+      "United Kingdom",
+      "Canada",
+      "United States"
+    ]
+  },
+  {
+    "Name": "Hinduism (Vaishnavism)",
+    "Category": "Religion",
+    "Culture": "Indian",
+    "Era": "Ancient - Present",
+    "Description": "The largest Hindu denomination, centered on devotion to Vishnu and his avatars, especially Rama and Krishna, emphasizing bhakti (loving devotion) as the primary path.",
+    "Sources": [
+      "Bhagavata Purana",
+      "Bhagavad Gita",
+      "Ramayana",
+      "Works of Ramanuja and Madhva"
+    ],
+    "CorePrinciples": [
+      "Bhakti: Personal devotion and love for God as highest path",
+      "Vishnu as the supreme personal God, sustainer of the universe",
+      "Avatars: God descends into the world to restore dharma",
+      "Surrender (prapatti) to God's grace for liberation",
+      "Devotional practices: singing, chanting, pilgrimage, image worship",
+      "Vaishnava ethics: non-violence, vegetarianism, purity",
+      "God is both transcendent and immanent"
+    ],
+    "NotableFigures": [
+      "Ramanuja",
+      "Madhva",
+      "Chaitanya Mahaprabhu",
+      "Alvars (Tamil poet-saints)",
+      "A.C. Bhaktivedanta Swami Prabhupada"
+    ],
+    "Regions": [
+      "India (especially Vaishnava pilgrimage centers)",
+      "ISKCON communities worldwide"
+    ]
+  },
+  {
+    "Name": "Hinduism (Shaivism)",
+    "Category": "Religion",
+    "Culture": "Indian",
+    "Era": "Ancient - Present",
+    "Description": "Major Hindu tradition centered on devotion to Shiva as the supreme being, encompassing diverse schools from devotional bhakti to the non-dual Kashmir Shaivism.",
+    "Sources": [
+      "Shaiva Agamas",
+      "Shiva Purana",
+      "Tirumurai (Tamil Shaiva devotional poetry)",
+      "Tantraloka (Abhinavagupta)"
+    ],
+    "CorePrinciples": [
+      "Shiva as the supreme reality, both destroyer and regenerator",
+      "Shakti: Divine feminine energy inseparable from Shiva",
+      "Liberation through recognition of one's identity with Shiva",
+      "Pashupati: Shiva as lord of souls and the universe",
+      "Yogic practice and asceticism as paths to liberation",
+      "Kashmir Shaivism: Universe is the free play of divine consciousness",
+      "Ritual worship, mantra, and tantra as vehicles of liberation"
+    ],
+    "NotableFigures": [
+      "Abhinavagupta",
+      "Manikkavacakar",
+      "Basavanna",
+      "Ramana Maharshi (associated)",
+      "Patanjali (associated)"
+    ],
+    "Regions": [
+      "India (especially Tamil Nadu, Kashmir, Maharashtra)",
+      "Nepal",
+      "Southeast Asia (historical)"
+    ]
+  },
+  {
+    "Name": "Jainism",
+    "Category": "Religion",
+    "Culture": "Indian",
+    "Era": "6th century BCE - Present",
+    "Description": "Ancient Indian religion emphasizing non-violence, truth, non-attachment, and individual liberation through rigorous ethical practice.",
+    "Sources": [
+      "Agamas (canonical scriptures)",
+      "Tattvartha Sutra (Umasvati)",
+      "Kalpa Sutra"
+    ],
+    "CorePrinciples": [
+      "Ahimsa: Radical non-violence toward all living beings",
+      "Anekantavada: Many-sidedness of reality; no single perspective is complete",
+      "Aparigraha: Non-possessiveness and limiting attachments",
+      "Satya: Truth",
+      "Five vows (Mahavratas for monks, Anuvratas for laypersons)",
+      "Karma as physical substance binding the soul",
+      "Liberation (moksha) through purification and ascetic practice",
+      "No creator god; universe is eternal and self-regulating"
+    ],
+    "NotableFigures": [
+      "Mahavira (24th Tirthankara, historical founder)",
+      "Rishabhanatha (1st Tirthankara)",
+      "Parshvanatha (23rd Tirthankara)",
+      "Srimad Rajchandra"
+    ],
+    "Regions": [
+      "India (Gujarat, Rajasthan)",
+      "Diaspora communities worldwide"
+    ]
+  },
+  {
+    "Name": "Zoroastrianism",
+    "Category": "Religion",
+    "Culture": "Iranian/Persian",
+    "Era": "2nd millennium BCE - Present",
+    "Description": "One of the world's oldest monotheistic religions, teaching the cosmic struggle between truth and lie, and the importance of good thoughts, words, and deeds.",
+    "Sources": [
+      "Avesta (Zoroastrian scriptures)",
+      "Gathas (hymns of Zarathustra)",
+      "Vendidad",
+      "Yasna"
+    ],
+    "CreationMyth": "Ahura Mazda, the supreme god, created the world as a perfect spiritual realm, then a material counterpart. Angra Mainyu (Ahriman), the destructive spirit, invaded the material creation introducing evil, death, and suffering. History is the cosmic battle between these principles, ending with a final renovation (Frashokereti) when evil is defeated.",
+    "CorePrinciples": [
+      "Ahura Mazda: The one, wise, good God",
+      "Dualism: Cosmic struggle between Ahura Mazda (good) and Angra Mainyu (evil)",
+      "Asha: Truth, righteousness, cosmic order",
+      "Druj: Lie, chaos, evil",
+      "Good thoughts, good words, good deeds (Humata, Hukhta, Hvarshta)",
+      "Human free will to choose between good and evil",
+      "Frashokereti: Final renovation and restoration of perfect world",
+      "Yazatas (divine beings) assist Ahura Mazda"
+    ],
+    "NotableFigures": [
+      "Zarathustra (Zoroaster)",
+      "Cyrus the Great",
+      "Darius I",
+      "Asha Vahishta"
+    ],
+    "Regions": [
+      "Iran",
+      "India (Parsis)",
+      "Central Asia (historical)"
+    ]
+  },
+  {
+    "Name": "Shinto",
+    "Category": "Religion",
+    "Culture": "Japanese",
+    "Era": "Ancient - Present",
+    "Description": "Indigenous Japanese religion focusing on kami (spirits inhabiting all things), ritual purity, ancestor veneration, and the inseparability of humans and nature.",
+    "Sources": [
+      "Kojiki (Record of Ancient Matters)",
+      "Nihon Shoki (Chronicles of Japan)",
+      "Norito (ritual prayers)",
+      "Oral traditions and shrine practices"
+    ],
+    "CreationMyth": "In the beginning, the heavens and earth were mixed chaos. Three invisible deities appeared spontaneously. Later, the divine couple Izanagi and Izanami stood on the floating bridge of heaven and stirred the ocean with a jeweled spear, creating the first island. They then gave birth to the Japanese islands and many kami. Izanami died giving birth to the fire god; Izanagi retrieved her from Yomi (underworld) but she had eaten there, making her unable to return. When Izanagi cleansed himself, Amaterasu (sun goddess) was born from his left eye, Tsukuyomi (moon god) from his right, and Susanoo (storm god) from his nose.",
+    "CorePrinciples": [
+      "Kami: Spirits residing in natural phenomena, ancestors, exceptional people",
+      "Kannagara: Living in harmony with the divine order of nature",
+      "Harae: Ritual purification removes pollution (kegare)",
+      "Makoto: Sincerity and truthfulness",
+      "Musubi: Creative and harmonizing power binding people to kami",
+      "Ancestor veneration through household shrines",
+      "Japan as sacred land; emperor as descendant of Amaterasu",
+      "This world, not afterlife, is primary concern"
+    ],
+    "NotableFigures": [
+      "Amaterasu (sun goddess)",
+      "Izanagi and Izanami (creator deities)",
+      "Susanoo (storm god)",
+      "Motoori Norinaga (scholar who systematized Shinto)",
+      "Emperor Meiji"
+    ],
+    "Regions": [
+      "Japan"
+    ]
+  },
+  {
+    "Name": "Bahá'í Faith",
+    "Category": "Religion",
+    "Culture": "Persian/Global",
+    "Era": "19th century CE - Present",
+    "Description": "Independent world religion teaching the unity of God, religion, and humanity, emphasizing progressive revelation and the establishment of a peaceful global civilization.",
+    "Sources": [
+      "Kitáb-i-Aqdas (Most Holy Book of Bahá'u'lláh)",
+      "Kitáb-i-Íqán (Book of Certitude)",
+      "Hidden Words (Bahá'u'lláh)",
+      "Writings of the Báb and Abdu'l-Bahá"
+    ],
+    "CorePrinciples": [
+      "Unity of God: All religions worship the same God",
+      "Unity of religion: All major religions are successive chapters of one revelation",
+      "Unity of humanity: All humans are one people",
+      "Independent investigation of truth",
+      "Harmony of science and religion",
+      "Equality of men and women",
+      "Elimination of all forms of prejudice",
+      "Progressive revelation: God continues to send messengers as humanity evolves"
+    ],
+    "NotableFigures": [
+      "Bahá'u'lláh (founder and prophet)",
+      "The Báb (forerunner)",
+      "Abdu'l-Bahá (son of Bahá'u'lláh)",
+      "Shoghi Effendi"
+    ],
+    "Regions": [
+      "Iran (origin)",
+      "India (largest community)",
+      "Global presence in 200+ countries"
+    ]
+  },
+  {
+    "Name": "Judaism (Reform)",
+    "Category": "Religion",
+    "Culture": "Jewish/Western",
+    "Era": "19th century - Present",
+    "Description": "Liberal Jewish denomination emphasizing adaptation of Jewish tradition to modern life, gender equality, and personal autonomy in religious observance.",
+    "Sources": [
+      "Torah",
+      "Talmud (as guide, not binding law)",
+      "Pittsburgh Platform (1885)",
+      "Reform responsa literature"
+    ],
+    "CorePrinciples": [
+      "Torah as human document inspired by God, subject to interpretation",
+      "Ethical monotheism over ritual observance",
+      "Religious practice adapted to contemporary life",
+      "Gender equality in all religious roles",
+      "Tikkun Olam: Social justice as core Jewish obligation",
+      "Welcoming of interfaith families and LGBTQ+ individuals",
+      "Zionism and support for Israel as part of Jewish identity (debated)"
+    ],
+    "NotableFigures": [
+      "Moses Mendelssohn",
+      "Abraham Geiger",
+      "Isaac Mayer Wise",
+      "Rabbi Sally Priesand (first female rabbi)"
+    ],
+    "Regions": [
+      "United States",
+      "Western Europe",
+      "Israel"
+    ]
+  },
+  {
+    "Name": "Judaism (Kabbalah/Mysticism)",
+    "Category": "Religion",
+    "Culture": "Jewish",
+    "Era": "12th century CE - Present (roots in antiquity)",
+    "Description": "The mystical tradition within Judaism, seeking to understand the hidden dimensions of God, the universe, and the soul through esoteric study and spiritual practice.",
+    "Sources": [
+      "Zohar (primary kabbalistic text)",
+      "Sefer Yetzirah (Book of Formation)",
+      "Etz Chaim (Tree of Life, Lurianic Kabbalah)",
+      "Works of the Ari (Rabbi Isaac Luria)"
+    ],
+    "CorePrinciples": [
+      "Ein Sof: God as infinite, beyond all description",
+      "Ten Sefirot: Divine emanations through which God interacts with creation",
+      "Four Worlds: levels of reality from divine to material",
+      "Tikkun Olam: Cosmic repair through righteous acts",
+      "Soul has multiple levels: Nefesh, Ruach, Neshamah, Chaya, Yechida",
+      "Gematria: Numerical values of letters reveal hidden meanings",
+      "Shevirat ha-Kelim: The shattering of the vessels and the task of repair"
+    ],
+    "NotableFigures": [
+      "Rabbi Shimon bar Yochai (attributed author of Zohar)",
+      "Rabbi Isaac Luria (the Ari)",
+      "Maimonides",
+      "Rabbi Adin Steinsaltz",
+      "Philip Berg (Kabbalah Centre)"
+    ],
+    "Regions": [
+      "Israel",
+      "Eastern Europe (historical)",
+      "Global diaspora"
+    ]
+  },
+  {
+    "Name": "Christianity (Eastern Orthodox)",
+    "Category": "Religion",
+    "Culture": "Eastern European/Middle Eastern",
+    "Era": "1st century CE - Present",
+    "Description": "The ancient Christian church of the Eastern Roman Empire, emphasizing theosis (divinization), tradition, icons, and conciliar authority rather than papal supremacy.",
+    "Sources": [
+      "Bible",
+      "Seven Ecumenical Councils",
+      "Church Fathers (Basil, Gregory of Nyssa, John Chrysostom)",
+      "The Philokalia (collection of spiritual texts)"
+    ],
+    "CorePrinciples": [
+      "Theosis: Union with God as the purpose of human existence",
+      "Tradition: Scripture and holy tradition as co-equal sources",
+      "Icons as windows to the divine, not idols",
+      "Apophatic theology: God's essence is unknowable",
+      "Conciliar authority: councils of bishops, not a single pope",
+      "Liturgical worship as participation in heaven on earth",
+      "Synergy: Human will cooperates with divine grace in salvation"
+    ],
+    "NotableFigures": [
+      "John Chrysostom",
+      "Gregory Palamas",
+      "Seraphim of Sarov",
+      "Dostoevsky (cultural representative)",
+      "Patriarch Bartholomew"
+    ],
+    "Regions": [
+      "Greece",
+      "Russia",
+      "Serbia",
+      "Romania",
+      "Middle East"
+    ]
+  },
+  {
+    "Name": "Christianity (Protestant/Evangelical)",
+    "Category": "Religion",
+    "Culture": "Western/Global",
+    "Era": "16th century CE - Present",
+    "Description": "The family of Christian traditions arising from the Reformation, emphasizing Scripture alone, faith alone, and grace alone, with evangelical branches stressing personal conversion and mission.",
+    "Sources": [
+      "Bible (sole authority - sola scriptura)",
+      "Luther's 95 Theses",
+      "Calvin's Institutes of the Christian Religion",
+      "Westminster Confession of Faith"
+    ],
+    "CorePrinciples": [
+      "Sola Scriptura: Bible is the sole authority for faith and practice",
+      "Sola Fide: Salvation by faith alone",
+      "Sola Gratia: Salvation by grace alone, not works",
+      "Priesthood of all believers: Direct access to God for all",
+      "Personal conversion and born-again experience (evangelical)",
+      "Great Commission: Active missionary work globally",
+      "Predestination (Calvinist traditions)"
+    ],
+    "NotableFigures": [
+      "Martin Luther",
+      "John Calvin",
+      "John Wesley",
+      "Billy Graham",
+      "Karl Barth"
+    ],
+    "Regions": [
+      "Northern Europe",
+      "United States",
+      "Global South (fastest growing)"
+    ]
+  },
+  {
+    "Name": "Christianity (Mormonism/LDS)",
+    "Category": "Religion",
+    "Culture": "American",
+    "Era": "19th century CE - Present",
+    "Description": "Restorationist Christian denomination founded by Joseph Smith, claiming a restoration of original Christianity through new scripture and prophetic authority.",
+    "Sources": [
+      "King James Bible",
+      "Book of Mormon",
+      "Doctrine and Covenants",
+      "Pearl of Great Price"
+    ],
+    "CorePrinciples": [
+      "Restoration: True Christianity lost and restored through Joseph Smith",
+      "Continuing revelation through living prophets",
+      "Exaltation: Humans can progress toward divine status",
+      "Pre-mortal existence of all souls",
+      "Families sealed for eternity through temple ordinances",
+      "Plan of Salvation: Pre-mortal life, mortality, afterlife",
+      "Word of Wisdom: Health code including abstinence from alcohol, tobacco, coffee"
+    ],
+    "NotableFigures": [
+      "Joseph Smith (founder and prophet)",
+      "Brigham Young",
+      "Emma Smith",
+      "Current President/Prophet of the LDS Church"
+    ],
+    "Regions": [
+      "Utah",
+      "United States",
+      "Rapid global growth in Latin America, Africa, Pacific Islands"
+    ]
+  },
+  {
+    "Name": "Gnosticism",
+    "Category": "Religion",
+    "Culture": "Hellenistic/Early Christian",
+    "Era": "1st-4th century CE; revival in modern era",
+    "Description": "A diverse collection of ancient religious movements emphasizing secret knowledge (gnosis) as the path to liberation from the material world, often viewing the material world as a flawed creation.",
+    "Sources": [
+      "Nag Hammadi Library (discovered 1945)",
+      "Gospel of Thomas",
+      "Gospel of Philip",
+      "Pistis Sophia"
+    ],
+    "CreationMyth": "The true God is hidden, beyond the material world. An inferior divine being (Demiurge) created the flawed material universe. Humans contain a divine spark trapped in material bodies. Sophia (Wisdom), a divine emanation, fell and her fall resulted in the creation of the material world and the Demiurge.",
+    "CorePrinciples": [
+      "Gnosis: Salvific self-knowledge of one's divine nature",
+      "The material world is flawed, created by an inferior deity (Demiurge)",
+      "A transcendent, unknown God exists beyond the Demiurge",
+      "The divine spark within humans seeks return to the Pleroma (divine fullness)",
+      "Salvation through knowledge, not faith or works",
+      "Dualism: spirit is good, matter is evil or inferior",
+      "Hidden teachings transmitted through select initiates"
+    ],
+    "NotableFigures": [
+      "Valentinus",
+      "Basilides",
+      "Marcion",
+      "Mani (founder of Manichaeism, related system)",
+      "Carl Jung (modern interpreter)"
+    ],
+    "Regions": [
+      "Egypt",
+      "Syria",
+      "Roman Empire",
+      "Modern revival worldwide"
+    ]
+  },
+  {
+    "Name": "Wicca / Neopaganism",
+    "Category": "Religion",
+    "Culture": "Western",
+    "Era": "20th century - Present (roots in ancient paganism)",
+    "Description": "Contemporary pagan religious movements reviving pre-Christian European and nature-based spiritual traditions, emphasizing the divine feminine, magic, and seasonal cycles.",
+    "Sources": [
+      "Aradia: Gospel of the Witches (Charles Godfrey Leland)",
+      "Witchcraft Today (Gerald Gardner)",
+      "The Spiral Dance (Starhawk)",
+      "Drawing Down the Moon (Margot Adler)"
+    ],
+    "CorePrinciples": [
+      "Divine is immanent in nature and within ourselves",
+      "The Goddess and the Horned God as primary divine principles",
+      "Wheel of the Year: Eight sabbats marking seasonal cycles",
+      "Magic: Directing will and intent to manifest change",
+      "Wiccan Rede: An it harm none, do what ye will",
+      "Three-fold law: Actions return to the doer threefold",
+      "Connection to ancestors, elements, and natural cycles",
+      "Personal spiritual experience over dogma"
+    ],
+    "NotableFigures": [
+      "Gerald Gardner (founder of Wicca)",
+      "Doreen Valiente",
+      "Starhawk",
+      "Scott Cunningham",
+      "Margot Adler"
+    ],
+    "Regions": [
+      "United Kingdom",
+      "United States",
+      "Western Europe",
+      "Global online communities"
+    ]
+  }
+]

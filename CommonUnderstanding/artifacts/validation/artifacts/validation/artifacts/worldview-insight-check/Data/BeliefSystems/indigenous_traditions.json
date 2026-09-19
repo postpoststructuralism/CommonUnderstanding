@@ -1,0 +1,628 @@
+[
+  {
+    "Name": "Lakota Spirituality",
+    "Category": "Indigenous",
+    "Culture": "North America / Lakota Sioux",
+    "Era": "Ancient to Present",
+    "Description": "The spiritual tradition of the Lakota people emphasizes the interconnectedness of all life through Mitakuye Oyasin (all my relations), the sacred hoop representing the circle of life, and the Seven Sacred Rites including the vision quest and sun dance. Central is the belief in Wakan Tanka (the Great Mystery) and maintaining harmony with nature.",
+    "Sources": [
+      "Oral traditions passed through generations",
+      "Black Elk Speaks",
+      "Sacred pipe ceremonies",
+      "Vision quest teachings"
+    ],
+    "CorePrinciples": [
+      "Mitakuye Oyasin - all beings are related",
+      "Honor the Seven Sacred Rites",
+      "Respect for Wakan Tanka (Great Mystery)",
+      "Live in harmony with nature",
+      "Wisdom from the four directions",
+      "Sacred pipe as pathway to Creator",
+      "Vision quests for spiritual guidance",
+      "Circle of life and renewal"
+    ],
+    "CreationMyth": "White Buffalo Calf Woman brought the sacred pipe and taught the Seven Sacred Rites, establishing the relationship between the Lakota people and the sacred.",
+    "HistoricalContext": "The Lakota spiritual tradition has endured despite colonization and forced assimilation, with revival movements in the 20th and 21st centuries reclaiming traditional practices.",
+    "NotableFigures": [
+      "Black Elk (He?�ka S�pa)",
+      "Sitting Bull (T?at?�?ka �yotake)",
+      "Crazy Horse (T?a��?ke Witk�)",
+      "Red Cloud (Ma?p�ya L�ta)"
+    ],
+    "Regions": [
+      "Great Plains",
+      "South Dakota",
+      "North Dakota",
+      "Montana",
+      "Wyoming"
+    ],
+    "RelatedSystems": [
+      "Dakota Spirituality",
+      "Nakota Spirituality",
+      "Plains Indigenous traditions"
+    ]
+  },
+  {
+    "Name": "Haudenosaunee (Iroquois) Great Law",
+    "Category": "Indigenous",
+    "Culture": "North America / Haudenosaunee Confederacy",
+    "Era": "Pre-1450 to Present",
+    "Description": "The Great Law of Peace (Gayanashagowa) established by the Peacemaker unites six nations in a confederacy based on principles of democracy, peace, equity, and collective decision-making. The longhouse symbolizes unity, and the Tree of Peace represents shelter and strength.",
+    "Sources": [
+      "Gayanashagowa (Great Law of Peace)",
+      "Wampum belts recording history",
+      "Oral traditions of the Condolence Ceremony",
+      "Teachings of the Peacemaker"
+    ],
+    "CorePrinciples": [
+      "Peace, power, and righteousness",
+      "Consensus decision-making",
+      "Seven generations principle",
+      "Clan mothers' authority",
+      "Unity among nations",
+      "Balance between genders",
+      "Respect for natural law",
+      "Great Tree of Peace as symbol"
+    ],
+    "CreationMyth": "The Peacemaker, born of a virgin, brought the Great Law to end warfare among the five nations (later six), planting the Great Tree of Peace and establishing the confederacy.",
+    "HistoricalContext": "The Haudenosaunee Confederacy influenced the development of democratic principles in North America, with some scholars suggesting it inspired aspects of the U.S. Constitution.",
+    "NotableFigures": [
+      "The Peacemaker (Deganawida)",
+      "Hiawatha",
+      "Jigonhsasee (Mother of Nations)",
+      "Handsome Lake"
+    ],
+    "Regions": [
+      "New York State",
+      "Ontario",
+      "Quebec",
+      "Great Lakes region"
+    ],
+    "RelatedSystems": [
+      "Longhouse Religion",
+      "Handsome Lake Code",
+      "Woodland Indigenous traditions"
+    ]
+  },
+  {
+    "Name": "Navajo (Din�) Way",
+    "Category": "Indigenous",
+    "Culture": "North America / Navajo Nation",
+    "Era": "Ancient to Present",
+    "Description": "Din� spirituality emphasizes walking in beauty (H�zh??) and maintaining harmony between the spiritual and physical worlds. Central practices include sand painting ceremonies, the Blessingway, and living according to the Navajo creation story that emerged through four worlds.",
+    "Sources": [
+      "Navajo creation stories",
+      "Blessingway ceremonies",
+      "Sand painting traditions",
+      "Oral teachings of medicine people"
+    ],
+    "CorePrinciples": [
+      "H�zh?? (walking in beauty/harmony)",
+      "Balance between all things",
+      "Respect for the Holy People",
+      "Four sacred mountains define homeland",
+      "Matrilineal clan system",
+      "Healing through ceremony",
+      "Connection to land and seasons",
+      "Speaking positively into being"
+    ],
+    "CreationMyth": "The Din� emerged through four underworlds, with the Holy People guiding them to the glittering world where they were given the four sacred mountains and taught to live in harmony.",
+    "HistoricalContext": "Despite the traumatic Long Walk (1864-1868) and forced assimilation attempts, Navajo spiritual traditions have remained strong, with many ceremonies and practices continuing today.",
+    "NotableFigures": [
+      "Barboncito (Hastin Dagha)",
+      "Manuelito",
+      "Annie Dodge Wauneka",
+      "Contemporary medicine people (names often kept private)"
+    ],
+    "Regions": [
+      "Arizona",
+      "New Mexico",
+      "Utah",
+      "Colorado (Four Corners region)"
+    ],
+    "RelatedSystems": [
+      "Apache spirituality",
+      "Pueblo religious traditions",
+      "Southwest Indigenous beliefs"
+    ]
+  },
+  {
+    "Name": "Australian Aboriginal Dreamtime",
+    "Category": "Indigenous",
+    "Culture": "Australia / Aboriginal peoples",
+    "Era": "60,000+ years to Present",
+    "Description": "The Dreamtime (Tjukurrpa, Jukurrpa) encompasses the creation period when ancestral beings shaped the land and established law, culture, and kinship. It exists simultaneously as past, present, and future, connecting people to country through songlines and sacred sites.",
+    "Sources": [
+      "Oral traditions across 250+ language groups",
+      "Songlines mapping the land",
+      "Rock art and sacred sites",
+      "Ceremony and dance"
+    ],
+    "CorePrinciples": [
+      "Connection to country",
+      "Ancestral beings created law and land",
+      "Songlines as maps and stories",
+      "Kinship systems define relationships",
+      "Custodianship not ownership of land",
+      "Ceremonial knowledge passed through initiation",
+      "Dreaming tracks connect all things",
+      "Sacred sites hold ancestral power"
+    ],
+    "CreationMyth": "During the Dreamtime, ancestral beings traveled across the formless land, creating all features, animals, plants, and establishing the laws and ceremonies that govern life.",
+    "HistoricalContext": "As the world's oldest continuous culture (60,000+ years), Aboriginal spirituality has endured colonization and continues through cultural revival and land rights movements.",
+    "NotableFigures": [
+      "Traditional custodians and elders (names often ceremonially protected)",
+      "David Mowaljarlai (Ngarinyin elder)",
+      "Mandawuy Yunupingu",
+      "Contemporary knowledge keepers across nations"
+    ],
+    "Regions": [
+      "Entire Australian continent",
+      "Over 250 distinct language/cultural groups",
+      "Each with specific country and Dreaming"
+    ],
+    "RelatedSystems": [
+      "Torres Strait Islander traditions",
+      "Pacific Islander spiritual systems",
+      "Each Aboriginal nation has distinct traditions"
+    ]
+  },
+  {
+    "Name": "M?ori Spiritual Tradition",
+    "Category": "Indigenous",
+    "Culture": "Polynesia / Aotearoa (New Zealand)",
+    "Era": "Ancient to Present",
+    "Description": "M?ori spirituality centers on whakapapa (genealogy) connecting all things, mana (spiritual power/authority), tapu (sacred restrictions), and kaitiakitanga (guardianship). Ranginui (Sky Father) and Papat??nuku (Earth Mother) are central deities whose separation created the world.",
+    "Sources": [
+      "Oral traditions and whakapapa",
+      "M?ori creation stories",
+      "Karakia (prayers/incantations)",
+      "Whare w?nanga (traditional schools of learning)"
+    ],
+    "CorePrinciples": [
+      "Whakapapa connects all existence",
+      "Mana must be respected and protected",
+      "Tapu and noa regulate sacred and profane",
+      "Kaitiakitanga - guardianship of natural resources",
+      "Whanaungatanga - kinship and relationships",
+      "Utu - reciprocity and balance",
+      "Mauri - life force in all things",
+      "Connection to whenua (land)"
+    ],
+    "CreationMyth": "Ranginui (Sky Father) and Papat??nuku (Earth Mother) were locked in embrace. Their children, cramped in darkness, separated them to bring light to the world, creating the natural world and human existence.",
+    "HistoricalContext": "M?ori spiritual practices were suppressed during colonization but have experienced significant revival since the 1970s M?ori Renaissance, with integration into contemporary New Zealand society.",
+    "NotableFigures": [
+      "Tohunga (spiritual experts - many unnamed in texts)",
+      "Te Whiti o Rongomai",
+      "Dame Whina Cooper",
+      "Contemporary tohunga and kaumatua (elders)"
+    ],
+    "Regions": [
+      "Aotearoa (New Zealand)",
+      "North Island (Te Ika-a-M?ui)",
+      "South Island (Te Waipounamu)",
+      "Various iwi (tribal) territories"
+    ],
+    "RelatedSystems": [
+      "Hawaiian spirituality",
+      "Tahitian traditions",
+      "Broader Polynesian beliefs"
+    ]
+  },
+  {
+    "Name": "Andean Cosmovision (Pachamama)",
+    "Category": "Indigenous",
+    "Culture": "South America / Quechua, Aymara peoples",
+    "Era": "Pre-Inca to Present",
+    "Description": "Andean spirituality centers on Pachamama (Mother Earth), reciprocity (ayni), and living in harmony with nature's cycles. The cosmovision recognizes three realms (upper, middle, lower worlds) and emphasizes balance, respect for Apus (mountain spirits), and collective well-being.",
+    "Sources": [
+      "Oral traditions of Quechua and Aymara peoples",
+      "Agricultural ceremonies and festivals",
+      "Ayni (reciprocity) practices",
+      "Offerings to Pachamama"
+    ],
+    "CorePrinciples": [
+      "Pachamama as living mother earth",
+      "Ayni - reciprocity and mutual aid",
+      "Respect for Apus (mountain spirits)",
+      "Three realms cosmology (Hanan, Kay, Ukhu Pacha)",
+      "Inti (Sun) as life-giver",
+      "Collective over individual",
+      "Sumaq Kawsay/Suma Qama�a (good living)",
+      "Cyclical time and renewal"
+    ],
+    "CreationMyth": "Viracocha emerged from Lake Titicaca and created the sun, moon, stars, and all peoples, establishing order in the cosmos and teaching humans how to live in harmony.",
+    "HistoricalContext": "Despite Spanish conquest and forced Christianization, Andean spiritual practices persisted through syncretism, and have experienced revival with indigenous rights movements in Ecuador and Bolivia.",
+    "NotableFigures": [
+      "Traditional yatiris and paqos (spiritual practitioners)",
+      "Contemporary indigenous leaders preserving traditions",
+      "Community elders maintaining ceremonies"
+    ],
+    "Regions": [
+      "Peru",
+      "Bolivia",
+      "Ecuador",
+      "Northern Chile",
+      "Northwestern Argentina"
+    ],
+    "RelatedSystems": [
+      "Inca religion (historical)",
+      "Aymara traditions",
+      "Other Andean indigenous beliefs"
+    ]
+  },
+  {
+    "Name": "Yoruba Traditional Religion",
+    "Category": "Indigenous",
+    "Culture": "West Africa / Yoruba people",
+    "Era": "Ancient to Present",
+    "Description": "Yoruba religion centers on Olodumare (Supreme Creator), interaction with Orishas (divine forces/deities), and the concept that each person has a destiny (ori) to fulfill. Divination through Ifa, ancestor veneration, and maintaining balance with spiritual forces are central practices.",
+    "Sources": [
+      "Ifa divination corpus",
+      "Oral traditions (Oriki)",
+      "Odu Ifa texts",
+      "Ritual practices and festivals"
+    ],
+    "CorePrinciples": [
+      "Olodumare as supreme deity",
+      "Orishas as divine forces in nature and life",
+      "Ori (personal destiny) to be fulfilled",
+      "Ifa divination for guidance",
+      "Ancestor veneration (Egungun)",
+      "Ase (vital force/power in all things)",
+      "Balance between spiritual and physical",
+      "Community rituals and festivals"
+    ],
+    "CreationMyth": "Olodumare sent Obatala to create the earth, but Ogun and other Orishas helped complete creation. Humans were formed from clay and given breath (emi) and destiny (ori) by Olodumare.",
+    "HistoricalContext": "Yoruba religion spread through the African diaspora during slavery, evolving into Santer�a, Candombl�, and Vodou while maintaining core elements in West Africa.",
+    "NotableFigures": [
+      "Orunmila (Orisha of wisdom and divination)",
+      "Babalawos (Ifa priests) throughout history",
+      "Contemporary oluwo and iyanifa (male and female diviners)"
+    ],
+    "Regions": [
+      "Nigeria (Yorubaland)",
+      "Benin",
+      "Togo",
+      "Diaspora communities worldwide"
+    ],
+    "RelatedSystems": [
+      "Santer�a (Cuba)",
+      "Candombl� (Brazil)",
+      "Vodou (Haiti)",
+      "If� religion"
+    ]
+  },
+  {
+    "Name": "M?ori Spiritual Tradition",
+    "Category": "Indigenous",
+    "Culture": "Africa / San people (Bushmen)",
+    "Era": "100,000+ years to Present",
+    "Description": "San spirituality, among humanity's oldest, centers on the healing trance dance, connection with animals and nature, and the spirit world accessed by n/om (spiritual energy). Rock art depicts spiritual experiences and the relationship between physical and spiritual realms.",
+    "Sources": [
+      "Oral traditions across San groups",
+      "Rock art spanning millennia",
+      "Trance dance practices",
+      "Traditional healing knowledge"
+    ],
+    "CorePrinciples": [
+      "N/om (spiritual energy) accessed through trance",
+      "Healing dance connects physical and spiritual",
+      "Animals as spiritual teachers",
+      "Shamanic journeying to spirit world",
+      "Respect for all living things",
+      "Hunter-gatherer reciprocity with nature",
+      "Dream visions as guidance",
+      "Rock art as spiritual record"
+    ],
+    "CreationMyth": "The creation stories vary among San groups but often feature a creator/trickster figure and explain how animals, people, and natural features came to be, emphasizing the interconnection of all beings.",
+    "HistoricalContext": "The San people maintain one of the oldest continuous cultural traditions, with their spiritual practices documented in rock art dating back tens of thousands of years. Many traditions persist despite colonization and displacement.",
+    "NotableFigures": [
+      "Traditional healers and shamans (often unnamed)",
+      "Elders preserving oral traditions",
+      "Rock artists throughout millennia"
+    ],
+    "Regions": [
+      "Kalahari Desert",
+      "Botswana",
+      "Namibia",
+      "South Africa",
+      "Angola",
+      "Zimbabwe"
+    ],
+    "RelatedSystems": [
+      "Other Khoisan spiritual traditions",
+      "Southern African indigenous beliefs"
+    ]
+  },
+  {
+    "Name": "Inuit Spiritual Tradition",
+    "Category": "Indigenous",
+    "Culture": "Arctic / Inuit peoples",
+    "Era": "Ancient to Present",
+    "Description": "Inuit spirituality emphasizes respect for Sila (weather/breath/soul), the transformative relationship between humans and animals, and the role of angakkuit (shamans) as intermediaries with the spirit world. Sedna, goddess of the sea, and animal spirits are central to survival in the Arctic.",
+    "Sources": [
+      "Oral traditions across Inuit groups",
+      "Shamanic practices",
+      "Hunting rituals and taboos",
+      "Storytelling traditions"
+    ],
+    "CorePrinciples": [
+      "Sila as life force and weather spirit",
+      "Respect for animal spirits (tarniq)",
+      "Sedna controls sea mammals",
+      "Angakkuit mediate with spirits",
+      "Inua (souls/spirits) in all things",
+      "Balance maintains harmony",
+      "Reciprocity with animals hunted",
+      "Transformation between human and animal forms"
+    ],
+    "CreationMyth": "Creation stories vary by region but often involve Sedna, whose fingers became sea mammals, and tales of giants, transformations, and the shaping of the Arctic landscape by spiritual beings.",
+    "HistoricalContext": "Inuit spiritual practices faced suppression during missionary activity and forced assimilation but are experiencing revival as part of cultural reclamation and self-governance movements.",
+    "NotableFigures": [
+      "Traditional angakkuit (shamans)",
+      "Elders preserving stories",
+      "Contemporary spiritual leaders"
+    ],
+    "Regions": [
+      "Arctic Canada",
+      "Greenland (Kalaallit Nunaat)",
+      "Alaska",
+      "Chukotka (Russia)"
+    ],
+    "RelatedSystems": [
+      "Yupik traditions",
+      "Aleut spirituality",
+      "Other circumpolar indigenous beliefs"
+    ]
+  },
+  {
+    "Name": "Cherokee Spiritual Tradition",
+    "Category": "Indigenous",
+    "Culture": "North America / Cherokee Nation",
+    "Era": "Ancient to Present",
+    "Description": "Cherokee spirituality emphasizes harmony, balance (tohi), and the sacred fire representing purification and renewal. The Upper, Middle, and Lower Worlds form the cosmos, with ceremonies like the Green Corn festival marking renewal and the medicine wheel guiding understanding of life's cycles.",
+    "Sources": [
+      "Oral traditions and stories",
+      "Sacred formulas and prayers",
+      "Ceremonial practices",
+      "Medicine teachings"
+    ],
+    "CorePrinciples": [
+      "Tohi (balance and harmony)",
+      "Three worlds cosmology",
+      "Sacred fire for purification",
+      "Dualism of balance in all things",
+      "Respect for Yowa (Creator)",
+      "Medicine wheel teachings",
+      "Clan system organizing society",
+      "Green Corn ceremony for renewal"
+    ],
+    "CreationMyth": "Water beetle brought mud from beneath the waters to create earth, which Great Buzzard shaped with valleys and mountains. The animals placed the sun on a track across the sky, and people were created last.",
+    "HistoricalContext": "Cherokee spiritual traditions endured the Trail of Tears and forced removal, with many practices continuing in Oklahoma, North Carolina, and other Cherokee communities today.",
+    "NotableFigures": [
+      "Sequoyah (created Cherokee syllabary)",
+      "Traditional medicine people",
+      "Contemporary spiritual leaders",
+      "Elders preserving language and ceremony"
+    ],
+    "Regions": [
+      "Oklahoma",
+      "North Carolina",
+      "Tennessee (historically)",
+      "Georgia (historically)"
+    ],
+    "RelatedSystems": [
+      "Other Iroquoian traditions",
+      "Southeastern indigenous beliefs"
+    ]
+  },
+  {
+    "Name": "S�mi Shamanism",
+    "Category": "Indigenous",
+    "Culture": "Northern Europe / S�mi people",
+    "Era": "Ancient to Present",
+    "Description": "S�mi spirituality centers on the noaidi (shaman) who journeys to other worlds using the sacred drum, connecting with spirits of nature, ancestors, and the land. Reindeer hold spiritual significance, and sieidi (sacred stones/places) mark spiritual power in the landscape.",
+    "Sources": [
+      "Oral traditions (yoik/joik songs)",
+      "Sacred drum traditions",
+      "Sieidi sacred sites",
+      "Shamanic practices"
+    ],
+    "CorePrinciples": [
+      "Noaidi travels between worlds",
+      "Sacred drum (goavddis) as spiritual tool",
+      "Sieidi as power places",
+      "Spirits in nature and landscape",
+      "Reindeer as sacred animals",
+      "Yoik/joik as spiritual songs",
+      "Three-tiered cosmos",
+      "Ancestral connection to land"
+    ],
+    "CreationMyth": "S�mi creation stories involve the cosmic structure with an upper world, middle earth, and underworld, with various spirits and beings populating each realm and influencing the world of humans.",
+    "HistoricalContext": "S�mi spiritual practices were violently suppressed by Christian authorities (drum burning, persecution of noaidi), but traditional knowledge is being revived alongside language and cultural reclamation.",
+    "NotableFigures": [
+      "Historical noaidi (many unnamed)",
+      "Contemporary sii da elders",
+      "Cultural practitioners preserving traditions"
+    ],
+    "Regions": [
+      "S�pmi (S�mi homeland)",
+      "Northern Norway",
+      "Northern Sweden",
+      "Northern Finland",
+      "Kola Peninsula (Russia)"
+    ],
+    "RelatedSystems": [
+      "Finno-Ugric shamanism",
+      "Siberian shamanic traditions",
+      "Northern circumpolar beliefs"
+    ]
+  },
+  {
+    "Name": "Hawaiian Spirituality (K?naka Maoli)",
+    "Category": "Indigenous",
+    "Culture": "Polynesia / Hawai'i",
+    "Era": "Ancient to Present",
+    "Description": "Hawaiian spirituality centers on mana (spiritual power), aloha (love/compassion), and living pono (righteously/in balance). The akua (gods) like K?ne, K?, Lono, and Kanaloa represent natural forces, while 'aumakua (ancestral spirits) guide families. The kapu system regulated sacred and profane.",
+    "Sources": [
+      "Oral traditions and mo'olelo (stories)",
+      "Kumulipo (creation chant)",
+      "Oli (chants) and mele (songs)",
+      "Hula as spiritual practice"
+    ],
+    "CorePrinciples": [
+      "Mana flows through all things",
+      "Aloha as core value",
+      "Pono - living righteously",
+      "Kapu system of sacred restrictions",
+      "'Aumakua guide and protect families",
+      "Aloha '?ina - love of the land",
+      "Kuleana - responsibility and privilege",
+      "Ho'oponopono - making things right"
+    ],
+    "CreationMyth": "The Kumulipo chant describes creation emerging from darkness, with gods and natural forces developing in stages, culminating in the birth of humanity from the earth and sky.",
+    "HistoricalContext": "The kapu system was abolished in 1819, and Christian missionaries suppressed traditional practices, but Hawaiian spirituality has experienced significant revival since the Hawaiian Renaissance of the 1970s.",
+    "NotableFigures": [
+      "Kahuna (priests and experts - many unnamed)",
+      "Queen Lili'uokalani",
+      "Contemporary kumu hula and cultural practitioners",
+      "Nainoa Thompson (navigation revival)"
+    ],
+    "Regions": [
+      "Hawaiian Islands",
+      "Each island has specific spiritual significance"
+    ],
+    "RelatedSystems": [
+      "Tahitian spirituality",
+      "M?ori traditions",
+      "Polynesian beliefs broadly"
+    ]
+  },
+  {
+    "Name": "Mapuche Spirituality",
+    "Category": "Indigenous",
+    "Culture": "South America / Mapuche people",
+    "Era": "Ancient to Present",
+    "Description": "Mapuche spirituality centers on balance between the earthly (Mapu) and spiritual (Wenu Mapu) realms, with the machi (shaman) serving as intermediary. Ngenechen (creator force) and pilla� (ancestral spirits) are revered, and ceremonies like the Nguillat�n maintain cosmic harmony.",
+    "Sources": [
+      "Oral traditions",
+      "Machi healing ceremonies",
+      "Nguillat�n fertility rituals",
+      "Kultr�n (sacred drum) teachings"
+    ],
+    "CorePrinciples": [
+      "Mapu (earth) and Wenu Mapu (heavens) balance",
+      "Machi mediates with spirits",
+      "Ngenechen as creative force",
+      "Pilla� as ancestral spirits and forces",
+      "K�me Mongen - living well",
+      "Az Mapu - customary law and order",
+      "Connection to ancestral land",
+      "Reciprocity with nature"
+    ],
+    "CreationMyth": "Ngenechen created the world in balance, with the earth (Mapu) as the center, connected to the heavens (Wenu Mapu) and underworld (Minche Mapu), establishing cosmic order.",
+    "HistoricalContext": "The Mapuche successfully resisted Inca and Spanish conquest for centuries. Their spiritual traditions persist despite colonization, with many ceremonies and practices continuing today, especially in rural communities.",
+    "NotableFigures": [
+      "Lautaro (military leader)",
+      "Contemporary machi (shamans)",
+      "Cultural leaders preserving Mapudungun language",
+      "Community elders"
+    ],
+    "Regions": [
+      "Chile (Araucan�a region)",
+      "Argentina (Patagonia)",
+      "Mapuche territory (Wallmapu)"
+    ],
+    "RelatedSystems": [
+      "Other Patagonian indigenous traditions",
+      "Southern South American beliefs"
+    ]
+  },
+  {
+    "Name": "Amazonian Shamanism",
+    "Category": "Indigenous",
+    "Culture": "South America / Amazon Basin peoples",
+    "Era": "Ancient to Present",
+    "Description": "Amazonian spiritual traditions, diverse across many tribes, share common elements: shamans (paj�s, curanderos) journey to spirit realms using ayahuasca and other plant medicines, communicating with forest spirits, healing illness, and maintaining balance between humans and the natural world. The rainforest is alive with spiritual intelligence.",
+    "Sources": [
+      "Oral traditions of diverse peoples",
+      "Shamanic practices and songs (icaros)",
+      "Plant medicine knowledge",
+      "Myth and cosmology varying by group"
+    ],
+    "CorePrinciples": [
+      "Forest is alive with spirits",
+      "Plant teachers (maestras) hold wisdom",
+      "Shamans journey to spirit worlds",
+      "Ayahuasca as sacred medicine",
+      "Animals as spiritual kin",
+      "Balance between visible and invisible",
+      "Reciprocity with forest beings",
+      "Healing through spiritual means"
+    ],
+    "CreationMyth": "Creation stories vary widely across Amazonian peoples but often involve the transformation of the world from chaos to order, the emergence of first peoples from earth or sky, and the teaching of sacred knowledge by culture heroes or animal spirits.",
+    "HistoricalContext": "Amazonian spiritual traditions face threats from deforestation and cultural disruption but are being documented and preserved by indigenous communities. Some practices have gained global interest (ayahuasca ceremonies).",
+    "NotableFigures": [
+      "Traditional shamans across many peoples",
+      "Davi Kopenawa (Yanomami shaman and activist)",
+      "Contemporary indigenous leaders",
+      "Guardians of plant medicine knowledge"
+    ],
+    "Regions": [
+      "Amazon rainforest",
+      "Brazil",
+      "Peru",
+      "Colombia",
+      "Ecuador",
+      "Venezuela",
+      "Bolivia"
+    ],
+    "RelatedSystems": [
+      "Shipibo traditions",
+      "Yawanawa practices",
+      "Shuar spirituality",
+      "Countless distinct tribal traditions"
+    ]
+  },
+  {
+    "Name": "Ainu Spiritual Tradition",
+    "Category": "Indigenous",
+    "Culture": "East Asia / Ainu people",
+    "Era": "Ancient to Present",
+    "Description": "Ainu spirituality views the world as inhabited by kamuy (gods/spirits) who visit the human world in the guise of animals, plants, and natural phenomena. The iyomante (bear ceremony) and iynomi (sending ceremony) return kamuy to the spirit world. Humans must show gratitude and reciprocity to maintain balance.",
+    "Sources": [
+      "Oral traditions (yukar epics)",
+      "Ceremonial practices",
+      "Iyomante bear ceremony",
+      "Traditional prayers and libations"
+    ],
+    "CorePrinciples": [
+      "Kamuy inhabit all of nature",
+      "Reciprocity with spirit world",
+      "Iyomante returns kamuy with gifts",
+      "Animals are gods in disguise",
+      "Respect for elders and ancestors",
+      "Fire goddess (Fuchi/Kamuy Fuchi) central",
+      "Balance between worlds",
+      "Gratitude for nature's gifts"
+    ],
+    "CreationMyth": "Ainu creation stories describe how gods created the islands, animals, and first humans, teaching them how to live in harmony with nature and the spirit world.",
+    "HistoricalContext": "Ainu spiritual practices were suppressed by Japanese assimilation policies but are experiencing revival as Ainu cultural identity is reclaimed and legally recognized (2019 Indigenous Peoples Recognition law).",
+    "NotableFigures": [
+      "Traditional ekashi (elders) and fuchi (grandmothers)",
+      "Kayano Shigeru (cultural activist)",
+      "Contemporary cultural preservationists"
+    ],
+    "Regions": [
+      "Hokkaido (Japan)",
+      "Sakhalin",
+      "Kuril Islands",
+      "Historically northern Honshu"
+    ],
+    "RelatedSystems": [
+      "Nivkh traditions",
+      "Other indigenous Northeast Asian beliefs"
+    ]
+  }
+]

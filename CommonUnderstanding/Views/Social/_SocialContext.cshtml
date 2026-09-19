@@ -1,0 +1,22 @@
+@model CommonUnderstanding.Models.Social.ClaimSocialContextViewModel
+@{
+    Layout = null;
+    var contextLabel = Model.PropositionText.Length > 80 ? Model.PropositionText[..77] + "..." : Model.PropositionText;
+}
+<section class="side-panel">
+    <div class="panel-heading"><h2>Arguments in context</h2></div>
+    <h3 class="support-label">Supports</h3>
+    @if (Model.SupportingArguments.Count == 0) { <p class="compact-empty">None linked.</p> }
+    @foreach (var argument in Model.SupportingArguments) { <a class="argument-link" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a> }
+    <h3 class="challenge-label">Challenges</h3>
+    @if (Model.OpposingArguments.Count == 0) { <p class="compact-empty">None linked.</p> }
+    @foreach (var argument in Model.OpposingArguments) { <a class="argument-link" asp-action="Detail" asp-route-id="@argument.Id"><strong>@argument.Title</strong><span>@argument.WarrantText</span></a> }
+</section>
+<section class="side-panel">
+    <div class="panel-heading"><h2>Contribution history</h2><span>@Model.ContributionHistory.Count</span></div>
+    @foreach (var contribution in Model.ContributionHistory) { <a class="history-item @(contribution.Id == Model.FocusArgumentId ? "current" : null)" asp-action="Detail" asp-route-id="@contribution.Id"><time>@contribution.CreatedAt.ToString("MMM d, yyyy")</time><strong>@contribution.Title</strong></a> }
+</section>
+<section class="side-panel contribute-panel">
+    <div class="panel-heading"><h2>Add perspective</h2></div>
+    @await Html.PartialAsync("_InlineContribution", (ContextLabel: contextLabel, ContextType: "Proposition", ContextId: Model.PropositionId.ToString()))
+</section>

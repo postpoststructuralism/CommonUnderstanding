@@ -83,9 +83,17 @@ public sealed class RecommendationProjectionWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var projector = scope.ServiceProvider.GetRequiredService<RecommendationProjectionService>();
         foreach (var argumentId in argumentIds.Distinct())
+        {
+            if (!_userActivity.ShouldRunBackgroundWork)
+                return;
             await TryProjectArgumentAsync(projector, argumentId, ct);
+        }
         foreach (var userId in userIds.Distinct())
+        {
+            if (!_userActivity.ShouldRunBackgroundWork)
+                return;
             await TryProjectUserAsync(projector, userId, ct);
+        }
     }
 
     private async Task TryProjectArgumentAsync(

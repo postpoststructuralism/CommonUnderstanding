@@ -1,0 +1,18 @@
+@model CommonUnderstanding.Models.Social.ClaimAnalysisSummaryViewModel
+@{
+    Layout = null;
+}
+<div class="detail-summary-grid">
+    <div class="detail-title">
+        <div class="title-meta"><span class="state-badge">@Model.StateLabel</span><span>Persisted analysis</span></div>
+        <h1>@Model.PropositionText</h1>
+        <p>@Model.CurrentUnderstanding</p>
+    </div>
+    <div class="metric-strip" aria-label="Analysis summary">
+        <div><strong>@Model.PremiseCount</strong><span>Premises</span></div>
+        <div><strong>@Model.EvidenceCount</strong><span>Evidence</span></div>
+        <div><strong>@Model.CriticalGapCount</strong><span>Critical gaps</span></div>
+        <div><strong>@(Model.OverallConfidence?.ToString("P0") ?? "--")</strong><span>Confidence</span></div>
+        <div><strong>@(Model.Recommendation?.ToString() ?? "Pending")</strong><span>Recommendation</span></div>
+    </div>
+</div>

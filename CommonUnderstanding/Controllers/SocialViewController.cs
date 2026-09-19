@@ -118,138 +118,215 @@ public class SocialViewController : Controller
         return View("~/Views/Social/DetailShell.cshtml", shell);
     }
 
-    // GET /SocialView/DetailContent/{id}
+    // GET /SocialView/AnalysisSummary/{id}
     [HttpGet]
-    public async Task<IActionResult> DetailContent(Guid id, CancellationToken ct = default)
+    public async Task<IActionResult> AnalysisSummary(Guid id, CancellationToken ct = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var arg = await db.SocialArguments
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(a => a.ClaimProposition)
-            .Include(a => a.Votes)
-            .Include(a => a.OutboundLinks)
-                .ThenInclude(l => l.TargetArgument)
-                    .ThenInclude(a => a!.ClaimProposition)
-            .Include(a => a.InboundLinks)
-                .ThenInclude(l => l.SourceArgument)
-                    .ThenInclude(a => a!.ClaimProposition)
-            .FirstOrDefaultAsync(a => a.Id == id, ct);
 
-        if (arg is null || (!arg.IsPublic && arg.UserId != userId))
+        var argument = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.Id == id && (a.IsPublic || a.UserId == userId))
+            .Select(a => new
+            {
+                a.SourceArgumentId,
+                PropositionText = a.ClaimProposition != null ? a.ClaimProposition.Text : a.Title,
+                CurrentUnderstanding = a.ResolutionText ?? a.WarrantText
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (argument is null)
             return NotFound();
 
-        ViewData["Title"] = arg.ClaimProposition?.Text ?? arg.Title;
+        if (!argument.SourceArgumentId.HasValue)
+        {
+            return PartialView("~/Views/Social/_AnalysisSummary.cshtml", new ClaimAnalysisSummaryViewModel
+            {
+                PropositionText = argument.PropositionText,
+                StateLabel = "Unresolved",
+                CurrentUnderstanding = argument.CurrentUnderstanding
+            });
+        }
 
-        var contributionHistory = await db.SocialArguments
+        var sourceId = argument.SourceArgumentId.Value;
+        var adjudication = await db.AdjudicationSummaries
             .AsNoTracking()
-            .Where(a => a.ClaimPropositionId == arg.ClaimPropositionId
+            .Where(a => a.ArgumentId == sourceId)
+            .Select(a => new { a.OverallConfidence, a.Recommendation, a.ReasoningTrace })
+            .FirstOrDefaultAsync(ct);
+        var premiseCount = await db.Propositions
+            .AsNoTracking()
+            .CountAsync(p => p.Claim!.ArgumentId == sourceId, ct);
+        var evidenceCount = await db.EvidenceItems
+            .AsNoTracking()
+            .CountAsync(e => e.Proposition!.Claim!.ArgumentId == sourceId, ct);
+        var criticalGapCount = await db.Assumptions
+            .AsNoTracking()
+            .CountAsync(a => a.Claim!.ArgumentId == sourceId && a.IsCritical && !a.IsSupported, ct);
+        var contested = adjudication?.Recommendation is DecisionRecommendation.Investigate or DecisionRecommendation.Defer;
+
+        return PartialView("~/Views/Social/_AnalysisSummary.cshtml", new ClaimAnalysisSummaryViewModel
+        {
+            PropositionText = argument.PropositionText,
+            StateLabel = adjudication is null ? "Unresolved" : contested ? "Contested" : "Provisionally settled",
+            CurrentUnderstanding = adjudication?.ReasoningTrace ?? argument.CurrentUnderstanding,
+            PremiseCount = premiseCount,
+            EvidenceCount = evidenceCount,
+            CriticalGapCount = criticalGapCount,
+            OverallConfidence = adjudication?.OverallConfidence,
+            Recommendation = adjudication?.Recommendation
+        });
+    }
+
+    // GET /SocialView/AnalysisDetail/{id}
+    [HttpGet]
+    public async Task<IActionResult> AnalysisDetail(Guid id, CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var argument = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.Id == id && (a.IsPublic || a.UserId == userId))
+            .Select(a => new
+            {
+                a.SourceArgumentId,
+                PropositionText = a.ClaimProposition != null ? a.ClaimProposition.Text : a.Title
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (argument is null)
+            return NotFound();
+
+        if (!argument.SourceArgumentId.HasValue)
+        {
+            return PartialView("~/Views/Social/_AnalysisDetail.cshtml", new ClaimAnalysisDetailViewModel
+            {
+                PropositionText = argument.PropositionText,
+                Claims = Array.Empty<CommonUnderstanding.Models.Claim>(),
+                Premises = Array.Empty<Proposition>(),
+                Evidence = Array.Empty<EvidenceItem>(),
+                Syllogisms = Array.Empty<Syllogism>(),
+                Assumptions = Array.Empty<Assumption>(),
+                Qualifiers = Array.Empty<Qualifier>(),
+                Rebuttals = Array.Empty<Rebuttal>()
+            });
+        }
+
+        var sourceId = argument.SourceArgumentId.Value;
+        var sourceArgument = await db.Arguments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == sourceId, ct);
+        var claims = await db.Claims.AsNoTracking().Where(c => c.ArgumentId == sourceId).OrderBy(c => c.Id).ToListAsync(ct);
+        var premises = new List<Proposition>();
+        var syllogisms = new List<Syllogism>();
+        var assumptions = new List<Assumption>();
+        var qualifiers = new List<Qualifier>();
+        var rebuttals = new List<Rebuttal>();
+        foreach (var claim in claims)
+        {
+            premises.AddRange(await db.Propositions.AsNoTracking().Where(p => p.ClaimId == claim.Id).OrderBy(p => p.SortOrder).ToListAsync(ct));
+            syllogisms.AddRange(await db.Syllogisms.AsNoTracking().Where(s => s.ClaimId == claim.Id).OrderBy(s => s.SortOrder).ToListAsync(ct));
+            assumptions.AddRange(await db.Assumptions.AsNoTracking().Where(a => a.ClaimId == claim.Id).ToListAsync(ct));
+            qualifiers.AddRange(await db.Qualifiers.AsNoTracking().Where(q => q.ClaimId == claim.Id).ToListAsync(ct));
+            rebuttals.AddRange(await db.Rebuttals.AsNoTracking().Where(r => r.ClaimId == claim.Id).ToListAsync(ct));
+        }
+        var evidence = await db.EvidenceItems.AsNoTracking().Where(e => e.Proposition!.Claim!.ArgumentId == sourceId).OrderBy(e => e.Direction).ThenBy(e => e.Tier).ToListAsync(ct);
+        var adjudication = await db.AdjudicationSummaries.AsNoTracking().FirstOrDefaultAsync(a => a.ArgumentId == sourceId, ct);
+
+        return PartialView("~/Views/Social/_AnalysisDetail.cshtml", new ClaimAnalysisDetailViewModel
+        {
+            SourceArgument = sourceArgument,
+            PropositionText = argument.PropositionText,
+            Claims = claims,
+            Premises = premises,
+            Evidence = evidence,
+            Syllogisms = syllogisms,
+            Assumptions = assumptions,
+            Qualifiers = qualifiers,
+            Rebuttals = rebuttals,
+            Adjudication = adjudication
+        });
+    }
+
+    // GET /SocialView/SocialContext/{id}
+    [HttpGet]
+    public async Task<IActionResult> SocialContext(Guid id, CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+        var focus = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.Id == id && (a.IsPublic || a.UserId == userId))
+            .Select(a => new
+            {
+                a.Id,
+                a.ClaimPropositionId,
+                PropositionText = a.ClaimProposition != null ? a.ClaimProposition.Text : a.Title
+            })
+            .FirstOrDefaultAsync(ct);
+        if (focus is null)
+            return NotFound();
+
+        var history = await db.SocialArguments.AsNoTracking()
+            .Where(a => a.ClaimPropositionId == focus.ClaimPropositionId && a.IsPublic && !a.IsShadowBanned)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new SocialContextHistoryViewModel
+            {
+                Id = a.Id,
+                Title = a.Title,
+                CreatedAt = a.CreatedAt
+            })
+            .ToListAsync(ct);
+        var outboundOpposingArguments = db.ArgumentLinks
+            .AsNoTracking()
+            .Where(l => l.LinkType == LinkType.Contradicts && l.SourceArgumentId == id)
+            .Select(l => l.TargetArgument!);
+        var inboundOpposingArguments = db.ArgumentLinks
+            .AsNoTracking()
+            .Where(l => l.LinkType == LinkType.Contradicts && l.TargetArgumentId == id)
+            .Select(l => l.SourceArgument!);
+        var opposingArguments = await outboundOpposingArguments
+            .Concat(inboundOpposingArguments)
+            .Where(a => a.IsPublic && !a.IsShadowBanned)
+            .OrderByDescending(a => a.WilsonScore)
+            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
+            .Select(a => new SocialContextArgumentViewModel
+            {
+                Id = a.Id,
+                Title = a.Title,
+                WarrantText = a.WarrantText
+            })
+            .Take(3)
+            .ToListAsync(ct);
+        var supportingArguments = await db.SocialArguments
+            .AsNoTracking()
+            .Where(a => a.ClaimPropositionId == focus.ClaimPropositionId
                 && a.IsPublic
-                && !a.IsShadowBanned)
-            .OrderBy(a => a.CreatedAt)
+                && !a.IsShadowBanned
+                && !db.ArgumentLinks.Any(l => l.LinkType == LinkType.Contradicts
+                    && ((l.SourceArgumentId == id && l.TargetArgumentId == a.Id)
+                        || (l.TargetArgumentId == id && l.SourceArgumentId == a.Id))))
+            .OrderByDescending(a => a.WilsonScore)
+            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
+            .Select(a => new SocialContextArgumentViewModel
+            {
+                Id = a.Id,
+                Title = a.Title,
+                WarrantText = a.WarrantText
+            })
+            .Take(3)
             .ToListAsync(ct);
 
-        var opposingArgumentIds = arg.InboundLinks
-            .Where(l => l.LinkType == LinkType.Contradicts)
-            .Select(l => l.SourceArgumentId)
-            .Concat(arg.OutboundLinks
-                .Where(l => l.LinkType == LinkType.Contradicts)
-                .Select(l => l.TargetArgumentId))
-            .ToHashSet();
-
-        var supportingArguments = contributionHistory
-            .Where(a => !opposingArgumentIds.Contains(a.Id))
-            .OrderByDescending(a => a.WilsonScore)
-            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
-            .Take(3)
-            .ToList();
-
-        var opposingArguments = arg.InboundLinks
-            .Where(l => l.LinkType == LinkType.Contradicts
-                && l.SourceArgument is { IsPublic: true, IsShadowBanned: false })
-            .Select(l => l.SourceArgument!)
-            .Concat(arg.OutboundLinks
-                .Where(l => l.LinkType == LinkType.Contradicts
-                    && l.TargetArgument is { IsPublic: true, IsShadowBanned: false })
-                .Select(l => l.TargetArgument!))
-            .DistinctBy(a => a.Id)
-            .OrderByDescending(a => a.WilsonScore)
-            .ThenByDescending(a => a.UpvoteCount - a.DownvoteCount)
-            .Take(3)
-            .ToList();
-
-        Argument? sourceArg = null;
-
-        // If this social argument was published from a Phase 1 analytical argument,
-        // load the full analysis data for the "View Analysis" section.
-        if (arg.SourceArgumentId.HasValue)
+        return PartialView("~/Views/Social/_SocialContext.cshtml", new ClaimSocialContextViewModel
         {
-            sourceArg = await db.Arguments
-                .AsNoTracking()
-                .AsSplitQuery()
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Premises)
-                        .ThenInclude(p => p.EvidenceItems)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Syllogisms)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Assumptions)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Qualifiers)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Rebuttals)
-                .Include(a => a.AdjudicationSummary)
-                .FirstOrDefaultAsync(a => a.Id == arg.SourceArgumentId.Value, ct);
-
-            if (sourceArg != null)
-            {
-                ViewBag.SourceArgument = sourceArg;
-            }
-        }
-
-        // If this is a follow-up (reply) argument, load the parent argument
-        // for the "Follow-up Relevance" tab in the analysis section.
-        var parentLink = arg.InboundLinks?.FirstOrDefault(l => l.LinkType == Models.Social.LinkType.Reply);
-        if (parentLink != null)
-        {
-            var parentArg = await db.SocialArguments
-                .AsNoTracking()
-                .Include(a => a.ClaimProposition)
-                .FirstOrDefaultAsync(a => a.Id == parentLink.SourceArgumentId, ct);
-
-            if (parentArg != null)
-            {
-                ViewBag.ParentArgument = parentArg;
-            }
-        }
-
-        var claims = sourceArg?.Claims ?? Array.Empty<CommonUnderstanding.Models.Claim>();
-        var viewModel = new ClaimStateViewModel
-        {
-            FocusArgument = arg,
-            Proposition = arg.ClaimProposition!,
+            FocusArgumentId = focus.Id,
+            PropositionId = focus.ClaimPropositionId,
+            PropositionText = focus.PropositionText,
             SupportingArguments = supportingArguments,
             OpposingArguments = opposingArguments,
-            ContributionHistory = contributionHistory,
-            Evidence = claims
-                .SelectMany(c => c.Premises)
-                .SelectMany(p => p.EvidenceItems)
-                .OrderBy(e => e.Direction)
-                .ThenBy(e => e.Tier)
-                .ToList(),
-            RemainingQuestions = claims
-                .SelectMany(c => c.Assumptions)
-                .Where(a => !a.IsSupported)
-                .OrderByDescending(a => a.IsCritical)
-                .ToList(),
-            SourceArgument = sourceArg,
-            Adjudication = sourceArg?.AdjudicationSummary,
-            UserVote = arg.Votes.FirstOrDefault(v => v.UserId == userId)
-        };
-
-        return PartialView("~/Views/Social/Detail.cshtml", viewModel);
+            ContributionHistory = history
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

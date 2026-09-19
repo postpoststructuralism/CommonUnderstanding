@@ -1,0 +1,65 @@
+@using CommonUnderstanding.Models
+@model CommonUnderstanding.Models.Social.ClaimAnalysisDetailViewModel
+@{
+    Layout = null;
+}
+@if (Model.SourceArgument is not null)
+{
+    <section class="analysis-panel">
+        <div class="panel-heading"><h2>AI argument analysis</h2><span>Persisted source analysis #@Model.SourceArgument.Id</span></div>
+        <div class="claim-block"><span>Central claim</span><strong>@(Model.Claims.FirstOrDefault()?.Text ?? Model.PropositionText)</strong></div>
+        @if (Model.Premises.Count > 0)
+        {
+            <div class="subsection-heading"><h3>Premises</h3><span>@Model.Premises.Count identified</span></div>
+            @foreach (var (premise, index) in Model.Premises.Select((item, index) => (item, index + 1)))
+            {
+                var evidenceCount = Model.Evidence.Count(e => e.PropositionId == premise.Id);
+                <article class="premise-row">
+                    <span class="row-index">@index</span>
+                    <div><p>@premise.Text</p>@if (!string.IsNullOrWhiteSpace(premise.ProvisionalAssessment)) { <div class="ai-assessment"><i class="bi bi-cpu"></i><span><strong>AI assessment @(premise.ProvisionalConfidence?.ToString("P0") ?? "")</strong>@premise.ProvisionalAssessment</span></div> }</div>
+                    <div class="premise-status"><strong>@premise.ConfidenceScore.ToString("P0")</strong><span>@premise.Status</span><small>@evidenceCount evidence</small></div>
+                </article>
+            }
+        }
+    </section>
+
+    @if (Model.Syllogisms.Count > 0)
+    {
+        <section class="analysis-panel">
+            <div class="panel-heading"><h2>Logical structure</h2><span>@Model.Syllogisms.Count inference chains</span></div>
+            <div class="logic-grid">
+                @foreach (var (syllogism, index) in Model.Syllogisms.Select((item, index) => (item, index + 1)))
+                {
+                    <article class="logic-chain"><header><strong>@index. @syllogism.InferenceType</strong><span class="@(syllogism.IsValidForm ? "valid" : "issue")">@(syllogism.IsValidForm ? "Valid form" : "Issue detected")</span></header><dl><dt>Major</dt><dd>@syllogism.MajorPremise</dd><dt>Minor</dt><dd>@syllogism.MinorPremise</dd><dt>Therefore</dt><dd><strong>@syllogism.Conclusion</strong></dd></dl>@if (!string.IsNullOrWhiteSpace(syllogism.FallaciesDetected)) { <p class="fallacy"><i class="bi bi-exclamation-triangle"></i>@syllogism.FallaciesDetected</p> }</article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Model.Assumptions.Count > 0 || Model.Qualifiers.Count > 0 || Model.Rebuttals.Count > 0)
+    {
+        <section class="analysis-panel"><div class="panel-heading"><h2>Conditions and challenges</h2><span>Limits of the argument</span></div><div class="condition-grid"><div><h3>Hidden assumptions <span>@Model.Assumptions.Count</span></h3>@foreach (var item in Model.Assumptions) { <p>@if (item.IsCritical) { <strong>Critical</strong> } @item.Text</p> }</div><div><h3>Qualifiers <span>@Model.Qualifiers.Count</span></h3>@foreach (var item in Model.Qualifiers) { <p>@if (!string.IsNullOrWhiteSpace(item.QualifierType)) { <strong>@item.QualifierType</strong> } @item.Text</p> }</div><div><h3>Rebuttals <span>@Model.Rebuttals.Count</span></h3>@foreach (var item in Model.Rebuttals) { <p>@if (!string.IsNullOrWhiteSpace(item.Strength)) { <strong>@item.Strength</strong> } @item.Text</p> }</div></div></section>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.Adjudication?.DetailedNarrative))
+    {
+        <section class="analysis-panel narrative-panel"><div class="panel-heading"><h2>Full agent narrative</h2><span>Adjudication analysis</span></div>@foreach (var paragraph in Model.Adjudication.DetailedNarrative.Split("\n\n", StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph.Trim()</p> }</section>
+    }
+}
+else
+{
+    <section class="analysis-panel empty-analysis"><i class="bi bi-cpu"></i><div><h2>No persisted analysis</h2><p>This contribution is not linked to an analyzed argument.</p></div></section>
+}
+
+<section class="analysis-panel">
+    <div class="panel-heading"><h2>Evidence</h2><span>@Model.Evidence.Count linked items</span></div>
+    @if (Model.Evidence.Count == 0) { <p class="compact-empty">No evidence has been linked yet.</p> }
+    @foreach (var evidence in Model.Evidence) { <article class="evidence-row"><span class="direction @evidence.Direction.ToString().ToLowerInvariant()">@(evidence.Direction == EvidenceDirection.Opposes ? "Challenges" : evidence.Direction)</span><div><p>@evidence.Citation</p><small>@evidence.Tier.ToString().Replace("_", " ")</small></div>@if (!string.IsNullOrWhiteSpace(evidence.SourceUri)) { <a href="@evidence.SourceUri" target="_blank" rel="noopener noreferrer" title="Open source"><i class="bi bi-box-arrow-up-right"></i></a> }</article> }
+</section>
+
+<section class="analysis-panel">
+    <div class="panel-heading"><h2>Open questions</h2><span>@Model.Assumptions.Count(a => !a.IsSupported)</span></div>
+    @foreach (var question in Model.Assumptions.Where(a => !a.IsSupported).OrderByDescending(a => a.IsCritical)) { <p class="question">@if (question.IsCritical) { <strong>Critical</strong> } @question.Text</p> }
+    @if (!string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps)) { <p class="question"><strong>Next</strong> @Model.Adjudication.NextSteps</p> }
+    @if (Model.Assumptions.All(a => a.IsSupported) && string.IsNullOrWhiteSpace(Model.Adjudication?.NextSteps)) { <p class="compact-empty">No unresolved questions identified.</p> }
+</section>

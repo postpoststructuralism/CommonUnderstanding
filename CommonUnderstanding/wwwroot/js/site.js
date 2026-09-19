@@ -210,34 +210,35 @@ function hideLoadingOverlay() {
 
 function initClaimDetailLoader() {
     const host = document.getElementById('claim-detail-host');
-    const errorTemplate = document.getElementById('claim-detail-error-template');
+    const errorTemplate = document.getElementById('claim-fragment-error-template');
     if (!host || !errorTemplate) return;
 
-    async function loadDetails() {
-        host.setAttribute('aria-busy', 'true');
+    async function loadFragment(fragment) {
+        fragment.setAttribute('aria-busy', 'true');
 
         try {
-            const response = await fetch(host.dataset.detailUrl, {
+            const response = await fetch(fragment.dataset.fragmentUrl, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
-            if (!response.ok) throw new Error(`Detail request failed with ${response.status}`);
+            if (!response.ok) throw new Error(`Fragment request failed with ${response.status}`);
 
-            host.innerHTML = await response.text();
-            host.setAttribute('aria-busy', 'false');
-
-            if (window.location.hash) {
-                document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
-            }
+            fragment.innerHTML = await response.text();
         } catch (error) {
-            console.error('Unable to load claim details.', error);
-            host.replaceChildren(errorTemplate.content.cloneNode(true));
-            host.setAttribute('aria-busy', 'false');
-            host.querySelector('button')?.addEventListener('click', loadDetails, { once: true });
+            console.error('Unable to load claim detail fragment.', error);
+            fragment.replaceChildren(errorTemplate.content.cloneNode(true));
+            fragment.querySelector('button')?.addEventListener('click', () => loadFragment(fragment), { once: true });
+        } finally {
+            fragment.setAttribute('aria-busy', 'false');
         }
     }
 
-    loadDetails();
+    const immediateFragments = Array.from(host.querySelectorAll('.detail-fragment:not([data-fragment-deferred])'));
+    const deferredFragments = Array.from(host.querySelectorAll('.detail-fragment[data-fragment-deferred]'));
+
+    Promise.allSettled(immediateFragments.map(loadFragment)).then(() => {
+        deferredFragments.forEach(loadFragment);
+    });
 }
 
 // Form Validation Helper

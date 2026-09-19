@@ -23,7 +23,7 @@ edges:
 # Decisions usually ground sparsely; add only symbols that implement the decision.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-09-14
+last_updated: 2026-09-19
 ---
 
 # Decisions
@@ -42,6 +42,22 @@ last_updated: 2026-09-14
      The history must be preserved — this is the event clock. -->
 
 ## Decision Log
+
+  ### Load SocialView detail through bounded independent fragments
+  **Date:** 2026-09-19
+  **Status:** Active
+  **Decision:** Render an authorized scalar shell, load summary and social context concurrently, then load persisted analytical collections through a deferred fragment backed by separate bounded queries.
+  **Reasoning:** The prior monolithic include graph either serialized slow child commands with split queries or multiplied sibling collections into a large joined materialization with a single query. Independent fragments expose useful content early, isolate failures, and keep database work bounded; a direct relationship predicate also avoids the measured cold SQL Server `OPENJSON` plan on syllogisms.
+  **Alternatives considered:** One giant `AsSingleQuery` was rejected after exact-route concurrency tests reached 27-55 seconds; broad `AsSplitQuery` had repeatable 25-second child commands; generating fresh AI analysis during GET navigation was rejected because persisted analysis already exists and page reads must not incur model work.
+  **Consequences:** Every fragment must independently authorize access, GET navigation only retrieves persisted analysis, collection expansion must remain explicit and bounded, and performance validation must use the exact route plus cold and concurrent requests.
+
+  ### Load SocialView source analysis with one EF query
+  **Date:** 2026-09-19
+  **Status:** Superseded by "Load SocialView detail through bounded independent fragments"
+  **Decision:** Use `AsSingleQuery` for the source-analysis include graph after split-query child commands appeared slow.
+  **Reasoning:** An isolated warm measurement completed quickly and initially suggested the joined graph was the safer shape.
+  **Alternatives considered:** The existing split query was rejected because several child commands stalled in the initial reproduction.
+  **Consequences:** Superseded because exact-record cold and concurrent validation showed severe Cartesian materialization amplification and exposed that a separate `OPENJSON` query shape was responsible for another repeatable 25-second delay.
 
   ### Require human confirmation for external evidence matches
   **Date:** 2026-09-14
