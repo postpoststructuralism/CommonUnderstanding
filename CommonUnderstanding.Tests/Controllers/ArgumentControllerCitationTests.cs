@@ -87,6 +87,7 @@ public sealed class ArgumentControllerCitationTests
             null!,
             null!,
             null!,
+            null!,
             NullLogger<ArgumentController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },

@@ -6,6 +6,7 @@ using CommonUnderstanding.Models;
 using CommonUnderstanding.Models.Social;
 using CommonUnderstanding.Services;
 using CommonUnderstanding.Services.Provenance;
+using CommonUnderstanding.Services.Social;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -27,6 +28,7 @@ public class ArgumentController : Controller
     private readonly DecisionSupportService _decisionSupportService;
     private readonly ComparativeAnalysisService _comparativeAnalysisService;
     private readonly ArgumentSensemakingService _sensemakingService;
+    private readonly FollowUpArgumentService _followUpArgumentService;
     private readonly ILogger<ArgumentController> _logger;
 
     public ArgumentController(
@@ -43,6 +45,7 @@ public class ArgumentController : Controller
         DecisionSupportService decisionSupportService,
         ComparativeAnalysisService comparativeAnalysisService,
         ArgumentSensemakingService sensemakingService,
+        FollowUpArgumentService followUpArgumentService,
         ILogger<ArgumentController> logger)
     {
         _db = db;
@@ -58,6 +61,7 @@ public class ArgumentController : Controller
         _decisionSupportService = decisionSupportService;
         _comparativeAnalysisService = comparativeAnalysisService;
         _sensemakingService = sensemakingService;
+        _followUpArgumentService = followUpArgumentService;
         _logger = logger;
     }
 
@@ -97,9 +101,30 @@ public class ArgumentController : Controller
     //  GET /Argument/Submit
     // ─────────────────────────────────────────────────────────────────────────
 
-    public IActionResult Submit()
+    public async Task<IActionResult> Submit(Guid? parentSocialArgumentId, int? parentArgumentId)
     {
-        return View(new ArgumentSubmitModel());
+        SocialArgument? parent = null;
+        if (parentSocialArgumentId.HasValue)
+        {
+            parent = await _db.SocialArguments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(argument => argument.Id == parentSocialArgumentId && argument.IsPublic);
+        }
+        else if (parentArgumentId.HasValue)
+        {
+            parent = await _db.SocialArguments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(argument => argument.SourceArgumentId == parentArgumentId && argument.IsPublic);
+        }
+
+        if ((parentSocialArgumentId.HasValue || parentArgumentId.HasValue) && parent == null)
+            return NotFound();
+
+        return View(new ArgumentSubmitModel
+        {
+            ParentSocialArgumentId = parent?.Id,
+            ParentTitle = parent?.Title
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -107,8 +132,20 @@ public class ArgumentController : Controller
     // ─────────────────────────────────────────────────────────────────────────
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Submit(ArgumentSubmitModel model)
+    public async Task<IActionResult> Submit(ArgumentSubmitModel model, CancellationToken cancellationToken)
     {
+        SocialArgument? parent = null;
+        if (model.ParentSocialArgumentId.HasValue)
+        {
+            parent = await _db.SocialArguments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(argument => argument.Id == model.ParentSocialArgumentId && argument.IsPublic, cancellationToken);
+            if (parent == null)
+                ModelState.AddModelError(string.Empty, "The contribution you are responding to is no longer available.");
+            else
+                model.ParentTitle = parent.Title;
+        }
+
         if (!ModelState.IsValid)
             return View(model);
 
@@ -120,6 +157,46 @@ public class ArgumentController : Controller
             : rawText[..Math.Min(80, rawText.Length)].Trim();
         if (provisionalTitle.Length > 100)
             provisionalTitle = provisionalTitle[..97] + "…";
+
+        if (model.ParentSocialArgumentId.HasValue)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Challenge();
+
+            try
+            {
+                var response = new SocialArgument
+                {
+                    Title = provisionalTitle,
+                    WarrantText = rawText,
+                    ClaimPropositionId = parent!.ClaimPropositionId,
+                    UserId = userId,
+                    IsPublic = true,
+                    Tags = parent.Tags,
+                    SchwartzValues = parent.SchwartzValues
+                };
+
+                await _followUpArgumentService.CreateFollowUpArgumentAsync(
+                    parent.Id, response, userId, cancellationToken);
+                return RedirectToAction("Detail", "SocialView", new { id = response.Id });
+            }
+            catch (ArgumentException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                return View(model);
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                return View(model);
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                return View(model);
+            }
+        }
 
         var argument = new Argument
         {
@@ -1248,6 +1325,9 @@ public class ArgumentSubmitModel
 
     [System.ComponentModel.DataAnnotations.MaxLength(100)]
     public string? SubmittedBy { get; set; }
+
+    public Guid? ParentSocialArgumentId { get; set; }
+    public string? ParentTitle { get; set; }
 }
 
 public sealed class ArgumentSensemakingRequest

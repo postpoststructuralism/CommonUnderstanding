@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Add Your Perspective";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var isResponse = Model.ParentSocialArgumentId.HasValue;
 }
 
 @section Styles {
@@ -12,8 +13,17 @@
 <div class="container-fluid py-4 px-3 px-lg-4 submission-shell">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4 pb-3 border-bottom">
         <div class="submission-heading">
-            <h2 class="fw-semibold mb-1">Add Your Perspective</h2>
-            <p class="text-muted mb-0" id="modeDescription">Share a fully formed argument for analysis and mapping.</p>
+            <h2 class="fw-semibold mb-1">@(isResponse ? "Respond to This Perspective" : "Add Your Perspective")</h2>
+            <p class="text-muted mb-0" id="modeDescription">
+                @if (isResponse)
+                {
+                    <text>Your response will be linked to <strong>@Model.ParentTitle</strong>.</text>
+                }
+                else
+                {
+                    <text>Share a fully formed argument for analysis and mapping.</text>
+                }
+            </p>
         </div>
         <div class="mode-switch" role="tablist" aria-label="Submission mode">
             <button type="button" class="mode-option active" id="directModeButton" role="tab" aria-selected="true" aria-controls="directMode">
@@ -37,6 +47,7 @@
 
     <form asp-action="Submit" method="post" id="submitForm">
         @Html.AntiForgeryToken()
+        <input asp-for="ParentSocialArgumentId" type="hidden" />
 
         <section id="directMode" class="mode-panel" role="tabpanel" aria-labelledby="directModeButton">
             <div class="row g-4 align-items-start">
