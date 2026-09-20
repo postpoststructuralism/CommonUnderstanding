@@ -75,7 +75,7 @@ public sealed class FeedRankingService : IFeedRankingService
         if (candidates.Count == 0)
             return new RecommendedFeedResultDto(preferences, []);
 
-        var candidateIds = candidates.Select(argument => argument.Id).ToArray();
+        var candidateIds = candidates.Select(argument => argument.Id).ToList();
         var links = await db.ArgumentLinks.AsNoTracking()
             .Where(link => candidateIds.Contains(link.SourceArgumentId) || candidateIds.Contains(link.TargetArgumentId))
             .Select(link => new LinkSignal(link.SourceArgumentId, link.TargetArgumentId, link.LinkType))
@@ -151,7 +151,7 @@ public sealed class FeedRankingService : IFeedRankingService
             .Skip(Math.Max(0, offset)).Take(Math.Clamp(limit, 1, 50)).ToList();
         if (userId is not null && page.Count > 0)
         {
-            var pageIds = page.Select(candidate => candidate.Argument.Id).ToArray();
+            var pageIds = page.Select(candidate => candidate.Argument.Id).ToList();
             var userVotes = await db.ArgumentVotes.AsNoTracking()
                 .Where(vote => vote.UserId == userId && pageIds.Contains(vote.ArgumentId))
                 .ToListAsync(ct);
@@ -328,7 +328,7 @@ public sealed class FeedRankingService : IFeedRankingService
         if (page.Count == 0)
             return new RecommendedFeedResultDto(preferences, []);
 
-        var pageIds = page.Select(candidate => candidate.Argument.Id).ToArray();
+        var pageIds = page.Select(candidate => candidate.Argument.Id).ToList();
         var arguments = await db.SocialArguments.AsNoTracking()
             .Include(argument => argument.ClaimProposition)
             .Where(argument => pageIds.Contains(argument.Id))

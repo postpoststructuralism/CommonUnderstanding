@@ -10,4 +10,5 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [debug-background-processing.md](debug-background-processing.md) | Diagnosing queues, prefetch, deferred analysis, scoring, or hosted-worker failures |
 | [defer-heavy-mvc-detail.md](defer-heavy-mvc-detail.md) | Rendering an authorization-aware MVC detail shell before asynchronously loading collection-heavy analysis |
 | [deploy-azure.md](deploy-azure.md) | Publishing, configuring, deploying, or troubleshooting the Azure App Service application |
+| [repair-production-app-service.md](repair-production-app-service.md) | Diagnosing and repairing a live App Service route failure from logs through verified deployment |
 | [local-operations-dashboard.md](local-operations-dashboard.md) | Extending production uptake, availability, App Service, or Azure SQL monitoring in the local admin project |
