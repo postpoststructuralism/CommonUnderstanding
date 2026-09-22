@@ -148,7 +148,7 @@ try {
 } finally {
     Remove-Item Env:ConnectionStrings__DefaultConnection -ErrorAction SilentlyContinue
     az sql server firewall-rule delete --resource-group $resourceGroup --server $sqlServer `
-        --name $ruleName --yes --output none 2>$null
+      --name $ruleName --output none 2>$null
 }
 ```
 

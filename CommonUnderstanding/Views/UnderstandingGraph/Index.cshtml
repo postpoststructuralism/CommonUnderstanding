@@ -883,7 +883,32 @@
             }
         }
 
-        if (socialArgumentId) window.location.href = '/SocialView/Detail/' + socialArgumentId;
+        if (socialArgumentId) {
+            window.location.href = '/SocialView/Detail/' + socialArgumentId;
+            return;
+        }
+
+        showSkeletonNodeDetail(node);
+    }
+
+    function showSkeletonNodeDetail(node) {
+        const panel = document.getElementById('node-detail-panel');
+        const body = document.getElementById('node-detail-body');
+        const title = document.getElementById('node-detail-title');
+        const fullLink = document.getElementById('node-detail-full-link');
+        if (!panel || !body || !title || !fullLink) return;
+
+        const label = node.fullLabel || node.label || 'Graph node';
+        const status = node.status || 'Unknown';
+        const confidence = Number(node.confidence) || 0;
+
+        title.textContent = label.length > 50 ? label.substring(0, 50) + '\u2026' : label;
+        body.innerHTML =
+            '<p style="font-size:14px;color:var(--cu-primary-blue);margin-bottom:16px;">' + escHtml(label) + '</p>' +
+            '<div class="meta-row"><span class="meta-label">Status</span><span class="meta-value">' + escHtml(status) + '</span></div>' +
+            '<div class="meta-row"><span class="meta-label">Confidence</span><span class="meta-value">' + confidence.toFixed(3) + '</span></div>';
+        fullLink.style.display = 'none';
+        panel.style.display = 'flex';
     }
 
     // ── Schedule a debounced viewport fetch ──
@@ -1306,6 +1331,7 @@
         const fullLink = document.getElementById('node-detail-full-link');
         
         // Set the full page link
+        fullLink.style.display = '';
         fullLink.href = '/UnderstandingGraph/Node/' + nodeId;
         
         // Show panel with loading spinner
