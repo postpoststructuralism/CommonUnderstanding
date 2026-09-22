@@ -1,248 +1,98 @@
-﻿@model CommonUnderstanding.Controllers.ConvergenceMapViewModel
-@using CommonUnderstanding.Models
+@model CommonUnderstanding.Services.Social.UserAgreementDetail
 @{
-    ViewData["Title"] = $"Convergence: {Model.CurrentUserName} ↔ {Model.OtherUserName}";
+    ViewData["Title"] = $"Agreement with {Model.DisplayName}";
+    var percentage = Model.AgreementRate * 100;
+    var agreements = Model.Comparisons.Where(comparison => comparison.Agrees).ToList();
+    var disagreements = Model.Comparisons.Where(comparison => !comparison.Agrees).ToList();
 }
 
-<!-- Header -->
-<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
     <div>
-        <h1 class="cu-page-heading mb-1">
-            <i class="bi bi-intersect me-2"></i>Convergence Map
-        </h1>
-        <p class="text-muted mb-0">
-            <strong>@Model.CurrentUserName</strong>
-            <i class="bi bi-arrow-left-right mx-2"></i>
-            <strong>@Model.OtherUserName</strong>
-        </p>
+        <a asp-action="Index" class="small text-decoration-none">
+            <i class="bi bi-arrow-left me-1"></i>Where We Agree
+        </a>
+        <h1 class="cu-page-heading mt-2 mb-1">You and @Model.DisplayName</h1>
+        <p class="text-muted mb-0">A comparison of your decisive votes on the same public contributions.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Map" asp-route-otherUserId="@Model.OtherUserId" asp-route-regenerate="true"
-           class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
-        </a>
-        <a asp-action="Expand" asp-route-otherUserId="@Model.OtherUserId"
-           class="btn btn-success btn-sm">
-            <i class="bi bi-arrows-expand me-1"></i>Start Expansion Session
-        </a>
-        <a asp-action="Index" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Back
-        </a>
+    <div class="text-end">
+        <div class="display-6 fw-bold text-success">@percentage.ToString("F0")%</div>
+        <div class="small text-muted">agreement across @Model.ComparableVoteCount shared votes</div>
     </div>
 </div>
 
-<!-- Score banner -->
-<div class="cu-card mb-4">
-    <div class="cu-card-body">
-        <div class="row align-items-center">
-            <div class="col-12 col-md-4 text-center mb-3 mb-md-0">
-                <div class="display-4 fw-bold
-                    @(Model.Map.OverallConvergenceScore >= 60 ? "text-success"
-                    : Model.Map.OverallConvergenceScore >= 35 ? "text-warning"
-                    : "text-danger")">
-                    @Model.Map.OverallConvergenceScore.ToString("F0")
-                    <span class="fs-4 text-muted fw-normal">/100</span>
-                </div>
-                <div class="text-muted small">Overall Convergence Score</div>
-            </div>
-            <div class="col-12 col-md-8">
-                <div class="progress mb-2" style="height:14px;">
-                    <div class="progress-bar bg-success" style="width:@Model.SharedPropositionCount%" title="Shared"></div>
-                    <div class="progress-bar bg-danger" style="width:@Model.DisputedPropositionCount%" title="Disputed"></div>
-                </div>
-                <div class="row text-center g-2">
-                    <div class="col-4">
-                        <div class="fw-bold text-success">@Model.SharedPropositionCount</div>
-                        <div class="small text-muted">Shared propositions</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="fw-bold text-danger">@Model.DisputedPropositionCount</div>
-                        <div class="small text-muted">Disputed</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="fw-bold text-info">@Model.DivergencePoints.Count</div>
-                        <div class="small text-muted">Divergence dimensions</div>
-                    </div>
-                </div>
+@if (Model.ComparableVoteCount == 0)
+{
+    <div class="cu-card text-center py-5">
+        <i class="bi bi-bar-chart display-3 text-muted mb-3 d-block"></i>
+        <h2 class="h4">No comparable votes yet</h2>
+        <p class="text-muted mb-0">You have not both cast a decisive vote on the same public contribution.</p>
+    </div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <div class="border-start border-4 border-success ps-3 py-2">
+                <div class="fs-3 fw-bold">@Model.AgreementCount</div>
+                <div class="text-muted">Agreements</div>
             </div>
         </div>
-        @if (!string.IsNullOrWhiteSpace(Model.Map.NarrativeSummary))
+        <div class="col-6">
+            <div class="border-start border-4 border-danger ps-3 py-2">
+                <div class="fs-3 fw-bold">@Model.DisagreementCount</div>
+                <div class="text-muted">Disagreements</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="mb-5" aria-labelledby="agreements-heading">
+        <h2 id="agreements-heading" class="h4 mb-3"><i class="bi bi-check-circle text-success me-2"></i>Where you agree</h2>
+        @if (agreements.Count == 0)
         {
-            <hr />
-            <p class="mb-0 text-muted fst-italic small">@Model.Map.NarrativeSummary</p>
+            <p class="text-muted">No matching decisive votes in the current comparison.</p>
         }
-    </div>
-</div>
+        else
+        {
+            <div class="list-group">
+                @foreach (var comparison in agreements)
+                {
+                    <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@comparison.ArgumentId"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3">
+                        <span>
+                            <strong class="d-block">@comparison.ArgumentTitle</strong>
+                            <span class="small text-muted">You both voted @comparison.CurrentUserVote.ToString().ToLowerInvariant()</span>
+                        </span>
+                        <i class="bi bi-arrow-right text-muted" aria-hidden="true"></i>
+                    </a>
+                }
+            </div>
+        }
+    </section>
 
-<div class="row g-4">
-
-    <!-- ── Profile Overlap ────────────────────────────────────────────────── -->
-    <div class="col-12 col-lg-6">
-        <div class="cu-card h-100">
-            <div class="cu-card-header">
-                <h2 class="h5 mb-0"><i class="bi bi-heart me-2 text-success"></i>Areas of Overlap</h2>
-            </div>
-            <div class="cu-card-body">
-                @if (Model.ProfileOverlap?.AreasOfOverlap.Any() == true)
+    <section aria-labelledby="disagreements-heading">
+        <h2 id="disagreements-heading" class="h4 mb-3"><i class="bi bi-x-circle text-danger me-2"></i>Where you disagree</h2>
+        @if (disagreements.Count == 0)
+        {
+            <p class="text-muted">No opposing decisive votes in the current comparison.</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var comparison in disagreements)
                 {
-                    @foreach (var area in Model.ProfileOverlap.AreasOfOverlap)
-                    {
-                        <div class="mb-3 p-3 bg-success bg-opacity-10 rounded border border-success border-opacity-25">
-                            <div class="d-flex justify-content-between mb-1">
-                                <strong>@area.Theme</strong>
-                                <span class="badge bg-success">@area.StrengthScore/10</span>
-                            </div>
-                            @if (area.SharedValues.Any())
-                            {
-                                <div class="d-flex flex-wrap gap-1 mt-1">
-                                    @foreach (var v in area.SharedValues)
-                                    {
-                                        <span class="badge bg-light text-dark border">@v</span>
-                                    }
-                                </div>
-                            }
-                            @if (area.SharedPrinciples.Any())
-                            {
-                                <div class="d-flex flex-wrap gap-1 mt-1">
-                                    @foreach (var p in area.SharedPrinciples)
-                                    {
-                                        <span class="badge bg-success bg-opacity-25 text-dark border">@p</span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                }
-                else
-                {
-                    <p class="text-muted fst-italic">No profile-level overlaps identified yet. Both users need more discovery sessions.</p>
+                    <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@comparison.ArgumentId"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3">
+                        <span>
+                            <strong class="d-block">@comparison.ArgumentTitle</strong>
+                            <span class="small text-muted">
+                                You voted @comparison.CurrentUserVote.ToString().ToLowerInvariant();
+                                @Model.DisplayName voted @comparison.OtherUserVote.ToString().ToLowerInvariant()
+                            </span>
+                        </span>
+                        <i class="bi bi-arrow-right text-muted" aria-hidden="true"></i>
+                    </a>
                 }
             </div>
-        </div>
-    </div>
-
-    <!-- ── Divergence Dimensions ──────────────────────────────────────────── -->
-    <div class="col-12 col-lg-6">
-        <div class="cu-card h-100">
-            <div class="cu-card-header">
-                <h2 class="h5 mb-0"><i class="bi bi-arrows-collapse me-2 text-warning"></i>Divergence Points</h2>
-            </div>
-            <div class="cu-card-body">
-                @if (Model.DivergencePoints.Any())
-                {
-                    @foreach (var dim in Model.DivergencePoints.Take(6))
-                    {
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-semibold small">@dim.DimensionName
-                                    @if (dim.IsValueLevel)
-                                    {
-                                        <span class="badge bg-danger ms-1" title="Values-level divergence">Values</span>
-                                    }
-                                </span>
-                                <span class="badge bg-warning text-dark">Gap @dim.Gap.ToString("F2")</span>
-                            </div>
-                            <!-- Position bar: user1 on left, user2 on right -->
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="small text-muted" style="min-width:80px;text-align:right">@Model.CurrentUserName</span>
-                                <div class="flex-grow-1 position-relative" style="height:8px;background:#e9ecef;border-radius:4px;">
-                                    <div style="position:absolute;top:0;bottom:0;left:@(((dim.User1Position + 1) / 2 * 100).ToString("F0"))%;
-                                                width:8px;height:8px;background:#0d6efd;border-radius:50%;transform:translateX(-50%);"></div>
-                                    <div style="position:absolute;top:0;bottom:0;left:@(((dim.User2Position + 1) / 2 * 100).ToString("F0"))%;
-                                                width:8px;height:8px;background:#dc3545;border-radius:50%;transform:translateX(-50%);"></div>
-                                </div>
-                                <span class="small text-muted" style="min-width:80px;">@Model.OtherUserName</span>
-                            </div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <p class="text-muted fst-italic">No significant divergence dimensions found. More discovery sessions may reveal differences.</p>
-                }
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Expansion Pathways ─────────────────────────────────────────────── -->
-    <div class="col-12">
-        <div class="cu-card">
-            <div class="cu-card-header d-flex justify-content-between align-items-center">
-                <h2 class="h5 mb-0"><i class="bi bi-signpost-split me-2 text-primary"></i>Expansion Pathways</h2>
-                <a asp-action="Expand" asp-route-otherUserId="@Model.OtherUserId"
-                   class="btn btn-success btn-sm">
-                    <i class="bi bi-play-fill me-1"></i>Start Session
-                </a>
-            </div>
-            <div class="cu-card-body">
-                @if (Model.ExpansionPathways.Any())
-                {
-                    <div class="row g-3">
-                        @foreach (var pathway in Model.ExpansionPathways)
-                        {
-                            var priorityClass = pathway.Priority switch
-                            {
-                                PathwayPriority.High   => "danger",
-                                PathwayPriority.Medium => "warning",
-                                _                      => "secondary"
-                            };
-                            <div class="col-12 col-md-6 col-xl-4">
-                                <div class="p-3 border rounded h-100">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <strong class="small">@pathway.Title</strong>
-                                        <span class="badge bg-@priorityClass">@pathway.Priority</span>
-                                    </div>
-                                    <p class="small text-muted mb-2">@pathway.DivergenceDescription</p>
-                                    <div class="small mb-2">
-                                        <span class="badge bg-success bg-opacity-25 text-dark">
-                                            <i class="bi bi-heart me-1"></i>@pathway.SharedValueAnchor
-                                        </span>
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(pathway.PotentialCommonFraming))
-                                    {
-                                        <p class="small fst-italic text-muted">"@pathway.PotentialCommonFraming"</p>
-                                    }
-                                    <div class="small text-muted">
-                                        Estimated gain: +@(pathway.EstimatedGain * 100).ToString("F0")pts
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="text-muted fst-italic">Expansion pathways will appear once divergence points are identified through discovery sessions.</p>
-                }
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Evolution History ──────────────────────────────────────────────── -->
-    @if (Model.EvolutionHistory.Count > 1)
-    {
-        <div class="col-12">
-            <div class="cu-card">
-                <div class="cu-card-header">
-                    <h2 class="h5 mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Convergence Over Time</h2>
-                </div>
-                <div class="cu-card-body">
-                    <div class="d-flex align-items-end gap-1" style="height:80px;">
-                        @foreach (var snap in Model.EvolutionHistory.TakeLast(20))
-                        {
-                            var height = (int)(snap.ConvergenceScore * 0.8);
-                            <div class="flex-grow-1 bg-primary bg-opacity-70 rounded-top"
-                                 style="height:@height%;"
-                                 title="@snap.RecordedAt.ToString("MMM d"): @snap.ConvergenceScore.ToString("F1")">
-                            </div>
-                        }
-                    </div>
-                    <div class="d-flex justify-content-between small text-muted mt-1">
-                        <span>@Model.EvolutionHistory.First().RecordedAt.ToString("MMM d")</span>
-                        <span>@Model.EvolutionHistory.Last().RecordedAt.ToString("MMM d")</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div>
+        }
+    </section>
+}

@@ -2,7 +2,7 @@
 @using CommonUnderstanding.Services
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 @{
-    ViewData["Title"] = "Understanding Graph — Schema Explorer";
+    ViewData["Title"] = "The Live Map";
     var stats = ViewBag.Statistics as QuickStats;
     var isHomePage = ViewBag.IsHomePage as bool? ?? false;
     var graphDataPath = System.IO.Path.Combine(WebHostEnvironment.WebRootPath, "data");
@@ -496,7 +496,7 @@
     {
     <div class="sidebar">
         <div class="sidebar-header">
-            <h1>🔬 Schema Explorer</h1>
+            <h1>Understanding Graph</h1>
             <p>Emergent conceptual structures from the Understanding Graph</p>
         </div>
 

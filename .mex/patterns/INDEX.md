@@ -12,3 +12,4 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [deploy-azure.md](deploy-azure.md) | Publishing, configuring, deploying, or troubleshooting the Azure App Service application |
 | [repair-production-app-service.md](repair-production-app-service.md) | Diagnosing and repairing a live App Service route failure from logs through verified deployment |
 | [local-operations-dashboard.md](local-operations-dashboard.md) | Extending production uptake, availability, App Service, or Azure SQL monitoring in the local admin project |
+| [pairwise-vote-agreement.md](pairwise-vote-agreement.md) | Ranking users or explaining pairwise agreement from shared public votes |

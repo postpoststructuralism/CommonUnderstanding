@@ -242,6 +242,7 @@ builder.Services.AddScoped<UserConnectionService>();
 builder.Services.AddScoped<ConvergenceMapService>();
 builder.Services.AddScoped<ConvergenceExpansionService>();
 builder.Services.AddScoped<CollaborativeSessionService>();
+builder.Services.AddScoped<UserAgreementService>();
 
 // ── Phase 2: Social Platform Services ────────────────────────────────────────
 

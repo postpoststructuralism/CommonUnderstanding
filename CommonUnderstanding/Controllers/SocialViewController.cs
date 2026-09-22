@@ -52,11 +52,9 @@ public class SocialViewController : Controller
         return View("~/Views/Social/Ranking.cshtml");
     }
 
-    // GET /Social/ChainBuilder
     public IActionResult ChainBuilder()
     {
-        ViewData["Title"] = "Chain Builder";
-        return View("~/Views/Social/ChainBuilder.cshtml");
+        return RedirectToAction(nameof(Feed));
     }
 
     // GET /SocialView/WorldviewComposer

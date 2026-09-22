@@ -4,12 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
+using CommonUnderstanding.Services.Social;
 
 namespace CommonUnderstanding.Controllers;
 
 [Authorize]
 public class ConvergenceController : Controller
 {
+    private readonly UserAgreementService _userAgreementService;
     private readonly ConvergenceMapService _convergenceMapService;
     private readonly ConvergenceExpansionService _expansionService;
     private readonly UserConnectionService _connectionService;
@@ -19,12 +21,14 @@ public class ConvergenceController : Controller
     private static readonly JsonSerializerOptions _json = new();
 
     public ConvergenceController(
+        UserAgreementService userAgreementService,
         ConvergenceMapService convergenceMapService,
         ConvergenceExpansionService expansionService,
         UserConnectionService connectionService,
         UserProfileStore profileStore,
         ILogger<ConvergenceController> logger)
     {
+        _userAgreementService = userAgreementService;
         _convergenceMapService = convergenceMapService;
         _expansionService = expansionService;
         _connectionService = connectionService;
@@ -34,20 +38,17 @@ public class ConvergenceController : Controller
 
     // ─────────────────────────────────────────────────────────────────────────
     //  GET /Convergence
-    //  Dashboard listing all convergence maps for the current user.
+    //  Ranks active users by shared decisive votes on public contributions.
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null) return RedirectToAction("Start", "Discovery");
 
-        var maps = await _convergenceMapService.GetMapsForUserAsync(userId);
-
         var vm = new ConvergenceDashboardViewModel
         {
-            CurrentUserId = userId,
-            Maps = maps.Select(m => BuildMapSummary(m, userId)).ToList()
+            Agreements = await _userAgreementService.GetRankingsAsync(userId, cancellationToken)
         };
 
         return View(vm);
@@ -55,51 +56,16 @@ public class ConvergenceController : Controller
 
     // ─────────────────────────────────────────────────────────────────────────
     //  GET /Convergence/{otherUserId}
-    //  Shows or generates the map between current user and another user.
+    //  Shows the public contributions where two users agree or disagree.
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<IActionResult> Map(string otherUserId, bool regenerate = false)
+    public async Task<IActionResult> Map(string otherUserId, CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null) return RedirectToAction("Start", "Discovery");
 
-        // Only allow connections to view each other's maps
-        if (!await _connectionService.AreConnectedAsync(userId, otherUserId))
-        {
-            TempData["Error"] = "You must be connected with this user to view a convergence map.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        ConvergenceMap map;
-        if (regenerate)
-        {
-            map = await _convergenceMapService.GenerateAsync(userId, otherUserId);
-        }
-        else
-        {
-            map = await _convergenceMapService.GetMapAsync(userId, otherUserId)
-                  ?? await _convergenceMapService.GenerateAsync(userId, otherUserId);
-        }
-
-        var otherUser = _profileStore.GetProfile(otherUserId);
-        var currentUser = _profileStore.GetProfile(userId);
-
-        var vm = new ConvergenceMapViewModel
-        {
-            Map = map,
-            CurrentUserId = userId,
-            OtherUserId = otherUserId,
-            CurrentUserName = currentUser?.Name ?? userId,
-            OtherUserName = otherUser?.Name ?? otherUserId,
-            ProfileOverlap = Deserialize<BeliefComparison>(map.ProfileOverlapJson),
-            DivergencePoints = Deserialize<List<DivergenceDimension>>(map.DivergencePointsJson),
-            ExpansionPathways = Deserialize<List<ExpansionPathway>>(map.ExpansionPathwaysJson),
-            EvolutionHistory = Deserialize<List<ConvergenceSnapshot>>(map.EvolutionHistoryJson),
-            SharedPropositionCount = Deserialize<List<int>>(map.SharedPropositionIdsJson).Count,
-            DisputedPropositionCount = Deserialize<List<int>>(map.DisputedPropositionIdsJson).Count
-        };
-
-        return View(vm);
+        var detail = await _userAgreementService.GetDetailAsync(userId, otherUserId, cancellationToken);
+        return detail is null ? NotFound() : View(detail);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -217,24 +183,6 @@ public class ConvergenceController : Controller
     private string? GetCurrentUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-    private ConvergenceMapSummary BuildMapSummary(ConvergenceMap map, string currentUserId)
-    {
-        var otherId = map.User1Id == currentUserId ? map.User2Id : map.User1Id;
-        var other = _profileStore.GetProfile(otherId);
-        var history = Deserialize<List<ConvergenceSnapshot>>(map.EvolutionHistoryJson);
-        return new ConvergenceMapSummary
-        {
-            Map = map,
-            OtherUserId = otherId,
-            OtherUserName = other?.Name ?? otherId,
-            SharedCount = Deserialize<List<int>>(map.SharedPropositionIdsJson).Count,
-            DisputedCount = Deserialize<List<int>>(map.DisputedPropositionIdsJson).Count,
-            Trend = history.Count >= 2
-                ? map.OverallConvergenceScore - history[^2].ConvergenceScore
-                : 0
-        };
-    }
-
     private static T Deserialize<T>(string json) where T : new()
     {
         try { return JsonSerializer.Deserialize<T>(json) ?? new T(); }
@@ -248,33 +196,7 @@ public class ConvergenceController : Controller
 
 public class ConvergenceDashboardViewModel
 {
-    public string CurrentUserId { get; set; } = string.Empty;
-    public List<ConvergenceMapSummary> Maps { get; set; } = new();
-}
-
-public class ConvergenceMapSummary
-{
-    public ConvergenceMap Map { get; set; } = null!;
-    public string OtherUserId { get; set; } = string.Empty;
-    public string OtherUserName { get; set; } = string.Empty;
-    public int SharedCount { get; set; }
-    public int DisputedCount { get; set; }
-    public double Trend { get; set; }  // positive = growing convergence
-}
-
-public class ConvergenceMapViewModel
-{
-    public ConvergenceMap Map { get; set; } = null!;
-    public string CurrentUserId { get; set; } = string.Empty;
-    public string OtherUserId { get; set; } = string.Empty;
-    public string CurrentUserName { get; set; } = string.Empty;
-    public string OtherUserName { get; set; } = string.Empty;
-    public BeliefComparison? ProfileOverlap { get; set; }
-    public List<DivergenceDimension> DivergencePoints { get; set; } = new();
-    public List<ExpansionPathway> ExpansionPathways { get; set; } = new();
-    public List<ConvergenceSnapshot> EvolutionHistory { get; set; } = new();
-    public int SharedPropositionCount { get; set; }
-    public int DisputedPropositionCount { get; set; }
+    public IReadOnlyList<UserAgreementSummary> Agreements { get; set; } = [];
 }
 
 public class ExpansionSessionViewModel

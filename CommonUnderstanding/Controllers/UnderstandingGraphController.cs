@@ -38,20 +38,9 @@ public class UnderstandingGraphController : Controller
         _logger = logger;
     }
 
-    // ── Schema Explorer ───────────────────────────────────────────────────
-
-    /// <summary>
-    /// Main schema explorer page — shows all schemas with member counts,
-    /// coherence scores, and the full graph map for visualization.
-    /// </summary>
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
-        // Load only lightweight stats on initial page render.
-        // Sidebar tab data (schemas, syntheses, bridges, blindspots) loads via AJAX.
-        // Use the fast count-only query to avoid loading full entities.
-        var stats = await _queryService.GetQuickStatsAsync();
-        ViewBag.Statistics = stats;
-        return View();
+        return RedirectToAction("Index", "Home");
     }
 
     /// <summary>

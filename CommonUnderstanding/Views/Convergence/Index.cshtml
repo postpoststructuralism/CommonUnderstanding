@@ -1,103 +1,77 @@
-﻿@model CommonUnderstanding.Controllers.ConvergenceDashboardViewModel
-@using CommonUnderstanding.Models
+@model CommonUnderstanding.Controllers.ConvergenceDashboardViewModel
 @{
-    ViewData["Title"] = "Convergence";
+    ViewData["Title"] = "Where We Agree";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-end gap-3 mb-4 flex-wrap">
     <div>
         <h1 class="cu-page-heading mb-1">
-            <i class="bi bi-intersect me-2"></i>Convergence Maps
+            <i class="bi bi-intersect me-2"></i>Where We Agree
         </h1>
-        <p class="text-muted mb-0">Track where your understanding meets — and where it can grow</p>
+        <p class="text-muted mb-0">People ranked by how often you cast the same decisive vote on public contributions.</p>
     </div>
-    <a asp-controller="Connections" asp-action="Index" class="btn btn-outline-primary">
-        <i class="bi bi-people me-1"></i>Manage Connections
-    </a>
+    <span class="small text-muted">Confidence-adjusted for sample size</span>
 </div>
 
-@if (!Model.Maps.Any())
+@if (!Model.Agreements.Any())
 {
     <div class="cu-card text-center py-5">
-        <i class="bi bi-intersect display-3 text-muted mb-3 d-block"></i>
-        <h3>No convergence maps yet</h3>
-        <p class="text-muted">Connect with other users to start mapping shared understanding.</p>
-        <a asp-controller="Connections" asp-action="Index" class="btn btn-primary mt-2">
-            <i class="bi bi-person-plus me-1"></i>Find Connections
+        <i class="bi bi-bar-chart display-3 text-muted mb-3 d-block"></i>
+        <h2 class="h4">No shared voting history yet</h2>
+        <p class="text-muted mb-3">Vote on public contributions to compare your positions with other participants.</p>
+        <a asp-controller="SocialView" asp-action="Feed" class="btn btn-primary">
+            <i class="bi bi-clock-history me-1"></i>Browse Latest Contributions
         </a>
     </div>
 }
 else
 {
-    <div class="row g-3">
-        @foreach (var summary in Model.Maps)
-        {
-            var scoreClass = summary.Map.OverallConvergenceScore >= 60 ? "success"
-                           : summary.Map.OverallConvergenceScore >= 35 ? "warning"
-                           : "danger";
-            var trendIcon = summary.Trend > 0 ? "bi-arrow-up-circle-fill text-success"
-                          : summary.Trend < 0 ? "bi-arrow-down-circle-fill text-danger"
-                          : "bi-dash-circle text-secondary";
-
-            <div class="col-12 col-md-6 col-xl-4">
-                <div class="cu-card h-100">
-                    <div class="cu-card-header d-flex justify-content-between align-items-center">
-                        <h2 class="h6 mb-0">
-                            <i class="bi bi-person-circle me-1"></i>@summary.OtherUserName
-                        </h2>
-                        <span class="badge bg-@scoreClass">@summary.Map.OverallConvergenceScore.ToString("F0")/100</span>
-                    </div>
-                    <div class="cu-card-body">
-                        <!-- Score gauge -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between small text-muted mb-1">
-                                <span>Convergence</span>
-                                <span class="@(summary.Trend > 0 ? "text-success" : summary.Trend < 0 ? "text-danger" : "text-secondary")">
-                                    <i class="bi @trendIcon me-1"></i>
-                                    @(summary.Trend >= 0 ? "+" : "")@summary.Trend.ToString("F1")
-                                </span>
-                            </div>
-                            <div class="progress" style="height:8px;">
-                                <div class="progress-bar bg-@scoreClass"
-                                     role="progressbar"
-                                     style="width:@summary.Map.OverallConvergenceScore%">
+    <div class="cu-card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4" scope="col">#</th>
+                        <th scope="col">Participant</th>
+                        <th scope="col">Agreement</th>
+                        <th scope="col">Evidence</th>
+                        <th class="text-end pe-4" scope="col"><span class="visually-hidden">Open comparison</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var index = 0; index < Model.Agreements.Count; index++)
+                    {
+                        var agreement = Model.Agreements[index];
+                        var percentage = agreement.AgreementRate * 100;
+                        <tr>
+                            <td class="ps-4 text-muted fw-semibold">@(index + 1)</td>
+                            <td>
+                                <a asp-action="Map" asp-route-otherUserId="@agreement.UserId" class="fw-semibold text-decoration-none">
+                                    @agreement.DisplayName
+                                </a>
+                            </td>
+                            <td style="min-width: 190px;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px;" aria-label="@percentage.ToString("F0") percent agreement">
+                                        <div class="progress-bar bg-success" style="width: @percentage.ToString("F0")%"></div>
+                                    </div>
+                                    <strong>@percentage.ToString("F0")%</strong>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Stats -->
-                        <div class="row text-center g-2 mb-3">
-                            <div class="col-6">
-                                <div class="p-2 bg-light rounded">
-                                    <div class="fw-bold text-success">@summary.SharedCount</div>
-                                    <div class="small text-muted">Shared propositions</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="p-2 bg-light rounded">
-                                    <div class="fw-bold text-danger">@summary.DisputedCount</div>
-                                    <div class="small text-muted">Disputed</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <p class="small text-muted mb-3">
-                            Updated @summary.Map.LastRefreshedAt.ToString("MMM d, yyyy HH:mm")
-                        </p>
-
-                        <div class="d-flex gap-2">
-                            <a asp-action="Map" asp-route-otherUserId="@summary.OtherUserId"
-                               class="btn btn-primary btn-sm flex-grow-1">
-                                <i class="bi bi-map me-1"></i>View Map
-                            </a>
-                            <a asp-action="Expand" asp-route-otherUserId="@summary.OtherUserId"
-                               class="btn btn-outline-success btn-sm flex-grow-1">
-                                <i class="bi bi-arrows-expand me-1"></i>Expand
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+                            </td>
+                            <td class="small text-muted">
+                                @agreement.AgreementCount agree, @agreement.DisagreementCount disagree
+                                <span class="d-block">@agreement.ComparableVoteCount shared votes</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a asp-action="Map" asp-route-otherUserId="@agreement.UserId" class="btn btn-sm btn-outline-primary" title="View comparison">
+                                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Compare with @agreement.DisplayName</span>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
