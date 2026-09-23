@@ -169,6 +169,7 @@ builder.Services.AddScoped<ComparativeAnalysisService>();
 builder.Services.AddScoped<BlindspotDetector>();
 builder.Services.AddScoped<HarmonyDetector>();
 builder.Services.AddScoped<EmergentConclusionsEngine>();
+builder.Services.AddScoped<ISteelmanService, SteelmanService>();
 
 // Account system (ADFS-ready cookie auth)
 builder.Services.AddSingleton<AccountService>();
