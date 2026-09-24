@@ -762,21 +762,26 @@
 
         // ── Hover: show the original popup card ──
         let hoverTimer = null;
+        let popupHideTimer = null;
         let hoveredNodeId = null;
         network.on('hoverNode', (params) => {
             const nodeId = params.node;
             if (hoverTimer) clearTimeout(hoverTimer);
+            if (popupHideTimer) clearTimeout(popupHideTimer);
             hoveredNodeId = nodeId;
             hoverTimer = setTimeout(() => showHoverPopup(nodeId), 400);
         });
         network.on('blurNode', () => {
             if (hoverTimer) clearTimeout(hoverTimer);
-            hoveredNodeId = null;
-            hideHoverPopup();
+            scheduleHoverPopupHide();
         });
 
         const hoverPopup = document.getElementById('graph-hover-popup');
         if (hoverPopup) {
+            hoverPopup.addEventListener('mouseenter', () => {
+                if (popupHideTimer) clearTimeout(popupHideTimer);
+            });
+            hoverPopup.addEventListener('mouseleave', scheduleHoverPopupHide);
             hoverPopup.addEventListener('click', (event) => {
                 event.stopPropagation();
                 if (!hoveredNodeId) return;
@@ -840,6 +845,11 @@
         popup.style.top = top + 'px';
         popup.style.display = 'block';
         requestAnimationFrame(() => popup.classList.add('visible'));
+    }
+
+    function scheduleHoverPopupHide() {
+        if (popupHideTimer) clearTimeout(popupHideTimer);
+        popupHideTimer = setTimeout(() => hideHoverPopup(), 300);
     }
 
     function hideHoverPopup() {
