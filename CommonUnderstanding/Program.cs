@@ -407,9 +407,10 @@ app.MapHub<CommonUnderstanding.Hubs.ReputationHub>("/hubs/reputation");
 // Widget SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.WidgetHub>("/hubs/widget");
 
-// Apply EF Core migrations at startup (creates tables if they don't exist)
-using (var scope = app.Services.CreateScope())
+// Keep production startup read-only; schema and seed changes must be applied explicitly.
+if (!app.Environment.IsProduction())
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
 
@@ -417,6 +418,10 @@ using (var scope = app.Services.CreateScope())
 
     // SeedAllAsync is idempotent and skips databases that already contain seed data.
     await Phase2SeedData.SeedAllAsync(db, startupLogger);
+}
+else
+{
+    app.Logger.LogInformation("Skipping automatic database migration and seeding in Production.");
 }
 
 // ── CLI: Generate skeleton JSON (one-time, for testing) ──

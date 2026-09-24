@@ -17,7 +17,7 @@ edges:
 grounds_to:
   - CommonUnderstanding/Program.cs
   - CommonUnderstanding/CommonUnderstanding.csproj
-last_updated: 2026-09-20
+last_updated: 2026-09-23
 ---
 
 # Repair a Production App Service Failure
@@ -33,7 +33,7 @@ $project = '.\CommonUnderstanding\CommonUnderstanding.csproj'
 $publish = '.\CommonUnderstanding\bin\Release\net9.0\publish'
 ```
 
-Production uses Linux App Service, .NET 9, SQL Server, and database `CommonUnderstanding`. `Program.cs` runs `MigrateAsync()` at startup, so migration state must be known before any restart.
+Production uses Linux App Service, .NET 9, SQL Server, and database `CommonUnderstanding`. Production startup skips automatic EF migrations and seed initialization; apply schema or seed changes explicitly before deploying code that depends on them.
 
 ## Fast Path
 
@@ -44,7 +44,7 @@ Follow this order. Do not inspect migrations, broad code surfaces, or deployment
 3. Read only that owning method and its nearest focused test.
 4. State one cause and one check that can disprove it.
 5. Make the smallest repair, then immediately run the focused test.
-6. Build. Check migration state only because deployment restarts the app.
+6. Build. Check migration state when the release depends on schema changes; production startup will not apply them.
 7. Clean, publish, inspect, package, and deploy once.
 8. Prove recovery with route responses and a post-restart log window.
 
@@ -125,9 +125,9 @@ CommonUnderstanding.Tests/Services/FeedRankingServiceTests.cs
 
 Then run the workspace `build` task. Do not deploy when the focused tests or build fail. Existing tests may cover ranking math without executing EF translation; production logs and post-deployment SQL markers remain required evidence for this incident class.
 
-## 5. Check Restart Migration Risk
+## 5. Check Migration Compatibility
 
-Skip this section when no restart or deployment will occur. Otherwise, compare repository migrations to production because startup always calls `MigrateAsync()`.
+Skip this section when the release has no schema dependency. Otherwise, compare repository migrations to production and apply reviewed migrations explicitly before deployment; production startup does not call `MigrateAsync()`.
 
 Create a temporary single-IP SQL firewall rule, query with EF, and remove the rule in `finally`. Never print the connection string.
 
