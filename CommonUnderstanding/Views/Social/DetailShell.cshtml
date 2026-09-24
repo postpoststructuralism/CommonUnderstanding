@@ -8,6 +8,14 @@
         <a asp-controller="SocialView" asp-action="Feed">Contributions</a><span>/</span><span>Claim detail</span>
     </nav>
 
+    @if (!string.IsNullOrWhiteSpace(Model.MapNodeText))
+    {
+        <div class="alert alert-light border mb-3" role="status">
+            <span class="text-muted small d-block">Selected on the map</span>
+            <strong>@Model.MapNodeText</strong>
+        </div>
+    }
+
     <header class="detail-header detail-fragment"
             data-fragment-url="@Url.Action("AnalysisSummary", "SocialView", new { id = Model.ArgumentId })"
             aria-live="polite" aria-busy="true">

@@ -91,7 +91,7 @@ public class SocialViewController : Controller
     }
 
     // GET /Social/Detail/{id}
-    public async Task<IActionResult> Detail(Guid id, CancellationToken ct = default)
+    public async Task<IActionResult> Detail(Guid id, int? mapNodeId = null, CancellationToken ct = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -111,6 +111,29 @@ public class SocialViewController : Controller
 
         if (shell is null)
             return NotFound();
+
+        if (mapNodeId.HasValue)
+        {
+            var mapNodeText = await db.UnderstandingNodes
+                .AsNoTracking()
+                .Where(node => node.Id == mapNodeId.Value)
+                .Select(node => node.CanonicalText)
+                .FirstOrDefaultAsync(ct);
+
+            if (!string.IsNullOrWhiteSpace(mapNodeText) &&
+                !string.Equals(mapNodeText, shell.PropositionText, StringComparison.OrdinalIgnoreCase))
+            {
+                shell = new ClaimDetailShellViewModel
+                {
+                    ArgumentId = shell.ArgumentId,
+                    Title = shell.Title,
+                    PropositionText = shell.PropositionText,
+                    MapNodeText = mapNodeText,
+                    Summary = shell.Summary,
+                    UpdatedAt = shell.UpdatedAt
+                };
+            }
+        }
 
         ViewData["Title"] = shell.PropositionText;
         return View("~/Views/Social/DetailShell.cshtml", shell);

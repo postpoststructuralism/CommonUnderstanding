@@ -864,41 +864,52 @@
     }
 
     async function navigateToSocialArgument(node) {
-        let socialArgumentId = node.socialArgumentId || null;
-        try {
-            const argumentIds = JSON.parse(node.argumentIdsJson || '[]');
-            const firstId = argumentIds[0];
-            if (!socialArgumentId && typeof firstId === 'string' && /^[0-9a-f-]{36}$/i.test(firstId)) {
-                socialArgumentId = firstId;
-            }
-        } catch (err) {
-            // The API can still resolve real graph nodes with malformed argument metadata.
-        }
-
-        if (!socialArgumentId) {
-            const cached = hoverCache.get(node.id);
-            if (cached && cached.socialArgumentId) {
-                socialArgumentId = cached.socialArgumentId;
-            } else {
-                try {
-                    const response = await fetch(`/api/understanding-graph/node/${node.id}/preview`);
-                    if (response.ok) {
-                        const preview = await response.json();
-                        hoverCache.set(node.id, preview);
-                        socialArgumentId = preview.socialArgumentId;
-                    }
-                } catch (err) {
-                    // Fall through to the label resolver.
+        let preview = hoverCache.get(node.id);
+        if (!preview || !Array.isArray(preview.linkedArguments)) {
+            try {
+                const response = await fetch(`/api/understanding-graph/node/${node.id}/preview`);
+                if (response.ok) {
+                    preview = await response.json();
+                    hoverCache.set(node.id, preview);
                 }
+            } catch (err) {
+                // Fall through to the graph-node detail panel.
             }
         }
 
-        if (socialArgumentId) {
-            window.location.href = '/SocialView/Detail/' + socialArgumentId;
+        const linkedArguments = preview?.linkedArguments || [];
+        if (linkedArguments.length === 1) {
+            window.location.href = '/SocialView/Detail/' + linkedArguments[0].id + '?mapNodeId=' + encodeURIComponent(node.id);
+            return;
+        }
+
+        if (linkedArguments.length > 1) {
+            showLinkedArgumentChoices(node, linkedArguments);
             return;
         }
 
         showSkeletonNodeDetail(node);
+    }
+
+    function showLinkedArgumentChoices(node, linkedArguments) {
+        const panel = document.getElementById('node-detail-panel');
+        const body = document.getElementById('node-detail-body');
+        const title = document.getElementById('node-detail-title');
+        const fullLink = document.getElementById('node-detail-full-link');
+        if (!panel || !body || !title || !fullLink) return;
+
+        const label = node.fullLabel || node.label || 'Graph node';
+        title.textContent = 'Choose a contribution';
+        body.innerHTML =
+            '<p style="font-size:14px;color:var(--cu-primary-blue);margin-bottom:16px;">' + escHtml(label) + '</p>' +
+            '<div class="section-label">Linked contributions</div>' +
+            linkedArguments.map(argument =>
+                '<a class="d-block border-bottom py-2 text-decoration-none" href="/SocialView/Detail/' + argument.id + '?mapNodeId=' + encodeURIComponent(node.id) + '">' +
+                    escHtml(argument.heading) +
+                '</a>'
+            ).join('');
+        fullLink.style.display = 'none';
+        panel.style.display = 'flex';
     }
 
     function showSkeletonNodeDetail(node) {

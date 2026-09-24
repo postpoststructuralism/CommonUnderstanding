@@ -582,7 +582,7 @@ public class UnderstandingQueryService
 
     /// <summary>
     /// Returns a lightweight node preview for hover tooltips.
-    /// Includes id, label, status, confidence, argument IDs, and the first linked SocialArgument GUID.
+    /// Includes id, label, status, confidence, argument IDs, and linked public social arguments.
     /// </summary>
     public async Task<NodePreviewResponse?> GetNodePreviewAsync(int nodeId)
     {
@@ -601,43 +601,46 @@ public class UnderstandingQueryService
 
         if (node != null && !string.IsNullOrEmpty(node.ArgumentIdsJson))
         {
-            // Resolve the first argument ID to a SocialArgument GUID.
-            // ArgumentIdsJson may contain either:
-            //   - int values (analytical Argument.Id → look up SocialArgument by SourceArgumentId)
-            //   - GUID strings (SocialArgument.Id directly, as stored in the skeleton)
             try
             {
                 using var doc = JsonDocument.Parse(node.ArgumentIdsJson);
                 var root = doc.RootElement;
-                if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+                if (root.ValueKind == JsonValueKind.Array)
                 {
-                    var first = root[0];
-                    if (first.ValueKind == JsonValueKind.String)
+                    var socialArgumentIds = new List<Guid>();
+                    var sourceArgumentIds = new List<int>();
+
+                    foreach (var argumentId in root.EnumerateArray())
                     {
-                        // Try parsing as GUID directly
-                        var guidStr = first.GetString();
-                        if (Guid.TryParse(guidStr, out var guid))
-                        {
-                            // Verify it exists and is public
-                            var exists = await db.SocialArguments
-                                .AnyAsync(sa => sa.Id == guid && sa.IsPublic);
-                            if (exists)
-                                node.SocialArgumentId = guid;
-                        }
+                        if (argumentId.ValueKind == JsonValueKind.String &&
+                            Guid.TryParse(argumentId.GetString(), out var socialArgumentId))
+                            socialArgumentIds.Add(socialArgumentId);
+                        else if (argumentId.ValueKind == JsonValueKind.Number && argumentId.TryGetInt32(out var sourceArgumentId))
+                            sourceArgumentIds.Add(sourceArgumentId);
                     }
-                    else if (first.ValueKind == JsonValueKind.Number && first.TryGetInt32(out var argId))
+
+                    if (socialArgumentIds.Count > 0 || sourceArgumentIds.Count > 0)
                     {
-                        var socialArg = await db.SocialArguments
-                            .Where(sa => sa.SourceArgumentId == argId && sa.IsPublic)
-                            .Select(sa => (Guid?)sa.Id)
-                            .FirstOrDefaultAsync();
-                        node.SocialArgumentId = socialArg;
+                        node.LinkedArguments = await db.SocialArguments
+                            .AsNoTracking()
+                            .Where(argument => argument.IsPublic &&
+                                (socialArgumentIds.Contains(argument.Id) ||
+                                 (argument.SourceArgumentId.HasValue && sourceArgumentIds.Contains(argument.SourceArgumentId.Value))))
+                            .OrderByDescending(argument => argument.UpdatedAt)
+                            .Select(argument => new LinkedSocialArgumentPreview
+                            {
+                                Id = argument.Id,
+                                Heading = argument.ClaimProposition != null
+                                    ? argument.ClaimProposition.Text
+                                    : argument.Title
+                            })
+                            .ToListAsync();
                     }
                 }
             }
             catch
             {
-                // If JSON parsing fails, just leave SocialArgumentId null
+                // Malformed legacy metadata leaves the node without linked contributions.
             }
         }
 

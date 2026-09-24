@@ -265,8 +265,13 @@ public class NodePreviewResponse
     public double Confidence { get; set; }
     /// <summary>JSON array of analytical Argument IDs that reference this node.</summary>
     public string ArgumentIdsJson { get; set; } = "[]";
-    /// <summary>The first SocialArgument GUID linked to this node, if any.</summary>
-    public Guid? SocialArgumentId { get; set; }
+    public List<LinkedSocialArgumentPreview> LinkedArguments { get; set; } = new();
+}
+
+public sealed class LinkedSocialArgumentPreview
+{
+    public Guid Id { get; set; }
+    public string Heading { get; set; } = string.Empty;
 }
 
 /// <summary>
