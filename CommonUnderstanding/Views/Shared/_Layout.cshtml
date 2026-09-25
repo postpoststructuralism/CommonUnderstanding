@@ -78,6 +78,13 @@
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link fw-semibold @(currentController == "Home" && currentAction == "Privacy" ? "active" : "")"
+                           asp-controller="Home" asp-action="Privacy">
+                            <i class="bi bi-shield-check"></i> Privacy
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="btn cu-btn-primary ms-1 me-2"
                            asp-controller="Argument" asp-action="Submit"
                            asp-route-parentSocialArgumentId="@parentSocialArgumentId"

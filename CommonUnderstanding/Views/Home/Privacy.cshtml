@@ -2,326 +2,129 @@
     ViewData["Title"] = "Privacy Notice - Common Understanding";
 }
 
-<!-- Breadcrumb -->
 <nav aria-label="breadcrumb" class="cu-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item">
-            <a asp-controller="Home" asp-action="Index">
-                <i class="fas fa-home"></i> Home
-            </a>
+            <a asp-controller="Home" asp-action="Index"><i class="fas fa-home"></i> Home</a>
         </li>
         <li class="breadcrumb-item active" aria-current="page">Privacy Notice</li>
     </ol>
 </nav>
 
-<!-- Page Heading -->
-<h1 class="cu-page-heading">
-    <i class="fas fa-shield-alt"></i> Privacy Notice
-</h1>
+<h1 class="cu-page-heading"><i class="fas fa-shield-alt"></i> Privacy Notice</h1>
 
 <div class="row">
     <div class="col-lg-8">
-        <!-- Overview -->
         <div class="cu-card mb-4">
-            <div class="cu-card-header">
-                <i class="fas fa-info-circle"></i> Our Commitment to Privacy
-            </div>
+            <div class="cu-card-header"><i class="fas fa-info-circle"></i> What This Notice Covers</div>
             <div class="cu-card-body">
-                <p class="lead">
-                    We are committed to protecting the privacy of individuals who use this platform.
-                </p>
-                <p>
-                    This privacy notice explains how the Common Understanding platform collects, uses,
-                    discloses, retains, and protects your personal information in accordance with
-                    applicable privacy legislation.
-                </p>
-                <div class="alert alert-info">
-                    <i class="fas fa-lightbulb"></i>
-                    <strong>Important:</strong> This application processes data locally using Ollama. 
-                    Your belief discovery responses are not transmitted to external servers.
+                <p class="lead">Common Understanding helps people explore beliefs, compare arguments, and build a shared understanding graph.</p>
+                <p>This notice describes the information processed by the web application, why it is processed, and the limits of the privacy protections currently implemented. It describes the current system, not a future architecture.</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>AI-assisted features use service providers.</strong> Prompts, submitted arguments, and other text needed for an AI-assisted feature may be processed by an external provider acting on behalf of the service. Do not submit information that you are not comfortable having processed for that purpose.
                 </div>
             </div>
         </div>
 
-        <!-- Information Collection -->
         <div class="cu-card mb-4">
-            <div class="cu-card-header">
-                <i class="fas fa-database"></i> Information We Collect
-            </div>
+            <div class="cu-card-header"><i class="fas fa-database"></i> Information the System Stores</div>
             <div class="cu-card-body">
-                <h3 class="cu-section-heading">Personal Information</h3>
+                <p>Depending on how you use the service, records may include:</p>
                 <ul>
-                    <li>User profile data (optional name, preferences)</li>
-                    <li>Discovery session responses and belief profiles</li>
-                    <li>Interaction history with the AI system</li>
-                    <li>Session metadata (timestamps, duration)</li>
+                    <li>Account credentials, display name, account identifier, and authentication records.</li>
+                    <li>Discovery responses, belief signals, worldview snapshots, forecasts, and related interaction history.</li>
+                    <li>Arguments, replies, votes, debates, connections, badges, and feed preferences.</li>
+                    <li>Evidence, source and provenance information, imported reference material, and relationships between contributions.</li>
+                    <li>Security, request, error, performance, and feature-engagement telemetry used to operate and protect the service.</li>
                 </ul>
+                <p class="mb-0">Some contributions are published as public content and can appear in feeds, comparisons, embedded experiences, or the Understanding Graph. Account and profile data is used according to the access rules for the relevant feature.</p>
+            </div>
+        </div>
 
-                <h3 class="cu-section-heading mt-4">Technical Information</h3>
+        <div class="cu-card mb-4">
+            <div class="cu-card-header"><i class="fas fa-cogs"></i> How Information Is Used</div>
+            <div class="cu-card-body">
                 <ul>
-                    <li>Browser type and version</li>
-                    <li>IP address (anonymized)</li>
-                    <li>Device information</li>
-                    <li>Session cookies (essential only)</li>
+                    <li>To provide discovery, analysis, graph exploration, social discussion, debate, recommendations, and related features.</li>
+                    <li>To generate structured classifications, summaries, comparisons, and other analysis requested by the service.</li>
+                    <li>To publish and connect public contributions when a feature is designed to be public.</li>
+                    <li>To authenticate users, enforce authorization, prevent abuse, investigate suspicious activity, and maintain service integrity.</li>
+                    <li>To diagnose failures, measure performance, and improve the reliability and quality of the application.</li>
+                    <li>To meet legal obligations or respond to valid legal and safety requests.</li>
                 </ul>
-
-                <div class="alert alert-success mt-3">
-                    <i class="fas fa-check-circle"></i>
-                    <strong>Local Processing:</strong> AI analysis is performed locally using Semantic Kernel 
-                    and Ollama. Your responses are not sent to third-party AI services.
-                </div>
+                <p class="mb-0">The service does not treat AI-generated classifications or summaries as facts. They are derived outputs that may be reviewed, disputed, corrected, or replaced as the system and its data change.</p>
             </div>
         </div>
 
-        <!-- How We Use Information -->
         <div class="cu-card mb-4">
-            <div class="cu-card-header">
-                <i class="fas fa-cogs"></i> How We Use Your Information
-            </div>
+            <div class="cu-card-header"><i class="fas fa-share-alt"></i> Service Providers and Data Movement</div>
             <div class="cu-card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="p-3 bg-light rounded">
-                            <h5><i class="fas fa-chart-line text-primary"></i> Service Delivery</h5>
-                            <p class="small text-muted mb-0">
-                                Process discovery questions, generate belief profiles, and provide 
-                                comparison analytics.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="p-3 bg-light rounded">
-                            <h5><i class="fas fa-shield-alt text-success"></i> Security</h5>
-                            <p class="small text-muted mb-0">
-                                Protect against unauthorized access, maintain system integrity, 
-                                and prevent fraud.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="p-3 bg-light rounded">
-                            <h5><i class="fas fa-wrench text-warning"></i> Improvement</h5>
-                            <p class="small text-muted mb-0">
-                                Analyze aggregated usage patterns to improve question quality 
-                                and system performance.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="p-3 bg-light rounded">
-                            <h5><i class="fas fa-balance-scale text-info"></i> Compliance</h5>
-                            <p class="small text-muted mb-0">
-                                Meet legal and regulatory requirements under federal privacy laws.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                <p>We use service providers to host, store, secure, monitor, and deliver the application, and to provide some AI-assisted features. These providers may process submitted content and limited technical information only as needed to provide those services, protect the platform, or meet legal obligations.</p>
+                <p>Information processed by a provider may be handled outside the application itself and may be subject to the provider's infrastructure locations and contractual safeguards. We do not sell personal information or provide submitted content to service providers for their own advertising.</p>
+                <p class="mb-0">The application uses essential cookies to keep users signed in and protect account sessions. These cookies expire or are renewed according to the service's session settings.</p>
             </div>
         </div>
 
-        <!-- Data Protection -->
         <div class="cu-card mb-4">
-            <div class="cu-card-header">
-                <i class="fas fa-lock"></i> Data Protection & Security
-            </div>
+            <div class="cu-card-header"><i class="fas fa-lock"></i> Security, Retention, and Deletion</div>
             <div class="cu-card-body">
-                <table class="cu-table">
-                    <thead>
-                        <tr>
-                            <th>Security Measure</th>
-                            <th>Implementation</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><i class="fas fa-network-wired"></i> Encryption</td>
-                            <td>All data transmitted over HTTPS/TLS 1.3</td>
-                        </tr>
-                        <tr>
-                            <td><i class="fas fa-server"></i> Local Processing</td>
-                            <td>AI inference runs on-premises via Ollama</td>
-                        </tr>
-                        <tr>
-                            <td><i class="fas fa-user-shield"></i> Access Control</td>
-                            <td>Role-based authentication and authorization</td>
-                        </tr>
-                        <tr>
-                            <td><i class="fas fa-history"></i> Data Retention</td>
-                            <td>Session data retained for 90 days, then anonymized</td>
-                        </tr>
-                        <tr>
-                            <td><i class="fas fa-trash-alt"></i> Right to Deletion</td>
-                            <td>Users can request profile deletion at any time</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Your Rights -->
-        <div class="cu-card mb-4">
-            <div class="cu-card-header">
-                <i class="fas fa-hand-paper"></i> Your Privacy Rights
-            </div>
-            <div class="cu-card-body">
-                <p>You have the right to:</p>
-                <ul class="list-unstyled">
-                    <li class="mb-2">
-                        <span class="cu-badge">Access</span>
-                        Request access to your personal information
-                    </li>
-                    <li class="mb-2">
-                        <span class="cu-badge">Correction</span>
-                        Request correction of inaccurate information
-                    </li>
-                    <li class="mb-2">
-                        <span class="cu-badge">Deletion</span>
-                        Request deletion of your profile and data
-                    </li>
-                    <li class="mb-2">
-                        <span class="cu-badge">Portability</span>
-                        Export your belief profile in JSON format
-                    </li>
-                    <li class="mb-2">
-                        <span class="cu-badge">Complaint</span>
-                        Submit a complaint to the platform administrator
-                    </li>
+                <ul>
+                    <li>Access to account features is authenticated and authorization is checked for protected resources.</li>
+                    <li>Administrative, organizational, and technical safeguards are used to protect information in transit and at rest. Safeguards may vary by operating environment and service provider.</li>
+                    <li>Records are retained for as long as needed to provide the feature, preserve public contributions and graph relationships, maintain security and service history, meet legal obligations, or resolve disputes. This notice does not claim a universal 90-day deletion or anonymization schedule.</li>
+                    <li>Deleting an account or contribution may affect public discussions, votes, graph relationships, derived analysis, backups, audit records, and other users. Deletion is therefore handled through the applicable account or administration workflow and may require removal or anonymization across related records.</li>
                 </ul>
-
-                <div class="mt-4">
-                    <a href="#" class="cu-btn-primary me-2">
-                        <i class="fas fa-download"></i> Export My Data
-                    </a>
-                    <a href="#" class="cu-btn-secondary">
-                        <i class="fas fa-trash"></i> Delete My Profile
-                    </a>
-                </div>
+                <p class="mb-0">No security measure eliminates all risk. Please avoid submitting passwords, financial information, health information, or other sensitive personal information unless the feature and its purpose clearly require it.</p>
             </div>
         </div>
 
-        <!-- Contact Information -->
+        <div class="cu-card mb-4">
+            <div class="cu-card-header"><i class="fas fa-hand-paper"></i> Your Requests</div>
+            <div class="cu-card-body">
+                <p>Subject to applicable law and the system's public-content and security obligations, you may ask the administrator to:</p>
+                <ul>
+                    <li>Explain what information associated with your account is held and how it is used.</li>
+                    <li>Correct inaccurate account or contribution information where the relevant workflow permits correction.</li>
+                    <li>Review a request to delete or anonymize personal information, including the effect on public or shared records.</li>
+                    <li>Review an AI-generated classification or analysis that you believe is inaccurate or misleading.</li>
+                </ul>
+                <p class="mb-0">The current application does not provide self-service export or account-deletion buttons from this page. Requests should be sent through the platform's identified administrator or support channel, with enough information to locate the relevant account or record. Do not send a password.</p>
+            </div>
+        </div>
+
         <div class="cu-card">
-            <div class="cu-card-header">
-                <i class="fas fa-envelope"></i> Privacy Questions?
-            </div>
+            <div class="cu-card-header"><i class="fas fa-envelope"></i> Questions and Requests</div>
             <div class="cu-card-body">
-                <p>
-                    For questions about this privacy notice or to exercise your privacy rights, contact:
-                </p>
-                <div class="p-3 bg-light rounded">
-                    <p class="mb-2">
-                        <strong>Privacy Coordinator</strong><br/>
-                        Common Understanding Platform<br/>
-                        Platform Administration Team
-                    </p>
-                    <p class="mb-2">
-                        <i class="fas fa-envelope"></i> Email: 
-                        <a href="mailto:privacy@commonunderstanding.example">privacy@commonunderstanding.example</a>
-                    </p>
-                    <p class="mb-0">
-                        <i class="fas fa-phone"></i> Phone: 1-800-XXX-XXXX (toll-free)
-                    </p>
-                </div>
-
-                <div class="alert alert-warning mt-3">
+                <p>For privacy questions, correction requests, deletion requests, or concerns about a public contribution, contact the Common Understanding platform administrator through the support channel provided to you for this deployment.</p>
+                <div class="alert alert-info mb-0">
                     <i class="fas fa-info-circle"></i>
-                    For general privacy questions, please use the contact details above.
+                    <strong>Important:</strong> The address previously shown on this page was a placeholder, not a monitored privacy office. Do not rely on it for a privacy request.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar -->
     <div class="col-lg-4">
-        <!-- Quick Links -->
-        <div class="cu-filter-panel mb-4">
-            <h3 class="cu-section-heading">
-                <i class="fas fa-link"></i> Related Resources
-            </h3>
-            <div class="list-group">
-                <a href="#" 
-                   target="_blank" 
-                   class="list-group-item list-group-item-action"
-                   rel="noopener">
-                    <i class="fas fa-gavel"></i> Privacy Legislation
-                </a>
-                <a href="#"
-                   target="_blank" 
-                   class="list-group-item list-group-item-action"
-                   rel="noopener">
-                    <i class="fas fa-book"></i> Access to Information
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <i class="fas fa-file-contract"></i> Terms of Use
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <i class="fas fa-cookie-bite"></i> Cookie Policy
-                </a>
-            </div>
-        </div>
-
-        <!-- Key Highlights -->
         <div class="cu-card">
-            <div class="cu-card-header">
-                <i class="fas fa-key"></i> Privacy Highlights
-            </div>
+            <div class="cu-card-header"><i class="fas fa-key"></i> Privacy Highlights</div>
             <div class="cu-card-body">
-                <ul class="list-unstyled">
-                    <li class="mb-3">
-                        <i class="fas fa-laptop-house text-success"></i>
-                        <strong>Local AI Processing</strong><br/>
-                        <small class="text-muted">
-                            No data sent to external AI services
-                        </small>
-                    </li>
-                    <li class="mb-3">
-                        <i class="fas fa-user-lock text-primary"></i>
-                        <strong>Privacy by Design</strong><br/>
-                        <small class="text-muted">
-                            Built with privacy as a core principle
-                        </small>
-                    </li>
-                    <li class="mb-3">
-                        <i class="fas fa-shield-virus text-info"></i>
-                        <strong>Secure Storage</strong><br/>
-                        <small class="text-muted">
-                            Encrypted at rest and in transit
-                        </small>
-                    </li>
-                    <li class="mb-0">
-                        <i class="fas fa-calendar-times text-warning"></i>
-                        <strong>Limited Retention</strong><br/>
-                        <small class="text-muted">
-                            Data anonymized after 90 days
-                        </small>
-                    </li>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-3"><i class="fas fa-cloud text-primary"></i> <strong>Service providers</strong><br /><small class="text-muted">Selected providers support hosting, operations, security, and AI-assisted features.</small></li>
+                    <li class="mb-3"><i class="fas fa-microchip text-warning"></i> <strong>AI-assisted processing</strong><br /><small class="text-muted">Text needed for an AI-assisted feature may be processed outside the application.</small></li>
+                    <li class="mb-3"><i class="fas fa-globe text-info"></i> <strong>Public contributions</strong><br /><small class="text-muted">Content marked public may be visible to other users and connected features.</small></li>
+                    <li class="mb-0"><i class="fas fa-user-lock text-success"></i> <strong>Protected account data</strong><br /><small class="text-muted">Authentication and feature authorization restrict protected records.</small></li>
                 </ul>
             </div>
         </div>
 
-        <!-- Last Updated -->
         <div class="alert alert-light mt-4">
-            <small class="text-muted">
-                <i class="fas fa-clock"></i> 
-                <strong>Last Updated:</strong> @DateTime.Now.ToString("MMMM dd, yyyy")
-            </small>
+            <small class="text-muted"><i class="fas fa-clock"></i> <strong>Last Updated:</strong> @DateTime.Now.ToString("MMMM dd, yyyy")</small>
         </div>
     </div>
 </div>
 
 <style>
-    .list-group-item {
-        border-color: var(--cu-border-light);
-        transition: all var(--cu-transition);
-    }
-    
-    .list-group-item:hover {
-        background-color: var(--cu-hover-bg);
-        color: var(--cu-primary-blue);
-    }
-    
-    .list-group-item i {
-        width: 20px;
-        margin-right: 0.5rem;
-    }
+    .cu-card li { margin-bottom: 0.5rem; }
+    .cu-card li:last-child { margin-bottom: 0; }
 </style>

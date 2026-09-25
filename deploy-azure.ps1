@@ -163,14 +163,24 @@ if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
 }
 
-Compress-Archive -Path "$publishPath\*" -DestinationPath $zipPath -Force
+tar.exe -a -c -f $zipPath -C $publishPath .
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Failed to create deployment package" -ForegroundColor Red
+    exit 1
+}
+$archiveEntries = @(tar.exe -tf $zipPath)
+if ($LASTEXITCODE -ne 0 -or @($archiveEntries | Where-Object { $_.Contains('\') }).Count -gt 0) {
+    Write-Host "ERROR: Deployment package contains invalid entry paths" -ForegroundColor Red
+    exit 1
+}
 Write-Host "[OK] Deployment package created" -ForegroundColor Green
 Write-Host ""
 
 # Deploy to Azure
 Write-Host "Deploying to Azure App Service..." -ForegroundColor Yellow
 Write-Host "This may take several minutes..." -ForegroundColor Yellow
-az webapp deployment source config-zip --name $AppName --resource-group $ResourceGroup --src $zipPath
+az webapp deploy --name $AppName --resource-group $ResourceGroup --src-path $zipPath `
+    --type zip --clean true --restart true --track-status true --enriched-errors true
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Deployment failed" -ForegroundColor Red

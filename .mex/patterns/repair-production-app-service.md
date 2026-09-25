@@ -17,7 +17,7 @@ edges:
 grounds_to:
   - CommonUnderstanding/Program.cs
   - CommonUnderstanding/CommonUnderstanding.csproj
-last_updated: 2026-09-23
+last_updated: 2026-09-25
 ---
 
 # Repair a Production App Service Failure
@@ -114,6 +114,20 @@ query = query.Where(row => ids.Contains(row.Id));
 ```
 
 Do not change unrelated arrays. A successful SQL Server execution emits `OPENJSON(@__...Ids...)`, which is useful post-deployment proof.
+
+## 3a. Known Partial ZIP Deployment Failure
+
+Symptoms:
+
+```text
+rsync: ... failed to stat "/home/site/wwwroot/...\\...": Invalid argument (22)
+System.BadImageFormatException: Index not found. (0x80131124)
+Segmentation fault (core dumped) dotnet CommonUnderstanding.dll
+```
+
+Cause: a ZIP created with Windows backslash entry names can partially synchronize on Linux App Service. The resulting mixed assembly set may still serve some routes while throwing metadata errors or crashing on others. The logging pipeline can mask the original request exception when formatting its corrupted stack trace.
+
+Repair: do not patch the affected route. Create a fresh Release publish, package it with `tar.exe -a`, reject any archive entry containing `\\`, and deploy once with `--clean true --restart true`. If the CLI times out waiting for startup, do not redeploy immediately; check the live routes and the server-side startup log because the application may have started after the deployment poller timed out.
 
 ## 4. Focused Validation
 

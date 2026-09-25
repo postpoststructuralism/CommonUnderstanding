@@ -47,7 +47,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "Please install from: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" -ForegroundColor Yellow
     exit 1
 }
-Write-Host ""[OK] -ForegroundColor Green
+Write-Host "[OK] Azure CLI is installed" -ForegroundColor Green
 Write-Host ""
 
 # Login to Azure
@@ -61,7 +61,7 @@ if ($LASTEXITCODE -ne 0) {
         exit 1
     }
 }
-Write-Host ""[OK] -ForegroundColor Green
+Write-Host "[OK] Logged in to Azure" -ForegroundColor Green
 Write-Host ""
 
 # Check if resource group exists
@@ -74,9 +74,9 @@ if ($rgExists -eq "false") {
         Write-Host "ERROR: Failed to create resource group" -ForegroundColor Red
         exit 1
     }
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] Resource group created" -ForegroundColor Green
 } else {
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] Resource group exists" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -92,9 +92,9 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host "You may need to check your Azure subscription limits or try a different region." -ForegroundColor Yellow
         exit 1
     }
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] App Service Plan created" -ForegroundColor Green
 } else {
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] App Service Plan exists" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -109,9 +109,9 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host "ERROR: Failed to create Web App" -ForegroundColor Red
         exit 1
     }
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] Web App created" -ForegroundColor Green
 } else {
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] Web App exists" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -136,7 +136,7 @@ az webapp config appsettings set --name $AppName --resource-group $ResourceGroup
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARNING: Failed to set app settings. You may need to configure manually." -ForegroundColor Yellow
 } else {
-    Write-Host ""[OK] -ForegroundColor Green
+    Write-Host "[OK] App settings configured" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -156,7 +156,7 @@ if ($buildResult -ne 0) {
     Write-Host "ERROR: Failed to build application" -ForegroundColor Red
     exit 1
 }
-Write-Host ""[OK] -ForegroundColor Green
+Write-Host "[OK] Application built successfully" -ForegroundColor Green
 Write-Host ""
 
 # Create deployment ZIP
@@ -166,24 +166,30 @@ if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
 }
 
-Compress-Archive -Path "$publishPath\*" -DestinationPath $zipPath -Force
+tar.exe -a -c -f $zipPath -C $publishPath .
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to create deployment package" -ForegroundColor Red
     exit 1
 }
-Write-Host ""[OK] -ForegroundColor Green
+$archiveEntries = @(tar.exe -tf $zipPath)
+if ($LASTEXITCODE -ne 0 -or @($archiveEntries | Where-Object { $_.Contains('\') }).Count -gt 0) {
+    Write-Host "ERROR: Deployment package contains invalid entry paths" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] Deployment package created" -ForegroundColor Green
 Write-Host ""
 
 # Deploy to Azure
 Write-Host "Deploying to Azure App Service..." -ForegroundColor Yellow
 Write-Host "This may take several minutes..." -ForegroundColor Yellow
-az webapp deployment source config-zip --name $AppName --resource-group $ResourceGroup --src $zipPath
+az webapp deploy --name $AppName --resource-group $ResourceGroup --src-path $zipPath `
+    --type zip --clean true --restart true --track-status true --enriched-errors true
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Deployment failed" -ForegroundColor Red
     exit 1
 }
-Write-Host ""[OK] -ForegroundColor Green
+Write-Host "[OK] Deployment completed successfully" -ForegroundColor Green
 Write-Host ""
 
 # Get the URL
@@ -211,5 +217,5 @@ Write-Host ""
 Write-Host "Clean up deployment files..." -ForegroundColor Yellow
 Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 Remove-Item $publishPath -Recurse -Force -ErrorAction SilentlyContinue
-Write-Host ""[OK] -ForegroundColor Green
+Write-Host "[OK] Cleanup complete" -ForegroundColor Green
 

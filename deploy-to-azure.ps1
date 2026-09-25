@@ -190,6 +190,11 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to create deployment package" -ForegroundColor Red
     exit 1
 }
+$archiveEntries = @(tar.exe -tf $zipPath)
+if ($LASTEXITCODE -ne 0 -or @($archiveEntries | Where-Object { $_.Contains('\') }).Count -gt 0) {
+    Write-Host "ERROR: Deployment package contains invalid entry paths" -ForegroundColor Red
+    exit 1
+}
 Write-Host "✓ Deployment package created" -ForegroundColor Green
 Write-Host ""
 
