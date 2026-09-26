@@ -97,10 +97,9 @@ public sealed class EmergentFindingActionService : IEmergentFindingActionService
                 "This finding does not identify both an argument and proposition.");
         }
 
-        context["id"] = argumentId.ToString();
+        context["argumentId"] = argumentId.ToString();
         context["propositionId"] = propositionId.ToString();
-        context["tab"] = "evidence";
-        return Enabled(kind, label, description, icon, "Argument", "View", context);
+        return Enabled(kind, label, description, icon, "Argument", "AddEvidence", context);
     }
 
     private static EmergentFindingActionDescriptor ForArgument(

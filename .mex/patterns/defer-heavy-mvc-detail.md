@@ -29,6 +29,7 @@ Use this pattern when navigation blocks on relationship graphs, history, votes, 
 
 ## Gotchas
 - Do not trust authorization established by the shell request; the deferred endpoint is independently callable.
+- A task-specific CTA does not need to enter the detail shell at all. When the task needs only one scalar-owned mutation form, route directly to a dedicated GET with a narrow authorization-aware projection and reuse the existing POST mutation path.
 - Keep the shell projection narrow. Including navigation collections defeats the split.
 - Neither `AsSplitQuery` nor `AsSingleQuery` makes a broad sibling-collection graph inherently safe. Split includes can serialize slow child commands, while one joined query can amplify rows multiplicatively and spend most of its time in EF materialization.
 - SQL Server may translate a local key-array `Contains` predicate to `OPENJSON`. On the SocialView detail path, the first syllogism query using that shape repeatedly took about 25 seconds despite returning two rows; filtering through `Syllogism.Claim.ArgumentId` reduced the cold full fragment to 415 ms. Inspect generated command timings, not only endpoint or raw SQL timings.

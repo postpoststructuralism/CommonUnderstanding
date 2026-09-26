@@ -53,10 +53,10 @@ public sealed class EmergentFindingActionServiceTests
         var action = _service.GetPrimaryAction(finding, "/EmergentConclusions#finding-key");
 
         Assert.Equal("Argument", action.Controller);
-        Assert.Equal("View", action.Action);
-        Assert.Equal(10, Convert.ToInt32(action.RouteValues["id"]));
+        Assert.Equal("AddEvidence", action.Action);
+        Assert.Equal(10, Convert.ToInt32(action.RouteValues["argumentId"]));
         Assert.Equal(30, Convert.ToInt32(action.RouteValues["propositionId"]));
-        Assert.Equal("evidence", action.RouteValues["tab"]);
+        Assert.False(action.RouteValues.ContainsKey("tab"));
         Assert.Equal("/EmergentConclusions#finding-key", action.RouteValues["returnUrl"]);
     }
 

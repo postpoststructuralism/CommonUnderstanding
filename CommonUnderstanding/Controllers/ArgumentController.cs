@@ -775,8 +775,38 @@ public class ArgumentController : Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  POST /Argument/AddEvidence
+    //  GET|POST /Argument/AddEvidence
     // ─────────────────────────────────────────────────────────────────────────
+
+    [HttpGet]
+    public async Task<IActionResult> AddEvidence(
+        int argumentId,
+        int propositionId,
+        string? findingKey = null,
+        string? returnUrl = null,
+        CancellationToken ct = default)
+    {
+        var context = await _db.Propositions
+            .AsNoTracking()
+            .Where(proposition =>
+                proposition.Id == propositionId &&
+                proposition.Claim!.ArgumentId == argumentId)
+            .Select(proposition => new AddEvidencePageModel
+            {
+                ArgumentId = argumentId,
+                ArgumentTitle = proposition.Claim!.Argument!.Title,
+                PropositionId = proposition.Id,
+                PropositionText = proposition.Text,
+                FindingKey = findingKey,
+                ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (context == null)
+            return NotFound();
+
+        return View(context);
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEvidence(AddEvidenceModel model)
@@ -1401,6 +1431,16 @@ public class AddEvidenceModel
     public int? PublicationYear { get; set; }
     public string? AddedBy { get; set; }
     public bool AutoClassify { get; set; }
+    public string? FindingKey { get; set; }
+    public string? ReturnUrl { get; set; }
+}
+
+public class AddEvidencePageModel
+{
+    public int ArgumentId { get; set; }
+    public string ArgumentTitle { get; set; } = string.Empty;
+    public int PropositionId { get; set; }
+    public string PropositionText { get; set; } = string.Empty;
     public string? FindingKey { get; set; }
     public string? ReturnUrl { get; set; }
 }
