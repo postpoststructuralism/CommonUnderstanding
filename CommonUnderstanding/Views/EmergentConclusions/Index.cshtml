@@ -1,5 +1,7 @@
 ﻿@model CommonUnderstanding.Models.EmergentConclusionsReport
 @using CommonUnderstanding.Models
+@using CommonUnderstanding.Services
+@inject IEmergentFindingActionService FindingActions
 
 @{
     ViewData["Title"] = "Emergent Conclusions";
@@ -49,53 +51,70 @@
         >= 0.25 => "Low",
         _       => "Minimal"
     };
+
+    string CategoryDescription(EmergentCategory cat) => cat switch
+    {
+        EmergentCategory.AssumptionCascade => "A critical assumption is shared across arguments without being tested.",
+        EmergentCategory.EvidenceDesert => "An important proposition has little or no empirical evidence.",
+        EmergentCategory.SilentContradiction => "Claims conflict without a direct comparison or resolution.",
+        EmergentCategory.UnaddressedRebuttal => "A strong counterargument has not received a substantive response.",
+        EmergentCategory.ConfidenceIllusion => "A confidence score is stronger than the available evidence quality supports.",
+        EmergentCategory.ConvergentGround => "Different stakeholders accept premises that can support productive dialogue.",
+        EmergentCategory.ComplementaryChains => "Separate reasoning chains reinforce one another and may support a synthesis.",
+        EmergentCategory.EmergentConsensus => "Positions are converging around a proposition across the community.",
+        EmergentCategory.CrossDomainReinforcement => "Arguments from different domains provide mutually reinforcing support.",
+        EmergentCategory.SharedValueCore => "Stakeholders with different positions appeal to a common underlying value.",
+        _ => "A cross-argument pattern detected in the shared knowledge graph."
+    };
+
+    var findingCount = Model.Blindspots.Count + Model.Harmonies.Count;
+    var highImpactCount = Model.Blindspots.Concat(Model.Harmonies).Count(f => f.Significance >= 0.75);
+    var propositionsWithoutEvidence = (int)Math.Round(
+        Model.GraphHealth.TotalPropositions * (1 - Model.GraphHealth.EvidenceCoveragePercent / 100));
 }
 
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-        <h1 class="cu-page-heading mb-1">
-            <i class="bi bi-lightbulb me-2"></i>Emergent Conclusions
+<div class="cu-workspace-hero mb-4">
+    <div class="cu-workspace-hero-content">
+        <div>
+            <span class="cu-workspace-tag"><i class="bi bi-lightbulb"></i> Emergent Conclusions</span>
+            <h1 class="cu-page-heading mt-3 mb-2">Improve the shared understanding</h1>
+            <p class="cu-workspace-lead mb-2">
+                These findings show where the community's reasoning needs evidence, testing, response, or collaboration.
+                Choose a finding and take the suggested next step; the next analysis will show whether the gap narrowed.
+            </p>
+            @if (Model.HasSufficientData)
+            {
+                <small class="text-muted">
+                    Generated @Model.GeneratedAt.ToString("MMM d, yyyy HH:mm") UTC ·
+                    @(Model.IsDeepAnalysis ? "Deep analysis" : "Standard analysis")
+                </small>
+            }
+        </div>
+        <div class="cu-workspace-actions">
+            <a asp-action="Index" asp-route-refresh="true" class="cu-btn-primary"
+               onclick="this.setAttribute('aria-disabled', 'true'); this.style.pointerEvents='none';">
+                <i class="bi bi-arrow-clockwise"></i> Refresh analysis
+            </a>
+            <a asp-action="DeepAnalysis" class="cu-btn-secondary" title="Run AI-enhanced semantic detection">
+                <i class="bi bi-cpu"></i> Deep analysis
+            </a>
+            <a asp-action="History" class="cu-btn-secondary">
+                <i class="bi bi-clock-history"></i> History
+            </a>
             @if (Model.IsDeepAnalysis)
             {
-                <span class="badge bg-primary ms-2 fs-6 align-middle" title="LLM-enhanced analysis was run">
-                    <i class="bi bi-cpu me-1"></i>Deep
-                </span>
+                <span class="badge bg-primary">AI-enhanced</span>
             }
-        </h1>
-        <p class="text-muted mb-0">
-            Cross-argument patterns that reveal hidden blindspots and unnoticed harmonies
-            in the community's collective reasoning.
-        </p>
+        </div>
     </div>
 </div>
 
-<!-- Action toolbar -->
-<div class="d-flex flex-wrap gap-2 align-items-center mb-4">
-    @if (Model.HasSufficientData)
-    {
-        <small class="text-muted me-2">
-            <i class="bi bi-clock me-1"></i>Generated @Model.GeneratedAt.ToString("MMM d, yyyy HH:mm") UTC
-        </small>
-    }
-    <a asp-action="Index" asp-route-refresh="true" class="btn btn-outline-secondary btn-sm"
-       onclick="this.innerHTML='<span class=\'spinner-border spinner-border-sm me-1\' role=\'status\'></span>Refreshing…'; this.classList.add('disabled'); this.style.pointerEvents='none';">
-        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-    </a>
-    <a asp-action="DeepAnalysis" class="btn btn-outline-primary btn-sm"
-       title="Run LLM-enhanced analysis (requires Gemini API key)">
-        <i class="bi bi-cpu me-1"></i>Deep Analysis
-    </a>
-    @if (Model.HasSufficientData)
-    {
-        <a asp-action="Export" class="btn btn-outline-dark btn-sm" target="_blank"
-           title="Download this analysis as a Markdown file">
-            <i class="bi bi-download me-1"></i>Export .md
-        </a>
-    }
-    <a asp-action="History" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-clock-history me-1"></i>History
-    </a>
+<div class="cu-info-band mb-4">
+    <div class="row g-3 w-100">
+        <div class="col-md-4"><strong>1. Choose a finding</strong><span class="d-block text-muted small">Start with a high-impact item.</span></div>
+        <div class="col-md-4"><strong>2. Take the linked action</strong><span class="d-block text-muted small">Add evidence, test, compare, or collaborate.</span></div>
+        <div class="col-md-4"><strong>3. Refresh the analysis</strong><span class="d-block text-muted small">Check whether the finding changed.</span></div>
+    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -131,44 +150,32 @@
      GRAPH HEALTH SUMMARY
 ══════════════════════════════════════════════════════════════════════════════ -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold text-primary">@Model.GraphHealth.TotalArguments</div>
-            <div class="text-muted small">Arguments</div>
+    <div class="col-6 col-lg-3">
+        <div class="cu-card cu-metric-card h-100">
+            <div class="cu-metric-label">Open findings</div>
+            <div class="cu-metric-value text-primary">@findingCount</div>
+            <div class="cu-metric-note">Items ready for review</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold text-info">@Model.GraphHealth.TotalPropositions</div>
-            <div class="text-muted small">Propositions</div>
+    <div class="col-6 col-lg-3">
+        <div class="cu-card cu-metric-card h-100">
+            <div class="cu-metric-label">High-impact findings</div>
+            <div class="cu-metric-value text-danger">@highImpactCount</div>
+            <div class="cu-metric-note">Estimated impact of 75% or more</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold text-success">@Model.GraphHealth.TotalEvidenceItems</div>
-            <div class="text-muted small">Evidence Items</div>
+    <div class="col-6 col-lg-3">
+        <div class="cu-card cu-metric-card h-100">
+            <div class="cu-metric-label">Propositions without evidence</div>
+            <div class="cu-metric-value text-warning">@propositionsWithoutEvidence</div>
+            <div class="cu-metric-note">Based on current graph coverage</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold text-secondary">@Model.GraphHealth.TotalStakeholders</div>
-            <div class="text-muted small">Stakeholders</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold @(Model.GraphHealth.EvidenceCoveragePercent >= 60 ? "text-success" : "text-warning")">
-                @Model.GraphHealth.EvidenceCoveragePercent.ToString("0")%
-            </div>
-            <div class="text-muted small">Evidence Coverage</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-2">
-        <div class="cu-card text-center py-3">
-            <div class="display-6 fw-bold @(Model.GraphHealth.CriticalAssumptionsUntested > 0 ? "text-danger" : "text-success")">
-                @Model.GraphHealth.CriticalAssumptionsUntested
-            </div>
-            <div class="text-muted small">Untested Critical Assumptions</div>
+    <div class="col-6 col-lg-3">
+        <div class="cu-card cu-metric-card h-100">
+            <div class="cu-metric-label">Available opportunities</div>
+            <div class="cu-metric-value text-success">@Model.Harmonies.Count</div>
+            <div class="cu-metric-note">Shared ground and synthesis paths</div>
         </div>
     </div>
 </div>
@@ -193,14 +200,14 @@
         <div class="progress-bar bg-warning text-dark" style="width:@unknownPct.ToString("0.0")%" title="Unknown: @Model.GraphHealth.UnknownCount">Unknown</div>
         <div class="progress-bar bg-secondary" style="width:@unevaluatedPct.ToString("0.0")%" title="Unevaluated: @Model.GraphHealth.UnevaluatedCount">Unevaluated</div>
     </div>
-    <div class="d-flex gap-3 mt-2">
+    <div class="d-flex flex-wrap gap-3 mt-2">
         <small><span class="badge bg-success">@Model.GraphHealth.SettledCount Settled</span></small>
         <small><span class="badge bg-danger">@Model.GraphHealth.ContestedCount Contested</span></small>
         <small><span class="badge bg-warning text-dark">@Model.GraphHealth.UnknownCount Unknown</span></small>
         <small><span class="badge bg-secondary">@Model.GraphHealth.UnevaluatedCount Unevaluated</span></small>
         @if (Model.GraphHealth.HighStrengthRebuttals > 0)
         {
-            <small class="ms-auto"><span class="badge bg-danger"><i class="bi bi-shield-exclamation me-1"></i>@Model.GraphHealth.HighStrengthRebuttals High-Strength Rebuttal(s)</span></small>
+            <small class="ms-md-auto"><span class="badge bg-danger"><i class="bi bi-shield-exclamation me-1"></i>@Model.GraphHealth.HighStrengthRebuttals High-Strength Rebuttal(s)</span></small>
         }
     </div>
 </div>
@@ -247,7 +254,7 @@ else
     <!-- ─────────────────────────────────────────────────────────────────────
          LEFT: BLINDSPOTS
     ───────────────────────────────────────────────────────────────────────── -->
-    <div class="col-lg-6">
+    <div class="col-12">
         <div class="d-flex align-items-center mb-3">
             <h2 class="h4 mb-0 text-danger fw-semibold">
                 <i class="bi bi-binoculars me-2"></i>Blindspots
@@ -270,7 +277,9 @@ else
         {
             @foreach (var finding in Model.Blindspots)
             {
-                <div class="cu-card mb-3 border-start border-danger border-3">
+                var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
+                var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
+                <article class="cu-card mb-3 border-start border-danger border-3" id="@finding.FindingKey">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2">
@@ -281,12 +290,13 @@ else
                             </span>
                         </div>
                         <div class="text-end ms-2">
-                            <small class="text-muted d-block">Confidence</small>
-                            <small class="fw-semibold">@finding.Confidence.ToString("P0")</small>
+                            <small class="text-muted d-block" title="How confident the system is that this pattern exists; not the truth of the proposition.">Detection confidence</small>
+                            <small class="fw-semibold">@SignificanceLabel(finding.Confidence)</small>
                         </div>
                     </div>
 
                     <h6 class="fw-semibold mb-1">@finding.Title</h6>
+                    <p class="small mb-2">@CategoryDescription(finding.Category)</p>
                     <p class="text-muted small mb-2">@finding.Description</p>
 
                     @if (finding.InvolvedArgumentTitles.Any())
@@ -313,26 +323,34 @@ else
                         </div>
                     }
 
-                    <!-- Action buttons -->
-                    <div class="d-flex gap-2 mt-2">
-                        <a asp-controller="Argument" asp-action="Submit"
-                           class="btn btn-outline-danger btn-sm"
-                           title="Start a new argument to address this blindspot">
-                            <i class="bi bi-search me-1"></i>Investigate
-                        </a>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        @if (primaryAction.Enabled)
+                        {
+                            <a href="@Url.Action(primaryAction.Action, primaryAction.Controller, primaryAction.RouteValues)"
+                               class="cu-btn-primary" title="@primaryAction.Description">
+                                <i class="bi @primaryAction.Icon"></i> @primaryAction.Label
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button" class="cu-btn-secondary" disabled title="@primaryAction.DisabledReason">
+                                <i class="bi @primaryAction.Icon"></i> @primaryAction.Label
+                            </button>
+                            <small class="text-muted">@primaryAction.DisabledReason</small>
+                        }
                     </div>
 
                     <!-- Significance meter -->
                     <div class="mt-2">
                         <div class="d-flex justify-content-between">
-                            <small class="text-muted">Significance</small>
-                            <small class="text-muted">@finding.Significance.ToString("P0")</small>
+                            <small class="text-muted">Estimated impact</small>
+                            <small class="text-muted">@SignificanceLabel(finding.Significance)</small>
                         </div>
                         <div class="progress" style="height:4px;">
                             <div class="progress-bar bg-danger" style="width:@((finding.Significance * 100).ToString("0"))%"></div>
                         </div>
                     </div>
-                </div>
+                </article>
             }
         }
     </div>
@@ -340,7 +358,7 @@ else
     <!-- ─────────────────────────────────────────────────────────────────────
          RIGHT: HARMONIES
     ───────────────────────────────────────────────────────────────────────── -->
-    <div class="col-lg-6">
+    <div class="col-12">
         <div class="d-flex align-items-center mb-3">
             <h2 class="h4 mb-0 text-success fw-semibold">
                 <i class="bi bi-union me-2"></i>Harmonies
@@ -363,7 +381,9 @@ else
         {
             @foreach (var finding in Model.Harmonies)
             {
-                <div class="cu-card mb-3 border-start border-success border-3">
+                var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
+                var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
+                <article class="cu-card mb-3 border-start border-success border-3" id="@finding.FindingKey">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2">
@@ -374,12 +394,13 @@ else
                             </span>
                         </div>
                         <div class="text-end ms-2">
-                            <small class="text-muted d-block">Confidence</small>
-                            <small class="fw-semibold">@finding.Confidence.ToString("P0")</small>
+                            <small class="text-muted d-block" title="How confident the system is that this pattern exists; not the truth of the proposition.">Detection confidence</small>
+                            <small class="fw-semibold">@SignificanceLabel(finding.Confidence)</small>
                         </div>
                     </div>
 
                     <h6 class="fw-semibold mb-1">@finding.Title</h6>
+                    <p class="small mb-2">@CategoryDescription(finding.Category)</p>
                     <p class="text-muted small mb-2">@finding.Description</p>
 
                     @if (finding.InvolvedArgumentTitles.Any())
@@ -406,27 +427,34 @@ else
                         </div>
                     }
 
-                    <!-- Action buttons -->
-                    <div class="d-flex gap-2 mt-2">
-                        <button type="button" class="btn btn-outline-success btn-sm btn-leverage"
-                                data-harmony-title="@finding.Title"
-                                data-harmony-opportunity="@(finding.OpportunityDescription ?? "")"
-                                title="Generate a dialogue facilitation guide for this harmony">
-                            <i class="bi bi-people me-1"></i>Leverage
-                        </button>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        @if (primaryAction.Enabled)
+                        {
+                            <a href="@Url.Action(primaryAction.Action, primaryAction.Controller, primaryAction.RouteValues)"
+                               class="cu-btn-primary" title="@primaryAction.Description">
+                                <i class="bi @primaryAction.Icon"></i> @primaryAction.Label
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button" class="cu-btn-secondary" disabled title="@primaryAction.DisabledReason">
+                                <i class="bi @primaryAction.Icon"></i> @primaryAction.Label
+                            </button>
+                            <small class="text-muted">@primaryAction.DisabledReason</small>
+                        }
                     </div>
 
                     <!-- Significance meter -->
                     <div class="mt-2">
                         <div class="d-flex justify-content-between">
-                            <small class="text-muted">Significance</small>
-                            <small class="text-muted">@finding.Significance.ToString("P0")</small>
+                            <small class="text-muted">Estimated impact</small>
+                            <small class="text-muted">@SignificanceLabel(finding.Significance)</small>
                         </div>
                         <div class="progress" style="height:4px;">
                             <div class="progress-bar bg-success" style="width:@((finding.Significance * 100).ToString("0"))%"></div>
                         </div>
                     </div>
-                </div>
+                </article>
             }
         }
     </div>

@@ -59,7 +59,7 @@ else
                     {
                         var conf = arg.AdjudicationSummary?.OverallConfidence;
                         var confLabel = conf.HasValue ? $" ({conf.Value:P0})" : "";
-                        <option value="@arg.Id">@arg.Title@confLabel</option>
+                        <option value="@arg.Id" selected="@(ViewBag.ArgumentAId == arg.Id)">@arg.Title@confLabel</option>
                     }
                 </select>
             </div>
@@ -73,7 +73,7 @@ else
                     {
                         var conf = arg.AdjudicationSummary?.OverallConfidence;
                         var confLabel = conf.HasValue ? $" ({conf.Value:P0})" : "";
-                        <option value="@arg.Id">@arg.Title@confLabel</option>
+                        <option value="@arg.Id" selected="@(ViewBag.ArgumentBId == arg.Id)">@arg.Title@confLabel</option>
                     }
                 </select>
             </div>

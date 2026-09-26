@@ -688,7 +688,12 @@ public class ArgumentController : Controller
     //  GET /Argument/View/{id}
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<IActionResult> View(int id)
+    public async Task<IActionResult> View(
+        int id,
+        string? tab = null,
+        int? propositionId = null,
+        string? findingKey = null,
+        string? returnUrl = null)
     {
         var argument = await _db.Arguments
             .AsSplitQuery()
@@ -709,6 +714,11 @@ public class ArgumentController : Controller
 
         if (argument == null)
             return NotFound();
+
+        ViewBag.InitialTab = tab;
+        ViewBag.InitialPropositionId = propositionId;
+        ViewBag.FindingKey = findingKey;
+        ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
 
         var propositions = argument.Claims
             .SelectMany(c => c.Premises)
@@ -826,7 +836,10 @@ public class ArgumentController : Controller
         // Full adjudication pass — updates all proposition confidences + AdjudicationSummary
         await _adjudicationEngine.AdjudicateAsync(model.ArgumentId);
 
-        return RedirectToAction(nameof(View), new { id = model.ArgumentId });
+        if (Url.IsLocalUrl(model.ReturnUrl))
+            return LocalRedirect(model.ReturnUrl);
+
+        return RedirectToAction(nameof(View), new { id = model.ArgumentId, tab = "evidence", propositionId = model.PropositionId });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -1122,7 +1135,7 @@ public class ArgumentController : Controller
     //  GET /Argument/Compare
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<IActionResult> Compare()
+    public async Task<IActionResult> Compare(int? argumentAId = null, int? argumentBId = null)
     {
         var arguments = await _db.Arguments
             .Include(a => a.AdjudicationSummary)
@@ -1136,6 +1149,9 @@ public class ArgumentController : Controller
             .OrderByDescending(c => c.CreatedAt)
             .Take(10)
             .ToListAsync();
+
+        ViewBag.ArgumentAId = argumentAId;
+        ViewBag.ArgumentBId = argumentBId;
 
         return View(arguments);
     }
@@ -1385,6 +1401,8 @@ public class AddEvidenceModel
     public int? PublicationYear { get; set; }
     public string? AddedBy { get; set; }
     public bool AutoClassify { get; set; }
+    public string? FindingKey { get; set; }
+    public string? ReturnUrl { get; set; }
 }
 
 // ─────────────────────────────────────────────

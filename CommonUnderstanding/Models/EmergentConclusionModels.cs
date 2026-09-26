@@ -1,4 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace CommonUnderstanding.Models;
 
@@ -39,6 +42,8 @@ public enum EmergentCategory
 /// </summary>
 public class EmergentConclusion
 {
+    private static readonly Regex ClaimWhitespace = new(@"\s+", RegexOptions.Compiled);
+
     /// <summary>Whether this is a blindspot or a harmony.</summary>
     public EmergentType Type { get; set; }
 
@@ -83,6 +88,25 @@ public class EmergentConclusion
     public string? OpportunityDescription { get; set; }
 
     public DateTime DetectedAt { get; set; } = DateTime.UtcNow;
+
+    public string FindingKey => CreateFindingKey();
+
+    private string CreateFindingKey()
+    {
+        static string SortedIds(IEnumerable<int> ids) => string.Join(',', ids.Distinct().OrderBy(id => id));
+
+        var normalizedClaim = ClaimWhitespace.Replace(Title.Trim().ToLowerInvariant(), " ");
+        var fingerprintSource = string.Join('|',
+            Category,
+            SortedIds(InvolvedArgumentIds),
+            SortedIds(InvolvedPropositionIds),
+            SortedIds(InvolvedNodeIds),
+            SortedIds(InvolvedStakeholderIds),
+            normalizedClaim);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintSource));
+
+        return $"ec-{Convert.ToHexString(hash)[..16].ToLowerInvariant()}";
+    }
 }
 
 // ─────────────────────────────────────────────

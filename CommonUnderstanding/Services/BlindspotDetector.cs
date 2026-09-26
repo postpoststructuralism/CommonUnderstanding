@@ -139,7 +139,7 @@ public class BlindspotDetector
             .Where(n => n.EvidenceCount == 0 || n.Confidence >= 0.60)
             .ToListAsync(ct);
 
-        var desertNodes = new List<(CommonUnderstandingNode Node, double ConfidenceGap, List<int> ArgIds)>();
+        var desertNodes = new List<(CommonUnderstandingNode Node, double ConfidenceGap, List<int> ArgIds, List<int> PropositionIds)>();
 
         foreach (var node in nodes)
         {
@@ -173,13 +173,13 @@ public class BlindspotDetector
 
                 if (argIds.Count >= 2 || node.Confidence >= 0.70)
                 {
-                    desertNodes.Add((node, confidenceGap, argIds));
+                    desertNodes.Add((node, confidenceGap, argIds, propositionTexts.Select(p => p.Id).ToList()));
                 }
             }
         }
 
         // Sort by (argument count × confidence gap) for significance
-        foreach (var (node, gap, argIds) in desertNodes
+        foreach (var (node, gap, argIds, propositionIds) in desertNodes
             .OrderByDescending(d => d.ArgIds.Count * (1 + d.ConfidenceGap))
             .Take(10))
         {
@@ -206,6 +206,7 @@ public class BlindspotDetector
                 InvolvedArgumentIds = argIds,
                 InvolvedArgumentTitles = argumentTitles,
                 InvolvedNodeIds = new List<int> { node.Id },
+                InvolvedPropositionIds = propositionIds,
                 InvolvedPropositionTexts = new List<string> { node.Text },
                 SuggestedAction =
                     "Find and submit peer-reviewed evidence (T1–T3) for this proposition. " +

@@ -630,6 +630,11 @@
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="ArgumentId" value="@Model.Id" />
                                 <input type="hidden" name="PropositionId" value="@p.Id" />
+                                @if (ViewBag.InitialPropositionId == p.Id)
+                                {
+                                    <input type="hidden" name="FindingKey" value="@ViewBag.FindingKey" />
+                                    <input type="hidden" name="ReturnUrl" value="@ViewBag.ReturnUrl" />
+                                }
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-8">
                                         <input type="text" name="Citation" class="form-control form-control-sm"
@@ -1077,10 +1082,19 @@
         // Restore active tab after evidence/stakeholder form submissions (page reload)
         (function () {
             const key = 'argTab-@Model.Id';
-            const stored = sessionStorage.getItem(key);
+            const requestedTab = '@(ViewBag.InitialTab as string)';
+            const requestedPropositionId = '@ViewBag.InitialPropositionId';
+            const stored = requestedTab ? '#tab-' + requestedTab : sessionStorage.getItem(key);
             if (stored) {
                 const btn = document.querySelector('[data-bs-target="' + stored + '"]');
                 if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+            }
+            if (requestedPropositionId) {
+                const form = document.getElementById('addEvForm-' + requestedPropositionId);
+                if (form) {
+                    bootstrap.Collapse.getOrCreateInstance(form, { toggle: false }).show();
+                    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
             document.querySelectorAll('#argTabs button[data-bs-toggle="tab"]').forEach(btn => {
                 btn.addEventListener('shown.bs.tab', e => {
