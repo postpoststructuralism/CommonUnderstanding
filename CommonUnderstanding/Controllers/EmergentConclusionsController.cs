@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using CommonUnderstanding.Data;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
 using System.Text;
@@ -9,13 +11,16 @@ namespace CommonUnderstanding.Controllers;
 public class EmergentConclusionsController : Controller
 {
     private readonly EmergentConclusionsEngine _engine;
+    private readonly ApplicationDbContext _db;
     private readonly ILogger<EmergentConclusionsController> _logger;
 
     public EmergentConclusionsController(
         EmergentConclusionsEngine engine,
+        ApplicationDbContext db,
         ILogger<EmergentConclusionsController> logger)
     {
         _engine = engine;
+        _db = db;
         _logger = logger;
     }
 
@@ -30,7 +35,7 @@ public class EmergentConclusionsController : Controller
             {
                 var savedReport = await _engine.LoadLatestPersistedReportAsync(ct);
                 if (savedReport != null)
-                    return View(savedReport);
+                    return await RenderReportAsync(savedReport, ct);
 
                 return View(new EmergentConclusionsReport
                 {
@@ -43,7 +48,7 @@ public class EmergentConclusionsController : Controller
             if (report.HasSufficientData)
                 await _engine.PersistReportAsync(report, ct);
 
-            return View(report);
+            return await RenderReportAsync(report, ct);
         }
         catch (Exception ex)
         {
@@ -135,6 +140,65 @@ public class EmergentConclusionsController : Controller
             return RedirectToAction(nameof(Index));
         }
         TempData["Success"] = "Deep analysis complete — results loaded from saved snapshot.";
+        return await RenderReportAsync(report, ct);
+    }
+
+    private async Task<IActionResult> RenderReportAsync(EmergentConclusionsReport report, CancellationToken ct)
+    {
+        var argumentIds = report.Blindspots.Concat(report.Harmonies)
+            .SelectMany(finding => finding.InvolvedArgumentIds)
+            .Distinct()
+            .ToList();
+
+        ViewData["SocialArgumentIds"] = argumentIds.Count == 0
+            ? new Dictionary<int, Guid>()
+            : await _db.SocialArguments.AsNoTracking()
+                .Where(argument => argument.IsPublic && argument.SourceArgumentId.HasValue &&
+                    argumentIds.Contains(argument.SourceArgumentId.Value))
+                .Select(argument => new { argument.SourceArgumentId, argument.Id })
+                .ToDictionaryAsync(argument => argument.SourceArgumentId!.Value, argument => argument.Id, ct);
+
+        var nodeIds = report.Blindspots.Concat(report.Harmonies)
+            .SelectMany(finding => finding.InvolvedNodeIds)
+            .Distinct()
+            .ToList();
+        var nodeArguments = nodeIds.Count == 0
+            ? []
+            : await _db.UnderstandingNodes.AsNoTracking()
+                .Where(node => nodeIds.Contains(node.Id))
+                .Select(node => new { node.Id, node.ArgumentIdsJson })
+                .ToListAsync(ct);
+        var socialIdsByNode = new Dictionary<int, List<Guid>>();
+        foreach (var node in nodeArguments)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(node.ArgumentIdsJson);
+                if (document.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    socialIdsByNode[node.Id] = document.RootElement.EnumerateArray()
+                        .Where(value => value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out _))
+                        .Select(value => Guid.Parse(value.GetString()!))
+                        .ToList();
+                }
+            }
+            catch (JsonException)
+            {
+                // Legacy node metadata can be malformed.
+            }
+        }
+
+        var candidateIds = socialIdsByNode.Values.SelectMany(ids => ids).Distinct().ToList();
+        var publicIds = candidateIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await _db.SocialArguments.AsNoTracking()
+                .Where(argument => argument.IsPublic && candidateIds.Contains(argument.Id))
+                .Select(argument => argument.Id)
+                .ToListAsync(ct)).ToHashSet();
+        ViewData["SocialArgumentIdsByNode"] = socialIdsByNode
+            .Where(pair => pair.Value.Any(publicIds.Contains))
+            .ToDictionary(pair => pair.Key, pair => pair.Value.First(publicIds.Contains));
+
         return View("Index", report);
     }
 

@@ -23,6 +23,8 @@ public class ArgumentController : Controller
     private readonly ISourceTrustService _sourceTrustService;
     private readonly IEvidenceMatchingService _evidenceMatchingService;
     private readonly ILiteratureCorpusService _literatureCorpusService;
+    private readonly ILiteratureProvider _literatureProvider;
+    private readonly OpenLibraryBookSearch _bookSearch;
     private readonly IConfiguration _configuration;
     private readonly StakeholderService _stakeholderService;
     private readonly DecisionSupportService _decisionSupportService;
@@ -40,6 +42,8 @@ public class ArgumentController : Controller
         ISourceTrustService sourceTrustService,
         IEvidenceMatchingService evidenceMatchingService,
         ILiteratureCorpusService literatureCorpusService,
+        ILiteratureProvider literatureProvider,
+        OpenLibraryBookSearch bookSearch,
         IConfiguration configuration,
         StakeholderService stakeholderService,
         DecisionSupportService decisionSupportService,
@@ -56,6 +60,8 @@ public class ArgumentController : Controller
         _sourceTrustService = sourceTrustService;
         _evidenceMatchingService = evidenceMatchingService;
         _literatureCorpusService = literatureCorpusService;
+        _literatureProvider = literatureProvider;
+        _bookSearch = bookSearch;
         _configuration = configuration;
         _stakeholderService = stakeholderService;
         _decisionSupportService = decisionSupportService;
@@ -779,6 +785,53 @@ public class ArgumentController : Controller
     // ─────────────────────────────────────────────────────────────────────────
 
     [HttpGet]
+    public async Task<IActionResult> SearchEvidenceReferences(string? query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 3 || query.Length > 200)
+            return BadRequest();
+
+        try
+        {
+            IReadOnlyList<LiteratureRecord> books;
+            IReadOnlyList<LiteratureRecord> works;
+            try
+            {
+                books = await _bookSearch.SearchAsync(query.Trim(), ct);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Book lookup failed");
+                books = [];
+            }
+            try
+            {
+                works = await _literatureProvider.SearchAsync(query.Trim(), null, ct);
+            }
+            catch (HttpRequestException ex) when (books.Count > 0)
+            {
+                _logger.LogWarning(ex, "Crossref lookup failed; showing book results only");
+                works = [];
+            }
+            var results = books.Concat(works).Take(20);
+            return Json(results.Select(record => new
+            {
+                record.Title,
+                record.Authors,
+                record.CoverUrl,
+                record.PublicationYear,
+                record.SourceName,
+                record.DOI,
+                record.Uri
+            }));
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Reference lookup failed");
+            return StatusCode(502, new { error = "Reference lookup is temporarily unavailable." });
+        }
+    }
+
+    [HttpGet]
     public async Task<IActionResult> AddEvidence(
         int argumentId,
         int propositionId,
@@ -839,11 +892,14 @@ public class ArgumentController : Controller
             }
         }
 
+        var citation = model.Citation.Trim();
+        var sourceUri = ResolveEvidenceSourceUri(citation, model.SourceUri);
+
         var item = new EvidenceItem
         {
             PropositionId = model.PropositionId,
-            Citation = model.Citation.Trim(),
-            SourceUri = string.IsNullOrWhiteSpace(model.SourceUri) ? null : model.SourceUri.Trim(),
+            Citation = citation,
+            SourceUri = string.IsNullOrWhiteSpace(sourceUri) ? null : sourceUri.Trim(),
             DOI = string.IsNullOrWhiteSpace(model.DOI) ? null : model.DOI.Trim(),
             Tier = tier,
             Direction = direction,
@@ -870,6 +926,17 @@ public class ArgumentController : Controller
             return LocalRedirect(model.ReturnUrl);
 
         return RedirectToAction(nameof(View), new { id = model.ArgumentId, tab = "evidence", propositionId = model.PropositionId });
+    }
+
+    internal static string? ResolveEvidenceSourceUri(string citation, string? sourceUri)
+    {
+        if (!string.IsNullOrWhiteSpace(sourceUri))
+            return sourceUri.Trim();
+
+        return Uri.TryCreate(citation, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? citation
+            : null;
     }
 
     [HttpPost, ValidateAntiForgeryToken]

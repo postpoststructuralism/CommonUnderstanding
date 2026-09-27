@@ -31,70 +31,67 @@
             <input type="hidden" name="FindingKey" value="@Model.FindingKey" />
             <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
 
-            <div class="row g-3 mb-3">
-                <div class="col-md-8">
-                    <label class="form-label" for="citation">Citation</label>
-                    <input id="citation" type="text" name="Citation" class="form-control"
-                           placeholder="Author, title, journal, year" required autofocus />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="publicationYear">Publication year</label>
-                    <input id="publicationYear" type="number" name="PublicationYear" class="form-control"
-                           min="1800" max="2030" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="sourceUri">Source URL</label>
-                    <input id="sourceUri" type="url" name="SourceUri" class="form-control" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="sourceName">Publisher or outlet</label>
-                    <input id="sourceName" type="text" name="SourceName" class="form-control" maxlength="300" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="doi">DOI</label>
-                    <input id="doi" type="text" name="DOI" class="form-control" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="tier">Evidence tier</label>
-                    <select id="tier" name="Tier" class="form-select">
-                        <option value="T1_SystematicReview">T1 - Systematic review</option>
-                        <option value="T2_RCT">T2 - RCT / experiment</option>
-                        <option value="T3_Observational">T3 - Observational</option>
-                        <option value="T4_ExpertConsensus">T4 - Expert consensus</option>
-                        <option value="T5_CaseStudy" selected>T5 - Case study</option>
-                        <option value="T6_AnecdoteOpinion">T6 - Anecdote / opinion</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="direction">Direction</label>
-                    <select id="direction" name="Direction" class="form-select">
-                        <option value="Supports">Supports</option>
-                        <option value="Opposes">Opposes</option>
-                        <option value="Neutral">Neutral</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="sampleSize">Sample size</label>
-                    <input id="sampleSize" type="number" name="SampleSize" class="form-control" min="1" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="replicationStatus">Replication</label>
-                    <select id="replicationStatus" name="ReplicationStatus" class="form-select">
-                        <option value="">Not specified</option>
-                        <option value="unreplicated">Unreplicated</option>
-                        <option value="partial">Partial</option>
-                        <option value="replicated">Replicated</option>
-                        <option value="contradicted">Contradicted</option>
-                    </select>
-                </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="citation">Link or reference</label>
+                <input id="citation" type="text" name="Citation" class="form-control" maxlength="500"
+                       placeholder="Paste a URL, or enter a book, author, or article" required autofocus />
+                <div class="form-text">A link or a written reference is enough. To share a file, link to a hosted copy; uploads are not supported yet.</div>
             </div>
 
-            <div class="form-check mb-4">
-                <input class="form-check-input" type="checkbox" name="AutoClassify" id="autoClassify" value="true" />
-                <label class="form-check-label" for="autoClassify">
-                    Auto-classify tier and direction using AI
-                </label>
+            <div class="mb-3">
+                <label class="form-label" for="referenceQuery">Find a book or article</label>
+                <div class="input-group">
+                    <input id="referenceQuery" type="search" class="form-control" maxlength="200" placeholder="Title, author, or DOI" />
+                    <button id="referenceSearch" type="button" class="btn btn-outline-secondary"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+                <div id="referenceStatus" class="form-text" role="status" aria-live="polite"></div>
+                <div id="referenceResults" class="list-group mt-2" aria-label="Reference results"></div>
             </div>
+
+            <div class="mb-4">
+                <label class="form-label" for="direction">How does it relate?</label>
+                <select id="direction" name="Direction" class="form-select">
+                    <option value="Neutral" selected>Not sure yet</option>
+                    <option value="Supports">Supports this proposition</option>
+                    <option value="Opposes">Challenges this proposition</option>
+                </select>
+            </div>
+
+            <details class="mb-4">
+                <summary class="mb-3">Add source details (optional)</summary>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label" for="sourceUri">Source URL</label><input id="sourceUri" type="url" name="SourceUri" class="form-control" maxlength="500" /></div>
+                    <div class="col-md-6"><label class="form-label" for="sourceName">Publisher or outlet</label><input id="sourceName" type="text" name="SourceName" class="form-control" maxlength="300" /></div>
+                    <div class="col-md-6"><label class="form-label" for="doi">DOI</label><input id="doi" type="text" name="DOI" class="form-control" maxlength="100" /></div>
+                    <div class="col-md-3"><label class="form-label" for="publicationYear">Publication year</label><input id="publicationYear" type="number" name="PublicationYear" class="form-control" min="1800" max="2100" /></div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="tier">Evidence tier</label>
+                        <select id="tier" name="Tier" class="form-select">
+                            <option value="T6_AnecdoteOpinion" selected>Unreviewed reference (lowest tier)</option>
+                            <option value="T1_SystematicReview">Systematic review</option>
+                            <option value="T2_RCT">Experiment</option>
+                            <option value="T3_Observational">Observational study</option>
+                            <option value="T4_ExpertConsensus">Expert consensus</option>
+                            <option value="T5_CaseStudy">Case study</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6"><label class="form-label" for="sampleSize">Sample size</label><input id="sampleSize" type="number" name="SampleSize" class="form-control" min="1" /></div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="replicationStatus">Replication</label>
+                        <select id="replicationStatus" name="ReplicationStatus" class="form-select">
+                            <option value="">Not specified</option>
+                            <option value="unreplicated">Unreplicated</option>
+                            <option value="partial">Partial</option>
+                            <option value="replicated">Replicated</option>
+                            <option value="contradicted">Contradicted</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="AutoClassify" id="autoClassify" value="true" />
+                    <label class="form-check-label" for="autoClassify">Classify tier and direction with AI</label>
+                </div>
+            </details>
 
             <div class="d-flex flex-wrap gap-2">
                 <button type="submit" class="cu-btn-primary">
@@ -112,3 +109,86 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(() => {
+    const search = document.getElementById('referenceSearch');
+    const query = document.getElementById('referenceQuery');
+    const results = document.getElementById('referenceResults');
+    const status = document.getElementById('referenceStatus');
+    const citation = document.getElementById('citation');
+    const fields = {
+        SourceUri: document.getElementById('sourceUri'),
+        SourceName: document.getElementById('sourceName'),
+        DOI: document.getElementById('doi'),
+        PublicationYear: document.getElementById('publicationYear')
+    };
+
+    async function findReferences() {
+        const term = query.value.trim();
+        results.replaceChildren();
+        if (term.length < 3) {
+            status.textContent = 'Enter at least three characters.';
+            return;
+        }
+        search.disabled = true;
+        status.textContent = 'Searching references...';
+        try {
+            const response = await fetch('@Url.Action("SearchEvidenceReferences", "Argument")?query=' + encodeURIComponent(term));
+            if (!response.ok) throw new Error('Lookup unavailable');
+            const matches = await response.json();
+            status.textContent = matches.length ? 'Select a reference to fill the form.' : 'No matches found. Enter a reference yourself.';
+            for (const item of matches) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3';
+                if (item.coverUrl) {
+                    const cover = document.createElement('img');
+                    cover.src = item.coverUrl;
+                    cover.alt = '';
+                    cover.loading = 'lazy';
+                    cover.width = 52;
+                    cover.height = 72;
+                    cover.style.objectFit = 'contain';
+                    cover.addEventListener('error', () => cover.remove());
+                    button.append(cover);
+                }
+                const description = document.createElement('span');
+                const title = document.createElement('strong');
+                title.textContent = 'Title: ' + item.title;
+                const detail = document.createElement('small');
+                detail.className = 'd-block text-muted';
+                detail.textContent = 'Author: ' + (item.authors || 'Not listed') +
+                    [item.sourceName, item.publicationYear].filter(Boolean).map(value => ' | ' + value).join('');
+                description.append(title, detail);
+                button.append(description);
+                button.addEventListener('click', () => {
+                    citation.value = [item.authors, item.title, item.sourceName, item.publicationYear].filter(Boolean).join(', ');
+                    fields.SourceUri.value = item.uri || '';
+                    fields.SourceName.value = item.sourceName || '';
+                    fields.DOI.value = item.doi || '';
+                    fields.PublicationYear.value = item.publicationYear || '';
+                    results.replaceChildren();
+                    status.textContent = 'Reference selected. Review it before saving.';
+                    citation.focus();
+                });
+                results.append(button);
+            }
+        } catch {
+            status.textContent = 'Lookup is unavailable. Enter a link or reference manually.';
+        } finally {
+            search.disabled = false;
+        }
+    }
+
+    search.addEventListener('click', findReferences);
+    query.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            findReferences();
+        }
+    });
+})();
+</script>
+}

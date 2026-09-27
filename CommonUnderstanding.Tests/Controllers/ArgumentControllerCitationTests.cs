@@ -15,6 +15,17 @@ namespace CommonUnderstanding.Tests.Controllers;
 
 public sealed class ArgumentControllerCitationTests
 {
+    [Theory]
+    [InlineData("https://example.org/article", null, "https://example.org/article")]
+    [InlineData("Book by Author", null, null)]
+    [InlineData("Book by Author", "https://example.org/book", "https://example.org/book")]
+    [InlineData("javascript:alert(1)", null, null)]
+    public void ResolveEvidenceSourceUri_RecognizesWebLinksOnly(
+        string citation, string? explicitUri, string? expected)
+    {
+        Assert.Equal(expected, ArgumentController.ResolveEvidenceSourceUri(citation, explicitUri));
+    }
+
     [Fact]
     public void DetermineVerificationStatus_NullRelation_ReturnsVerified()
     {
@@ -82,6 +93,8 @@ public sealed class ArgumentControllerCitationTests
             null!,
             matching,
             corpus,
+            null!,
+            null!,
             configuration,
             null!,
             null!,

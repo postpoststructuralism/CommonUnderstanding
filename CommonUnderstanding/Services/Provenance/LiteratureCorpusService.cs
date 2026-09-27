@@ -18,7 +18,11 @@ public sealed record LiteratureRecord(
     DateTime PublishedAt,
     string SourceName,
     string? PublisherIdentifier,
-    SourceVerificationStatus VerificationStatus);
+    SourceVerificationStatus VerificationStatus)
+{
+    public string? Authors { get; init; }
+    public string? CoverUrl { get; init; }
+}
 
 public interface ILiteratureProvider
 {
@@ -26,6 +30,49 @@ public interface ILiteratureProvider
         string topic,
         DateTime? updatedSince,
         CancellationToken cancellationToken = default);
+}
+
+public sealed class OpenLibraryBookSearch(IHttpClientFactory httpClientFactory)
+{
+    public async Task<IReadOnlyList<LiteratureRecord>> SearchAsync(string query, CancellationToken cancellationToken = default)
+    {
+        var uri = $"https://openlibrary.org/search.json?q={Uri.EscapeDataString(query)}&fields=key,title,author_name,first_publish_year,cover_i,publisher&limit=8";
+        using var response = await httpClientFactory.CreateClient().GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (!document.RootElement.TryGetProperty("docs", out var docs) || docs.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var books = new List<LiteratureRecord>();
+        foreach (var book in docs.EnumerateArray())
+        {
+            var key = book.TryGetProperty("key", out var keyValue) ? keyValue.GetString() : null;
+            var title = book.TryGetProperty("title", out var titleValue) ? titleValue.GetString() : null;
+            if (string.IsNullOrWhiteSpace(key) || !key.StartsWith("/works/", StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(title))
+                continue;
+
+            var authors = book.TryGetProperty("author_name", out var authorNames) && authorNames.ValueKind == JsonValueKind.Array
+                ? string.Join(", ", authorNames.EnumerateArray().Take(3).Select(author => author.GetString()))
+                : null;
+            var publisher = book.TryGetProperty("publisher", out var publishers) && publishers.ValueKind == JsonValueKind.Array
+                && publishers.GetArrayLength() > 0 ? publishers[0].GetString() : null;
+            var year = book.TryGetProperty("first_publish_year", out var yearValue) && yearValue.TryGetInt32(out var parsedYear)
+                ? parsedYear : (int?)null;
+            var coverId = book.TryGetProperty("cover_i", out var coverValue) && coverValue.TryGetInt32(out var parsedCover)
+                && parsedCover > 0 ? parsedCover : (int?)null;
+
+            books.Add(new LiteratureRecord("Open Library", key, title, string.Empty, null,
+                $"https://openlibrary.org{key}", year, DateTime.UtcNow,
+                publisher ?? "Open Library", null, SourceVerificationStatus.Verified)
+            {
+                Authors = authors,
+                CoverUrl = coverId is null ? null : $"https://covers.openlibrary.org/b/id/{coverId}-M.jpg?default=false"
+            });
+        }
+        return books;
+    }
 }
 
 public sealed class CrossrefLiteratureProvider : ILiteratureProvider
@@ -85,6 +132,22 @@ public sealed class CrossrefLiteratureProvider : ILiteratureProvider
                 ? $"crossref:{parsedMember}"
                 : null;
 
+            var authors = item.TryGetProperty("author", out var authorList) && authorList.ValueKind == JsonValueKind.Array
+                ? string.Join(", ", authorList.EnumerateArray().Take(3)
+                    .Select(author => string.Join(" ", new[] { GetString(author, "given"), GetString(author, "family") }
+                        .Where(part => !string.IsNullOrWhiteSpace(part)))))
+                : null;
+            var isbn = type is "book" or "monograph" or "edited-book" or "reference-book"
+                && item.TryGetProperty("ISBN", out var isbnList) && isbnList.ValueKind == JsonValueKind.Array
+                ? isbnList.EnumerateArray()
+                    .Where(value => value.ValueKind == JsonValueKind.String)
+                    .Select(value => value.GetString())
+                    .FirstOrDefault(value => value is not null &&
+                        ((value.Length == 13 && value.All(char.IsAsciiDigit)) ||
+                         (value.Length == 10 && value[..9].All(char.IsAsciiDigit) &&
+                          (char.IsAsciiDigit(value[9]) || value[9] == 'X'))))
+                : null;
+
             records.Add(new LiteratureRecord(
                 "Crossref",
                 doi,
@@ -96,7 +159,11 @@ public sealed class CrossrefLiteratureProvider : ILiteratureProvider
                 publishedAt,
                 GetString(item, "publisher") ?? "Unknown publisher",
                 memberId,
-                DetermineVerificationStatus(item, type)));
+                DetermineVerificationStatus(item, type))
+            {
+                Authors = authors,
+                CoverUrl = isbn is null ? null : $"https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg?default=false"
+            });
         }
 
         return records;

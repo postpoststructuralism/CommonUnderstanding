@@ -5,6 +5,10 @@
 
 @{
     ViewData["Title"] = "Emergent Conclusions";
+    var socialArgumentIds = ViewData["SocialArgumentIds"] as IReadOnlyDictionary<int, Guid>
+        ?? new Dictionary<int, Guid>();
+    var socialArgumentIdsByNode = ViewData["SocialArgumentIdsByNode"] as IReadOnlyDictionary<int, Guid>
+        ?? new Dictionary<int, Guid>();
 
     string CategoryIcon(EmergentCategory cat) => cat switch
     {
@@ -275,11 +279,21 @@ else
         }
         else
         {
+            <div class="row g-3">
             @foreach (var finding in Model.Blindspots)
             {
                 var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
                 var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
-                <article class="cu-card mb-3 border-start border-danger border-3" id="@finding.FindingKey">
+                var linkedArgument = finding.InvolvedArgumentIds
+                    .Where(socialArgumentIds.ContainsKey)
+                    .Select(id => (Guid?)socialArgumentIds[id])
+                    .FirstOrDefault();
+                var nodeLinkedArgument = finding.InvolvedNodeIds
+                    .Where(socialArgumentIdsByNode.ContainsKey)
+                    .Select(id => (Guid?)socialArgumentIdsByNode[id])
+                    .FirstOrDefault();
+                <div class="col-12 col-md-6">
+                <article class="cu-card h-100 border-start border-danger border-3" id="@finding.FindingKey">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2">
@@ -307,10 +321,15 @@ else
                                 @foreach (var (argId, argTitle) in finding.InvolvedArgumentIds
                                     .Zip(finding.InvolvedArgumentTitles, (id, title) => (id, title)))
                                 {
-                                    <a asp-controller="Argument" asp-action="Details" asp-route-id="@argId"
+                                    <a asp-controller="Argument" asp-action="View" asp-route-id="@argId"
                                        class="badge bg-secondary text-decoration-none text-white small">
                                         @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
                                     </a>
+                                    @if (socialArgumentIds.TryGetValue(argId, out var socialArgumentId))
+                                    {
+                                        <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialArgumentId"
+                                           class="small align-self-center ms-1" aria-label="View @argTitle on SocialView">View on SocialView</a>
+                                    }
                                 }
                             </div>
                         </div>
@@ -324,6 +343,21 @@ else
                     }
 
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        @if (linkedArgument.HasValue)
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@linkedArgument.Value"
+                                         class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument on SocialView</a>
+                        }
+                        else if (nodeLinkedArgument.HasValue)
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@nodeLinkedArgument.Value"
+                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View related contribution on SocialView</a>
+                        }
+                        else if (finding.InvolvedArgumentIds.Count > 0)
+                        {
+                            <a asp-controller="Argument" asp-action="View" asp-route-id="@finding.InvolvedArgumentIds[0]"
+                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument</a>
+                        }
                         @if (primaryAction.Enabled)
                         {
                             <a href="@Url.Action(primaryAction.Action, primaryAction.Controller, primaryAction.RouteValues)"
@@ -351,7 +385,9 @@ else
                         </div>
                     </div>
                 </article>
+                </div>
             }
+            </div>
         }
     </div>
 
@@ -379,11 +415,21 @@ else
         }
         else
         {
+            <div class="row g-3">
             @foreach (var finding in Model.Harmonies)
             {
                 var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
                 var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
-                <article class="cu-card mb-3 border-start border-success border-3" id="@finding.FindingKey">
+                var linkedArgument = finding.InvolvedArgumentIds
+                    .Where(socialArgumentIds.ContainsKey)
+                    .Select(id => (Guid?)socialArgumentIds[id])
+                    .FirstOrDefault();
+                var nodeLinkedArgument = finding.InvolvedNodeIds
+                    .Where(socialArgumentIdsByNode.ContainsKey)
+                    .Select(id => (Guid?)socialArgumentIdsByNode[id])
+                    .FirstOrDefault();
+                <div class="col-12 col-md-6">
+                <article class="cu-card h-100 border-start border-success border-3" id="@finding.FindingKey">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2">
@@ -411,10 +457,15 @@ else
                                 @foreach (var (argId, argTitle) in finding.InvolvedArgumentIds
                                     .Zip(finding.InvolvedArgumentTitles, (id, title) => (id, title)))
                                 {
-                                    <a asp-controller="Argument" asp-action="Details" asp-route-id="@argId"
+                                    <a asp-controller="Argument" asp-action="View" asp-route-id="@argId"
                                        class="badge bg-secondary text-decoration-none text-white small">
                                         @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
                                     </a>
+                                    @if (socialArgumentIds.TryGetValue(argId, out var socialArgumentId))
+                                    {
+                                        <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialArgumentId"
+                                           class="small align-self-center ms-1" aria-label="View @argTitle on SocialView">View on SocialView</a>
+                                    }
                                 }
                             </div>
                         </div>
@@ -428,6 +479,21 @@ else
                     }
 
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        @if (linkedArgument.HasValue)
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@linkedArgument.Value"
+                                         class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument on SocialView</a>
+                        }
+                        else if (nodeLinkedArgument.HasValue)
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@nodeLinkedArgument.Value"
+                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View related contribution on SocialView</a>
+                        }
+                        else if (finding.InvolvedArgumentIds.Count > 0)
+                        {
+                            <a asp-controller="Argument" asp-action="View" asp-route-id="@finding.InvolvedArgumentIds[0]"
+                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument</a>
+                        }
                         @if (primaryAction.Enabled)
                         {
                             <a href="@Url.Action(primaryAction.Action, primaryAction.Controller, primaryAction.RouteValues)"
@@ -455,7 +521,9 @@ else
                         </div>
                     </div>
                 </article>
+                </div>
             }
+            </div>
         }
     </div>
 </div>

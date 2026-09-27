@@ -19,6 +19,7 @@ public sealed class CrossrefLiteratureProviderTests
                                 "items": [{
                                     "DOI": "10.1000/example",
                                     "title": ["Example study"],
+                                    "author": [{"given": "Ada", "family": "Example"}],
                                     "publisher": "Example Publisher",
                                     "member": "1234",
                                     "type": "journal-article",
@@ -35,7 +36,56 @@ public sealed class CrossrefLiteratureProviderTests
 
                 var record = Assert.Single(records);
                 Assert.Equal("crossref:1234", record.PublisherIdentifier);
+                Assert.Equal("Ada Example", record.Authors);
         }
+
+    [Fact]
+    public async Task SearchAsync_ParsesBookTitleAndAuthor()
+    {
+        const string responseJson = """
+            {
+                "message": {
+                    "items": [{
+                        "DOI": "10.1000/book",
+                        "title": ["The Example Book"],
+                        "author": [{"given": "Ada", "family": "Example"}],
+                        "ISBN": ["9780123456786"],
+                        "publisher": "Example Press",
+                        "type": "book",
+                        "published-print": {"date-parts": [[2020]]}
+                    }]
+                }
+            }
+            """;
+        var provider = new CrossrefLiteratureProvider(
+            new StubHttpClientFactory(responseJson),
+            new ConfigurationBuilder().Build());
+
+        var record = Assert.Single(await provider.SearchAsync("example book", null));
+
+        Assert.Equal("The Example Book", record.Title);
+        Assert.Equal("Ada Example", record.Authors);
+        Assert.Equal(2020, record.PublicationYear);
+        Assert.Equal("https://covers.openlibrary.org/b/isbn/9780123456786-M.jpg?default=false", record.CoverUrl);
+    }
+
+    [Fact]
+    public async Task OpenLibrarySearch_ParsesBookCoverAndAuthor()
+    {
+        const string responseJson = """
+            {"docs":[{"key":"/works/OL123W","title":"Example Book",
+                "author_name":["Ada Example"],"first_publish_year":2020,
+                "cover_i":12345,"publisher":["Example Press"]}]}
+            """;
+        var search = new OpenLibraryBookSearch(new StubHttpClientFactory(responseJson));
+
+        var book = Assert.Single(await search.SearchAsync("Example Book"));
+
+        Assert.Equal("Example Book", book.Title);
+        Assert.Equal("Ada Example", book.Authors);
+        Assert.Equal("https://openlibrary.org/works/OL123W", book.Uri);
+        Assert.Equal("https://covers.openlibrary.org/b/id/12345-M.jpg?default=false", book.CoverUrl);
+    }
 
     [Fact]
     public void DetermineVerificationStatus_ReturnsRetracted_ForRetractionType()
