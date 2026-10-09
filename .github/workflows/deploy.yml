@@ -34,7 +34,9 @@ jobs:
       run: dotnet build CommonUnderstanding/CommonUnderstanding.csproj --configuration Release --no-restore
 
     - name: Publish
-      run: dotnet publish CommonUnderstanding/CommonUnderstanding.csproj -c Release -o ./publish --no-build
+      run: |
+        rm -rf publish
+        dotnet publish CommonUnderstanding/CommonUnderstanding.csproj -c Release -o ./publish --no-build
 
     - name: Login to Azure
       uses: azure/login@v1
@@ -60,7 +62,7 @@ jobs:
       run: |
         rm -f deploy.zip
         test -f publish/CommonUnderstanding.dll
-        if find publish -type d \( -name artifacts -o -name bin -o -name obj -o -name publish \) -print -quit | grep -q .; then
+        if find publish -mindepth 1 -type d \( -name artifacts -o -name bin -o -name obj -o -name publish \) -print -quit | grep -q .; then
           echo "Generated directory found in publish output"
           exit 1
         fi
