@@ -58,10 +58,32 @@ jobs:
 
     - name: Deploy to Azure Web App
       run: |
+        rm -f deploy.zip
+        test -f publish/CommonUnderstanding.dll
+        if find publish -type d \( -name artifacts -o -name bin -o -name obj -o -name publish \) -print -quit | grep -q .; then
+          echo "Generated directory found in publish output"
+          exit 1
+        fi
         cd publish
-        zip -r ../deploy.zip .
+        zip -r -q ../deploy.zip .
         cd ..
-        az webapp deploy --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_WEBAPP_NAME }} --src-path deploy.zip --type zip
+        if unzip -Z1 deploy.zip | grep -q '\\'; then
+          echo "ZIP contains backslash entry names"
+          exit 1
+        fi
+        if unzip -Z1 deploy.zip | grep -E '(^|/)(artifacts|bin|obj|publish)(/|$)'; then
+          echo "ZIP contains generated directories"
+          exit 1
+        fi
+        unzip -t deploy.zip
+        az webapp deploy \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src-path deploy.zip \
+          --type zip \
+          --clean true \
+          --restart true \
+          --async false
 
     - name: Cleanup
       if: always()

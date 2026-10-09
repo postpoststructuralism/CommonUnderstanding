@@ -132,15 +132,24 @@ cd ..
 
 #### Step 7: Create Deployment ZIP
 ```powershell
-Compress-Archive -Path publish\* -DestinationPath deploy.zip -Force
+if (Test-Path deploy.zip) { Remove-Item deploy.zip -Force }
+tar.exe -a -c -f deploy.zip -C publish .
+if ($LASTEXITCODE -ne 0) { throw "Failed to create deployment package" }
+if (@(tar.exe -tf deploy.zip | Where-Object { $_.Contains('\\') }).Count -gt 0) {
+    throw "Deployment package contains invalid entry paths"
+}
 ```
 
 #### Step 8: Deploy to Azure
 ```powershell
-az webapp deployment source config-zip `
+az webapp deploy `
     --name common-understanding `
     --resource-group freedom-ledger `
-    --src deploy.zip
+    --src-path deploy.zip `
+    --type zip `
+    --clean true `
+    --restart true `
+    --async false
 ```
 
 #### Step 9: Open Your App
