@@ -73,8 +73,19 @@
 
     var findingCount = Model.Blindspots.Count + Model.Harmonies.Count;
     var highImpactCount = Model.Blindspots.Concat(Model.Harmonies).Count(f => f.Significance >= 0.75);
-    var propositionsWithoutEvidence = (int)Math.Round(
-        Model.GraphHealth.TotalPropositions * (1 - Model.GraphHealth.EvidenceCoveragePercent / 100));
+    var filter = Context.Request.Query["filter"].ToString();
+    var validFilters = new[] { "findings", "high-impact", "evidence", "work" };
+    if (!validFilters.Contains(filter)) filter = "";
+    var uncoveredEvidenceGaps = Model.UncoveredEvidenceGaps
+        .Where(gap => !Model.Blindspots.Any(finding => finding.Category == EmergentCategory.EvidenceDesert
+            && finding.InvolvedNodeIds.Contains(gap.NodeId)))
+        .ToList();
+    var visibleBlindspots = Model.Blindspots
+        .Where(finding => filter != "high-impact" || finding.Significance >= 0.75).ToList();
+    var visibleHarmonies = filter is "high-impact"
+        ? Model.Harmonies.Where(finding => finding.Significance >= 0.75).ToList()
+        : Model.Harmonies;
+    var showUncoveredGaps = filter is "work" or "";
 }
 
 <div class="cu-workspace-hero mb-4">
@@ -155,34 +166,42 @@
 ══════════════════════════════════════════════════════════════════════════════ -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="cu-card cu-metric-card h-100">
+        <a href="?filter=findings" class="cu-card cu-metric-card h-100 d-block text-decoration-none @(filter == "findings" ? "border-primary" : "")" aria-label="Show open findings" aria-current="@(filter == "findings" ? "true" : null)">
             <div class="cu-metric-label">Open findings</div>
             <div class="cu-metric-value text-primary">@findingCount</div>
             <div class="cu-metric-note">Items ready for review</div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="cu-card cu-metric-card h-100">
+        <a href="?filter=high-impact" class="cu-card cu-metric-card h-100 d-block text-decoration-none @(filter == "high-impact" ? "border-danger" : "")" aria-label="Show high-impact findings" aria-current="@(filter == "high-impact" ? "true" : null)">
             <div class="cu-metric-label">High-impact findings</div>
             <div class="cu-metric-value text-danger">@highImpactCount</div>
             <div class="cu-metric-note">Estimated impact of 75% or more</div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="cu-card cu-metric-card h-100">
-            <div class="cu-metric-label">Propositions without evidence</div>
-            <div class="cu-metric-value text-warning">@propositionsWithoutEvidence</div>
-            <div class="cu-metric-note">Based on current graph coverage</div>
-        </div>
+        <a href="?filter=evidence" class="cu-card cu-metric-card h-100 d-block text-decoration-none @(filter == "evidence" ? "border-warning" : "")" aria-label="Show graph nodes without evidence" aria-current="@(filter == "evidence" ? "true" : null)">
+            <div class="cu-metric-label">Graph nodes without evidence</div>
+            <div class="cu-metric-value text-warning">@Model.GraphHealth.NodesWithoutEvidence</div>
+            <div class="cu-metric-note">Public nodes awaiting evidence</div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="cu-card cu-metric-card h-100">
-            <div class="cu-metric-label">Available opportunities</div>
-            <div class="cu-metric-value text-success">@Model.Harmonies.Count</div>
-            <div class="cu-metric-note">Shared ground and synthesis paths</div>
-        </div>
+        <a href="?filter=work" class="cu-card cu-metric-card h-100 d-block text-decoration-none @(filter == "work" ? "border-success" : "")" aria-label="Show all open graph work" aria-current="@(filter == "work" ? "true" : null)">
+            <div class="cu-metric-label">Open graph work</div>
+            <div class="cu-metric-value text-success">@Model.OpenGraphWorkCount</div>
+            <div class="cu-metric-note">Findings and uncovered evidence gaps</div>
+        </a>
     </div>
 </div>
+
+@if (filter != "")
+{
+    <div class="d-flex align-items-center gap-3 mb-3" role="status">
+        <span class="fw-semibold">Showing @(filter switch { "findings" => "open findings", "high-impact" => "high-impact findings", "evidence" => "nodes without evidence", _ => "open graph work" })</span>
+        <a href="@Context.Request.Path" class="text-decoration-underline">Clear filter</a>
+    </div>
+}
 
 <!-- Graph Status Bar -->
 <div class="cu-card mb-4 p-3">
@@ -241,36 +260,70 @@
     </div>
 }
 
-@if (!Model.Blindspots.Any() && !Model.Harmonies.Any())
+@if (filter == "evidence")
+{
+    <section id="filtered-results">
+        <h2 class="h4 mb-3">Graph nodes without evidence</h2>
+        @if (!Model.UncoveredEvidenceGaps.Any())
+        {
+            <p class="text-muted">No public graph nodes without evidence remain in this report.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+            @foreach (var gap in Model.UncoveredEvidenceGaps)
+            {
+                var finding = Model.Blindspots.FirstOrDefault(item => item.Category == EmergentCategory.EvidenceDesert
+                    && item.InvolvedNodeIds.Contains(gap.NodeId));
+                <div class="col-12 col-md-6">
+                    <div class="cu-card h-100 border-start border-warning border-3">
+                        <h3 class="h6 fw-semibold">@gap.Text</h3>
+                        @if (finding != null)
+                        {
+                            <a href="?filter=work#@finding.FindingKey" class="text-decoration-underline">View evidence finding</a>
+                        }
+                        else if (socialArgumentIdsByNode.TryGetValue(gap.NodeId, out var socialId))
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialId">View related contribution</a>
+                        }
+                    </div>
+                </div>
+            }
+            </div>
+        }
+    </section>
+}
+else if (!visibleBlindspots.Any() && !visibleHarmonies.Any() && (!showUncoveredGaps || !uncoveredEvidenceGaps.Any()))
 {
     <div class="cu-card text-center py-5">
         <i class="bi bi-check2-all display-3 text-success mb-3 d-block"></i>
-        <h3 class="text-muted">No Emergent Patterns Detected</h3>
+        <h3 class="text-muted">No matching items</h3>
         <p class="text-muted">
-            The current argument inventory has not revealed detectable blindspots or harmonies yet.
-            This may change as more arguments, evidence, and stakeholder positions are added.
+            There are no items in this view of the current report.
         </p>
     </div>
 }
 else
 {
-<div class="row g-4">
+<div class="row g-4" id="filtered-results">
     <!-- ─────────────────────────────────────────────────────────────────────
          LEFT: BLINDSPOTS
     ───────────────────────────────────────────────────────────────────────── -->
+    @if (visibleBlindspots.Any())
+    {
     <div class="col-12">
         <div class="d-flex align-items-center mb-3">
             <h2 class="h4 mb-0 text-danger fw-semibold">
                 <i class="bi bi-binoculars me-2"></i>Blindspots
             </h2>
-            @if (Model.Blindspots.Any())
+            @if (visibleBlindspots.Any())
             {
-                <span class="badge bg-danger ms-2">@Model.Blindspots.Count</span>
+                <span class="badge bg-danger ms-2">@visibleBlindspots.Count</span>
             }
             <span class="ms-auto text-muted small">Ordered by significance</span>
         </div>
 
-        @if (!Model.Blindspots.Any())
+        @if (!visibleBlindspots.Any())
         {
             <div class="cu-card text-center py-4">
                 <i class="bi bi-check-circle text-success fs-1 mb-2 d-block"></i>
@@ -280,7 +333,7 @@ else
         else
         {
             <div class="row g-3">
-            @foreach (var finding in Model.Blindspots)
+            @foreach (var finding in visibleBlindspots)
             {
                 var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
                 var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
@@ -321,14 +374,12 @@ else
                                 @foreach (var (argId, argTitle) in finding.InvolvedArgumentIds
                                     .Zip(finding.InvolvedArgumentTitles, (id, title) => (id, title)))
                                 {
-                                    <a asp-controller="Argument" asp-action="View" asp-route-id="@argId"
-                                       class="badge bg-secondary text-decoration-none text-white small">
-                                        @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
-                                    </a>
                                     @if (socialArgumentIds.TryGetValue(argId, out var socialArgumentId))
                                     {
                                         <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialArgumentId"
-                                           class="small align-self-center ms-1" aria-label="View @argTitle on SocialView">View on SocialView</a>
+                                           class="badge bg-secondary text-decoration-none text-white small" aria-label="View @argTitle on SocialView">
+                                            @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
+                                        </a>
                                     }
                                 }
                             </div>
@@ -352,11 +403,6 @@ else
                         {
                             <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@nodeLinkedArgument.Value"
                                class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View related contribution on SocialView</a>
-                        }
-                        else if (finding.InvolvedArgumentIds.Count > 0)
-                        {
-                            <a asp-controller="Argument" asp-action="View" asp-route-id="@finding.InvolvedArgumentIds[0]"
-                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument</a>
                         }
                         @if (primaryAction.Enabled)
                         {
@@ -390,23 +436,26 @@ else
             </div>
         }
     </div>
+    }
 
     <!-- ─────────────────────────────────────────────────────────────────────
          RIGHT: HARMONIES
     ───────────────────────────────────────────────────────────────────────── -->
+    @if (visibleHarmonies.Any())
+    {
     <div class="col-12">
         <div class="d-flex align-items-center mb-3">
             <h2 class="h4 mb-0 text-success fw-semibold">
                 <i class="bi bi-union me-2"></i>Harmonies
             </h2>
-            @if (Model.Harmonies.Any())
+            @if (visibleHarmonies.Any())
             {
-                <span class="badge bg-success ms-2">@Model.Harmonies.Count</span>
+                <span class="badge bg-success ms-2">@visibleHarmonies.Count</span>
             }
             <span class="ms-auto text-muted small">Ordered by significance</span>
         </div>
 
-        @if (!Model.Harmonies.Any())
+        @if (!visibleHarmonies.Any())
         {
             <div class="cu-card text-center py-4">
                 <i class="bi bi-info-circle text-info fs-1 mb-2 d-block"></i>
@@ -416,7 +465,7 @@ else
         else
         {
             <div class="row g-3">
-            @foreach (var finding in Model.Harmonies)
+            @foreach (var finding in visibleHarmonies)
             {
                 var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}#{finding.FindingKey}";
                 var primaryAction = FindingActions.GetPrimaryAction(finding, returnUrl);
@@ -457,14 +506,12 @@ else
                                 @foreach (var (argId, argTitle) in finding.InvolvedArgumentIds
                                     .Zip(finding.InvolvedArgumentTitles, (id, title) => (id, title)))
                                 {
-                                    <a asp-controller="Argument" asp-action="View" asp-route-id="@argId"
-                                       class="badge bg-secondary text-decoration-none text-white small">
-                                        @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
-                                    </a>
                                     @if (socialArgumentIds.TryGetValue(argId, out var socialArgumentId))
                                     {
                                         <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialArgumentId"
-                                           class="small align-self-center ms-1" aria-label="View @argTitle on SocialView">View on SocialView</a>
+                                           class="badge bg-secondary text-decoration-none text-white small" aria-label="View @argTitle on SocialView">
+                                            @(argTitle.Length > 40 ? argTitle[..37] + "…" : argTitle)
+                                        </a>
                                     }
                                 }
                             </div>
@@ -488,11 +535,6 @@ else
                         {
                             <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@nodeLinkedArgument.Value"
                                class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View related contribution on SocialView</a>
-                        }
-                        else if (finding.InvolvedArgumentIds.Count > 0)
-                        {
-                            <a asp-controller="Argument" asp-action="View" asp-route-id="@finding.InvolvedArgumentIds[0]"
-                               class="cu-btn-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>View argument</a>
                         }
                         @if (primaryAction.Enabled)
                         {
@@ -526,6 +568,27 @@ else
             </div>
         }
     </div>
+    }
+    @if (showUncoveredGaps && uncoveredEvidenceGaps.Any())
+    {
+        <section class="col-12">
+            <h2 class="h4 mb-3">Additional evidence gaps <span class="badge bg-warning text-dark">@uncoveredEvidenceGaps.Count</span></h2>
+            <div class="row g-3">
+            @foreach (var gap in uncoveredEvidenceGaps)
+            {
+                <div class="col-12 col-md-6">
+                    <div class="cu-card h-100 border-start border-warning border-3">
+                        <h3 class="h6 fw-semibold">@gap.Text</h3>
+                        @if (socialArgumentIdsByNode.TryGetValue(gap.NodeId, out var socialId))
+                        {
+                            <a asp-controller="SocialView" asp-action="Detail" asp-route-id="@socialId">View related contribution</a>
+                        }
+                    </div>
+                </div>
+            }
+            </div>
+        </section>
+    }
 </div>
 }
 

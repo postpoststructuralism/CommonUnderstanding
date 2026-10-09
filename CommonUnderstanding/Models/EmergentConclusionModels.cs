@@ -132,6 +132,10 @@ public class GraphHealthSummary
     /// <summary>Percentage of graph nodes that have at least one evidence item.</summary>
     public double EvidenceCoveragePercent { get; set; }
 
+    /// <summary>Public graph nodes with no evidence attached.</summary>
+    public int NodesWithoutEvidence { get; set; }
+    public List<int> NodesWithoutEvidenceIds { get; set; } = new();
+
     /// <summary>Count of critical assumptions that are unsupported across all arguments.</summary>
     public int CriticalAssumptionsUntested { get; set; }
 
@@ -148,9 +152,12 @@ public class GraphHealthSummary
 /// </summary>
 public class EmergentConclusionsReport
 {
+    public int CommunityScopeVersion { get; set; } = 2;
+    public List<int> PublicArgumentIds { get; set; } = new();
     public List<EmergentConclusion> Blindspots { get; set; } = new();
     public List<EmergentConclusion> Harmonies { get; set; } = new();
     public GraphHealthSummary GraphHealth { get; set; } = new();
+    public List<GraphEvidenceGap> UncoveredEvidenceGaps { get; set; } = new();
 
     /// <summary>
     /// LLM-generated executive summary narrative (populated in deep-analysis mode only).
@@ -170,11 +177,23 @@ public class EmergentConclusionsReport
 
     // ── Convenience projections ─────────────────────────────────────────────
 
+    public int OpenGraphWorkCount => Blindspots.Count + Harmonies.Count +
+        Math.Max(0, GraphHealth.NodesWithoutEvidence - Blindspots
+            .Where(finding => finding.Category == EmergentCategory.EvidenceDesert)
+            .SelectMany(finding => finding.InvolvedNodeIds)
+            .Distinct().Count(GraphHealth.NodesWithoutEvidenceIds.Contains));
+
     public IEnumerable<EmergentConclusion> TopBlindspots(int n = 5) =>
         Blindspots.OrderByDescending(b => b.Significance).Take(n);
 
     public IEnumerable<EmergentConclusion> TopHarmonies(int n = 5) =>
         Harmonies.OrderByDescending(h => h.Significance).Take(n);
+}
+
+public class GraphEvidenceGap
+{
+    public int NodeId { get; set; }
+    public string Text { get; set; } = string.Empty;
 }
 
 // ─────────────────────────────────────────────

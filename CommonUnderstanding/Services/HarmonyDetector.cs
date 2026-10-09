@@ -68,6 +68,7 @@ public class HarmonyDetector
 
         // Load all arguments that have at least two stakeholder positions (opposing)
         var positions = await _db.StakeholderPositions
+            .Where(sp => CommunityReportScope.PublicArgumentIds(_db).Contains(sp.ArgumentId))
             .Include(sp => sp.StakeholderRef)
             .Include(sp => sp.Argument)
             .ToListAsync(ct);
@@ -103,10 +104,11 @@ public class HarmonyDetector
 
             // Fetch the shared proposition texts
             var sharedProps = await _db.Propositions
-                .Where(p => sharedPremiseIds.Contains(p.Id))
+                .Where(p => sharedPremiseIds.Contains(p.Id) && p.Claim != null &&
+                    CommunityReportScope.PublicArgumentIds(_db).Contains(p.Claim.ArgumentId))
                 .ToListAsync(ct);
 
-            if (!sharedProps.Any()) continue;
+            if (sharedProps.Count != sharedPremiseIds.Count) continue;
 
             var argument = group.First().Argument;
             var argumentTitle = argument?.Title ?? $"Argument #{group.Key}";
@@ -169,19 +171,17 @@ public class HarmonyDetector
     private async Task<List<EmergentConclusion>> DetectEmergentConsensusAsync(CancellationToken ct)
     {
         var findings = new List<EmergentConclusion>();
+        var publicIds = await CommunityReportScope.PublicArgumentIds(_db).ToHashSetAsync(ct);
 
         // Nodes that have been updated more than once (Version > 1) and have reasonable confidence
-        var evolvingNodes = await _db.CommonUnderstandingNodes
+        var evolvingNodes = CommunityReportScope.PublicNodes(await _db.CommonUnderstandingNodes
             .Where(n => n.Version > 1 && n.Confidence >= 0.55 && n.EvidenceCount > 0)
             .OrderByDescending(n => n.Confidence)
-            .Take(20)
-            .ToListAsync(ct);
+            .ToListAsync(ct), publicIds).Take(20).ToList();
 
         foreach (var node in evolvingNodes)
         {
-            List<int> argIds;
-            try { argIds = JsonSerializer.Deserialize<List<int>>(node.ArgumentIdsJson) ?? new(); }
-            catch { argIds = new(); }
+            var argIds = CommunityReportScope.ParsePublicIds(node, publicIds);
 
             if (argIds.Count < 2) continue; // Only interesting if multiple arguments contributed
 
@@ -234,29 +234,27 @@ public class HarmonyDetector
     private async Task<List<EmergentConclusion>> DetectComplementaryChainsAsync(CancellationToken ct)
     {
         var findings = new List<EmergentConclusion>();
+        var publicIds = await CommunityReportScope.PublicArgumentIds(_db).ToHashSetAsync(ct);
 
         // Find graph nodes referenced by multiple arguments with high confidence
-        var sharedNodes = await _db.CommonUnderstandingNodes
+        var sharedNodes = CommunityReportScope.PublicNodes(await _db.CommonUnderstandingNodes
             .Where(n => n.Confidence >= 0.65 && n.EvidenceCount >= 1)
-            .ToListAsync(ct);
+            .ToListAsync(ct), publicIds);
 
         var multiArgNodes = new List<(CommonUnderstandingNode Node, List<int> ArgIds)>();
 
         foreach (var node in sharedNodes)
         {
-            List<int> argIds;
-            try { argIds = JsonSerializer.Deserialize<List<int>>(node.ArgumentIdsJson) ?? new(); }
-            catch { argIds = new(); }
+            var argIds = CommunityReportScope.ParsePublicIds(node, publicIds);
 
             if (argIds.Count >= 2)
                 multiArgNodes.Add((node, argIds));
         }
 
-        if (!multiArgNodes.Any()) return findings;
-
         // Also check existing comparisons for complementary premises
         var comparisons = await _db.ArgumentComparisons
-            .Where(c => c.ComplementaryPremisesJson != null)
+            .Where(c => c.ComplementaryPremisesJson != null && publicIds.Contains(c.ArgumentAId) &&
+                publicIds.Contains(c.ArgumentBId))
             .Include(c => c.ArgumentA)
             .Include(c => c.ArgumentB)
             .ToListAsync(ct);
@@ -355,12 +353,14 @@ public class HarmonyDetector
 
         // Collect stakeholder reasoning texts + adjudication narratives
         var stakeholderReasonings = await _db.StakeholderPositions
-            .Where(sp => sp.Reasoning != null && sp.Reasoning.Length > 20)
+            .Where(sp => sp.Reasoning != null && sp.Reasoning.Length > 20 &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(sp.ArgumentId))
             .Select(sp => sp.Reasoning!)
             .ToListAsync(ct);
 
         var adjudicationNarratives = await _db.AdjudicationSummaries
-            .Where(a => a.DetailedNarrative != null && a.DetailedNarrative.Length > 50)
+            .Where(a => a.DetailedNarrative != null && a.DetailedNarrative.Length > 50 &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(a.ArgumentId))
             .Select(a => a.DetailedNarrative!)
             .Take(10)
             .ToListAsync(ct);
@@ -409,8 +409,9 @@ public class HarmonyDetector
                 .Select(m => m.Groups[2].Value.Trim())
                 .ToList();
 
-            var allArgumentIds = await _db.Arguments.Select(a => a.Id).ToListAsync(ct);
-            var allArgumentTitles = await _db.Arguments.Select(a => a.Title).ToListAsync(ct);
+            var publicArguments = await _db.Arguments
+                .Where(a => CommunityReportScope.PublicArgumentIds(_db).Contains(a.Id))
+                .OrderBy(a => a.Id).Take(10).Select(a => new { a.Id, a.Title }).ToListAsync(ct);
 
             findings.Add(new EmergentConclusion
             {
@@ -423,8 +424,8 @@ public class HarmonyDetector
                     string.Join("; ", valueNames.Zip(valueDescriptions, (n, d) => $"**{n}** — {d}")) + ".",
                 Significance = Math.Min(1.0, 0.50 + valueNames.Count * 0.08),
                 Confidence = 0.70,
-                InvolvedArgumentIds = allArgumentIds.Take(10).ToList(),
-                InvolvedArgumentTitles = allArgumentTitles.Take(10).ToList(),
+                InvolvedArgumentIds = publicArguments.Select(a => a.Id).ToList(),
+                InvolvedArgumentTitles = publicArguments.Select(a => a.Title).ToList(),
                 OpportunityDescription =
                     "Make these shared values explicit at the start of any dialogue or negotiation. " +
                     "Framing contested arguments in terms of values the community already agrees on " +
@@ -451,7 +452,8 @@ public class HarmonyDetector
 
         // Load arguments with adjudication summaries (need titles + conclusions)
         var adjudicated = await _db.Arguments
-            .Where(a => a.AdjudicationSummary != null)
+            .Where(a => a.AdjudicationSummary != null &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(a.Id))
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Syllogisms)
             .Include(a => a.AdjudicationSummary)

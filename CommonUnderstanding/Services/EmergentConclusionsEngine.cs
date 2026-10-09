@@ -14,6 +14,7 @@ namespace CommonUnderstanding.Services;
 public class EmergentConclusionsEngine
 {
     private const int MinimumArgumentsRequired = 2;
+    private const string CommunityReportMarker = "\"CommunityScopeVersion\":2";
 
     private readonly ApplicationDbContext _db;
     private readonly BlindspotDetector _blindspotDetector;
@@ -61,8 +62,13 @@ public class EmergentConclusionsEngine
         {
             GraphHealth = health,
             GeneratedAt = DateTime.UtcNow,
-            IsDeepAnalysis = deep
+            IsDeepAnalysis = deep,
+            PublicArgumentIds = await CommunityReportScope.PublicArgumentIds(_db).OrderBy(id => id).ToListAsync(ct)
         };
+        report.UncoveredEvidenceGaps = await _db.CommonUnderstandingNodes.AsNoTracking()
+            .Where(node => health.NodesWithoutEvidenceIds.Contains(node.Id))
+            .Select(node => new GraphEvidenceGap { NodeId = node.Id, Text = node.Text })
+            .ToListAsync(ct);
 
         if (health.TotalArguments < MinimumArgumentsRequired)
         {
@@ -143,25 +149,42 @@ public class EmergentConclusionsEngine
     public async Task<EmergentConclusionsReport?> LoadPersistedReportAsync(
         int id, CancellationToken ct = default)
     {
-        var snapshot = await _db.PersistedEmergentReports.FindAsync([id], ct);
-        return DeserializePersistedReport(snapshot);
+        var snapshot = await _db.PersistedEmergentReports.AsNoTracking()
+            .FirstOrDefaultAsync(report => report.Id == id && report.FullReportJson != null &&
+                report.FullReportJson.Contains(CommunityReportMarker), ct);
+        return await ValidateSnapshotAsync(snapshot, ct);
     }
 
     public async Task<EmergentConclusionsReport?> LoadLatestPersistedReportAsync(
         CancellationToken ct = default)
     {
-        var snapshot = await _db.PersistedEmergentReports
+        var snapshots = await _db.PersistedEmergentReports
             .AsNoTracking()
-            .Where(report => report.FullReportJson != null)
+            .Where(report => report.FullReportJson != null && report.FullReportJson.Contains(CommunityReportMarker))
             .OrderByDescending(report => report.GeneratedAt)
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
 
-        return DeserializePersistedReport(snapshot);
+        foreach (var snapshot in snapshots)
+        {
+            var report = await ValidateSnapshotAsync(snapshot, ct);
+            if (report != null) return report;
+        }
+        return null;
+    }
+
+    private async Task<EmergentConclusionsReport?> ValidateSnapshotAsync(
+        PersistedEmergentReport? snapshot, CancellationToken ct)
+    {
+        var report = DeserializePersistedReport(snapshot);
+        if (report == null || report.CommunityScopeVersion != 2) return null;
+        if (report.UncoveredEvidenceGaps.Count != report.GraphHealth.NodesWithoutEvidence) return null;
+        var currentIds = await CommunityReportScope.PublicArgumentIds(_db).OrderBy(id => id).ToListAsync(ct);
+        return report.PublicArgumentIds.SequenceEqual(currentIds) ? report : null;
     }
 
     private EmergentConclusionsReport? DeserializePersistedReport(PersistedEmergentReport? snapshot)
     {
-        if (snapshot?.FullReportJson == null) return null;
+        if (snapshot?.FullReportJson == null || !snapshot.FullReportJson.Contains(CommunityReportMarker)) return null;
         try
         {
             return JsonSerializer.Deserialize<EmergentConclusionsReport>(snapshot.FullReportJson);
@@ -183,6 +206,7 @@ public class EmergentConclusionsEngine
             .Select(h => new { h.Title, Category = h.Category.ToString(), h.Significance })
             .ToList();
 
+        report.CommunityScopeVersion = 2;
         var snapshot = new PersistedEmergentReport
         {
             GeneratedAt = report.GeneratedAt,
@@ -209,11 +233,20 @@ public class EmergentConclusionsEngine
     }
 
     /// <summary>Returns historical report snapshots, newest first.</summary>
-    public async Task<List<PersistedEmergentReport>> GetHistoryAsync(CancellationToken ct = default) =>
-        await _db.PersistedEmergentReports
+    public async Task<List<PersistedEmergentReport>> GetHistoryAsync(CancellationToken ct = default)
+    {
+        var snapshots = await _db.PersistedEmergentReports.AsNoTracking()
+            .Where(r => r.FullReportJson != null && r.FullReportJson.Contains(CommunityReportMarker))
             .OrderByDescending(r => r.GeneratedAt)
-            .Take(30)
             .ToListAsync(ct);
+        var currentIds = await CommunityReportScope.PublicArgumentIds(_db).OrderBy(id => id).ToListAsync(ct);
+        return snapshots.Where(snapshot =>
+        {
+            var report = DeserializePersistedReport(snapshot);
+            return report?.CommunityScopeVersion == 2 && report.PublicArgumentIds.SequenceEqual(currentIds)
+                && report.UncoveredEvidenceGaps.Count == report.GraphHealth.NodesWithoutEvidence;
+        }).Take(30).ToList();
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     //  Executive Summary (LLM)
@@ -277,41 +310,32 @@ public class EmergentConclusionsEngine
 
     private async Task<GraphHealthSummary> ComputeGraphHealthAsync(CancellationToken ct)
     {
-        var totalArguments = await _db.Arguments.CountAsync(ct);
-        var totalPropositions = await _db.Propositions.CountAsync(ct);
-        var totalEvidenceItems = await _db.EvidenceItems.CountAsync(ct);
-        var totalStakeholders = await _db.Stakeholders.CountAsync(ct);
-        var totalComparisons = await _db.ArgumentComparisons.CountAsync(ct);
+        var publicIds = await CommunityReportScope.PublicArgumentIds(_db).ToHashSetAsync(ct);
+        var totalArguments = publicIds.Count;
+        var totalPropositions = await _db.Propositions.CountAsync(p => p.Claim != null && publicIds.Contains(p.Claim.ArgumentId), ct);
+        var totalEvidenceItems = await _db.EvidenceItems.CountAsync(e => e.Proposition != null &&
+            e.Proposition.Claim != null && publicIds.Contains(e.Proposition.Claim.ArgumentId), ct);
+        var totalStakeholders = await _db.StakeholderPositions.Where(p => publicIds.Contains(p.ArgumentId))
+            .Select(p => p.StakeholderId).Distinct().CountAsync(ct);
+        var totalComparisons = await _db.ArgumentComparisons.CountAsync(c =>
+            publicIds.Contains(c.ArgumentAId) && publicIds.Contains(c.ArgumentBId), ct);
 
         // Graph node statistics
-        var nodeStats = await _db.CommonUnderstandingNodes
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Total = g.Count(),
-                Settled = g.Count(n => n.Status == PropositionStatus.Settled),
-                Contested = g.Count(n => n.Status == PropositionStatus.Contested),
-                Unknown = g.Count(n => n.Status == PropositionStatus.Unknown),
-                Unevaluated = g.Count(n => n.Status == PropositionStatus.Unevaluated),
-                AvgConfidence = g.Average(n => (double?)n.Confidence) ?? 0.5,
-                WithEvidence = g.Count(n => n.EvidenceCount > 0)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        int totalNodes = nodeStats?.Total ?? 0;
+        var nodes = CommunityReportScope.PublicNodes(await _db.CommonUnderstandingNodes.AsNoTracking().ToListAsync(ct), publicIds);
+        int totalNodes = nodes.Count;
 
         // Unsupported critical assumptions
         int criticalUntested = await _db.Assumptions
-            .Where(a => a.IsCritical && !a.IsSupported)
+            .Where(a => a.IsCritical && !a.IsSupported && a.Claim != null && publicIds.Contains(a.Claim.ArgumentId))
             .CountAsync(ct);
 
         // High-strength rebuttals
         int highRebuttals = await _db.Rebuttals
-            .Where(r => r.Strength == "high")
+            .Where(r => r.Strength == "high" && r.Claim != null && publicIds.Contains(r.Claim.ArgumentId))
             .CountAsync(ct);
 
         double evidenceCoverage = totalNodes > 0
-            ? Math.Round((double)(nodeStats?.WithEvidence ?? 0) / totalNodes * 100, 1)
+            ? Math.Round((double)nodes.Count(n => n.EvidenceCount > 0) / totalNodes * 100, 1)
             : 0;
 
         return new GraphHealthSummary
@@ -321,14 +345,40 @@ public class EmergentConclusionsEngine
             TotalEvidenceItems = totalEvidenceItems,
             TotalStakeholders = totalStakeholders,
             TotalComparisons = totalComparisons,
-            AverageConfidence = Math.Round(nodeStats?.AvgConfidence ?? 0.5, 3),
-            SettledCount = nodeStats?.Settled ?? 0,
-            ContestedCount = nodeStats?.Contested ?? 0,
-            UnknownCount = nodeStats?.Unknown ?? 0,
-            UnevaluatedCount = nodeStats?.Unevaluated ?? 0,
+            AverageConfidence = Math.Round(nodes.Count > 0 ? nodes.Average(n => n.Confidence) : 0.5, 3),
+            SettledCount = nodes.Count(n => n.Status == PropositionStatus.Settled),
+            ContestedCount = nodes.Count(n => n.Status == PropositionStatus.Contested),
+            UnknownCount = nodes.Count(n => n.Status == PropositionStatus.Unknown),
+            UnevaluatedCount = nodes.Count(n => n.Status == PropositionStatus.Unevaluated),
             EvidenceCoveragePercent = evidenceCoverage,
+            NodesWithoutEvidence = nodes.Count(n => n.EvidenceCount == 0),
+            NodesWithoutEvidenceIds = nodes.Where(n => n.EvidenceCount == 0).Select(n => n.Id).ToList(),
             CriticalAssumptionsUntested = criticalUntested,
             HighStrengthRebuttals = highRebuttals
         };
+    }
+}
+
+internal static class CommunityReportScope
+{
+    internal static IQueryable<int> PublicArgumentIds(ApplicationDbContext db) =>
+        db.SocialArguments.Where(social => social.IsPublic && social.SourceArgumentId.HasValue)
+            .Select(social => social.SourceArgumentId!.Value).Distinct();
+
+    internal static List<CommonUnderstandingNode> PublicNodes(
+        IEnumerable<CommonUnderstandingNode> nodes, HashSet<int> publicIds) =>
+        nodes.Where(node => ParsePublicIds(node, publicIds).Count > 0).ToList();
+
+    internal static List<int> ParsePublicIds(CommonUnderstandingNode node, HashSet<int> publicIds)
+    {
+        try
+        {
+            var ids = JsonSerializer.Deserialize<List<int>>(node.ArgumentIdsJson);
+            return ids is { Count: > 0 } && ids.All(publicIds.Contains) ? ids.Distinct().ToList() : new();
+        }
+        catch (JsonException)
+        {
+            return new();
+        }
     }
 }

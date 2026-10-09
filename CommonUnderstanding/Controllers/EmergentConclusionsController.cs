@@ -150,13 +150,16 @@ public class EmergentConclusionsController : Controller
             .Distinct()
             .ToList();
 
-        ViewData["SocialArgumentIds"] = argumentIds.Count == 0
-            ? new Dictionary<int, Guid>()
+        var publicArguments = argumentIds.Count == 0
+            ? []
             : await _db.SocialArguments.AsNoTracking()
                 .Where(argument => argument.IsPublic && argument.SourceArgumentId.HasValue &&
                     argumentIds.Contains(argument.SourceArgumentId.Value))
                 .Select(argument => new { argument.SourceArgumentId, argument.Id })
-                .ToDictionaryAsync(argument => argument.SourceArgumentId!.Value, argument => argument.Id, ct);
+                .ToListAsync(ct);
+        ViewData["SocialArgumentIds"] = publicArguments
+            .GroupBy(argument => argument.SourceArgumentId!.Value)
+            .ToDictionary(group => group.Key, group => group.OrderBy(argument => argument.Id).First().Id);
 
         var nodeIds = report.Blindspots.Concat(report.Harmonies)
             .SelectMany(finding => finding.InvolvedNodeIds)

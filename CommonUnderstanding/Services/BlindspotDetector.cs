@@ -35,7 +35,7 @@ public class BlindspotDetector
     {
         var results = new List<EmergentConclusion>();
 
-        var totalArguments = await _db.Arguments.CountAsync(ct);
+        var totalArguments = await CommunityReportScope.PublicArgumentIds(_db).CountAsync(ct);
 
         results.AddRange(await DetectAssumptionCascadesAsync(totalArguments, ct));
         results.AddRange(await DetectEvidenceDesertsAsync(ct));
@@ -67,7 +67,8 @@ public class BlindspotDetector
 
         // Load all critical, unsupported assumptions with their parent argument IDs
         var assumptions = await _db.Assumptions
-            .Where(a => a.IsCritical && !a.IsSupported)
+            .Where(a => a.IsCritical && !a.IsSupported && a.Claim != null &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(a.Claim.ArgumentId))
             .Include(a => a.Claim)
             .ToListAsync(ct);
 
@@ -133,19 +134,18 @@ public class BlindspotDetector
     private async Task<List<EmergentConclusion>> DetectEvidenceDesertsAsync(CancellationToken ct)
     {
         var findings = new List<EmergentConclusion>();
+        var publicIds = await CommunityReportScope.PublicArgumentIds(_db).ToHashSetAsync(ct);
 
         // Nodes referenced by multiple arguments but lacking real evidence
-        var nodes = await _db.CommonUnderstandingNodes
+        var nodes = CommunityReportScope.PublicNodes(await _db.CommonUnderstandingNodes
             .Where(n => n.EvidenceCount == 0 || n.Confidence >= 0.60)
-            .ToListAsync(ct);
+            .ToListAsync(ct), publicIds);
 
         var desertNodes = new List<(CommonUnderstandingNode Node, double ConfidenceGap, List<int> ArgIds, List<int> PropositionIds)>();
 
         foreach (var node in nodes)
         {
-            List<int> argIds;
-            try { argIds = JsonSerializer.Deserialize<List<int>>(node.ArgumentIdsJson) ?? new(); }
-            catch { argIds = new(); }
+            var argIds = CommunityReportScope.ParsePublicIds(node, publicIds);
 
             if (argIds.Count == 0) continue;
 
@@ -189,7 +189,8 @@ public class BlindspotDetector
                 .ToListAsync(ct);
 
             double significance = Math.Min(1.0,
-                (argIds.Count / 10.0) + (node.Confidence - 0.5));
+                node.Confidence + (node.EvidenceCount == 0 ? 0.1 : 0) +
+                Math.Min(0.15, (argIds.Count - 1) * 0.05));
 
             findings.Add(new EmergentConclusion
             {
@@ -230,7 +231,8 @@ public class BlindspotDetector
 
         // Propositions with high confidence but low-tier evidence
         var highConfidenceProps = await _db.Propositions
-            .Where(p => p.ConfidenceScore >= 0.70 && p.EvidenceCount > 0)
+            .Where(p => p.ConfidenceScore >= 0.70 && p.EvidenceCount > 0 && p.Claim != null &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(p.Claim.ArgumentId))
             .Include(p => p.EvidenceItems)
             .Include(p => p.Claim)
             .ToListAsync(ct);
@@ -294,7 +296,8 @@ public class BlindspotDetector
         var findings = new List<EmergentConclusion>();
 
         var highRebuttals = await _db.Rebuttals
-            .Where(r => r.Strength == "high")
+            .Where(r => r.Strength == "high" && r.Claim != null &&
+                CommunityReportScope.PublicArgumentIds(_db).Contains(r.Claim.ArgumentId))
             .Include(r => r.Claim)
             .ToListAsync(ct);
 
@@ -302,6 +305,7 @@ public class BlindspotDetector
 
         // Load all proposition texts for a naive string-match cross-reference
         var allPropositionTexts = await _db.Propositions
+            .Where(p => p.Claim != null && CommunityReportScope.PublicArgumentIds(_db).Contains(p.Claim.ArgumentId))
             .Select(p => p.Text.ToLower())
             .ToListAsync(ct);
 
@@ -355,14 +359,14 @@ public class BlindspotDetector
     internal async Task<List<EmergentConclusion>> DetectSilentContradictionsAsync(CancellationToken ct)
     {
         var findings = new List<EmergentConclusion>();
+        var publicIds = await CommunityReportScope.PublicArgumentIds(_db).ToHashSetAsync(ct);
 
         // Collect settled / high-confidence graph nodes
-        var candidates = await _db.CommonUnderstandingNodes
+        var candidates = CommunityReportScope.PublicNodes(await _db.CommonUnderstandingNodes
             .Where(n => n.Confidence >= 0.65 &&
                         (n.Status == PropositionStatus.Settled || n.Status == PropositionStatus.Unknown))
             .OrderByDescending(n => n.Confidence)
-            .Take(30)   // cap for cost — compare top 30 pairs
-            .ToListAsync(ct);
+            .ToListAsync(ct), publicIds).Take(30).ToList();
 
         if (candidates.Count < 2) return findings;
 
@@ -432,14 +436,8 @@ public class BlindspotDetector
                 double avgConf = (nodeA.Confidence + nodeB.Confidence) / 2.0;
                 double significance = Math.Min(1.0, avgConf * 1.3);
 
-                List<int> argIds;
-                try
-                {
-                    argIds = JsonSerializer.Deserialize<List<int>>(nodeA.ArgumentIdsJson) ?? new();
-                    argIds.AddRange(JsonSerializer.Deserialize<List<int>>(nodeB.ArgumentIdsJson) ?? new());
-                    argIds = argIds.Distinct().ToList();
-                }
-                catch { argIds = new(); }
+                var argIds = CommunityReportScope.ParsePublicIds(nodeA, publicIds)
+                    .Concat(CommunityReportScope.ParsePublicIds(nodeB, publicIds)).Distinct().ToList();
 
                 var argTitles = await _db.Arguments
                     .Where(a => argIds.Contains(a.Id))
