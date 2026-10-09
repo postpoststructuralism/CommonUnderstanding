@@ -48,7 +48,8 @@ jobs:
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --linux-fx-version "DOTNETCORE|9.0"
+          --linux-fx-version "DOTNETCORE|9.0" \
+          --startup-file "dotnet CommonUnderstanding.dll"
 
     - name: Configure app settings
       run: |
@@ -85,7 +86,24 @@ jobs:
           --type zip \
           --clean true \
           --restart true \
-          --async false
+          --async true
+
+        echo "Waiting for the deployed site to accept HTTPS requests..."
+        site_url="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/"
+        for attempt in $(seq 1 60); do
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --max-time 15 "$site_url" || true)
+          case "$status" in
+            2*|3*)
+              echo "Site is responding with HTTP $status."
+              exit 0
+              ;;
+          esac
+          echo "Site not ready yet (attempt $attempt/60, HTTP $status)."
+          sleep 10
+        done
+        echo "Site did not accept an HTTPS request within 10 minutes."
+        exit 1
 
     - name: Cleanup
       if: always()
