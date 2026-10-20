@@ -23,7 +23,7 @@ edges:
 # Broad overview: keep this empty unless a claim depends on a few specific symbols.
 # Entry shape: { node: "function:<tier-1-id>", fingerprint: "mh:64:<hex>" }
 grounds_to: []
-last_updated: 2026-09-22
+last_updated: 2026-10-19
 ---
 
 # Architecture
@@ -43,6 +43,7 @@ Runtime configuration selects SQL Server or PostgreSQL for persistence and selec
 Background workers handle deferred social analysis and scoring so expensive AI work does not block interactive requests.
 Periodic database-backed workers check a process-local recent-user activity gate before opening EF Core scopes; dynamic requests refresh the gate, while queue-driven response processing remains independent.
 Razor views and static JavaScript render the result; SignalR pushes voting, debate, discovery, chain, and reputation updates to connected clients.
+Default-on analytical containment suppresses unsupported generated assessments and proposed-relation recommendation/tensor inputs without deleting stored records. Discovery answers and correction/publication actions are validated before queued work or public writes; private argument and discovery operations enforce caller ownership.
 A separate local-only Razor Pages project reads App Service, Azure SQL, and Foundry model-call/token metrics from Azure Monitor through the developer's Azure identity, plus sanitized endpoint counts from retained `AppServiceHTTPLogs` in Log Analytics and optional bounded production SQL queries through a read-only user secret. It has no automatic polling, so viewing operations data does not continuously prevent SQL serverless auto-pause.
 
 ## Key Components

@@ -4,6 +4,15 @@
     ViewData["Title"] = "Discovery Question";
     var profile = ViewBag.Profile as CommonUnderstanding.Models.UserProfile;
     var progressPercent = (int)ViewBag.ProgressPercent;
+    var stageLabel = profile?.Stage switch
+    {
+        CommonUnderstanding.Models.DiscoveryStage.Initial => "Getting started",
+        CommonUnderstanding.Models.DiscoveryStage.Foundation => "Foundations",
+        CommonUnderstanding.Models.DiscoveryStage.Exploration => "Exploration",
+        CommonUnderstanding.Models.DiscoveryStage.Refinement => "Refinement",
+        CommonUnderstanding.Models.DiscoveryStage.Continuous => "Ongoing discovery",
+        _ => "Discovery"
+    };
 }
 
 <div class="container mt-4">
@@ -17,7 +26,7 @@
                             <i class="bi bi-person-circle"></i> <strong>@profile.Name</strong>
                         </span>
                         <span class="small text-muted">
-                            Question @(profile.InteractionCount + 1) • Stage: @profile.Stage
+                            Question @(profile.InteractionCount + 1) • Stage: @stageLabel
                         </span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -140,12 +149,13 @@
                                     <span class="text-muted">@Model.Content.MaxLabel</span>
                                 </div>
                                 <input type="range" class="form-range" 
-                                       name="numericValue" id="scaleValue" 
+                                       id="scaleValue" aria-label="@Model.Content.Question"
                                        min="@Model.Content.MinValue" max="@Model.Content.MaxValue" 
                                        value="@((Model.Content.MinValue + Model.Content.MaxValue) / 2)" 
-                                       oninput="updateScaleValue(this.value)" required />
+                                        oninput="updateScaleValue(this.value)" />
+                                    <input type="hidden" name="numericValue" id="numericAnswer" value="" />
                                 <div class="text-center mt-2">
-                                    <h3><span id="scaleDisplay" class="badge bg-primary">5</span></h3>
+                                    <h3><span id="scaleDisplay" class="badge bg-primary">Unanswered</span></h3>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -165,13 +175,15 @@
                                 <div id="rankingList" class="list-group">
                                     @foreach (var option in Model.Content.Options)
                                     {
-                                        <div class="list-group-item" draggable="true">
+                                        <div class="list-group-item" draggable="true" tabindex="0" data-option="@option" aria-label="@option">
                                             <i class="bi bi-grip-vertical"></i> @option
                                         </div>
                                     }
                                 </div>
                             </div>
                             <input type="hidden" name="response" id="rankingResponse" required />
+                            <button type="button" class="btn btn-outline-secondary mb-3" id="confirmRanking">Confirm Order</button>
+                            <div id="rankingError" class="text-danger" role="alert" aria-live="polite"></div>
                             <div class="mb-3">
                                 <details class="text-muted">
                                     <summary style="cursor: pointer;" class="small">
@@ -328,6 +340,19 @@
 
         // Show loading state on form submit
         document.getElementById('responseForm').addEventListener('submit', function(e) {
+            const numericAnswer = document.getElementById('numericAnswer');
+            const rankingAnswer = document.getElementById('rankingResponse');
+            if (rankingAnswer && rankingAnswer.value === '') {
+                e.preventDefault();
+                document.getElementById('rankingError').textContent = 'Confirm the order before submitting.';
+                document.getElementById('confirmRanking').focus();
+                return;
+            }
+            if (numericAnswer && numericAnswer.value === '') {
+                e.preventDefault();
+                document.getElementById('scaleValue').focus();
+                return;
+            }
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             document.getElementById('submitText')?.classList.add('d-none');
@@ -340,14 +365,14 @@
 
         function updateScaleValue(value) {
             document.getElementById('scaleDisplay').textContent = value;
+            document.getElementById('numericAnswer').value = value;
         }
 
         // Initialize scale display
         @if (Model.Content.Format == CommonUnderstanding.Models.InteractionFormat.Scale)
         {
             <text>
-            const initialValue = (@Model.Content.MinValue + @Model.Content.MaxValue) / 2;
-            updateScaleValue(initialValue);
+            document.getElementById('scaleDisplay').textContent = 'Unanswered';
             </text>
         }
 
@@ -395,12 +420,24 @@
 
             function updateRankingValue() {
                 const items = [...list.querySelectorAll('.list-group-item')];
-                const ranking = items.map(item => item.textContent.trim().replace('☰ ', ''));
+                const ranking = items.map(item => item.dataset.option);
                 document.getElementById('rankingResponse').value = ranking.join(' > ');
+                document.getElementById('rankingError').textContent = '';
             }
 
-            // Set initial value
-            updateRankingValue();
+            document.getElementById('confirmRanking').addEventListener('click', updateRankingValue);
+            list.addEventListener('keydown', function(event) {
+                const item = event.target.closest('.list-group-item');
+                if (!item || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+                event.preventDefault();
+                if (event.key === 'ArrowUp' && item.previousElementSibling)
+                    list.insertBefore(item, item.previousElementSibling);
+                if (event.key === 'ArrowDown' && item.nextElementSibling)
+                    list.insertBefore(item.nextElementSibling, item);
+                item.focus();
+                updateRankingValue();
+            });
+
             </text>
         }
         

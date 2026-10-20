@@ -12,19 +12,22 @@ public class WorldviewInsightService
     private readonly BeliefSystemKnowledgeBase _knowledgeBase;
     private readonly WorldviewSummaryService _summaryService;
     private readonly EmbeddingService _embeddingService;
+    private readonly IConfiguration? _configuration;
 
     public WorldviewInsightService(
         IDbContextFactory<ApplicationDbContext> dbFactory,
         UserProfileStore profileStore,
         BeliefSystemKnowledgeBase knowledgeBase,
         WorldviewSummaryService summaryService,
-        EmbeddingService embeddingService)
+        EmbeddingService embeddingService,
+        IConfiguration? configuration = null)
     {
         _dbFactory = dbFactory;
         _profileStore = profileStore;
         _knowledgeBase = knowledgeBase;
         _summaryService = summaryService;
         _embeddingService = embeddingService;
+        _configuration = configuration;
     }
 
     public async Task<WorldviewInsight> BuildAsync(string userId, CancellationToken ct = default)
@@ -82,11 +85,21 @@ public class WorldviewInsightService
             .OrderByDescending(argument => argument.SubmittedAt)
             .Take(12)
             .ToList();
+        if (_configuration?.GetValue("AnalyticalContainment:Enabled", true) != false)
+            return new WorldviewInsight
+            {
+                HasBeliefProfile = snapshot != null,
+                InteractionCount = profile?.InteractionCount ?? 0,
+                SubmittedArgumentCount = arguments.Count,
+                Arguments = arguments,
+                Summary = "Insufficient information for a reviewed worldview narrative."
+            };
+
         var communityViews = await BuildCommunityViewsAsync(db, userId, arguments, ct);
 
         if (snapshot is null)
         {
-            var argumentSummary = await _summaryService.GenerateArgumentSummaryAsync(arguments, ct);
+            var argumentSummary = "No saved worldview summary is available.";
             return new WorldviewInsight
             {
                 SubmittedArgumentCount = arguments.Count,
@@ -115,12 +128,12 @@ public class WorldviewInsightService
             .Select(match => new WorldviewInsightMatch(
                 match.SystemName,
                 match.SystemCategory,
-                match.OverallMatchPercentage,
+                WorldviewInsightMatch.PercentageToFraction(match.OverallMatchPercentage),
                 match.SharedValues.Take(4).ToArray(),
                 match.KeyDifferences.Take(2).ToArray()))
             .ToList();
 
-        var summary = await _summaryService.GenerateIntegratedSummaryAsync(snapshot, arguments, peers, ct);
+        var summary = snapshot.NarrativeSummary ?? "No saved worldview summary is available.";
 
         return new WorldviewInsight
         {
@@ -209,7 +222,7 @@ public class WorldviewInsightService
         var results = new List<WorldviewCommunityView>();
         foreach (var argument in arguments.Take(8))
         {
-            var embedding = await _embeddingService.GenerateEmbeddingAsync($"{argument.Title}\n{argument.Claim}", ct);
+            float[]? embedding = null;
             var similar = candidates
                 .Select(candidate => new
                 {

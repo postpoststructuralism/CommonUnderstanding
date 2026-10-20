@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@inject IConfiguration Configuration
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -29,12 +30,21 @@
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
         var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
         var currentItemId = ViewContext.RouteData.Values["id"]?.ToString();
+        var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
         Guid? parentSocialArgumentId = currentController == "SocialView" && currentAction == "Detail" && Guid.TryParse(currentItemId, out var socialId)
             ? socialId
             : null;
         int? parentArgumentId = currentController == "Argument" && currentAction == "View" && int.TryParse(currentItemId, out var sourceId)
             ? sourceId
             : null;
+        var isAnalyticalView = currentController == "Argument" && currentAction is "View" or "CompareView" or "DecisionSupport" or "WhatChanged" or "Analyze" or "Review"
+            || currentController == "EmergentConclusions" && currentAction is "Index" or "History" or "ShowDeepReport"
+            || currentController == "SocialView" && currentAction == "WorldviewComposer"
+            || currentController == "Discovery" && currentAction is "Profile" or "Evolution" or "CompareToCanonical";
+    }
+    @if (containmentEnabled && isAnalyticalView)
+    {
+        <partial name="_AnalyticalDraftBanner" />
     }
     <!-- HEADER -->
     <header class="cu-header">
@@ -256,12 +266,6 @@
                 <div class="cu-footer-links">
                     <a asp-controller="Home" asp-action="Privacy">
                         <i class="fas fa-shield-alt"></i> Privacy
-                    </a>
-                    <a href="#">
-                        <i class="fas fa-file-contract"></i> Terms
-                    </a>
-                    <a href="#">
-                        <i class="fas fa-envelope"></i> Contact
                     </a>
                 </div>
             </div>

@@ -110,11 +110,23 @@ public class DiscoveryController : Controller
         string actualResponse = response ?? selectedOption ?? "";
         
         // For scale questions, use the numeric value as the response
-        if (interaction.Content.Format == InteractionFormat.Scale && numericValue.HasValue)
+        if (interaction.Content.Format == InteractionFormat.Scale)
         {
-            actualResponse = numericValue.Value.ToString();
+            if (!interaction.Content.IsValidScaleAnswer(numericValue))
+            {
+                TempData["Error"] = "Please select a response within the scale.";
+                return RedirectToAction(nameof(Question));
+            }
+            actualResponse = numericValue!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
         
+        if (interaction.Content.Format == InteractionFormat.Ranking &&
+            !interaction.Content.IsValidRankingAnswer(actualResponse))
+        {
+            TempData["Error"] = "Please confirm a complete ranking of the available options.";
+            return RedirectToAction(nameof(Question));
+        }
+
         // Validate we have some kind of response
         if (string.IsNullOrWhiteSpace(actualResponse))
         {
@@ -149,6 +161,9 @@ public class DiscoveryController : Controller
 
         // IMMEDIATELY get next question from prefetch queue or generate one
         UserInteraction nextQuestion;
+        while (profile.PrefetchedQuestions.TryPeek(out var queuedQuestion) &&
+            profile.AskedQuestionHashes.Contains(ComputeQuestionHash(queuedQuestion)))
+            profile.PrefetchedQuestions.TryDequeue(out _);
         if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
         {
             // Mark question as asked
@@ -226,10 +241,7 @@ public class DiscoveryController : Controller
 
             if (needsRegeneration)
             {
-                var aiSummary = await _summaryService.GenerateSummaryAsync(snapshot);
-                snapshot.NarrativeSummary = aiSummary;
-                await _profileStore.SaveProfileAsync(profileId);
-                ViewBag.AiSummary = aiSummary;
+                ViewBag.AiSummary = "Insufficient information for a reviewed worldview summary.";
             }
             else
             {
@@ -290,7 +302,8 @@ public class DiscoveryController : Controller
     // GET: Discovery/Compare
     public IActionResult Compare()
     {
-        ViewBag.Profiles = _profileStore.GetAllProfiles().Where(p => p.InteractionCount >= 10).ToList();
+        var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        ViewBag.Profiles = _profileStore.GetAllProfiles().Where(p => p.Id == callerId && p.InteractionCount >= 10).ToList();
         return View();
     }
 
@@ -299,6 +312,10 @@ public class DiscoveryController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Compare(string profile1Id, string profile2Id)
     {
+        var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (callerId == null || profile1Id != callerId || profile2Id != callerId)
+            return NotFound();
+
         if (string.IsNullOrEmpty(profile1Id) || string.IsNullOrEmpty(profile2Id))
         {
             TempData["Error"] = "Please select two profiles to compare";
@@ -324,6 +341,7 @@ public class DiscoveryController : Controller
     public IActionResult AllProfiles()
     {
         var profiles = _profileStore.GetAllProfiles()
+            .Where(profile => profile.Id == User.FindFirstValue(ClaimTypes.NameIdentifier))
             .OrderByDescending(p => p.InteractionCount)
             .ToList();
         

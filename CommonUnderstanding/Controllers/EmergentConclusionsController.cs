@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CommonUnderstanding.Data;
@@ -8,6 +9,7 @@ using System.Text.Json;
 
 namespace CommonUnderstanding.Controllers;
 
+[Authorize]
 public class EmergentConclusionsController : Controller
 {
     private readonly EmergentConclusionsEngine _engine;
@@ -25,35 +27,27 @@ public class EmergentConclusionsController : Controller
     }
 
     // ── GET /EmergentConclusions ──────────────────────────────────────────────
-    // Shows the latest saved report; an explicit refresh regenerates and persists it.
+    // Shows the latest saved report without starting analysis.
 
-    public async Task<IActionResult> Index(bool refresh = false, CancellationToken ct = default)
+    [HttpGet]
+    public async Task<IActionResult> Index(CancellationToken ct = default)
     {
         try
         {
-            if (!refresh)
+            var savedReport = await _engine.LoadLatestPersistedReportAsync(ct);
+            if (savedReport != null)
+                return await RenderReportAsync(savedReport, ct);
+
+            return View(new EmergentConclusionsReport
             {
-                var savedReport = await _engine.LoadLatestPersistedReportAsync(ct);
-                if (savedReport != null)
-                    return await RenderReportAsync(savedReport, ct);
-
-                return View(new EmergentConclusionsReport
-                {
-                    HasSufficientData = false,
-                    InsufficientDataReason = "No saved analysis is available yet. Select Refresh to generate one."
-                });
-            }
-
-            var report = await _engine.GenerateReportAsync(ct: ct);
-            if (report.HasSufficientData)
-                await _engine.PersistReportAsync(report, ct);
-
-            return await RenderReportAsync(report, ct);
+                HasSufficientData = false,
+                InsufficientDataReason = "No saved analysis is available yet. Select Refresh to generate one."
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating emergent conclusions report");
-            TempData["Error"] = "An error occurred while generating the emergent conclusions report.";
+            _logger.LogError(ex, "Error loading emergent conclusions report");
+            TempData["Error"] = "The saved emergent conclusions report could not be loaded.";
             return View("Index", new EmergentConclusionsReport
             {
                 HasSufficientData = false,
@@ -62,17 +56,36 @@ public class EmergentConclusionsController : Controller
         }
     }
 
-    // ── GET /EmergentConclusions/DeepAnalysis ─────────────────────────────────
-    // Shows the loading page; JS on that page opens the SSE stream.
+    [Authorize, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Refresh(CancellationToken ct = default)
+    {
+        try
+        {
+            var report = await _engine.GenerateReportAsync(ct: ct);
+            if (report.HasSufficientData)
+                await _engine.PersistReportAsync(report, ct);
 
-    [HttpGet]
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing emergent conclusions report");
+            TempData["Error"] = "An error occurred while refreshing the emergent conclusions report.";
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    // ── GET /EmergentConclusions/DeepAnalysis ─────────────────────────────────
+    // Shows the loading page; JS on that page opens the protected SSE stream.
+
+    [Authorize, HttpGet]
     public IActionResult DeepAnalysis() => View("RunningAnalysis");
 
-    // ── GET /EmergentConclusions/DeepAnalyzeStream ────────────────────────────
+    // ── POST /EmergentConclusions/DeepAnalyzeStream ───────────────────────────
     // SSE endpoint: runs the full deep analysis, streams progress, persists result,
     // then emits a complete event with a redirect URL to ShowDeepReport/{id}.
 
-    [HttpGet]
+    [Authorize, HttpPost, ValidateAntiForgeryToken]
     public async Task DeepAnalyzeStream()
     {
         var ct = HttpContext.RequestAborted;
@@ -213,9 +226,9 @@ public class EmergentConclusionsController : Controller
         return View(history);
     }
 
-    // ── GET /EmergentConclusions/Export ──────────────────────────────────────
+    // ── POST /EmergentConclusions/Export ─────────────────────────────────────
 
-    [HttpGet]
+    [Authorize, HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Export(bool deep = false, CancellationToken ct = default)
     {
         try
@@ -236,7 +249,7 @@ public class EmergentConclusionsController : Controller
 
     // ── POST /EmergentConclusions/GenerateDialogue ────────────────────────────
 
-    [HttpPost]
+    [HttpPost, ValidateAntiForgeryToken]
     public IActionResult GenerateDialogue([FromBody] DialogueRequest req)
     {
         if (string.IsNullOrWhiteSpace(req?.HarmonyTitle))

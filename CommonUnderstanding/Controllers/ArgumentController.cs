@@ -15,6 +15,7 @@ namespace CommonUnderstanding.Controllers;
 [Authorize]
 public class ArgumentController : Controller
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, SemaphoreSlim> AnalysisGates = new();
     private readonly ApplicationDbContext _db;
     private readonly ArgumentDecompositionService _decompositionService;
     private readonly LogicalValidationService _validationService;
@@ -266,7 +267,7 @@ public class ArgumentController : Controller
     /// </summary>
     public async Task<IActionResult> Analyze(int id, bool force = false)
     {
-        var argument = await _db.Arguments
+        var argument = await OwnedArguments()
             .Include(a => a.Claims)
             .FirstOrDefaultAsync(a => a.Id == id);
 
@@ -274,7 +275,7 @@ public class ArgumentController : Controller
             return NotFound();
 
         // If already decomposed and not a forced re-analysis, go to review screen
-        if (!force && argument.Status == ArgumentStatus.Complete && argument.Claims.Any())
+        if (argument.Status == ArgumentStatus.Complete && argument.Claims.Any())
             return RedirectToAction(nameof(Review), new { id });
 
         ViewBag.ArgumentId = id;
@@ -291,9 +292,25 @@ public class ArgumentController : Controller
     /// Server-Sent Events endpoint that performs decomposition and streams
     /// step-by-step progress to the browser in real time.
     /// </summary>
-    [HttpGet]
-    public async Task AnalyzeStream(int id, bool force = false)
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AnalyzeStream(int id, bool force = false)
     {
+        var argument = await OwnedArguments()
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Premises)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Syllogisms)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Assumptions)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Qualifiers)
+            .Include(a => a.Claims)
+                .ThenInclude(c => c.Rebuttals)
+            .FirstOrDefaultAsync(a => a.Id == id, HttpContext.RequestAborted);
+
+        if (argument is null)
+            return NotFound();
+
         Response.ContentType = "text/event-stream";
         Response.Headers["Cache-Control"] = "no-cache";
         Response.Headers["X-Accel-Buffering"] = "no";
@@ -315,41 +332,31 @@ public class ArgumentController : Controller
                 details
             });
 
+        var analysisGate = AnalysisGates.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
+        if (!await analysisGate.WaitAsync(0, ct))
+            return Conflict();
+
         try
         {
+            await _db.Entry(argument).ReloadAsync(ct);
             await SendDebugAsync("AnalyzeStream started", new { argumentId = id, force });
-
-            var argument = await _db.Arguments
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Premises)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Syllogisms)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Assumptions)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Qualifiers)
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Rebuttals)
-                .FirstOrDefaultAsync(a => a.Id == id, ct);
 
             await SendDebugAsync("Argument query completed", new { found = argument is not null });
 
-            if (argument == null)
-            {
-                await SendEventAsync("error", new { message = "Argument not found." });
-                return;
-            }
-
             // If already complete and not a forced re-analysis, just signal done
-            if (!force && argument.Status == ArgumentStatus.Complete && argument.Claims.Any())
+            if (argument.Status == ArgumentStatus.Complete)
             {
-                await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(View), new { id }) });
-                return;
+                await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(Review), new { id }) });
+                return new EmptyResult();
             }
 
+            var previousStatus = argument.Status;
+            LogWorkflowEvent("analysis_start", argument.Id);
             argument.Status = ArgumentStatus.Decomposing;
             argument.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+            LogWorkflowEvent("status_transition", argument.Id,
+                fromStatus: previousStatus.ToString(), toStatus: argument.Status.ToString());
             await SendDebugAsync("Argument marked as decomposing", new { argumentId = argument.Id, status = argument.Status.ToString() });
 
             // ── Step 1-4: Decomposition with real-time progress ──────────────
@@ -415,11 +422,6 @@ public class ArgumentController : Controller
             await SendDebugAsync("Persisting decomposition results");
             await PersistDecompositionAsync(argument, decomposition, validation);
 
-            argument.Status = ArgumentStatus.Complete;
-            argument.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
-            await SendDebugAsync("Argument marked complete", new { argumentId = argument.Id });
-
             // ── Step 5: Adjudication + detailed narrative ────────────────────
             await SendEventAsync("progress", new { step = 5, total = 5, label = "Checking how your argument connects to the map…" });
             await SendDebugAsync("Starting adjudication service call");
@@ -432,25 +434,35 @@ public class ArgumentController : Controller
                 cancellationToken: ct);
             await SendDebugAsync("Adjudication service call completed", new { argumentId = argument.Id });
 
+            argument.Status = ArgumentStatus.Complete;
+            argument.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            LogWorkflowEvent("status_transition", argument.Id,
+                fromStatus: ArgumentStatus.Decomposing.ToString(), toStatus: argument.Status.ToString());
+
             // ── Done ─────────────────────────────────────────────────────────
             // Phase 1: Redirect to review-before-publish, then to "what changed"
             await SendDebugAsync("AnalyzeStream completed successfully", new { redirectId = id });
+            LogWorkflowEvent("analysis_complete", argument.Id);
             await SendEventAsync("complete", new { redirectUrl = Url.Action(nameof(Review), new { id }) });
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Analysis stream canceled for argument {Id} (client disconnected)", id);
+            LogWorkflowEvent("analysis_cancel", id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Streaming decomposition failed for argument {Id}", id);
+            LogWorkflowEvent("analysis_fail", id);
 
             // Reset status so user can retry
-            var arg = await _db.Arguments.FindAsync(id);
-            if (arg != null)
+            var arg = await OwnedArguments().FirstOrDefaultAsync(argument => argument.Id == id);
+            if (arg?.Status == ArgumentStatus.Decomposing)
             {
+                var previousStatus = arg.Status;
                 arg.Status = ArgumentStatus.Draft;
                 await _db.SaveChangesAsync();
+                LogWorkflowEvent("status_transition", arg.Id,
+                    fromStatus: previousStatus.ToString(), toStatus: arg.Status.ToString());
             }
 
             try
@@ -460,6 +472,12 @@ public class ArgumentController : Controller
             }
             catch { /* client already gone */ }
         }
+        finally
+        {
+            analysisGate.Release();
+        }
+
+        return new EmptyResult();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -473,7 +491,7 @@ public class ArgumentController : Controller
     /// </summary>
     public async Task<IActionResult> WhatChanged(int id)
     {
-        var argument = await _db.Arguments
+        var argument = await OwnedArguments()
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Premises)
             .Include(a => a.AdjudicationSummary)
@@ -506,7 +524,6 @@ public class ArgumentController : Controller
             // Existing propositions strengthened/contested: query the graph
             StrengthenedPropositions = new List<WhatChangedProposition>(),
             ContestedPropositions = new List<WhatChangedProposition>(),
-            AreasOfAgreement = new List<string>(),
             NewQuestions = new List<string>(),
             StrongestOpposingView = null
         };
@@ -565,17 +582,6 @@ public class ArgumentController : Controller
                 .Take(5)
                 .ToList();
 
-            // Areas of agreement: high-confidence nodes that align
-            var highConfidenceNodes = graphNodes
-                .Where(n => n.Confidence >= 0.7 && n.Status == PropositionStatus.Settled)
-                .Take(3)
-                .ToList();
-
-            foreach (var node in highConfidenceNodes)
-            {
-                model.AreasOfAgreement.Add(node.Text);
-            }
-
             // New questions: surfaced assumptions from the claim
             if (claim?.Assumptions != null)
             {
@@ -614,7 +620,7 @@ public class ArgumentController : Controller
     /// </summary>
     public async Task<IActionResult> Review(int id)
     {
-        var argument = await _db.Arguments
+        var argument = await OwnedArguments()
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Premises)
             .Include(a => a.Claims)
@@ -648,46 +654,60 @@ public class ArgumentController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Review(int id, ReviewViewModel model)
     {
-        if (model.Action == "edit")
+        var argument = await OwnedArguments()
+            .Include(candidate => candidate.Claims)
+                .ThenInclude(claim => claim.Premises)
+            .FirstOrDefaultAsync(candidate => candidate.Id == id);
+        if (argument == null)
+            return NotFound();
+
+        if (argument.Status != ArgumentStatus.Complete)
+            return RedirectToAction(nameof(Analyze), new { id });
+
+        var claim = argument.Claims.FirstOrDefault();
+        if (claim == null || string.IsNullOrWhiteSpace(model.ClaimText))
+            return BadRequest();
+
+        if (model.Action != "publish" && model.Action != "edit")
+            return BadRequest();
+
+        if (model.Action == "edit" || model.Action == "publish")
         {
-            // User wants to edit — apply corrections
-            var argument = await _db.Arguments
-                .Include(a => a.Claims)
-                    .ThenInclude(c => c.Premises)
-                .FirstOrDefaultAsync(a => a.Id == id);
+            claim.Text = model.ClaimText.Trim();
+            argument.Title = model.ClaimText.Length > 300
+                ? model.ClaimText[..297] + "…"
+                : model.ClaimText.Trim();
 
-            if (argument == null) return NotFound();
-
-            var claim = argument.Claims.FirstOrDefault();
-            if (claim != null && !string.IsNullOrWhiteSpace(model.ClaimText))
+            if (model.Premises != null)
             {
-                claim.Text = model.ClaimText.Trim();
-                argument.Title = model.ClaimText.Length > 300
-                    ? model.ClaimText[..297] + "…"
-                    : model.ClaimText;
-
-                // Update premises if provided
-                if (model.Premises != null)
+                foreach (var editedPremise in model.Premises)
                 {
-                    foreach (var editedPremise in model.Premises)
+                    var existing = claim.Premises.FirstOrDefault(p => p.Id == editedPremise.Id);
+                    if (existing != null && !string.IsNullOrWhiteSpace(editedPremise.Text))
                     {
-                        var existing = claim.Premises.FirstOrDefault(p => p.Id == editedPremise.Id);
-                        if (existing != null && !string.IsNullOrWhiteSpace(editedPremise.Text))
-                        {
-                            existing.Text = editedPremise.Text.Trim();
-                        }
+                        existing.Text = editedPremise.Text.Trim();
                     }
                 }
-
-                await _db.SaveChangesAsync();
-                _logger.LogInformation("User edited AI extraction for argument {Id}", id);
             }
 
-            return RedirectToAction(nameof(WhatChanged), new { id });
+            await _db.SaveChangesAsync();
         }
 
-        // "publish" action — go straight to what-changed
-        return RedirectToAction(nameof(WhatChanged), new { id });
+        if (model.Action != "publish" && model.Action != "edit")
+            return BadRequest();
+
+        claim.Text = model.ClaimText.Trim();
+        argument.Title = model.ClaimText.Length > 300
+            ? model.ClaimText[..297] + "…"
+            : model.ClaimText.Trim();
+        await _db.SaveChangesAsync();
+
+        LogWorkflowEvent("review", id, action: model.Action,
+            reviewerId: User.FindFirstValue(ClaimTypes.NameIdentifier));
+        if (model.Action == "publish")
+            return await PublishReviewedArgumentAsync(argument, claim, User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        return RedirectToAction(nameof(Review), new { id });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -701,7 +721,7 @@ public class ArgumentController : Controller
         string? findingKey = null,
         string? returnUrl = null)
     {
-        var argument = await _db.Arguments
+        var argument = await OwnedArguments()
             .AsSplitQuery()
             .Include(a => a.Claims)
                 .ThenInclude(c => c.Premises)
@@ -733,6 +753,7 @@ public class ArgumentController : Controller
         var pendingSuggestions = await _db.EvidenceMatchSuggestions
             .AsNoTracking()
             .Where(s => propositions.Keys.Contains(s.PropositionId) &&
+                        s.Proposition!.Claim!.Argument!.SubmittedBy == User.FindFirstValue(ClaimTypes.NameIdentifier) &&
                         s.Status == EvidenceMatchStatus.Pending)
             .Select(s => new EvidenceMatchSuggestion
             {
@@ -839,11 +860,16 @@ public class ArgumentController : Controller
         string? returnUrl = null,
         CancellationToken ct = default)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return NotFound();
+
         var context = await _db.Propositions
             .AsNoTracking()
             .Where(proposition =>
                 proposition.Id == propositionId &&
-                proposition.Claim!.ArgumentId == argumentId)
+                proposition.Claim!.ArgumentId == argumentId &&
+                proposition.Claim.Argument!.SubmittedBy == userId)
             .Select(proposition => new AddEvidencePageModel
             {
                 ArgumentId = argumentId,
@@ -867,9 +893,16 @@ public class ArgumentController : Controller
         if (!ModelState.IsValid)
             return RedirectToAction(nameof(View), new { id = model.ArgumentId });
 
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return NotFound();
+
         var proposition = await _db.Propositions
             .Include(p => p.Claim)
-            .FirstOrDefaultAsync(p => p.Id == model.PropositionId);
+            .ThenInclude(claim => claim!.Argument)
+            .FirstOrDefaultAsync(p => p.Id == model.PropositionId
+                && p.Claim!.ArgumentId == model.ArgumentId
+                && p.Claim.Argument!.SubmittedBy == userId);
 
         if (proposition == null)
             return NotFound();
@@ -1035,6 +1068,9 @@ public class ArgumentController : Controller
         if (!ModelState.IsValid)
             return RedirectToAction(nameof(View), new { id = model.ArgumentId });
 
+        if (!await OwnedArguments().AnyAsync(argument => argument.Id == model.ArgumentId))
+            return NotFound();
+
         try
         {
             var stakeholder = await _stakeholderService.RegisterOrGetAsync(
@@ -1062,7 +1098,7 @@ public class ArgumentController : Controller
 
     public async Task<IActionResult> DecisionSupport(int id)
     {
-        var argument = await _db.Arguments
+        var argument = await OwnedArguments()
             .Include(a => a.AdjudicationSummary)
             .FirstOrDefaultAsync(a => a.Id == id);
 
@@ -1093,7 +1129,7 @@ public class ArgumentController : Controller
     /// and returns JSON with the argument ID and analysis URL for the client
     /// to redirect to.
     /// </summary>
-    [HttpPost]
+    [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> SubmitInline([FromBody] InlineContributionModel model)
     {
         if (!ModelState.IsValid)
@@ -1136,12 +1172,17 @@ public class ArgumentController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var argument = await _db.Arguments.FindAsync(id);
-        if (argument != null)
-        {
-            _db.Arguments.Remove(argument);
-            await _db.SaveChangesAsync();
-        }
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var argument = await _db.Arguments
+            .FirstOrDefaultAsync(candidate => candidate.Id == id && candidate.SubmittedBy == userId);
+        if (argument is null)
+            return NotFound();
+
+        _db.Arguments.Remove(argument);
+        await _db.SaveChangesAsync();
 
         return RedirectToAction(nameof(Index));
     }
@@ -1158,18 +1199,16 @@ public class ArgumentController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(int id)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is null) return Unauthorized();
-
-        var argument = await _db.Arguments
-            .Include(a => a.Claims)
-            .FirstOrDefaultAsync(a => a.Id == id);
-
-        if (argument == null)
+        if (!await OwnedArguments().AnyAsync(argument => argument.Id == id))
             return NotFound();
 
-        if (argument.SubmittedBy != userId)
-            return Forbid();
+        return RedirectToAction(nameof(Review), new { id });
+    }
+
+    private async Task<IActionResult> PublishReviewedArgumentAsync(
+        Argument argument, CommonUnderstanding.Models.Claim claim, string userId)
+    {
+        var id = argument.Id;
 
         // Idempotent: if already published, just route to the feed.
         var existing = await _db.SocialArguments
@@ -1182,13 +1221,13 @@ public class ArgumentController : Controller
                 existing.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
+            LogWorkflowEvent("publication", id, action: "publish", reviewerId: userId,
+                socialArgumentId: existing.Id);
             TempData["Info"] = "This argument is already on the feed.";
             return RedirectToAction(nameof(View), new { id });
         }
 
-        var claim = argument.Claims.FirstOrDefault();
-        var claimText = claim?.Text;
-        if (string.IsNullOrWhiteSpace(claimText))
+        if (string.IsNullOrWhiteSpace(claim.Text))
         {
             TempData["Error"] = "Analyse this argument before publishing — it has no claim yet.";
             return RedirectToAction(nameof(View), new { id });
@@ -1196,7 +1235,7 @@ public class ArgumentController : Controller
 
         var claimProp = new SocialProposition
         {
-            Text = claimText,
+            Text = claim.Text,
             Type = SocialPropositionType.Claim,
             UserId = userId,
             IsAIGenerated = true,
@@ -1213,16 +1252,15 @@ public class ArgumentController : Controller
             UserId = userId,
             SourceArgumentId = id,
             IsPublic = true,
-            Tags = string.IsNullOrWhiteSpace(claim?.ClaimType)
+            Tags = string.IsNullOrWhiteSpace(claim.ClaimType)
                 ? Array.Empty<string>()
-                : new[] { claim!.ClaimType! }
+                : new[] { claim.ClaimType! }
         };
         _db.SocialArguments.Add(social);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation(
-            "Published argument {ArgumentId} to social feed as {SocialId} by {UserId}",
-            id, social.Id, userId);
+        LogWorkflowEvent("publication", id, action: "publish", reviewerId: userId,
+            socialArgumentId: social.Id);
 
         TempData["Info"] = "Published to the social feed.";
         return RedirectToAction(nameof(View), new { id });
@@ -1234,15 +1272,18 @@ public class ArgumentController : Controller
 
     public async Task<IActionResult> Compare(int? argumentAId = null, int? argumentBId = null)
     {
-        var arguments = await _db.Arguments
+        var arguments = await OwnedArguments()
             .Include(a => a.AdjudicationSummary)
             .Where(a => a.Status == ArgumentStatus.Complete)
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
 
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         ViewBag.RecentComparisons = await _db.ArgumentComparisons
             .Include(c => c.ArgumentA)
             .Include(c => c.ArgumentB)
+            .Where(comparison => comparison.ArgumentA!.SubmittedBy == userId
+                && comparison.ArgumentB!.SubmittedBy == userId)
             .OrderByDescending(c => c.CreatedAt)
             .Take(10)
             .ToListAsync();
@@ -1266,6 +1307,13 @@ public class ArgumentController : Controller
             return RedirectToAction(nameof(Compare));
         }
 
+        var ownedArgumentIds = await OwnedArguments()
+            .Where(argument => argument.Id == argumentAId || argument.Id == argumentBId)
+            .Select(argument => argument.Id)
+            .ToListAsync();
+        if (ownedArgumentIds.Count != 2)
+            return NotFound();
+
         try
         {
             var comparison = await _comparativeAnalysisService.CompareAsync(
@@ -1280,18 +1328,22 @@ public class ArgumentController : Controller
         }
     }
 
+
     // ─────────────────────────────────────────────────────────────────────────
     //  GET /Argument/CompareView/{id}
     // ─────────────────────────────────────────────────────────────────────────
 
     public async Task<IActionResult> CompareView(int id)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var comparison = await _db.ArgumentComparisons
             .Include(c => c.ArgumentA)
                 .ThenInclude(a => a.AdjudicationSummary)
             .Include(c => c.ArgumentB)
                 .ThenInclude(a => a.AdjudicationSummary)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .FirstOrDefaultAsync(c => c.Id == id
+                && c.ArgumentA!.SubmittedBy == userId
+                && c.ArgumentB!.SubmittedBy == userId);
 
         if (comparison == null)
             return NotFound();
@@ -1302,6 +1354,43 @@ public class ArgumentController : Controller
     // ─────────────────────────────────────────────────────────────────────────
     //  Private helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    private IQueryable<Argument> OwnedArguments()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId is null
+            ? _db.Arguments.Where(_ => false)
+            : _db.Arguments.Where(argument => argument.SubmittedBy == userId);
+    }
+
+    private void LogWorkflowEvent(string eventName, int argumentId, string? action = null,
+        string? fromStatus = null, string? toStatus = null, string? reviewerId = null,
+        Guid? socialArgumentId = null)
+    {
+        _logger.LogInformation(
+            "Argument workflow {EventName}: actorId={ActorId}, analysisJobId={AnalysisJobId}, requestCorrelationId={RequestCorrelationId}, projectId={ProjectId}, " +
+            "sourceSetVersion={SourceSetVersion}, modelVersion={ModelVersion}, " +
+            "promptVersion={PromptVersion}, policyVersion={PolicyVersion}, " +
+            "reviewerId={ReviewerId}, reviewerAction={ReviewerAction}, " +
+            "fromStatus={FromStatus}, toStatus={ToStatus}, publicationAction={PublicationAction}, " +
+            "argumentId={ArgumentId}, socialArgumentId={SocialArgumentId}",
+            eventName,
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            null,
+            HttpContext.TraceIdentifier,
+            null,
+            null,
+            null,
+            null,
+            null,
+            reviewerId,
+            eventName == "review" ? action : null,
+            fromStatus,
+            toStatus,
+            eventName == "publication" ? action : null,
+            argumentId,
+            socialArgumentId);
+    }
 
     private async Task PersistDecompositionAsync(
         Argument argument,
@@ -1528,7 +1617,6 @@ public class WhatChangedViewModel
     public List<WhatChangedProposition> NewPropositions { get; set; } = new();
     public List<WhatChangedProposition> StrengthenedPropositions { get; set; } = new();
     public List<WhatChangedProposition> ContestedPropositions { get; set; } = new();
-    public List<string> AreasOfAgreement { get; set; } = new();
     public List<string> NewQuestions { get; set; } = new();
     public string? StrongestOpposingView { get; set; }
 }

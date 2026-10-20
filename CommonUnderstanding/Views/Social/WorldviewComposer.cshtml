@@ -1,7 +1,9 @@
 @model CommonUnderstanding.Models.Social.WorldviewInsight
 @using System.Text.Json
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "Your Worldview";
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
     var chartJson = JsonSerializer.Serialize(new
     {
         foundations = Model.MoralFoundations,
@@ -54,12 +56,15 @@
         <div>
             <div class="worldview-kicker">Personal belief portrait</div>
             <h1 class="worldview-title">How your ideas hang together</h1>
-            <p class="worldview-deck">A synthesis of what you have said in discovery and what you have chosen to argue, mapped against the wider community and enduring traditions.</p>
+            <p class="worldview-deck">@(containmentEnabled ? "Direct responses and arguments for human review." : "A synthesis of what you have said in discovery and what you have chosen to argue, mapped against the wider community and enduring traditions.")</p>
         </div>
         <div class="evidence-strip" aria-label="Evidence used">
             <div class="evidence-stat"><strong>@Model.InteractionCount</strong><span>discovery responses</span></div>
             <div class="evidence-stat"><strong>@Model.SubmittedArgumentCount</strong><span>submitted arguments</span></div>
-            <div class="evidence-stat"><strong>@Model.ProfileConfidence.ToString("P0")</strong><span>model confidence</span></div>
+            @if (!containmentEnabled)
+            {
+                <div class="evidence-stat"><strong>@Model.ProfileConfidence.ToString("P0")</strong><span>model confidence</span></div>
+            }
         </div>
     </header>
 
@@ -68,7 +73,14 @@
         <div class="empty-state my-4">
             <div class="worldview-kicker">@Model.SubmittedArgumentCount argument-based evidence</div>
             <h2 class="section-heading">What your arguments reveal so far</h2>
-            <div class="portrait-copy mb-4">@Model.Summary</div>
+            @if (containmentEnabled)
+            {
+                <p class="mb-4">Insufficient information for a worldview narrative. The items below are direct user-provided arguments.</p>
+            }
+            else
+            {
+                <div class="portrait-copy mb-4">@Model.Summary</div>
+            }
             <a class="cu-btn-primary" asp-controller="Discovery" asp-action="Start"><i class="bi bi-compass"></i> Continue belief discovery</a>
         </div>
 
@@ -100,14 +112,28 @@
                 <div class="insight-panel">
                     <div class="worldview-kicker">Synthesis</div>
                     <h2 class="section-heading">Your worldview in words</h2>
-                    <div class="portrait-copy">@Model.Summary</div>
+                    @if (containmentEnabled)
+                    {
+                        <p>Insufficient information for a worldview narrative. Review the direct responses and arguments below.</p>
+                    }
+                    else
+                    {
+                        <div class="portrait-copy">@Model.Summary</div>
+                    }
                 </div>
 
                 <div class="insight-panel">
                     <div class="worldview-kicker">Community map</div>
                     <h2 class="section-heading">Where you sit among others</h2>
-                    <p class="text-secondary">@Model.MappingNarrative</p>
-                    <div class="chart-wrap"><canvas id="communityMap"></canvas></div>
+                    @if (containmentEnabled)
+                    {
+                        <p class="text-secondary">Insufficient information for a model-derived community placement.</p>
+                    }
+                    else
+                    {
+                        <p class="text-secondary">@Model.MappingNarrative</p>
+                        <div class="chart-wrap"><canvas id="communityMap"></canvas></div>
+                    }
                 </div>
 
                 <div class="insight-panel">
@@ -137,37 +163,58 @@
                 <div class="insight-panel">
                     <div class="worldview-kicker">Moral emphasis</div>
                     <h2 class="section-heading">Foundation profile</h2>
-                    <div class="chart-wrap"><canvas id="foundationChart"></canvas></div>
+                    @if (containmentEnabled)
+                    {
+                        <p class="text-secondary">Insufficient information for a model-derived foundation profile.</p>
+                    }
+                    else
+                    {
+                        <div class="chart-wrap"><canvas id="foundationChart"></canvas></div>
+                    }
                 </div>
 
                 <div class="insight-panel">
                     <div class="worldview-kicker">Priorities</div>
                     <h2 class="section-heading">Values carrying the most weight</h2>
-                    <div class="value-list">
-                        @foreach (var value in Model.TopValues)
-                        {
-                            <div class="value-row">
-                                <span>@value.Name</span>
-                                <span class="value-track"><span class="value-fill" style="width:@(Math.Clamp(value.Importance / 10.0, 0, 1).ToString("P0"))"></span></span>
-                                <span>@value.Importance.ToString("F1")</span>
-                            </div>
-                        }
-                    </div>
+                    @if (containmentEnabled)
+                    {
+                        <p class="text-secondary">Insufficient information for a model-derived priority ranking.</p>
+                    }
+                    else
+                    {
+                        <div class="value-list">
+                            @foreach (var value in Model.TopValues)
+                            {
+                                <div class="value-row">
+                                    <span>@value.Name</span>
+                                    <span class="value-track"><span class="value-fill" style="width:@(Math.Clamp(value.Importance / 10.0, 0, 1).ToString("P0"))"></span></span>
+                                    <span>@value.Importance.ToString("F1")</span>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
 
                 <div class="insight-panel">
                     <div class="worldview-kicker">Intellectual neighbors</div>
                     <h2 class="section-heading">Traditions with familiar contours</h2>
-                    <div class="match-list">
-                        @foreach (var match in Model.CanonicalMatches)
-                        {
-                            <div class="match-row">
-                                <div class="d-flex justify-content-between gap-2"><strong>@match.Name</strong><span class="match-score">@match.Match.ToString("P0")</span></div>
-                                <div class="text-secondary small">@match.Category</div>
-                                @if (match.SharedValues.Length > 0) { <div class="small mt-2">Shared: @string.Join(", ", match.SharedValues)</div> }
-                            </div>
-                        }
-                    </div>
+                    @if (containmentEnabled)
+                    {
+                        <p class="text-secondary">Insufficient information for a model-derived tradition match.</p>
+                    }
+                    else
+                    {
+                        <div class="match-list">
+                            @foreach (var match in Model.CanonicalMatches)
+                            {
+                                <div class="match-row">
+                                    <div class="d-flex justify-content-between gap-2"><strong>@match.Name</strong><span class="match-score">@match.Match.ToString("P0")</span></div>
+                                    <div class="text-secondary small">@match.Category</div>
+                                    @if (match.SharedValues.Length > 0) { <div class="small mt-2">Shared: @string.Join(", ", match.SharedValues)</div> }
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </aside>
         </div>
@@ -175,7 +222,7 @@
 </main>
 
 @section Scripts {
-@if (Model.HasBeliefProfile)
+@if (Model.HasBeliefProfile && !containmentEnabled)
 {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>

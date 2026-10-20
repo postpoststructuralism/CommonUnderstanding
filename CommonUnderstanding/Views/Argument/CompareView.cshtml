@@ -1,9 +1,11 @@
 ﻿@model CommonUnderstanding.Models.ArgumentComparison
 @using CommonUnderstanding.Models
 @using System.Text.Json
+@inject IConfiguration Configuration
 
 @{
     ViewData["Title"] = $"Compare: {Model.ArgumentA?.Title} vs. {Model.ArgumentB?.Title}";
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
 
     var conflictingPremises = string.IsNullOrWhiteSpace(Model.ConflictingPremisesJson)
         ? new List<ConflictingPremisePair>()
@@ -99,6 +101,14 @@
 </div>
 
 <!-- Net Assessment -->
+@if (containmentEnabled)
+{
+    <div class="alert alert-secondary mb-4" role="status">
+        Comparison judgments are unavailable in conservative review mode. Review each argument and its evidence separately.
+    </div>
+}
+else
+{
 <div class="cu-card mb-4 border-@directionClass border-2">
     <div class="cu-card-body">
         <h2 class="h5 mb-3"><i class="bi bi-balance-scale"></i> Net Assessment</h2>
@@ -134,13 +144,14 @@
         }
     </div>
 </div>
+}
 
 <!-- Tabs -->
 <ul class="nav nav-tabs mb-4" id="compareTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-conflicts" type="button" role="tab">
             <i class="bi bi-lightning-charge text-danger"></i>
-            Conflicts
+            @(containmentEnabled ? "Potential differences" : "Conflicts")
             @if (conflictingPremises.Any())
             {
                 <span class="badge bg-danger ms-1">@conflictingPremises.Count</span>
@@ -150,7 +161,7 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-shared" type="button" role="tab">
             <i class="bi bi-intersect text-success"></i>
-            Shared Ground
+            @(containmentEnabled ? "Shared text" : "Shared Ground")
             @if (sharedGround.Any())
             {
                 <span class="badge bg-success ms-1">@sharedGround.Count</span>
@@ -160,7 +171,7 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unique" type="button" role="tab">
             <i class="bi bi-layout-split"></i>
-            Unique Claims
+            @(containmentEnabled ? "Other claims" : "Unique Claims")
         </button>
     </li>
 </ul>
@@ -169,6 +180,12 @@
 
     <!-- Conflicts tab -->
     <div class="tab-pane fade show active" id="tab-conflicts" role="tabpanel">
+        @if (containmentEnabled)
+        {
+            <p class="text-muted">Potential differences require human review; no conflict determination is made.</p>
+        }
+        else
+        {
         @if (!conflictingPremises.Any())
         {
             <div class="cu-card">
@@ -205,10 +222,17 @@
                 </table>
             </div>
         }
+        }
     </div>
 
     <!-- Shared ground tab -->
     <div class="tab-pane fade" id="tab-shared" role="tabpanel">
+        @if (containmentEnabled)
+        {
+            <p class="text-muted">Shared-ground determinations are unavailable in conservative review mode.</p>
+        }
+        else
+        {
         @if (!sharedGround.Any())
         {
             <div class="cu-card">
@@ -232,10 +256,17 @@
                 }
             </ul>
         }
+        }
     </div>
 
     <!-- Unique claims tab -->
     <div class="tab-pane fade" id="tab-unique" role="tabpanel">
+        @if (containmentEnabled)
+        {
+            <p class="text-muted">Unique-claim determinations are unavailable in conservative review mode.</p>
+        }
+        else
+        {
         <div class="row g-4">
             <div class="col-md-6">
                 <h3 class="h6 text-primary mb-3">
@@ -278,6 +309,7 @@
                 }
             </div>
         </div>
+        }
     </div>
 
 </div>

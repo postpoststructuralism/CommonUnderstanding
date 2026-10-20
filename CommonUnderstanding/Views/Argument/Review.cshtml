@@ -76,6 +76,9 @@
                         <button type="button" class="btn btn-outline-secondary btn-lg" id="editBtn">
                             <i class="bi bi-pencil me-2"></i>Let Me Fix This
                         </button>
+                        <button type="submit" class="btn btn-outline-secondary btn-lg d-none" id="saveCorrectionsBtn" name="Action" value="edit">
+                            <i class="bi bi-save me-2"></i>Save Corrections
+                        </button>
                     </div>
                 </form>
             </div>
@@ -105,13 +108,13 @@
 
 @section Scripts {
     <script>
-        // The "edit" button enables editing and changes the form action
         document.getElementById('editBtn').addEventListener('click', function () {
             document.getElementById('reviewAction').value = 'edit';
-            document.getElementById('reviewForm').submit();
+            document.getElementById('saveCorrectionsBtn').classList.remove('d-none');
+            this.classList.add('d-none');
+            document.getElementById('claimText').focus();
         });
 
-        // The "publish" button keeps action as "publish"
         document.getElementById('publishBtn').addEventListener('click', function () {
             document.getElementById('reviewAction').value = 'publish';
         });

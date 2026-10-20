@@ -31,7 +31,15 @@ public record WorldviewInsightArgument(
     string Claim,
     string[] Values,
     DateTime SubmittedAt);
-public record WorldviewInsightMatch(string Name, string Category, double Match, string[] SharedValues, string[] Differences);
+public record WorldviewInsightMatch(string Name, string Category, double Match, string[] SharedValues, string[] Differences)
+{
+    public static double PercentageToFraction(double percentage)
+    {
+        if (!double.IsFinite(percentage) || percentage < 0 || percentage > 100)
+            throw new ArgumentOutOfRangeException(nameof(percentage));
+        return percentage / 100d;
+    }
+}
 public record WorldviewInsightPeer(string Label, double Similarity, double X, double Y);
 public record WorldviewCommunityView(
     string ArgumentId,

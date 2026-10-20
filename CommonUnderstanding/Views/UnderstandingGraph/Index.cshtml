@@ -1,7 +1,9 @@
 @using CommonUnderstanding.Models
 @using CommonUnderstanding.Services
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
     ViewData["Title"] = "The Live Map";
     var stats = ViewBag.Statistics as QuickStats;
     var isHomePage = ViewBag.IsHomePage as bool? ?? false;
@@ -596,6 +598,12 @@
             </div>
         </div>
         <div class="graph-legend" id="graph-legend">
+            @if (containmentEnabled)
+            {
+                <span class="legend-item">Unreviewed generated map; relationships are drafts, not evidence or agreement.</span>
+            }
+            else
+            {
             <span class="legend-item"><span class="legend-dot" style="background:var(--cu-secondary-blue);"></span> High Confidence</span>
             <span class="legend-item"><span class="legend-dot" style="background:var(--cu-primary-blue);"></span> Normal</span>
             <span class="legend-item"><span class="legend-dot" style="background:var(--cu-accent);"></span> Controversial</span>
@@ -606,6 +614,7 @@
                 <span class="badge" style="background:rgba(192,122,63,0.12);color:var(--cu-accent);">Contested</span>
                 <span class="badge" style="background:var(--cu-border-light);color:var(--cu-text-muted);">Unevaluated</span>
             </span>
+            }
         </div>
         }
         <div id="graph-network" aria-label="Understanding graph"></div>
@@ -822,13 +831,14 @@
         if (!popup || !node || !network) return;
 
         document.getElementById('popup-label').textContent = node.fullLabel || node.label || '(unnamed)';
-        const status = (node.status || 'Unevaluated').toLowerCase();
+        const status = @containmentEnabled.ToString().ToLowerInvariant() ? 'unreviewed' : (node.status || 'Unevaluated').toLowerCase();
         const badge = document.getElementById('popup-badge');
         badge.textContent = status;
         badge.className = 'popup-badge ' + (status === 'settled' ? 'settled' : status === 'contested' ? 'contested' : status === 'unknown' ? 'unknown' : 'unevaluated');
         const confidence = node.confidence || 0;
         document.getElementById('popup-confidence-fill').style.width = (confidence * 100) + '%';
-        document.getElementById('popup-confidence-text').textContent = (confidence * 100).toFixed(0) + '%';
+        document.getElementById('popup-confidence-text').textContent = @containmentEnabled.ToString().ToLowerInvariant() ? 'AI draft' : (confidence * 100).toFixed(0) + '%';
+        document.getElementById('popup-confidence-fill').style.display = @containmentEnabled.ToString().ToLowerInvariant() ? 'none' : '';
 
         const containerRect = document.getElementById('graph-network').getBoundingClientRect();
         const visualizationRect = popup.parentElement.getBoundingClientRect();
@@ -1371,7 +1381,8 @@
                     ? node.canonicalText.substring(0, 50) + '…' 
                     : (node.canonicalText || 'Node ' + nodeId);
                 
-                const statusBadge = node.status === 'Settled' 
+                const statusBadge = @containmentEnabled.ToString().ToLowerInvariant()
+                    ? '<span class="badge">Unreviewed</span>' : node.status === 'Settled'
                     ? '<span class="badge" style="background:rgba(15,118,110,0.12);color:#0f766e;">Settled</span>'
                     : node.status === 'Contested'
                     ? '<span class="badge" style="background:rgba(192,122,63,0.12);color:#c07a3f;">Contested</span>'
@@ -1380,7 +1391,7 @@
                 body.innerHTML = 
                     '<p style="font-size:14px;color:var(--cu-primary-blue);margin-bottom:16px;">' + escHtml(node.canonicalText || '') + '</p>' +
                     '<div class="meta-row"><span class="meta-label">Status</span><span class="meta-value">' + statusBadge + '</span></div>' +
-                    '<div class="meta-row"><span class="meta-label">Confidence</span><span class="meta-value">' + (node.confidence || 0).toFixed(3) + '</span></div>' +
+                    (@containmentEnabled.ToString().ToLowerInvariant() ? '' : '<div class="meta-row"><span class="meta-label">Confidence</span><span class="meta-value">' + (node.confidence || 0).toFixed(3) + '</span></div>') +
                     '<div class="meta-row"><span class="meta-label">Degree Centrality</span><span class="meta-value">' + (node.degreeCentrality || 0).toFixed(3) + '</span></div>' +
                     '<div class="meta-row"><span class="meta-label">Betweenness</span><span class="meta-value">' + (node.betweennessCentrality || 0).toFixed(3) + '</span></div>' +
                     '<div class="meta-row"><span class="meta-label">Clustering</span><span class="meta-value">' + (node.clusteringCoefficient || 0).toFixed(3) + '</span></div>' +

@@ -50,7 +50,9 @@ public class TensorConstructionService
         var arguments = await db.Arguments.ToListAsync();
         var socialArgs = await db.SocialArguments.ToListAsync();
         var nodes = await db.UnderstandingNodes.ToListAsync();
-        var edges = await db.UnderstandingEdges.ToListAsync();
+        var edges = (await db.UnderstandingEdges.ToListAsync())
+            .Where(edge => !IsSimilarityDetected(edge.ProvenanceJson))
+            .ToList();
 
         int aCount = arguments.Count + socialArgs.Count;
         int pCount = nodes.Count;
@@ -144,6 +146,10 @@ public class TensorConstructionService
         var relevantEdges = edges.Where(e =>
             e.SourceNodeId == propositionId || e.TargetNodeId == propositionId).ToList();
 
+        relevantEdges = relevantEdges
+            .Where(e => !IsSimilarityDetected(e.ProvenanceJson))
+            .ToList();
+
         if (relevantEdges.Count == 0) return 0;
 
         // Base value from confidence
@@ -162,6 +168,26 @@ public class TensorConstructionService
 
         // Clamp to [-1, 1]
         return Math.Max(-1.0, Math.Min(1.0, net));
+    }
+
+    private static bool IsSimilarityDetected(string provenanceJson)
+    {
+        if (string.IsNullOrWhiteSpace(provenanceJson)) return false;
+
+        try
+        {
+            using var provenance = JsonDocument.Parse(provenanceJson);
+            if (provenance.RootElement.ValueKind != JsonValueKind.Object ||
+                !provenance.RootElement.TryGetProperty("detectedBy", out var detectedBy) ||
+                detectedBy.ValueKind != JsonValueKind.String)
+                return false;
+
+            return detectedBy.GetString() is "co-occurrence" or "semantic_similarity";
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

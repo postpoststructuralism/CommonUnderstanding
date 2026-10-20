@@ -1,4 +1,6 @@
-﻿@{
+﻿@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery AntiForgery
+
+@{
     ViewData["Title"] = "Running Deep Analysis";
 }
 
@@ -89,52 +91,70 @@
         chainLog.scrollTop = chainLog.scrollHeight;
     }
 
+    const requestToken = '@Html.Raw(AntiForgery.GetAndStoreTokens(Context).RequestToken)';
+    const streamUrl = '@Url.Action("DeepAnalyzeStream")';
     logStep('Connecting to deep analysis stream…');
 
-    const evtSource = new EventSource('@Url.Action("DeepAnalyzeStream")');
-
-    evtSource.addEventListener('progress', function (e) {
-        const d = JSON.parse(e.data);
-        const pct = Math.max(5, Math.round((d.step / d.total) * 100));
-        bar.style.width = pct + '%';
-        label.textContent = d.label;
-        logStep(`<strong>Step ${d.step}/${d.total}:</strong> ${d.label}`);
-    });
-
-    evtSource.addEventListener('complete', function (e) {
-        const d = JSON.parse(e.data);
-        evtSource.close();
-
-        bar.style.width = '100%';
-        bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
-        bar.classList.add('bg-success');
-        label.textContent = 'Analysis complete — loading results…';
-        spinner.classList.add('d-none');
-        doneIcon.classList.remove('d-none');
-        document.getElementById('mainHeading').textContent = 'Analysis Complete';
-
-        logStep('<strong class="text-success">Deep analysis complete. Redirecting…</strong>', 'text-success');
-
-        setTimeout(() => { window.location.href = d.redirectUrl; }, 800);
-    });
-
-    evtSource.addEventListener('error', function (e) {
-        if (e.data) {
-            const d = JSON.parse(e.data);
-            evtSource.close();
-
+    async function runAnalysis() {
+        try {
+            const response = await fetch(streamUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': requestToken
+                },
+                body: new URLSearchParams({ '__RequestVerificationToken': requestToken })
+            });
+            if (!response.ok || !response.body) throw new Error(`Analysis request failed (${response.status}).`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const blocks = buffer.split(/\r?\n\r?\n/);
+                buffer = blocks.pop() || '';
+                for (const block of blocks) {
+                    let eventName = 'message';
+                    let data = '';
+                    for (const line of block.split(/\r?\n/)) {
+                        if (line.startsWith('event:')) eventName = line.slice(6).trim();
+                        else if (line.startsWith('data:')) data += line.slice(5).trim();
+                    }
+                    if (!data) continue;
+                    const payload = JSON.parse(data);
+                    if (eventName === 'progress') {
+                        bar.style.width = Math.max(5, Math.round((payload.step / payload.total) * 100)) + '%';
+                        label.textContent = payload.label;
+                        logStep(`<strong>Step ${payload.step}/${payload.total}:</strong> ${payload.label}`);
+                    } else if (eventName === 'complete') {
+                        bar.style.width = '100%';
+                        bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                        bar.classList.add('bg-success');
+                        label.textContent = 'Analysis complete — loading results…';
+                        spinner.classList.add('d-none');
+                        doneIcon.classList.remove('d-none');
+                        document.getElementById('mainHeading').textContent = 'Analysis Complete';
+                        logStep('<strong class="text-success">Deep analysis complete. Redirecting…</strong>', 'text-success');
+                        setTimeout(() => { window.location.href = payload.redirectUrl; }, 800);
+                    } else if (eventName === 'error') {
+                        throw new Error(payload.message);
+                    }
+                }
+            }
+        } catch (error) {
             bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
             bar.classList.add('bg-danger');
             label.textContent = 'Analysis failed.';
             spinner.classList.add('d-none');
             errorIcon.classList.remove('d-none');
             errorPanel.classList.remove('d-none');
-            errorMsg.textContent = d.message;
-
-            logStep(`<strong class="text-danger">Error:</strong> ${d.message}`, 'text-danger');
-        } else {
-            logStep('Connection interrupted — retrying…', 'text-warning');
+            errorMsg.textContent = error.message;
+            logStep(`<strong class="text-danger">Error:</strong> ${error.message}`, 'text-danger');
         }
-    });
+    }
+
+    runAnalysis();
 })();
 </script>

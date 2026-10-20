@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.SignalR;
 using CommonUnderstanding.Models;
 using CommonUnderstanding.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace CommonUnderstanding.Hubs;
 
 /// <summary>
 /// SignalR hub for real-time streaming of AI-powered belief discovery
 /// </summary>
+[Authorize]
 public class DiscoveryHub : Hub
 {
     private readonly BeliefDiscoveryOrchestrator _orchestrator;
@@ -37,6 +40,7 @@ public class DiscoveryHub : Hub
     /// </summary>
     public async Task StreamQuestion(string profileId)
     {
+        RequireOwnedProfile(profileId);
         try
         {
             await Clients.Caller.SendAsync("StatusUpdate", "Generating question...", 0);
@@ -71,6 +75,7 @@ public class DiscoveryHub : Hub
     /// </summary>
     public async Task ProcessResponseStreaming(string profileId, string? selectedOption, string? responseText, string? response, double? numericValue)
     {
+        RequireOwnedProfile(profileId);
         try
         {
             var profile = _profileStore.GetProfile(profileId);
@@ -91,11 +96,23 @@ public class DiscoveryHub : Hub
             string actualResponse = response ?? selectedOption ?? "";
             
             // For scale questions, use the numeric value as the response
-            if (interaction.Content.Format == InteractionFormat.Scale && numericValue.HasValue)
+            if (interaction.Content.Format == InteractionFormat.Scale)
             {
-                actualResponse = numericValue.Value.ToString();
+                if (!interaction.Content.IsValidScaleAnswer(numericValue))
+                {
+                    await Clients.Caller.SendAsync("Error", "Please select a response within the scale.");
+                    return;
+                }
+                actualResponse = numericValue!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
             
+            if (interaction.Content.Format == InteractionFormat.Ranking &&
+                !interaction.Content.IsValidRankingAnswer(actualResponse))
+            {
+                await Clients.Caller.SendAsync("Error", "Please confirm a complete ranking of the available options.");
+                return;
+            }
+
             // Allow skipped responses (users keeping engagement while background processing happens)
             if (string.IsNullOrWhiteSpace(actualResponse) || actualResponse == "skipped")
             {
@@ -165,6 +182,9 @@ public class DiscoveryHub : Hub
             else
             {
                 // No background processing - show next real question from prefetch queue
+                while (profile.PrefetchedQuestions.TryPeek(out var queuedQuestion) &&
+                    profile.AskedQuestionHashes.Contains(ComputeQuestionHash(queuedQuestion)))
+                    profile.PrefetchedQuestions.TryDequeue(out _);
                 if (profile.PrefetchedQuestions.TryDequeue(out var prefetchedQuestion))
                 {
                     var hash = ComputeQuestionHash(prefetchedQuestion);
@@ -266,12 +286,15 @@ public class DiscoveryHub : Hub
     /// </summary>
     public async Task StartDiscovery()
     {
+        var profileId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        RequireOwnedProfile(profileId ?? string.Empty);
         try
         {
             await Clients.Caller.SendAsync("StatusUpdate", "Initializing discovery...", 10);
 
             var profile = new UserProfile
             {
+                Id = profileId!,
                 Name = $"User-{Guid.NewGuid().ToString().Substring(0, 8)}",
                 Stage = DiscoveryStage.Initial
             };
@@ -294,5 +317,13 @@ public class DiscoveryHub : Hub
             _logger.LogError(ex, "Error starting discovery");
             await Clients.Caller.SendAsync("Error", $"Failed to start: {ex.Message}");
         }
+    }
+
+    private void RequireOwnedProfile(string profileId)
+    {
+        var ownerId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Context.User?.Identity?.IsAuthenticated != true || string.IsNullOrEmpty(ownerId)
+            || !string.Equals(ownerId, profileId, StringComparison.Ordinal))
+            throw new HubException("Profile access denied.");
     }
 }

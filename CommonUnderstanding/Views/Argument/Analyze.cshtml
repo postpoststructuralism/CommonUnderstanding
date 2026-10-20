@@ -1,4 +1,5 @@
-﻿@{
+﻿@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery AntiForgery
+@{
     ViewData["Title"] = "Analyzing Argument";
     var argumentId = ViewBag.ArgumentId;
     var argumentTitle = ViewBag.ArgumentTitle;
@@ -78,7 +79,9 @@
     const errorMsg  = document.getElementById('errorMessage');
     const fallbackPanel = document.getElementById('fallbackPanel');
     const fallbackMessage = document.getElementById('fallbackMessage');
-    const streamUrl = '@Url.Action("AnalyzeStream", new { id = argumentId, force = (bool)(ViewBag.ForceReanalyze ?? false) })';
+    const streamUrl = '@Url.Action("AnalyzeStream", new { id = argumentId })';
+    const forceReanalyze = @((bool)(ViewBag.ForceReanalyze ?? false) ? "true" : "false");
+    const requestToken = '@Html.Raw(AntiForgery.GetAndStoreTokens(Context).RequestToken)';
     const tracePrefix = '[ArgumentAnalyzeStream]';
 
     let lastEventAt = Date.now();
@@ -108,14 +111,13 @@
         trace(`event=${name}`, payload);
     }
 
-    function startWatchdog(evtSource) {
+    function startWatchdog() {
         watchdogHandle = window.setInterval(() => {
             const stalledForMs = Date.now() - lastEventAt;
             if (stalledForMs >= 15000) {
                 trace('no SSE activity for 15s', {
                     lastEventName,
                     stalledForMs,
-                    readyState: evtSource.readyState,
                     statusLabel: label.textContent
                 });
             }
@@ -148,114 +150,103 @@
         chainLog.scrollTop = chainLog.scrollHeight;
     }
 
-    logStep('Reading what you wrote…');
-    trace('opening EventSource', { streamUrl });
-
-    const evtSource = new EventSource(streamUrl);
-    startWatchdog(evtSource);
-
-    evtSource.onopen = function () {
-        markEvent('open', { readyState: evtSource.readyState });
-    };
-
-    evtSource.addEventListener('debug', function (e) {
-        try {
-            const d = JSON.parse(e.data);
-            markEvent('debug', d);
-
-            const message = d.message || '';
-            const details = d.details || {};
-            const fallbackApplied = !!details.fallbackApplied;
-            const timeoutEvent = message.toLowerCase().includes('timed out');
-
-            if (fallbackApplied || timeoutEvent) {
-                showFallbackWarning(
-                    message === 'structure decomposition timed out'
-                        ? 'Structure extraction hit a provider timeout. The analysis is continuing without full syllogism/assumption detail.'
-                        : message === 'Adjudication narrative timed out'
-                            ? 'Narrative generation hit a provider timeout. A rule-based adjudication summary is being used instead.'
-                            : 'An AI stage timed out or failed. The pipeline is continuing with fallback logic.'
-                );
-            }
-        } catch (err) {
-            traceError('failed to parse debug event payload', { raw: e.data, err });
-        }
-    });
-
-    evtSource.addEventListener('title', function (e) {
-        try {
-            const d = JSON.parse(e.data);
-            markEvent('title', d);
-            document.querySelector('h3.mb-1').textContent = d.title;
-        } catch (err) {
-            traceError('failed to parse title event payload', { raw: e.data, err });
-        }
-    });
-
-    evtSource.addEventListener('progress', function (e) {
-        try {
-            const d = JSON.parse(e.data);
-            markEvent('progress', d);
-            const pct = Math.max(5, Math.round((d.step / d.total) * 100));
-            bar.style.width = pct + '%';
-            label.textContent = d.label;
-            // Phase 1: Narrative style — no "Step N/5" prefix
-            logStep(d.label);
-        } catch (err) {
-            traceError('failed to parse progress event payload', { raw: e.data, err });
-        }
-    });
-
-    evtSource.addEventListener('complete', function (e) {
-        stopWatchdog();
-        const d = JSON.parse(e.data);
-        markEvent('complete', d);
-        evtSource.close();
-
-        bar.style.width = '100%';
-        bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
-        bar.classList.add('bg-success');
-        label.textContent = 'Analysis complete — reviewing your results…';
-        spinner.classList.add('d-none');
-        doneIcon.classList.remove('d-none');
-
-        logStep('<strong class="text-success">Analysis complete! Let\'s review what the AI found.</strong>', 'text-success');
-
-        setTimeout(() => { window.location.href = d.redirectUrl; }, 800);
-    });
-
-    evtSource.addEventListener('error', function (e) {
-        markEvent('error', {
-            hasData: !!e.data,
-            readyState: evtSource.readyState,
-            statusLabel: label.textContent
-        });
-
-        // Check if it's a custom error event (with data) or a connection error
-        if (e.data) {
+    function handleEvent(eventName, data) {
+        if (eventName === 'debug') {
+            try {
+                const d = data;
+                markEvent('debug', d);
+                const message = d.message || '';
+                const details = d.details || {};
+                if (details.fallbackApplied || message.toLowerCase().includes('timed out')) {
+                    showFallbackWarning(
+                        message === 'structure decomposition timed out'
+                            ? 'Structure extraction hit a provider timeout. The analysis is continuing without full syllogism/assumption detail.'
+                            : message === 'Adjudication narrative timed out'
+                                ? 'Narrative generation hit a provider timeout. A rule-based adjudication summary is being used instead.'
+                                : 'An AI stage timed out or failed. The pipeline is continuing with fallback logic.'
+                    );
+                }
+            } catch (err) { traceError('failed to process debug event payload', { data, err }); }
+        } else if (eventName === 'title') {
+            markEvent('title', data);
+            document.querySelector('h3.mb-1').textContent = data.title;
+        } else if (eventName === 'progress') {
+            markEvent('progress', data);
+            bar.style.width = Math.max(5, Math.round((data.step / data.total) * 100)) + '%';
+            label.textContent = data.label;
+            logStep(data.label);
+        } else if (eventName === 'complete') {
             stopWatchdog();
-            const d = JSON.parse(e.data);
-            evtSource.close();
-
+            markEvent('complete', data);
+            bar.style.width = '100%';
+            bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            bar.classList.add('bg-success');
+            label.textContent = 'Analysis complete — reviewing your results…';
+            spinner.classList.add('d-none');
+            doneIcon.classList.remove('d-none');
+            logStep('<strong class="text-success">Analysis complete! Let\'s review what the AI found.</strong>', 'text-success');
+            setTimeout(() => { window.location.href = data.redirectUrl; }, 800);
+        } else if (eventName === 'error') {
+            stopWatchdog();
             bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
             bar.classList.add('bg-danger');
             label.textContent = 'Analysis failed.';
             spinner.classList.add('d-none');
             errorIcon.classList.remove('d-none');
             errorPanel.classList.remove('d-none');
-            errorMsg.textContent = d.message;
-
-            logStep(`<strong class="text-danger">Error:</strong> ${d.message}`, 'text-danger');
-        } else {
-            // EventSource connection error (e.g., network issue) — it will retry automatically
-            trace('connection-level EventSource error; browser may retry automatically', {
-                readyState: evtSource.readyState,
-                lastEventName
-            });
-            logStep('Connection interrupted — retrying…', 'text-warning');
+            errorMsg.textContent = data.message;
+            logStep(`<strong class="text-danger">Error:</strong> ${data.message}`, 'text-danger');
         }
-    });
+    }
 
+    async function startAnalysis() {
+        logStep('Reading what you wrote…');
+        trace('opening analysis POST stream', { streamUrl });
+        startWatchdog();
+        try {
+            const response = await fetch(streamUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': requestToken
+                },
+                body: new URLSearchParams({
+                    '__RequestVerificationToken': requestToken,
+                    'force': forceReanalyze
+                })
+            });
+            if (!response.ok || !response.body) throw new Error(`Analysis request failed (${response.status}).`);
+            markEvent('open', { status: response.status });
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const blocks = buffer.split(/\r?\n\r?\n/);
+                buffer = blocks.pop() || '';
+                for (const block of blocks) {
+                    let eventName = 'message';
+                    let data = '';
+                    for (const line of block.split(/\r?\n/)) {
+                        if (line.startsWith('event:')) eventName = line.slice(6).trim();
+                        else if (line.startsWith('data:')) data += line.slice(5).trim();
+                    }
+                    if (data) handleEvent(eventName, JSON.parse(data));
+                }
+            }
+        } catch (err) {
+            stopWatchdog();
+            traceError('analysis stream failed', err);
+            errorMsg.textContent = err.message;
+            errorPanel.classList.remove('d-none');
+            spinner.classList.add('d-none');
+            errorIcon.classList.remove('d-none');
+        }
+    }
+
+    startAnalysis();
     window.addEventListener('beforeunload', stopWatchdog);
 })();
 </script>

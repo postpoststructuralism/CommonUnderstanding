@@ -56,7 +56,7 @@ public class LogicalValidationService
     /// Validates an entire decomposition result: checks syllogism forms and
     /// scans the full argument text for informal fallacies.
     /// </summary>
-    public async Task<ValidationReport> ValidateAsync(
+    public virtual async Task<ValidationReport> ValidateAsync(
         DecompositionResult decomposition,
         string originalArgumentText,
         CancellationToken cancellationToken = default)

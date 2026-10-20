@@ -183,7 +183,7 @@ public class DecisionSupportService
         {
             parts.Add($"Stakeholder input: {consensus.SupportCount} support, " +
                       $"{consensus.OpposeCount} oppose, {consensus.UndecidedCount} undecided " +
-                      $"(consensus rate {consensus.ConsensusRate:P0}, majority: {consensus.MajorityPosition}).");
+                      "(recorded positions only; insufficient participation for a consensus determination).");
         }
         else
         {

@@ -20,17 +20,20 @@ public class ArgumentLinkSuggestionPlugin
     private readonly SemanticKernelService _kernelService;
     private readonly EmbeddingService _embeddingService;
     private readonly ILogger<ArgumentLinkSuggestionPlugin> _logger;
+    private readonly IConfiguration? _configuration;
 
     public ArgumentLinkSuggestionPlugin(
         IDbContextFactory<ApplicationDbContext> dbFactory,
         SemanticKernelService kernelService,
         EmbeddingService embeddingService,
-        ILogger<ArgumentLinkSuggestionPlugin> logger)
+        ILogger<ArgumentLinkSuggestionPlugin> logger,
+        IConfiguration? configuration = null)
     {
         _dbFactory = dbFactory;
         _kernelService = kernelService;
         _embeddingService = embeddingService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -44,6 +47,9 @@ public class ArgumentLinkSuggestionPlugin
         [Description("Maximum number of suggestions to return")] int maxSuggestions = 5,
         CancellationToken cancellationToken = default)
     {
+        if (_configuration?.GetValue("AnalyticalContainment:Enabled", true) ?? true)
+            return new List<ArgumentLinkSuggestion>();
+
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
         var source = await db.SocialArguments

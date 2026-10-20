@@ -1,6 +1,7 @@
 ﻿@model CommonUnderstanding.Models.Argument
 @using CommonUnderstanding.Models
 @using CommonUnderstanding.Services
+@inject IConfiguration Configuration
 
 @{
     ViewData["Title"] = Model.Title;
@@ -14,6 +15,7 @@
     var stakeholderPositions = ViewBag.StakeholderPositions as List<StakeholderPosition>;
     var stakeholderConsensus = ViewBag.StakeholderConsensus as StakeholderConsensus;
     var ds = ViewBag.DecisionSupport as DecisionSupportResult;
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
 
     static string ConfBadge(double c) => c >= 0.70 ? "success" : c >= 0.45 ? "warning" : "danger";
     static string StatusBadge(PropositionStatus s) => s switch
@@ -107,12 +109,9 @@
         }
         @if (Model.Status == ArgumentStatus.Complete && Model.Claims.Any())
         {
-            <form asp-action="Publish" asp-route-id="@Model.Id" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success btn-sm">
-                    <i class="bi bi-cloud-arrow-up"></i> Publish to Feed
-                </button>
-            </form>
+            <a asp-action="Review" asp-route-id="@Model.Id" class="btn btn-success btn-sm">
+                <i class="bi bi-cloud-arrow-up"></i> Review and Publish
+            </a>
         }
         <a asp-action="Analyze" asp-route-id="@Model.Id" asp-route-force="true"
            class="btn btn-outline-primary btn-sm"
@@ -256,13 +255,17 @@
                                             <small class="text-@ConfBadge(p.ConfidenceScore) fw-semibold">
                                                 @p.ConfidenceScore.ToString("P0")
                                             </small>
-                                            <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
+                                            <span class="badge bg-@StatusBadge(p.Status) small">@(containmentEnabled && p.Status == PropositionStatus.Settled && !p.EvidenceItems.Any() ? "Unreviewed" : p.Status.ToString())</span>
                                             <small class="text-muted">@p.EvidenceItems.Count ev.</small>
                                         </div>
                                     }
                                     else
                                     {
                                         <small class="text-muted"><i class="bi bi-exclamation-circle me-1"></i>No evidence yet</small>
+                                        @if (containmentEnabled && p.Status == PropositionStatus.Settled)
+                                        {
+                                            <span class="badge bg-secondary small ms-2">Unreviewed</span>
+                                        }
                                     }
                                     <span class="badge text-bg-light border ms-2" title="Why certainty is limited">
                                         @EpistemicLabel(p.EpistemicStatus)
@@ -461,7 +464,7 @@
                                              style="width:@((p.ConfidenceScore * 100).ToString("F0"))%"></div>
                                     </div>
                                     <small class="text-@ConfBadge(p.ConfidenceScore) fw-semibold">@p.ConfidenceScore.ToString("P0")</small>
-                                    <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
+                                            <span class="badge bg-@StatusBadge(p.Status) small">@p.Status</span>
                                 </div>
                             }
                             <span class="badge text-bg-light border mt-1" title="Why certainty is limited">
@@ -727,7 +730,7 @@
             double oppPct  = (double)stakeholderConsensus.OpposeCount   / total * 100;
             double undPct  = (double)stakeholderConsensus.UndecidedCount / total * 100;
             <div class="cu-card mb-4">
-                <div class="cu-card-header"><i class="bi bi-bar-chart-horizontal me-1"></i> Stakeholder Consensus</div>
+                <div class="cu-card-header"><i class="bi bi-bar-chart-horizontal me-1"></i> Stakeholder Positions</div>
                 <div class="cu-card-body">
                     <div class="d-flex justify-content-between small mb-1">
                         <span><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i>Support: @stakeholderConsensus.SupportCount</span>
@@ -739,14 +742,7 @@
                         <div class="progress-bar bg-danger"  style="width:@oppPct.ToString("F0")%"></div>
                         <div class="progress-bar bg-secondary" style="width:@undPct.ToString("F0")%"></div>
                     </div>
-                    @if (stakeholderConsensus.HasConsensus)
-                    {
-                        <span class="badge bg-success">Consensus: @stakeholderConsensus.MajorityPosition</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-warning text-dark">No consensus reached</span>
-                    }
+                    <span class="badge bg-warning text-dark">Insufficient participation</span>
                 </div>
             </div>
         }
@@ -915,13 +911,9 @@
                                         <div class="text-muted small">Undecided</div>
                                     </div>
                                 </div>
-                                @if (stakeholderConsensus.HasConsensus)
-                                {
-                                    <div class="alert alert-success mb-0 mt-3 py-2 small">
-                                        <i class="bi bi-check-circle me-1"></i>
-                                        Majority position: <strong>@stakeholderConsensus.MajorityPosition</strong>
-                                    </div>
-                                }
+                                <div class="alert alert-warning mb-0 mt-3 py-2 small">
+                                    Insufficient participation for a consensus determination.
+                                </div>
                             </div>
                         </div>
                     }

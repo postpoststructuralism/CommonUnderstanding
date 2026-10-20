@@ -74,6 +74,22 @@ public class InteractionContent
     public int? MaxValue { get; set; }
     public string? MinLabel { get; set; }
     public string? MaxLabel { get; set; }
+
+    public bool IsValidScaleAnswer(double? numericValue)
+    {
+        return numericValue.HasValue && double.IsFinite(numericValue.Value)
+            && MinValue.HasValue && MaxValue.HasValue && MinValue <= MaxValue
+            && numericValue.Value >= MinValue.Value && numericValue.Value <= MaxValue.Value;
+    }
+
+    public bool IsValidRankingAnswer(string? response)
+    {
+        if (string.IsNullOrWhiteSpace(response) || Options is not { Count: > 0 })
+            return false;
+        var ranked = response.Split(" > ", StringSplitOptions.TrimEntries);
+        return ranked.Length == Options.Count && ranked.Distinct(StringComparer.Ordinal).Count() == ranked.Length
+            && ranked.All(option => Options.Contains(option, StringComparer.Ordinal));
+    }
 }
 
 public enum InteractionFormat

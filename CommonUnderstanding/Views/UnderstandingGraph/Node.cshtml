@@ -1,4 +1,6 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
     var node = ViewBag.Node as CommonUnderstanding.Models.UnderstandingNode;
     var memberships = ViewBag.Memberships as List<CommonUnderstanding.Services.NodeSchemaMembership> ?? new();
     ViewData["Title"] = $"Node: {node?.CanonicalText}";
@@ -117,14 +119,17 @@
                     <div class="label">Status</div>
                     <div class="value">
                         <span class="badge @(node.Status == CommonUnderstanding.Models.PropositionStatus.Settled ? "badge-green" : node.Status == CommonUnderstanding.Models.PropositionStatus.Contested ? "badge-orange" : "badge-blue")">
-                            @node.Status
+                            @(containmentEnabled ? "Unreviewed" : node.Status.ToString())
                         </span>
                     </div>
                 </div>
+                @if (!containmentEnabled)
+                {
                 <div class="meta-item">
                     <div class="label">Confidence</div>
                     <div class="value" style="color: @(node.Confidence > 0.7 ? "var(--accent-green)" : node.Confidence > 0.4 ? "var(--accent-orange)" : "var(--accent-red)")">@node.Confidence.ToString("F3")</div>
                 </div>
+                }
                 <div class="meta-item">
                     <div class="label">Degree Centrality</div>
                     <div class="value">@node.DegreeCentrality.ToString("F3")</div>

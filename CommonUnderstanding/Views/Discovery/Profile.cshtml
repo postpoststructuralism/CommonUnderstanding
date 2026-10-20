@@ -1,8 +1,10 @@
 @model CommonUnderstanding.Models.UserProfile
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 
 @{
     ViewData["Title"] = $"{Model.Name}'s Worldview Profile";
-    var snapshot = Model.CurrentBeliefSnapshot;
+    var sparseProfile = Configuration.GetValue("AnalyticalContainment:Enabled", true) && Model.InteractionCount < 5;
+    var snapshot = sparseProfile ? null : Model.CurrentBeliefSnapshot;
     var universePos = ViewBag.UniversePosition as CommonUnderstanding.Models.BeliefUniversePosition;
     var allSystems = ViewBag.AllSystems as List<CommonUnderstanding.Models.BeliefSystem>;
 }
@@ -115,7 +117,7 @@
 
             <div class="profile-hero">
                 <h1><i class="bi bi-person-badge me-2"></i>@Model.Name's Worldview</h1>
-                <p class="hero-subtitle">Based on @Model.InteractionCount interactions &middot; @Model.Stage stage</p>
+                <p class="hero-subtitle">Based on @Model.InteractionCount responses</p>
                 @if (snapshot != null)
                 {
                     <div class="hero-stats">
@@ -141,8 +143,8 @@
             @if (snapshot == null)
             {
                 <div class="empty-state">
-                    <h4><i class="bi bi-hourglass-split me-2"></i>Not enough data yet</h4>
-                    <p>Answer a few more questions to build your worldview profile!</p>
+                    <h4><i class="bi bi-hourglass-split me-2"></i>Insufficient information</h4>
+                    <p>No reviewed worldview assessment is available.</p>
                     <a asp-action="Question" class="cu-btn-primary">Continue Discovery</a>
                 </div>
             }

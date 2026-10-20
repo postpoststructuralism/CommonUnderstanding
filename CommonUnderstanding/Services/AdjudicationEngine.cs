@@ -43,7 +43,7 @@ public class AdjudicationEngine
     /// 4. Generates a decision recommendation
     /// 5. Creates or updates the AdjudicationSummary
     /// </summary>
-    public async Task<AdjudicationSummary> AdjudicateAsync(
+    public virtual async Task<AdjudicationSummary> AdjudicateAsync(
         int argumentId,
         Func<string, object?, Task>? onDebug = null,
         CancellationToken cancellationToken = default)

@@ -2,9 +2,11 @@
 @using CommonUnderstanding.Models
 @using CommonUnderstanding.Services
 @inject IEmergentFindingActionService FindingActions
+@inject IConfiguration Configuration
 
 @{
     ViewData["Title"] = "Emergent Conclusions";
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
     var socialArgumentIds = ViewData["SocialArgumentIds"] as IReadOnlyDictionary<int, Guid>
         ?? new Dictionary<int, Guid>();
     var socialArgumentIdsByNode = ViewData["SocialArgumentIdsByNode"] as IReadOnlyDictionary<int, Guid>
@@ -64,15 +66,22 @@
         EmergentCategory.UnaddressedRebuttal => "A strong counterargument has not received a substantive response.",
         EmergentCategory.ConfidenceIllusion => "A confidence score is stronger than the available evidence quality supports.",
         EmergentCategory.ConvergentGround => "Different stakeholders accept premises that can support productive dialogue.",
-        EmergentCategory.ComplementaryChains => "Separate reasoning chains reinforce one another and may support a synthesis.",
-        EmergentCategory.EmergentConsensus => "Positions are converging around a proposition across the community.",
-        EmergentCategory.CrossDomainReinforcement => "Arguments from different domains provide mutually reinforcing support.",
+        EmergentCategory.ComplementaryChains => containmentEnabled ? "Potential pattern for human review; evidential reinforcement is not determined." : "Separate reasoning chains reinforce one another and may support a synthesis.",
+        EmergentCategory.EmergentConsensus => containmentEnabled ? "Participation is insufficient for a consensus determination." : "Positions are converging around a proposition across the community.",
+        EmergentCategory.CrossDomainReinforcement => containmentEnabled ? "Potential pattern for human review; evidential reinforcement is not determined." : "Arguments from different domains provide mutually reinforcing support.",
         EmergentCategory.SharedValueCore => "Stakeholders with different positions appeal to a common underlying value.",
         _ => "A cross-argument pattern detected in the shared knowledge graph."
     };
 
-    var findingCount = Model.Blindspots.Count + Model.Harmonies.Count;
-    var highImpactCount = Model.Blindspots.Concat(Model.Harmonies).Count(f => f.Significance >= 0.75);
+    var eligibleBlindspots = Model.Blindspots
+        .Where(finding => !containmentEnabled || finding.Category != EmergentCategory.EmergentConsensus).ToList();
+    var eligibleHarmonies = containmentEnabled ? new List<EmergentConclusion>() : Model.Harmonies;
+    var findingCount = eligibleBlindspots.Count + eligibleHarmonies.Count;
+    var highImpactCount = eligibleBlindspots.Concat(eligibleHarmonies).Count(f => f.Significance >= 0.75);
+    var openGraphWorkCount = findingCount + Math.Max(0, Model.GraphHealth.NodesWithoutEvidence
+        - eligibleBlindspots.Where(finding => finding.Category == EmergentCategory.EvidenceDesert)
+            .SelectMany(finding => finding.InvolvedNodeIds).Distinct()
+            .Count(Model.GraphHealth.NodesWithoutEvidenceIds.Contains));
     var filter = Context.Request.Query["filter"].ToString();
     var validFilters = new[] { "findings", "high-impact", "evidence", "work" };
     if (!validFilters.Contains(filter)) filter = "";
@@ -80,12 +89,17 @@
         .Where(gap => !Model.Blindspots.Any(finding => finding.Category == EmergentCategory.EvidenceDesert
             && finding.InvolvedNodeIds.Contains(gap.NodeId)))
         .ToList();
-    var visibleBlindspots = Model.Blindspots
+    var visibleBlindspots = eligibleBlindspots
         .Where(finding => filter != "high-impact" || finding.Significance >= 0.75).ToList();
-    var visibleHarmonies = filter is "high-impact"
-        ? Model.Harmonies.Where(finding => finding.Significance >= 0.75).ToList()
-        : Model.Harmonies;
+    var visibleHarmonies = eligibleHarmonies
+        .Where(finding => filter != "high-impact" || finding.Significance >= 0.75).ToList();
     var showUncoveredGaps = filter is "work" or "";
+    int totalNodes = Model.GraphHealth.SettledCount + Model.GraphHealth.ContestedCount
+                    + Model.GraphHealth.UnknownCount + Model.GraphHealth.UnevaluatedCount;
+    double settledPct = totalNodes > 0 ? (double)Model.GraphHealth.SettledCount / totalNodes * 100 : 0;
+    double contestedPct = totalNodes > 0 ? (double)Model.GraphHealth.ContestedCount / totalNodes * 100 : 0;
+    double unknownPct = totalNodes > 0 ? (double)Model.GraphHealth.UnknownCount / totalNodes * 100 : 0;
+    double unevaluatedPct = totalNodes > 0 ? (double)Model.GraphHealth.UnevaluatedCount / totalNodes * 100 : 0;
 }
 
 <div class="cu-workspace-hero mb-4">
@@ -106,10 +120,11 @@
             }
         </div>
         <div class="cu-workspace-actions">
-            <a asp-action="Index" asp-route-refresh="true" class="cu-btn-primary"
-               onclick="this.setAttribute('aria-disabled', 'true'); this.style.pointerEvents='none';">
+            <form asp-action="Refresh" method="post" class="d-inline">
+                <button type="submit" class="cu-btn-primary">
                 <i class="bi bi-arrow-clockwise"></i> Refresh analysis
-            </a>
+                </button>
+            </form>
             <a asp-action="DeepAnalysis" class="cu-btn-secondary" title="Run AI-enhanced semantic detection">
                 <i class="bi bi-cpu"></i> Deep analysis
             </a>
@@ -189,7 +204,7 @@
     <div class="col-6 col-lg-3">
         <a href="?filter=work" class="cu-card cu-metric-card h-100 d-block text-decoration-none @(filter == "work" ? "border-success" : "")" aria-label="Show all open graph work" aria-current="@(filter == "work" ? "true" : null)">
             <div class="cu-metric-label">Open graph work</div>
-            <div class="cu-metric-value text-success">@Model.OpenGraphWorkCount</div>
+            <div class="cu-metric-value text-success">@openGraphWorkCount</div>
             <div class="cu-metric-note">Findings and uncovered evidence gaps</div>
         </a>
     </div>
@@ -205,41 +220,41 @@
 
 <!-- Graph Status Bar -->
 <div class="cu-card mb-4 p-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
+    @if (containmentEnabled)
+    {
         <small class="fw-semibold text-muted text-uppercase">Knowledge Graph Status</small>
-        <small class="text-muted">Average confidence: @(Model.GraphHealth.AverageConfidence.ToString("P0"))</small>
-    </div>
-    @{
-        int totalNodes = Model.GraphHealth.SettledCount + Model.GraphHealth.ContestedCount
-                        + Model.GraphHealth.UnknownCount + Model.GraphHealth.UnevaluatedCount;
-        double settledPct    = totalNodes > 0 ? (double)Model.GraphHealth.SettledCount    / totalNodes * 100 : 0;
-        double contestedPct  = totalNodes > 0 ? (double)Model.GraphHealth.ContestedCount  / totalNodes * 100 : 0;
-        double unknownPct    = totalNodes > 0 ? (double)Model.GraphHealth.UnknownCount     / totalNodes * 100 : 0;
-        double unevaluatedPct= totalNodes > 0 ? (double)Model.GraphHealth.UnevaluatedCount / totalNodes * 100 : 0;
+        <p class="text-muted mb-0 mt-2">Graph status labels and confidence have not been independently reviewed; no settled or consensus determination is shown.</p>
     }
-    <div class="progress" style="height:16px;">
-        <div class="progress-bar bg-success" style="width:@settledPct.ToString("0.0")%" title="Settled: @Model.GraphHealth.SettledCount">Settled</div>
-        <div class="progress-bar bg-danger"  style="width:@contestedPct.ToString("0.0")%" title="Contested: @Model.GraphHealth.ContestedCount">Contested</div>
-        <div class="progress-bar bg-warning text-dark" style="width:@unknownPct.ToString("0.0")%" title="Unknown: @Model.GraphHealth.UnknownCount">Unknown</div>
-        <div class="progress-bar bg-secondary" style="width:@unevaluatedPct.ToString("0.0")%" title="Unevaluated: @Model.GraphHealth.UnevaluatedCount">Unevaluated</div>
-    </div>
-    <div class="d-flex flex-wrap gap-3 mt-2">
-        <small><span class="badge bg-success">@Model.GraphHealth.SettledCount Settled</span></small>
-        <small><span class="badge bg-danger">@Model.GraphHealth.ContestedCount Contested</span></small>
-        <small><span class="badge bg-warning text-dark">@Model.GraphHealth.UnknownCount Unknown</span></small>
-        <small><span class="badge bg-secondary">@Model.GraphHealth.UnevaluatedCount Unevaluated</span></small>
-        @if (Model.GraphHealth.HighStrengthRebuttals > 0)
-        {
-            <small class="ms-md-auto"><span class="badge bg-danger"><i class="bi bi-shield-exclamation me-1"></i>@Model.GraphHealth.HighStrengthRebuttals High-Strength Rebuttal(s)</span></small>
-        }
-    </div>
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="fw-semibold text-muted text-uppercase">Knowledge Graph Status</small>
+            <small class="text-muted">Average confidence: @(Model.GraphHealth.AverageConfidence.ToString("P0"))</small>
+        </div>
+        <div class="progress" style="height:16px;">
+            <div class="progress-bar bg-success" style="width:@settledPct.ToString("0.0")%" title="Settled: @Model.GraphHealth.SettledCount">Settled</div>
+            <div class="progress-bar bg-danger"  style="width:@contestedPct.ToString("0.0")%" title="Contested: @Model.GraphHealth.ContestedCount">Contested</div>
+            <div class="progress-bar bg-warning text-dark" style="width:@unknownPct.ToString("0.0")%" title="Unknown: @Model.GraphHealth.UnknownCount">Unknown</div>
+            <div class="progress-bar bg-secondary" style="width:@unevaluatedPct.ToString("0.0")%" title="Unevaluated: @Model.GraphHealth.UnevaluatedCount">Unevaluated</div>
+        </div>
+        <div class="d-flex flex-wrap gap-3 mt-2">
+            <small><span class="badge bg-success">@Model.GraphHealth.SettledCount Settled</span></small>
+            <small><span class="badge bg-danger">@Model.GraphHealth.ContestedCount Contested</span></small>
+            <small><span class="badge bg-warning text-dark">@Model.GraphHealth.UnknownCount Unknown</span></small>
+            <small><span class="badge bg-secondary">@Model.GraphHealth.UnevaluatedCount Unevaluated</span></small>
+            @if (Model.GraphHealth.HighStrengthRebuttals > 0)
+            {
+                <small class="ms-md-auto"><span class="badge bg-danger"><i class="bi bi-shield-exclamation me-1"></i>@Model.GraphHealth.HighStrengthRebuttals High-Strength Rebuttal(s)</span></small>
+            }
+        </div>
+    }
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      MAIN LAYOUT: BLINDSPOTS | HARMONIES
 ══════════════════════════════════════════════════════════════════════════════ -->
 
-@if (!string.IsNullOrEmpty(Model.ExecutiveSummary))
+@if (!containmentEnabled && !string.IsNullOrEmpty(Model.ExecutiveSummary))
 {
     <div class="cu-card mb-4 border-start border-primary border-3">
         <div class="d-flex align-items-center mb-2 cursor-pointer"
@@ -672,12 +687,24 @@ else
             })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(function (guide) {
-                var html = '<h6 class="fw-semibold mb-3">' + guide.title + '</h6><ol class="list-group list-group-flush">';
+                var heading = document.createElement('h6');
+                heading.className = 'fw-semibold mb-3';
+                heading.textContent = guide.title;
+                var steps = document.createElement('ol');
+                steps.className = 'list-group list-group-flush';
                 guide.steps.forEach(function (s) {
-                    html += '<li class="list-group-item"><strong class="d-block mb-1">Step ' + s.step + ': ' + s.label + '</strong><span class="text-muted">' + s.text + '</span></li>';
+                    var item = document.createElement('li');
+                    item.className = 'list-group-item';
+                    var label = document.createElement('strong');
+                    label.className = 'd-block mb-1';
+                    label.textContent = 'Step ' + s.step + ': ' + s.label;
+                    var text = document.createElement('span');
+                    text.className = 'text-muted';
+                    text.textContent = s.text;
+                    item.append(label, text);
+                    steps.appendChild(item);
                 });
-                html += '</ol>';
-                body.innerHTML = html;
+                body.replaceChildren(heading, steps);
             })
             .catch(function () {
                 body.innerHTML = '<div class="alert alert-danger">Failed to generate dialogue guide. Please try again.</div>';

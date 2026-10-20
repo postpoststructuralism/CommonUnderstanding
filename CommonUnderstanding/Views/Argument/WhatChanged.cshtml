@@ -1,7 +1,9 @@
 @model CommonUnderstanding.Controllers.WhatChangedViewModel
+@inject IConfiguration Configuration
 
 @{
     ViewData["Title"] = "What Your Argument Added to the Map";
+    var containmentEnabled = Configuration.GetValue("AnalyticalContainment:Enabled", true);
 }
 
 <!-- Breadcrumb -->
@@ -23,31 +25,38 @@
                     <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
                 </svg>
             </div>
-            <h1 class="cu-page-heading mb-2">Here's what your argument added to the map.</h1>
+            <h1 class="cu-page-heading mb-2">@(containmentEnabled ? "Review the draft extracted from your argument." : "Here's what your argument added to the map.")</h1>
             <p class="text-muted lead" style="font-size: 1.05rem;">
                 Your central claim: <strong>"@Model.ClaimText"</strong>
             </p>
         </div>
 
+        @if (containmentEnabled)
+        {
+            <div class="alert alert-secondary mb-4" role="status">
+                Map impact and relationships have not been determined. The extracted claims below are AI-generated drafts for review.
+            </div>
+        }
+
         <!-- ── New Propositions ─────────────────────────────────────────────── -->
         @if (Model.NewPropositions.Any())
         {
             <div class="cu-card mb-4 border-success border-2">
-                <div class="cu-card-header bg-success text-white">
-                    <i class="bi bi-plus-circle me-1"></i> New Propositions Created
+                <div class="cu-card-header @(containmentEnabled ? "" : "bg-success text-white")">
+                    <i class="bi bi-plus-circle me-1"></i> @(containmentEnabled ? "Extracted Claims for Review" : "New Propositions Created")
                     <span class="badge bg-light text-dark ms-2">@Model.NewPropositions.Count</span>
                 </div>
                 <div class="cu-card-body">
-                    <p class="text-muted small mb-3">These are new ideas the AI extracted from your argument that didn't previously exist on the map.</p>
+                    <p class="text-muted small mb-3">@(containmentEnabled ? "These claims were extracted from your argument and have not been reviewed." : "These are new ideas the AI extracted from your argument that didn't previously exist on the map.")</p>
                     <ul class="list-group list-group-flush">
                         @foreach (var prop in Model.NewPropositions)
                         {
                             <li class="list-group-item d-flex align-items-start gap-3">
-                                <i class="bi bi-dot text-success fs-4"></i>
+                                <i class="bi bi-dot @(containmentEnabled ? "text-secondary" : "text-success") fs-4"></i>
                                 <div>
                                     <p class="mb-1">@prop.Text</p>
-                                    <span class="badge bg-@(prop.ConfidenceScore >= 0.7 ? "success" : prop.ConfidenceScore >= 0.45 ? "warning" : "secondary") small">
-                                        @prop.Status
+                                    <span class="badge bg-@(containmentEnabled ? "secondary" : prop.ConfidenceScore >= 0.7 ? "success" : prop.ConfidenceScore >= 0.45 ? "warning" : "secondary") small">
+                                        @(containmentEnabled ? "Unreviewed draft" : prop.Status)
                                     </span>
                                 </div>
                             </li>
@@ -58,7 +67,7 @@
         }
 
         <!-- ── Strengthened Propositions ────────────────────────────────────── -->
-        @if (Model.StrengthenedPropositions.Any())
+        @if (!containmentEnabled && Model.StrengthenedPropositions.Any())
         {
             <div class="cu-card mb-4">
                 <div class="cu-card-header">
@@ -89,7 +98,7 @@
         }
 
         <!-- ── Contested Propositions ───────────────────────────────────────── -->
-        @if (Model.ContestedPropositions.Any())
+        @if (!containmentEnabled && Model.ContestedPropositions.Any())
         {
             <div class="cu-card mb-4">
                 <div class="cu-card-header">
@@ -114,29 +123,8 @@
             </div>
         }
 
-        <!-- ── Areas of Agreement ───────────────────────────────────────────── -->
-        @if (Model.AreasOfAgreement.Any())
-        {
-            <div class="cu-card mb-4">
-                <div class="cu-card-header">
-                    <i class="bi bi-people me-1"></i> Areas of Agreement
-                </div>
-                <div class="cu-card-body">
-                    <p class="text-muted small mb-3">You now agree with other contributors on these points.</p>
-                    <ul class="list-group list-group-flush">
-                        @foreach (var area in Model.AreasOfAgreement)
-                        {
-                            <li class="list-group-item">
-                                <i class="bi bi-hand-thumbs-up text-primary me-2"></i>@area
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        }
-
         <!-- ── New Questions ────────────────────────────────────────────────── -->
-        @if (Model.NewQuestions.Any())
+        @if (!containmentEnabled && Model.NewQuestions.Any())
         {
             <div class="cu-card mb-4">
                 <div class="cu-card-header">
@@ -158,7 +146,7 @@
         }
 
         <!-- ── Strongest Opposing View ──────────────────────────────────────── -->
-        @if (!string.IsNullOrWhiteSpace(Model.StrongestOpposingView))
+        @if (!containmentEnabled && !string.IsNullOrWhiteSpace(Model.StrongestOpposingView))
         {
             <div class="cu-card mb-4 border-warning border-2">
                 <div class="cu-card-header bg-warning text-dark">
@@ -171,15 +159,18 @@
         }
 
         <!-- ── Empty State ──────────────────────────────────────────────────── -->
-        @if (!Model.NewPropositions.Any() && !Model.StrengthenedPropositions.Any() &&
-             !Model.ContestedPropositions.Any() && !Model.AreasOfAgreement.Any() &&
-             !Model.NewQuestions.Any() && string.IsNullOrWhiteSpace(Model.StrongestOpposingView))
+           @if (!Model.NewPropositions.Any() && (containmentEnabled || !Model.StrengthenedPropositions.Any()) &&
+               !Model.ContestedPropositions.Any() &&
+             (containmentEnabled || !Model.NewQuestions.Any()) && (containmentEnabled || string.IsNullOrWhiteSpace(Model.StrongestOpposingView)))
         {
             <div class="cu-card mb-4 text-center py-4">
                 <div class="cu-card-body">
                     <i class="bi bi-diagram-3 display-4 text-muted mb-3 d-block"></i>
-                    <h4 class="text-muted">Your argument has been added to the map.</h4>
-                    <p class="text-muted">As more people contribute, connections to your argument will emerge.</p>
+                    <h4 class="text-muted">@(containmentEnabled ? "No extracted claims are available for review." : "Your argument has been added to the map.")</h4>
+                    @if (!containmentEnabled)
+                    {
+                        <p class="text-muted">As more people contribute, connections to your argument will emerge.</p>
+                    }
                 </div>
             </div>
         }

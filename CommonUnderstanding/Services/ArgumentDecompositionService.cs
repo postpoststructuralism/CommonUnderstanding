@@ -28,7 +28,7 @@ public class ArgumentDecompositionService
     /// Decomposes an argument into claims, premises, syllogisms, assumptions,
     /// qualifiers and rebuttals.
     /// </summary>
-    public async Task<DecompositionResult> DecomposeAsync(
+    public virtual async Task<DecompositionResult> DecomposeAsync(
         string argumentText,
         Func<string, int, int, Task>? onProgress = null,
         Func<string, object?, Task>? onDebug = null,

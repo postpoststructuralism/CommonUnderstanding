@@ -42,7 +42,8 @@ public sealed class FeedRankingService : IFeedRankingService
     public async Task<RecommendedFeedResultDto> GetFeedAsync(
         string? userId, int offset, int limit, string[]? tags, CancellationToken ct)
     {
-        if (!_configuration.GetValue("Recommendation:UseIndexedServing", false))
+        if ((_configuration.GetValue("AnalyticalContainment:Enabled", true)) ||
+            !_configuration.GetValue("Recommendation:UseIndexedServing", false))
             return await GetLegacyFeedAsync(userId, offset, limit, tags, ct);
 
         try
@@ -77,6 +78,7 @@ public sealed class FeedRankingService : IFeedRankingService
 
         var candidateIds = candidates.Select(argument => argument.Id).ToList();
         var links = await db.ArgumentLinks.AsNoTracking()
+            .Where(_ => !_configuration.GetValue("AnalyticalContainment:Enabled", true))
             .Where(link => candidateIds.Contains(link.SourceArgumentId) || candidateIds.Contains(link.TargetArgumentId))
             .Select(link => new LinkSignal(link.SourceArgumentId, link.TargetArgumentId, link.LinkType))
             .ToListAsync(ct);
