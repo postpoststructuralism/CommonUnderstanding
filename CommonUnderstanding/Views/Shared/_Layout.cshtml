@@ -124,6 +124,11 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><h6 class="dropdown-header cu-dropdown-section">Understanding</h6></li>
                             <li>
+                                <a class="dropdown-item @(currentController == "Projects" ? "active" : "")" asp-controller="Projects" asp-action="Index">
+                                    <i class="bi bi-folder-lock me-2"></i>Private Projects
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "CommonUnderstanding" ? "active" : "")" asp-controller="CommonUnderstanding" asp-action="Index">
                                     <i class="bi bi-diagram-2 me-2"></i>Common Understanding
                                 </a>

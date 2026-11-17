@@ -50,6 +50,9 @@ public sealed class ArgumentAuthorizationIntegrationTests : IAsyncLifetime
                     services.AddDbContext<ApplicationDbContext>(options =>
                         options.UseInMemoryDatabase(_databaseName));
                     services.AddSingleton(new DatabaseProviderInfo(isPostgres: false));
+                    services.AddDbContextFactory<ApplicationDbContext>(options => options.UseInMemoryDatabase(_databaseName), ServiceLifetime.Scoped);
+                    services.AddScoped<CommonUnderstanding.Services.ProjectReviewService>();
+                    services.AddScoped<ProjectsController>();
                     services.AddAuthentication("Test")
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("Test", _ => { });
                     services.Configure<AuthenticationOptions>(options =>
@@ -114,6 +117,8 @@ public sealed class ArgumentAuthorizationIntegrationTests : IAsyncLifetime
         _client = _host.GetTestClient();
         await using var scope = _host.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        db.UserAccounts.AddRange(new UserAccount { Id = "owner", Username = "owner" },
+            new UserAccount { Id = "other", Username = "other" });
         db.Arguments.Add(new Argument
         {
             Id = 144,
@@ -189,6 +194,94 @@ public sealed class ArgumentAuthorizationIntegrationTests : IAsyncLifetime
             Confidence = 0.9
         });
         await db.SaveChangesAsync();
+    }
+
+    [Theory]
+    [InlineData("/claims")]
+    [InlineData("/export")]
+    [InlineData("/choices?query=owner")]
+    public async Task ProjectRead_DeniesOtherAccount(string suffix)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<CommonUnderstanding.Services.ProjectReviewService>();
+        var project = await service.CreateAsync("owner", "Private project");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/projects/{project.Id}{suffix}");
+        request.Headers.Add("X-Test-User", "other");
+        using var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProjectWorkspaceRendersExactDimensionsAndReaderHasNoMutationControls()
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<CommonUnderstanding.Services.ProjectReviewService>();
+        var project = await service.CreateAsync("owner", "Private review");
+        await service.SetMemberAsync(project.Id, "owner", "other", ProjectRole.Reader);
+        var claim = await service.ImportLegacyAsync(project.Id, "owner", 1451, ClaimKind.Normative, "Local policy", "Unknown");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/Projects/{project.Id}");
+        request.Headers.Add("X-Test-User", "other");
+        using var response = await _client.SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(claim.Text, html);
+        Assert.Contains("Unreviewed", html);
+        Assert.Contains("Normative / Unknown", html);
+        Assert.Contains("Former status", html);
+        Assert.DoesNotContain("id=\"claim-form\"", html);
+        Assert.DoesNotContain("class=\"review-form", html);
+        Assert.DoesNotContain("id=\"delete-project\"", html);
+    }
+
+    [Fact]
+    public async Task ProjectOwnerWorkspaceUsesNamedChoicesAndPrivateSave()
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<CommonUnderstanding.Services.ProjectReviewService>();
+        var project = await service.CreateAsync("owner", "Transit Review");
+        await service.SetMemberAsync(project.Id, "owner", "other", ProjectRole.Reviewer);
+        var source = await service.AddSourceAsync(project.Id, "owner", "Transit Survey", "Opening\r\nExact evidence\nClosing");
+        await service.SaveClaimAsync(project.Id, "owner", new CommonUnderstanding.Services.ClaimRevisionInput(
+            "Transit should be affordable.", ClaimKind.Normative, ClaimOrigin.Authored, "Local policy", "Author",
+            source.Id, 9, 14, "Exact evidence"));
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/Projects/{project.Id}");
+        request.Headers.Add("X-Test-User", "owner");
+        using var response = await _client.SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Save Privately", html);
+        Assert.Contains("Transit Survey / Version 1", html);
+        Assert.Contains("Reviewer", html);
+        Assert.Contains("id=\"contribution-search\"", html);
+        Assert.Contains("id=\"member-search\"", html);
+        Assert.DoesNotContain("Account ID", html);
+        Assert.DoesNotContain("Proposition ID", html);
+        Assert.DoesNotContain("Passage start", html);
+        Assert.DoesNotContain("Passage length", html);
+        var browserFixture = Environment.GetEnvironmentVariable("CU_PROJECT_BROWSER_FIXTURE");
+        if (!string.IsNullOrWhiteSpace(browserFixture)) await File.WriteAllTextAsync(browserFixture, html);
+    }
+
+    [Theory]
+    [InlineData("other", true, HttpStatusCode.Forbidden)]
+    [InlineData("owner", false, HttpStatusCode.BadRequest)]
+    [InlineData("owner", true, HttpStatusCode.Created)]
+    public async Task ProjectWrite_RequiresOwnerAndAntiforgery(string actor, bool token, HttpStatusCode expected)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<CommonUnderstanding.Services.ProjectReviewService>();
+        var project = await service.CreateAsync("owner", "Private project");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/projects/{project.Id}/claims")
+        {
+            Content = JsonContent.Create(new CommonUnderstanding.Services.ClaimRevisionInput("Transit should be affordable.",
+                ClaimKind.Normative, ClaimOrigin.Authored, "Local policy", "Author"))
+        };
+        request.Headers.Add("X-Test-User", actor);
+        if (token) await AddAntiforgeryTokenAsync(request);
+        using var response = await _client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal(expected == HttpStatusCode.Created ? 1 : 0,
+            (await service.ReadClaimsAsync(project.Id, "owner")).Count);
     }
 
     public Task DisposeAsync()
@@ -750,6 +843,11 @@ public sealed class ArgumentAuthorizationIntegrationTests : IAsyncLifetime
         var cookieHeader = string.Join("; ", tokenResponse.Headers.GetValues(HeaderNames.SetCookie)
             .Select(setCookie => setCookie.Split(';', 2)[0]));
         request.Headers.Add(HeaderNames.Cookie, cookieHeader);
+        if (request.Content is JsonContent)
+        {
+            request.Headers.Add("RequestVerificationToken", tokenPayload.RequestToken);
+            return;
+        }
         var formFields = request.Content is FormUrlEncodedContent existingForm
             ? (await existingForm.ReadAsStringAsync())
                 .Split('&', StringSplitOptions.RemoveEmptyEntries)

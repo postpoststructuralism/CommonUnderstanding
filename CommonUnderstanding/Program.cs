@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.FeatureManagement;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddControllersWithViews();
+
+// Feature flags for the agent conversation rewrite.
+// Existing features are gated behind flags so they can be safely disabled
+// without deleting code. The conversation shell is the new default UX.
+builder.Services.AddFeatureManagement();
+
+// Conversation agent — the heart of the new UX
+builder.Services.AddScoped<ConversationAgentService>();
 
 // In-memory caching for graph map, stats, etc.
 builder.Services.AddMemoryCache();
@@ -152,6 +161,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<ResponseProcessing
 
 // Register Argument Engine services
 builder.Services.AddScoped<ArgumentDecompositionService>();
+builder.Services.AddScoped<ProjectReviewService>();
 builder.Services.AddScoped<ArgumentSensemakingService>();
 builder.Services.AddScoped<LogicalValidationService>();
 builder.Services.AddScoped<AdjudicationEngine>();
@@ -385,13 +395,18 @@ app.UseAuthorization();
 app.MapControllers();  // Enable attribute-routed API controllers
 
 app.MapControllerRoute(
+    name: "conversation",
+    pattern: "conversation/{action=Index}/{id?}",
+    defaults: new { controller = "Conversation" });
+
+app.MapControllerRoute(
     name: "understandingGraph",
     pattern: "UnderstandingGraph/{action=Index}/{id?}",
     defaults: new { controller = "UnderstandingGraph" });
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Conversation}/{action=Index}/{id?}");
 
 // Map SignalR hub
 app.MapHub<CommonUnderstanding.Hubs.DiscoveryHub>("/discoveryHub");

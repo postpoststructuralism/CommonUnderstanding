@@ -1,0 +1,417 @@
+/* ── Conversation Shell ──────────────────────────────────────────────── */
+/* Soothing, minimal design system for the agent-driven conversation UX.
+   Palette: warm stone + indigo accent. Low contrast, high calm. */
+
+:root {
+    --cu-bg: #fafaf9;
+    --cu-surface: #ffffff;
+    --cu-border: #e7e5e4;
+    --cu-text: #292524;
+    --cu-text-muted: #78716c;
+    --cu-accent: #6366f1;
+    --cu-accent-soft: #eef2ff;
+    --cu-agent-bg: #f5f3ff;
+    --cu-user-bg: #ffffff;
+    --cu-radius: 12px;
+    --cu-radius-sm: 8px;
+    --cu-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --cu-transition: 200ms ease;
+}
+
+/* ── Reduced Motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ── Dark Mode ──────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cu-bg: #1c1917;
+        --cu-surface: #292524;
+        --cu-border: #44403c;
+        --cu-text: #e7e5e4;
+        --cu-text-muted: #a8a29e;
+        --cu-accent: #818cf8;
+        --cu-accent-soft: #1e1b4b;
+        --cu-agent-bg: #1e1b4b;
+        --cu-user-bg: #292524;
+        --cu-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    }
+}
+
+body.cu-conversation-shell {
+    background: var(--cu-bg);
+    color: var(--cu-text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.cu-conversation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    background: var(--cu-surface);
+    border-bottom: 1px solid var(--cu-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.cu-conversation-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cu-logo-sm {
+    width: 28px;
+    height: 28px;
+}
+
+.cu-conversation-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--cu-text);
+}
+
+.cu-conversation-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cu-btn-ghost {
+    background: none;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--cu-radius-sm);
+    color: var(--cu-text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background var(--cu-transition), color var(--cu-transition);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.cu-btn-ghost:hover {
+    background: var(--cu-accent-soft);
+    color: var(--cu-accent);
+}
+
+.cu-user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--cu-text-muted);
+}
+
+/* ── Main Conversation Area ──────────────────────────────────────────── */
+.cu-conversation-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+/* ── Conversation Container ──────────────────────────────────────────── */
+.cu-conversation {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 1.25rem;
+}
+
+/* ── Agent Card ──────────────────────────────────────────────────────── */
+.cu-agent-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--cu-agent-bg);
+    border-radius: var(--cu-radius);
+    border: 1px solid var(--cu-border);
+    animation: cu-fade-in 400ms ease;
+}
+
+.cu-agent-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--cu-accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.cu-agent-message {
+    flex: 1;
+}
+
+.cu-agent-greeting {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--cu-text);
+}
+
+.cu-agent-prompt {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--cu-accent);
+    font-weight: 500;
+}
+
+/* ── Conversation Thread ─────────────────────────────────────────────── */
+.cu-conversation-thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+}
+
+/* ── Message Bubbles ─────────────────────────────────────────────────── */
+.cu-message {
+    display: flex;
+    gap: 0.75rem;
+    animation: cu-fade-in 300ms ease;
+    max-width: 85%;
+}
+
+.cu-message--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.cu-message--agent {
+    align-self: flex-start;
+}
+
+.cu-message-avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.cu-message--agent .cu-message-avatar {
+    background: var(--cu-accent-soft);
+    color: var(--cu-accent);
+}
+
+.cu-message--user .cu-message-avatar {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.cu-message-bubble {
+    padding: 0.75rem 1rem;
+    border-radius: var(--cu-radius);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    box-shadow: var(--cu-shadow);
+}
+
+.cu-message--agent .cu-message-bubble {
+    background: var(--cu-surface);
+    border: 1px solid var(--cu-border);
+}
+
+.cu-message--user .cu-message-bubble {
+    background: var(--cu-accent-soft);
+    border: 1px solid #c7d2fe;
+}
+
+.cu-message-time {
+    font-size: 0.7rem;
+    color: var(--cu-text-muted);
+    margin-top: 0.25rem;
+}
+
+/* ── Input Area ──────────────────────────────────────────────────────── */
+.cu-conversation-input-area {
+    position: sticky;
+    bottom: 0;
+    background: var(--cu-bg);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--cu-border);
+}
+
+.cu-conversation-form {
+    margin: 0;
+}
+
+.cu-input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    background: var(--cu-surface);
+    border: 1px solid var(--cu-border);
+    border-radius: var(--cu-radius);
+    padding: 0.5rem 0.75rem;
+    transition: border-color var(--cu-transition), box-shadow var(--cu-transition);
+}
+
+.cu-input-wrapper:focus-within {
+    border-color: var(--cu-accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.cu-message-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    font-family: inherit;
+    background: transparent;
+    color: var(--cu-text);
+    max-height: 150px;
+}
+
+.cu-message-input::placeholder {
+    color: var(--cu-text-muted);
+}
+
+.cu-send-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--cu-accent);
+    font-size: 1.75rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: transform var(--cu-transition), opacity var(--cu-transition);
+}
+
+.cu-send-btn:hover {
+    transform: scale(1.1);
+}
+
+.cu-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.cu-conversation-hint {
+    font-size: 0.75rem;
+    color: var(--cu-text-muted);
+    text-align: center;
+    margin: 0.5rem 0 0 0;
+}
+
+/* ── Graph Overlay ───────────────────────────────────────────────────── */
+.cu-graph-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    animation: cu-fade-in 200ms ease;
+}
+
+.cu-graph-overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    background: var(--cu-surface);
+    border-bottom: 1px solid var(--cu-border);
+}
+
+.cu-graph-overlay-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cu-graph-overlay-body {
+    flex: 1;
+    background: var(--cu-bg);
+    overflow: auto;
+    padding: 1rem;
+}
+
+/* ── Loading & Error States ──────────────────────────────────────────── */
+.cu-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: var(--cu-text-muted);
+    font-style: italic;
+}
+
+.cu-error {
+    color: #dc2626;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* ── Typing Indicator ────────────────────────────────────────────────── */
+.cu-typing-indicator {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.5rem 0;
+}
+
+.cu-typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cu-text-muted);
+    animation: cu-bounce 1.4s infinite ease-in-out both;
+}
+
+.cu-typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.cu-typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+/* ── Animations ──────────────────────────────────────────────────────── */
+@keyframes cu-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cu-bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .cu-conversation-main {
+        padding: 0.5rem;
+    }
+
+    .cu-message {
+        max-width: 92%;
+    }
+
+    .cu-agent-card {
+        padding: 1rem;
+    }
+}

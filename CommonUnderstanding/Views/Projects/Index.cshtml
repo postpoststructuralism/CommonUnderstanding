@@ -1,0 +1,36 @@
+@model List<CommonUnderstanding.Models.ReviewProject>
+@{ ViewData["Title"] = "Private Projects"; }
+<div class="container py-4">
+    <h1 class="h3">Private Projects</h1>
+    <form id="create-project" class="d-flex gap-2 my-4">
+        @Html.AntiForgeryToken()
+        <label for="project-name" class="visually-hidden">Project name</label>
+        <input id="project-name" class="form-control" required maxlength="300" placeholder="Project name" />
+        <button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Create Project</button>
+    </form>
+    <p id="project-error" role="alert" class="text-danger"></p>
+    @if (Model.Count == 0) { <p class="text-muted">No private projects.</p> }
+    <ul class="list-group list-group-flush">
+    @foreach (var project in Model)
+    {
+        <li class="list-group-item"><a href="/Projects/@project.Id">@project.Name</a><span class="ms-3">Policy @project.PolicyVersion</span></li>
+    }
+    </ul>
+</div>
+@section Scripts {
+<script>
+document.getElementById('create-project').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button');
+    button.disabled = true;
+    try {
+        const response = await fetch('/api/projects', {method: 'POST', headers: {
+            'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('[name="__RequestVerificationToken"]').value
+        }, body: JSON.stringify({name: document.getElementById('project-name').value})});
+        if (!response.ok) throw new Error((await response.json()).title || 'Project could not be created.');
+        location.href = response.headers.get('Location');
+    } catch (error) { document.getElementById('project-error').textContent = error.message; }
+    finally { button.disabled = false; }
+});
+</script>
+}

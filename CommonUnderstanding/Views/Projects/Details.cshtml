@@ -1,0 +1,278 @@
+@using CommonUnderstanding.Models
+@using CommonUnderstanding.Services
+@model List<ProjectClaimRecord>
+@{
+    var project = (ReviewProject)ViewData["Project"]!;
+    var role = (ProjectRole)ViewData["Role"]!;
+    var choices = (ProjectChoices)ViewData["Choices"]!;
+    ViewData["Title"] = project.Name;
+    var current = Model.GroupBy(item => item.Id).Select(group => group.OrderByDescending(item => item.Revision).First()).ToList();
+}
+<div class="container py-4" id="project-workspace" data-project="@project.Id">
+    @Html.AntiForgeryToken()
+    <a href="/Projects">Private Projects</a>
+    <h1 class="h3 mt-3">@project.Name</h1>
+    <p>@role / Policy @project.PolicyVersion</p>
+    @if (role == ProjectRole.Owner) { <a href="/api/projects/@project.Id/export">Export History</a> }
+    <p id="workspace-error" role="alert" class="text-danger"></p>
+    @if (current.Count == 0) { <p>No claims.</p> }
+    @foreach (var claim in current)
+    {
+        <section class="border-top py-3">
+            <h2 class="h5">@claim.Text</h2>
+            <dl class="row">
+                <dt class="col-sm-3">Review</dt><dd class="col-sm-9">@(claim.Disposition == ReviewDisposition.AcceptedWithObjections ? "Accepted with objections" : claim.Disposition.ToString())</dd>
+                <dt class="col-sm-3">Type / Origin</dt><dd class="col-sm-9">@claim.Kind / @claim.Origin</dd>
+                <dt class="col-sm-3">Coverage / Lifecycle</dt><dd class="col-sm-9">@claim.Coverage / @claim.Lifecycle</dd>
+                <dt class="col-sm-3">Scope</dt><dd class="col-sm-9">@claim.Scope</dd>
+                <dt class="col-sm-3">Attribution</dt><dd class="col-sm-9">@claim.Attribution</dd>
+                <dt class="col-sm-3">Objections</dt><dd class="col-sm-9">@claim.Objections</dd>
+                <dt class="col-sm-3">Revalidation</dt><dd class="col-sm-9">@(claim.RequiresRevalidation ? "Required" : "Not flagged")</dd>
+                @if (claim.FormerStatus != null) { <dt class="col-sm-3">Former status</dt><dd class="col-sm-9">@claim.FormerStatus</dd> }
+            </dl>
+            @if (claim.PassageText != null)
+            {
+                <blockquote class="border-start ps-3">@claim.PassageText</blockquote>
+                var source = choices.Sources.FirstOrDefault(item => item.Id == claim.SourceVersionId);
+                <p>@source?.SourceKey / Version @source?.Version @(source?.Retracted == true ? "(Retracted)" : "")</p>
+            }
+            @if (ProjectPermissions.Allows(role, ProjectOperation.Correct))
+            {
+                <button type="button" class="btn btn-outline-primary correct-claim" data-id="@claim.Id"><i class="bi bi-pencil" aria-hidden="true"></i> Correct Claim</button>
+            }
+            @if (ProjectPermissions.Allows(role, ProjectOperation.Adjudicate))
+            {
+                <details class="my-2"><summary>Record Review</summary>
+                    <form class="review-form my-3" data-revision="@claim.RevisionId" data-hash="@claim.InputHash">
+                        <label for="disposition-@claim.Id">Disposition</label><select id="disposition-@claim.Id" name="disposition" class="form-select mb-2"><option value="1">Accepted</option><option value="2">Accepted with objections</option><option value="3">Rejected</option></select>
+                        <label for="rationale-@claim.Id">Rationale</label><textarea id="rationale-@claim.Id" name="rationale" class="form-control mb-2" required></textarea>
+                        <label for="conditions-@claim.Id">Conditions</label><input id="conditions-@claim.Id" name="conditions" class="form-control mb-2" />
+                        <label for="treatment-@claim.Id">Objection treatment</label><textarea id="treatment-@claim.Id" name="objectionTreatment" class="form-control mb-2"></textarea>
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Record Review</button>
+                    </form>
+                </details>
+            }
+            <details><summary>Revision History</summary>
+                @foreach (var revision in Model.Where(item => item.Id == claim.Id).OrderByDescending(item => item.Revision))
+                {
+                    <div class="border-start ps-3 my-3">
+                        <h3 class="h6">Revision @revision.Revision / @revision.CreatedAt.ToString("u")</h3>
+                        <p>@revision.Text</p>
+                        <p>@revision.Kind / @revision.Origin / @revision.Scope / @revision.Attribution</p>
+                        <p>@revision.Transformation / @revision.CreatedBy / @revision.Disposition</p>
+                        @foreach (var review in revision.Reviews)
+                        {
+                            <p>@review.ReviewerId / @review.ReviewedAt.ToString("u") / @review.Disposition / Policy @review.PolicyVersion<br />@review.Rationale<br />Conditions: @review.Conditions<br />Objection treatment: @review.ObjectionTreatment</p>
+                        }
+                    </div>
+                }
+            </details>
+        </section>
+    }
+    @if (ProjectPermissions.Allows(role, ProjectOperation.Contribute))
+    {
+        <section class="border-top py-3"><h2 class="h5">Your Contributions</h2>
+            <form id="legacy-form">
+            <label for="contribution-search">Search your contributions</label><input id="contribution-search" type="search" class="form-control mb-2" />
+            <label for="legacy-id">Claim to import</label><select id="legacy-id" name="propositionId" class="form-select mb-2" required><option value="">Choose a contribution</option>@foreach (var choice in choices.Contributions) { <option value="@choice.Value">@choice.Label</option> }</select>
+            <p id="contribution-status" role="status" class="small text-muted">@(choices.Contributions.Count == 0 ? "No contributions available." : "")</p>
+                <label for="legacy-kind">Type</label><select id="legacy-kind" name="kind" class="form-select mb-2">@foreach (var kind in Enum.GetValues<ClaimKind>()) { <option value="@((int)kind)">@kind</option> }</select>
+                <label for="legacy-scope">Scope</label><input id="legacy-scope" name="scope" class="form-control mb-2" />
+                <label for="legacy-attribution">Attribution</label><input id="legacy-attribution" name="attribution" class="form-control mb-2" />
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Import Claim</button>
+            </form>
+        </section>
+        <section class="border-top py-3"><h2 class="h5">Add Source Version</h2>
+            <form id="source-form">
+                <label for="source-key">Source title or reference</label><input id="source-key" name="key" list="source-titles" class="form-control mb-2" required maxlength="300" />
+                <datalist id="source-titles">@foreach (var title in choices.Sources.Select(source => source.SourceKey).Distinct()) { <option value="@title"></option> }</datalist>
+                <label for="source-text">Source text</label><textarea id="source-text" name="text" class="form-control mb-2" required></textarea>
+                <label class="form-check mb-2"><input name="retracted" type="checkbox" class="form-check-input" /> Retracted version</label>
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Save Source</button>
+                <output id="saved-source" class="d-block my-2"></output>
+            </form>
+        </section>
+        <section class="border-top py-3"><h2 class="h5" id="editor-heading">Add Claim</h2>
+            <form id="claim-form">
+                <label for="claim-text">Claim text</label><textarea id="claim-text" name="text" class="form-control mb-2" required maxlength="100000"></textarea>
+                <div class="row g-2">
+                    <div class="col-sm-6"><label for="claim-kind">Type</label><select id="claim-kind" name="kind" class="form-select mb-2">@foreach (var kind in Enum.GetValues<ClaimKind>()) { <option value="@((int)kind)">@kind</option> }</select></div>
+                    <div class="col-sm-6"><label for="claim-origin">Origin</label><select id="claim-origin" name="origin" class="form-select mb-2">@foreach (var origin in Enum.GetValues<ClaimOrigin>()) { <option value="@((int)origin)">@origin</option> }</select></div>
+                </div>
+                <label for="claim-scope">Scope</label><input id="claim-scope" name="scope" class="form-control mb-2" />
+                <label for="claim-attribution">Attribution</label><input id="claim-attribution" name="attribution" class="form-control mb-2" />
+                <label for="claim-objections">Objections</label><textarea id="claim-objections" name="objections" class="form-control mb-2"></textarea>
+                <label for="claim-source">Source (optional)</label><select id="claim-source" name="sourceVersionId" class="form-select mb-2"><option value="">No source attached</option>@foreach (var source in choices.Sources) { <option value="@source.Id">@source.SourceKey / Version @source.Version @(source.Retracted ? "(Retracted)" : "")</option> }</select>
+                <div id="passage-picker" hidden>
+                    <label for="source-passage">Source text</label><textarea id="source-passage" readonly rows="8" class="form-control mb-2"></textarea>
+                    <button id="use-passage" type="button" class="btn btn-outline-primary mb-2"><i class="bi bi-scissors" aria-hidden="true"></i> Use Selected Passage</button>
+                    <input name="passageStart" type="hidden" /><input name="passageLength" type="hidden" />
+                    <label for="passage-text">Selected passage</label><textarea id="passage-text" name="passageText" readonly rows="3" class="form-control mb-2"></textarea>
+                </div>
+                <label for="claim-transformation">Authorship or correction note</label><input id="claim-transformation" name="transformation" value="Authored" class="form-control mb-2" required maxlength="1000" />
+                <label for="claim-coverage">Evidence coverage</label><select id="claim-coverage" name="coverage" class="form-select mb-2">@foreach (var coverage in Enum.GetValues<EvidenceCoverage>()) { <option value="@((int)coverage)">@coverage</option> }</select>
+                <label for="claim-lifecycle">Lifecycle</label><select id="claim-lifecycle" name="lifecycle" class="form-select mb-2">@foreach (var lifecycle in Enum.GetValues<ClaimLifecycle>()) { <option value="@((int)lifecycle)">@lifecycle</option> }</select>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-lock" aria-hidden="true"></i> Save Privately</button>
+                <button class="btn btn-outline-secondary" id="cancel-correction" type="button" hidden><i class="bi bi-x-lg" aria-hidden="true"></i> Cancel Correction</button>
+            </form>
+        </section>
+    }
+    @if (role == ProjectRole.Owner)
+    {
+        <section class="border-top py-3"><h2 class="h5">Project Management</h2>
+            <form id="member-form" class="mb-3">
+                <label for="member-search">Find a person</label><input id="member-search" type="search" class="form-control mb-2" />
+                <label for="member-id">Person</label><select id="member-id" name="userId" class="form-select mb-2" required><option value="">Choose a person</option>@foreach (var member in choices.Members) { <option value="@member.Value">@member.Label</option> }</select>
+                <p id="member-status" role="status" class="small text-muted"></p>
+                <label for="member-role">Role</label><select id="member-role" name="role" class="form-select mb-2"><option value="1">Editor</option><option value="2">Reviewer</option><option value="3">Reader</option><option value="">Remove membership</option></select>
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-people" aria-hidden="true"></i> Save Membership</button>
+            </form>
+            <form id="policy-form" class="mb-3"><label for="policy-version">Policy version</label><input id="policy-version" name="version" value="@project.PolicyVersion" class="form-control mb-2" required maxlength="100" /><button class="btn btn-outline-primary" type="submit">Save Policy</button></form>
+            <button id="delete-project" class="btn btn-outline-danger" type="button"><i class="bi bi-trash" aria-hidden="true"></i> Delete Project</button>
+        </section>
+    }
+</div>
+@section Scripts {
+<script>
+const projectId = document.getElementById('project-workspace').dataset.project;
+const revisions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(current, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+const sources = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(choices.Sources, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+let correcting = null;
+const claimForm = document.getElementById('claim-form');
+function showSource(clearPassage = true) {
+    if (!claimForm) return;
+    const source = sources.find(item => item.id === claimForm.elements.sourceVersionId.value);
+    document.getElementById('passage-picker').hidden = !source;
+    document.getElementById('source-passage').value = source?.text ?? '';
+    if (clearPassage) for (const name of ['passageStart', 'passageLength', 'passageText']) claimForm.elements[name].value = '';
+}
+document.getElementById('claim-source')?.addEventListener('change', () => showSource());
+document.getElementById('use-passage')?.addEventListener('click', () => {
+    const passage = document.getElementById('source-passage');
+    if (passage.selectionStart === passage.selectionEnd) {
+        document.getElementById('workspace-error').textContent = 'Select a source passage first.';
+        return;
+    }
+    const source = sources.find(item => item.id === claimForm.elements.sourceVersionId.value);
+    function originalOffset(normalizedOffset) {
+        let original = 0;
+        let normalized = 0;
+        while (normalized < normalizedOffset && original < source.text.length) {
+            if (source.text[original] === '\r' && source.text[original + 1] === '\n') original++;
+            original++;
+            normalized++;
+        }
+        return original;
+    }
+    const start = originalOffset(passage.selectionStart);
+    const length = originalOffset(passage.selectionEnd) - start;
+    claimForm.elements.passageStart.value = start;
+    claimForm.elements.passageLength.value = length;
+    claimForm.elements.passageText.value = source.text.slice(start, start + length);
+    if (!claimForm.elements.text.value.trim()) claimForm.elements.text.value = source.text.slice(start, start + length);
+    document.getElementById('workspace-error').textContent = '';
+});
+function bindChoiceSearch(inputId, selectId, field, statusId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    let timer;
+    let requestNumber = 0;
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        const number = ++requestNumber;
+        timer = setTimeout(async () => {
+            const status = document.getElementById(statusId);
+            status.textContent = 'Searching...';
+            try {
+                const response = await fetch(`/api/projects/${projectId}/choices?query=${encodeURIComponent(input.value.trim())}`);
+                if (!response.ok) throw new Error('Search unavailable.');
+                const data = await response.json();
+                if (number !== requestNumber) return;
+                const select = document.getElementById(selectId);
+                select.replaceChildren(new Option(field === 'people' ? 'Choose a person' : 'Choose a contribution', ''));
+                for (const choice of data[field]) select.add(new Option(choice.label, choice.value));
+                status.textContent = data[field].length ? '' : 'No matches found.';
+            } catch (error) { if (number === requestNumber) status.textContent = error.message; }
+        }, 250);
+    });
+}
+bindChoiceSearch('member-search', 'member-id', 'people', 'member-status');
+bindChoiceSearch('contribution-search', 'legacy-id', 'contributions', 'contribution-status');
+async function projectPost(path, payload) {
+    const response = await fetch(`/api/projects/${projectId}/${path}`, {method:'POST', headers: {
+        'Content-Type':'application/json', 'RequestVerificationToken':document.querySelector('[name="__RequestVerificationToken"]').value
+    }, body:JSON.stringify(payload)});
+    if (!response.ok) {
+        const message = await response.json().catch(() => ({}));
+        throw new Error(message.title || 'Operation denied or unavailable.');
+    }
+    return response.status === 204 ? null : response.json();
+}
+function bindProjectForm(selector, action) {
+    document.querySelectorAll(selector).forEach(form => form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = form.querySelector('button');
+        button.disabled = true;
+        try { await action(form, Object.fromEntries(new FormData(form))); }
+        catch (error) { document.getElementById('workspace-error').textContent = error.message; }
+        finally { button.disabled = false; }
+    }));
+}
+bindProjectForm('#claim-form', async (form, values) => {
+    for (const field of ['kind', 'origin', 'coverage', 'lifecycle']) values[field] = Number(values[field]);
+    values.sourceVersionId = values.sourceVersionId || null;
+    values.passageStart = values.passageStart === '' ? null : Number(values.passageStart);
+    values.passageLength = values.passageLength === '' ? null : Number(values.passageLength);
+    const source = sources.find(item => item.id === values.sourceVersionId);
+    values.passageText = source && values.passageLength
+        ? source.text.slice(values.passageStart, values.passageStart + values.passageLength) : null;
+    if (values.sourceVersionId && (!values.passageLength || !values.passageText)) throw new Error('Select an exact source passage before saving.');
+    await projectPost(correcting ? `claims/${correcting.id}` : 'claims', correcting
+        ? {expectedRevisionId:correcting.revisionId, claim:values} : values);
+    location.reload();
+});
+document.querySelectorAll('.correct-claim').forEach(button => button.addEventListener('click', () => {
+    correcting = revisions.find(revision => revision.id === button.dataset.id);
+    const form = document.getElementById('claim-form');
+    for (const element of form.elements) if (element.name) element.value = correcting[element.name] ?? '';
+    form.elements.transformation.value = '';
+    showSource(false);
+    document.getElementById('editor-heading').textContent = `Correct Revision ${correcting.revision}`;
+    document.getElementById('cancel-correction').hidden = false;
+    form.elements.text.focus();
+}));
+document.getElementById('cancel-correction')?.addEventListener('click', () => {
+    correcting = null; document.getElementById('claim-form').reset();
+    document.getElementById('editor-heading').textContent = 'Add Claim';
+    document.getElementById('cancel-correction').hidden = true;
+    showSource();
+});
+bindProjectForm('#source-form', async (form, values) => {
+    values.retracted = form.elements.retracted.checked;
+    const source = await projectPost('sources', values);
+    sources.push(source);
+    document.getElementById('claim-source').add(new Option(`${source.sourceKey} / Version ${source.version}`, source.id));
+    document.getElementById('saved-source').textContent = `Saved ${source.sourceKey} / Version ${source.version}`;
+    document.getElementById('claim-source').value = source.id;
+    showSource();
+});
+bindProjectForm('#legacy-form', async (form, values) => {
+    values.propositionId = Number(values.propositionId); values.kind = Number(values.kind);
+    await projectPost('legacy', values); location.reload();
+});
+bindProjectForm('.review-form', async (form, values) => {
+    values.disposition = Number(values.disposition); values.expectedHash = form.dataset.hash;
+    await projectPost(`reviews/${form.dataset.revision}`, values); location.reload();
+});
+bindProjectForm('#member-form', async (form, values) => {
+    values.role = values.role === '' ? null : Number(values.role);
+    await projectPost('members', values); location.reload();
+});
+bindProjectForm('#policy-form', async (form, values) => { await projectPost('policy', values); location.reload(); });
+document.getElementById('delete-project')?.addEventListener('click', async () => {
+    if (!confirm('Delete this project and its review history?')) return;
+    try { await projectPost('delete', {}); location.href = '/Projects'; }
+    catch (error) { document.getElementById('workspace-error').textContent = error.message; }
+});
+</script>
+}

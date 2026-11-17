@@ -14,7 +14,7 @@ edges:
   - target: context/setup.md
     condition: when applying or troubleshooting migrations
 grounds_to: []
-last_updated: 2026-09-13
+last_updated: 2026-10-20
 ---
 
 # Change Database Schema
@@ -34,6 +34,8 @@ The application selects SQL Server or PostgreSQL through `DatabaseProvider`; pro
 - Raw SQL, vector types, filtered indexes, computed defaults, and timestamp behavior are provider-sensitive.
 - SQL Server rejects multiple cascade paths even when EF accepts the model. For optional audit backlinks into an aggregate child, prefer `DeleteBehavior.NoAction` and keep cascade deletion only on the aggregate ownership relationship.
 - Do not hand-edit the model snapshot independently of a migration.
+- Preset Guid identities on appended children can make EF infer an update; explicitly add new revisions when modifying an existing aggregate. Keep a concurrency token on that aggregate for competing corrections/reviews.
+- Disposable LocalDB tests must use a unique database name, delete only that database in `finally`, and opt in explicitly rather than requiring Windows on every test runner. The project-review test uses `CU_PROJECT_LOCAL_SQL_TESTS=1`.
 - Root SQL files are diagnostics/maintenance scripts, not the application persistence API.
 
 ## Verify

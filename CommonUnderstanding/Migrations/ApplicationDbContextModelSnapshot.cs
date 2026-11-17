@@ -957,6 +957,236 @@ namespace CommonUnderstanding.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChangeToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectClaims");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaimReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Conditions")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Disposition")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ObjectionTreatment")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Rationale")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("ReviewedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ReviewerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RevisionId");
+
+                    b.ToTable("ProjectClaimReviews");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaimRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Attribution")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ClaimId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Coverage")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DisplayText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormerStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Lifecycle")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("MatchingText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Objections")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("PassageLength")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PassageStart")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PassageText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("PreviousRevisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("RequiresRevalidation")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SourceVersionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Transformation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreviousRevisionId");
+
+                    b.HasIndex("SourceVersionId");
+
+                    b.HasIndex("ClaimId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("ProjectClaimRevisions");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectMember", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("ProjectId", "UserId");
+
+                    b.ToTable("ProjectMembers");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectSourceVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Retracted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SourceKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "SourceKey", "Version")
+                        .IsUnique();
+
+                    b.ToTable("ProjectSourceVersions");
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Proposition", b =>
                 {
                     b.Property<int>("Id")
@@ -1207,6 +1437,35 @@ namespace CommonUnderstanding.Migrations
                     b.HasIndex("ReferenceFrameworkId", "SortOrder");
 
                     b.ToTable("ReferencePropositions", (string)null);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ReviewProject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReviewProjects");
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.SchemaMembership", b =>
@@ -3446,6 +3705,63 @@ namespace CommonUnderstanding.Migrations
                     b.Navigation("Worldview");
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaim", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.ReviewProject", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaimReview", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.ProjectClaimRevision", null)
+                        .WithMany("Reviews")
+                        .HasForeignKey("RevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaimRevision", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.ProjectClaim", null)
+                        .WithMany("Revisions")
+                        .HasForeignKey("ClaimId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommonUnderstanding.Models.ProjectClaimRevision", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousRevisionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CommonUnderstanding.Models.ProjectSourceVersion", null)
+                        .WithMany()
+                        .HasForeignKey("SourceVersionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectMember", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.ReviewProject", "Project")
+                        .WithMany("Members")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectSourceVersion", b =>
+                {
+                    b.HasOne("CommonUnderstanding.Models.ReviewProject", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Proposition", b =>
                 {
                     b.HasOne("CommonUnderstanding.Models.Claim", "Claim")
@@ -3874,6 +4190,16 @@ namespace CommonUnderstanding.Migrations
                     b.Navigation("Endorsements");
                 });
 
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaim", b =>
+                {
+                    b.Navigation("Revisions");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ProjectClaimRevision", b =>
+                {
+                    b.Navigation("Reviews");
+                });
+
             modelBuilder.Entity("CommonUnderstanding.Models.Proposition", b =>
                 {
                     b.Navigation("EvidenceItems");
@@ -3893,6 +4219,11 @@ namespace CommonUnderstanding.Migrations
             modelBuilder.Entity("CommonUnderstanding.Models.ReferenceProposition", b =>
                 {
                     b.Navigation("Relationships");
+                });
+
+            modelBuilder.Entity("CommonUnderstanding.Models.ReviewProject", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("CommonUnderstanding.Models.Social.ArgumentChain", b =>

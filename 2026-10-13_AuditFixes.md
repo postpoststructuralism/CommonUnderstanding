@@ -1,6 +1,6 @@
 # Common Understanding - Feature Specification
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 ## Product
 
@@ -10,7 +10,7 @@ This replaces the previous execution plan. Work-item IDs identify features, not 
 
 ## Scope
 
-Phase 1 is the current implementation scope. Phases 2-5 are later features, not prerequisites for completing Phase 1. Retain and check existing implementation rather than restarting it.
+Phase 1 is locally complete. Phase 2 is the authorized implementation scope; Phases 3-5 remain backlog. Retain and check existing implementation rather than restarting it.
 
 Use local tests, synthetic/public-source fixtures, and fake model services. This specification does not authorize deployments, paid calls, shared/production database operations, existing-data cleanup, infrastructure changes, or commits. Implementing migration code does not authorize executing it against operational data.
 
@@ -84,6 +84,12 @@ Finish these six feature items, pass their focused checks, and pass the local ap
 W-001 mapping is already done. W-007 audit-data cleanup and W-008 contract drafting are removed. No snapshots, independent acceptance, founder approval, production verification, or deployment are required. This definition does not assert that Phase 1 is already complete.
 
 ## Phase 2 - Projects and Source-Linked Claims
+
+Local implementation: authenticated Projects pages/API, private owner/editor/reviewer/reader permissions, membership and policy management, exact source-version passages, immutable claim revisions, separate review dimensions, explicit human review, owner-only JSON history export, and project deletion. Legacy import is deliberate and limited to the caller's own propositions; former status is retained without inventing source provenance or human review. Existing legacy rows are not rewritten.
+
+Versioned regression cases are documented in `CommonUnderstanding.Tests/Fixtures/project-review-v1.md`. Storage, permissions, stale review/correction, source retraction/replacement, policy changes, export reconstruction, and authenticated Razor rendering have focused checks. The combined project-service and existing HTTP/Razor regression run passed 77 tests, with the opt-in LocalDB test skipped. The application/Razor build succeeded using isolated output because Visual Studio/IIS Express held the normal output open. Disposable LocalDB previously verified SQL Server schema creation, project operations, migration rollback/reapply, and cleanup; opt in with `CU_PROJECT_LOCAL_SQL_TESTS=1`. The generated migration has not been applied to any existing database. PostgreSQL migration execution remains unverified. Project graphs, evidence/relation engines, decisions, publication, and background-job races remain in their specified later phases.
+
+Project forms now offer permission-filtered person searches with names, handles, and existing roles; owned-contribution search/import; named source versions; and exact passage selection instead of storage IDs and numeric offsets. Corrections preserve provenance and use Save Privately, without adding publication. Synthetic compiled-Razor browser checks at 1280px and 390px verified correction prefill, named search results, mixed-newline passage coordinates and submitted text, and no horizontal overflow. Browser API responses were mocked; these checks do not establish a live deployment or complete production visual/asset verification.
 
 ### W-010 - Private Projects
 

@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "Conversation";
+    Layout = "_ConversationLayout";
+}
+
+<div class="cu-conversation">
+    <!-- Agent greeting card -->
+    <div class="cu-agent-card">
+        <div class="cu-agent-avatar">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="cu-agent-message">
+            <p class="cu-agent-greeting">
+                Hello. I'm here to help you explore what you believe, why you believe it,
+                and how your understanding relates to others'.
+            </p>
+            <p class="cu-agent-prompt">
+                What would you like to think about together?
+            </p>
+        </div>
+    </div>
+
+    <!-- Conversation thread (populated by JS) -->
+    <div id="conversationThread" class="cu-conversation-thread" aria-live="polite">
+        <!-- Messages appear here -->
+    </div>
+
+    <!-- Input area -->
+    <div class="cu-conversation-input-area">
+        <form id="conversationForm" class="cu-conversation-form" autocomplete="off">
+                @Html.AntiForgeryToken()
+            <div class="cu-input-wrapper">
+                <textarea
+                    id="messageInput"
+                    class="cu-message-input"
+                    placeholder="Type your message&hellip;"
+                    rows="1"
+                    aria-label="Your message"
+                ></textarea>
+                <button type="submit" class="cu-send-btn" title="Send message" aria-label="Send message">
+                    <i class="bi bi-arrow-up-circle-fill"></i>
+                </button>
+            </div>
+        </form>
+        <p class="cu-conversation-hint">
+            The agent listens carefully and responds thoughtfully.
+            Your conversation builds shared understanding.
+        </p>
+    </div>
+</div>

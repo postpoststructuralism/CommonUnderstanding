@@ -73,6 +73,12 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<Argument> Arguments => Set<Argument>();
+    public DbSet<ReviewProject> ReviewProjects => Set<ReviewProject>();
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+    public DbSet<ProjectSourceVersion> ProjectSourceVersions => Set<ProjectSourceVersion>();
+    public DbSet<ProjectClaim> ProjectClaims => Set<ProjectClaim>();
+    public DbSet<ProjectClaimRevision> ProjectClaimRevisions => Set<ProjectClaimRevision>();
+    public DbSet<ProjectClaimReview> ProjectClaimReviews => Set<ProjectClaimReview>();
     public DbSet<Claim> Claims => Set<Claim>();
     public DbSet<Proposition> Propositions => Set<Proposition>();
     public DbSet<Syllogism> Syllogisms => Set<Syllogism>();
@@ -172,9 +178,68 @@ public class ApplicationDbContext : DbContext
     public DbSet<WidgetUsage> WidgetUsages => Set<WidgetUsage>();
     public DbSet<CommentModerationItem> CommentModerationItems => Set<CommentModerationItem>();
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ValidateReviewHistory();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ValidateReviewHistory();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void ValidateReviewHistory()
+    {
+        ChangeTracker.DetectChanges();
+        if (ChangeTracker.Entries().Any(entry => entry.State == EntityState.Modified
+            && entry.Entity is ProjectClaimRevision or ProjectSourceVersion or ProjectClaimReview))
+            throw new InvalidOperationException("Source versions, claim revisions, and reviews are immutable; append a new record.");
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ReviewProject>(entity =>
+        {
+            entity.Property(project => project.Name).HasMaxLength(300).IsRequired();
+            entity.Property(project => project.OwnerId).HasMaxLength(100).IsRequired();
+            entity.Property(project => project.PolicyVersion).HasMaxLength(100).IsRequired();
+            entity.HasMany(project => project.Members).WithOne(member => member.Project)
+                .HasForeignKey(member => member.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ProjectMember>(entity =>
+        {
+            entity.HasKey(member => new { member.ProjectId, member.UserId });
+            entity.Property(member => member.UserId).HasMaxLength(100);
+            entity.Property(member => member.Role).HasConversion<string>().HasMaxLength(30);
+        });
+        modelBuilder.Entity<ProjectSourceVersion>(entity =>
+        {
+            entity.HasIndex(source => new { source.ProjectId, source.SourceKey, source.Version }).IsUnique();
+            entity.Property(source => source.SourceKey).HasMaxLength(300);
+            entity.HasOne<ReviewProject>().WithMany().HasForeignKey(source => source.ProjectId).OnDelete(DeleteBehavior.NoAction);
+        });
+        modelBuilder.Entity<ProjectClaim>(entity =>
+        {
+            entity.Property(claim => claim.ChangeToken).IsConcurrencyToken();
+            entity.HasOne<ReviewProject>().WithMany().HasForeignKey(claim => claim.ProjectId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(claim => claim.Revisions).WithOne().HasForeignKey(revision => revision.ClaimId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ProjectClaimRevision>(entity =>
+        {
+            entity.HasIndex(revision => new { revision.ClaimId, revision.Number }).IsUnique();
+            entity.Property(revision => revision.Kind).HasConversion<string>().HasMaxLength(30);
+            entity.Property(revision => revision.Origin).HasConversion<string>().HasMaxLength(30);
+            entity.Property(revision => revision.Coverage).HasConversion<string>().HasMaxLength(30);
+            entity.Property(revision => revision.Lifecycle).HasConversion<string>().HasMaxLength(30);
+            entity.HasOne<ProjectSourceVersion>().WithMany().HasForeignKey(revision => revision.SourceVersionId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne<ProjectClaimRevision>().WithMany().HasForeignKey(revision => revision.PreviousRevisionId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(revision => revision.Reviews).WithOne().HasForeignKey(review => review.RevisionId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ProjectClaimReview>().Property(review => review.Disposition).HasConversion<string>().HasMaxLength(30);
 
         // Argument
         modelBuilder.Entity<Argument>(e =>

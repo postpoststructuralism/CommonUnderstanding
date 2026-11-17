@@ -12,7 +12,7 @@ edges:
   - target: context/architecture.md
     condition: when the feature crosses controllers, services, persistence, workers, or SignalR
 grounds_to: []
-last_updated: 2026-10-19
+last_updated: 2026-10-20
 ---
 
 # Add an MVC Feature
@@ -33,6 +33,7 @@ Load architecture and conventions. Identify the nearest existing feature in `Con
 - MVC success does not prove the SignalR or browser path works; validate both when applicable.
 - Nested test-only MVC controllers require an explicit controller feature provider. Reuse one InMemory database name across fixture scopes. Synthetic Razor pages test browser controls without workers, but missing assets/SignalR do not establish full visual or live-server behavior.
 - Large controllers are a signal that domain logic belongs in a service.
+- Private project picker queries enforce role/ownership in the service; search responses omit source bodies. Native textareas normalize CRLF/CR, so map selection offsets to the original source and reconstruct submitted passage text from that source. Never submit normalized display text as exact provenance.
 - When a vis-network graph must match its loaded aesthetic before remote data arrives, embed a bounded generated snapshot and initialize the production network from that real payload. Replace the shared datasets in place after refresh, and do not gate visibility on stabilization events when physics is intended to remain active.
 
 ## Verify
